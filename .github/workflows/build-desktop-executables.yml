@@ -1,0 +1,103 @@
+name: Build desktop executables
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows
+            os: windows-latest
+            artifact_name: tts-preprocessor-windows
+            executable_name: tts-preprocessor.exe
+            archive_name: tts-preprocessor-windows.zip
+            add_data_sep: ";"
+          - target: macos
+            os: macos-latest
+            artifact_name: tts-preprocessor-macos
+            executable_name: tts-preprocessor
+            archive_name: tts-preprocessor-macos.zip
+            add_data_sep: ":"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          # No root requirements.txt; engine runtime is stdlib-only.
+          pip install pyinstaller
+
+      - name: Create StrEnum runtime hook (Python 3.10)
+        shell: bash
+        run: |
+          mkdir -p pyinstaller_runtime_hooks
+          cat > pyinstaller_runtime_hooks/enum_strenum_compat.py <<'PY'
+          import enum
+
+          if not hasattr(enum, "StrEnum"):
+              class StrEnum(str, enum.Enum):
+                  def __str__(self):
+                      return self.value
+
+                  @staticmethod
+                  def _generate_next_value_(name, start, count, last_values):
+                      return name.lower()
+
+              enum.StrEnum = StrEnum
+          PY
+
+      - name: Build executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT_DIR="$GITHUB_WORKSPACE"
+          pyinstaller \
+            --clean \
+            --onefile \
+            --name tts-preprocessor \
+            --paths "$ROOT_DIR" \
+            --collect-submodules engine \
+            --add-data "$ROOT_DIR/engine/data${{ matrix.add_data_sep }}engine/data" \
+            --runtime-hook "$ROOT_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py" \
+            "$ROOT_DIR/bin/build_binary_entrypoint.py"
+          test -f "dist/${{ matrix.executable_name }}"
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          cp "dist/${{ matrix.executable_name }}" "artifact/"
+          if [ "${{ matrix.target }}" = "macos" ]; then
+            chmod +x "artifact/${{ matrix.executable_name }}"
+          fi
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          artifact_dir = Path("artifact")
+          exe = artifact_dir / "${{ matrix.executable_name }}"
+          archive = artifact_dir / "${{ matrix.archive_name }}"
+          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+              zf.write(exe, arcname=exe.name)
+          PY
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifact/${{ matrix.archive_name }}

@@ -569,6 +569,24 @@
       errorEl.textContent = "";
     }
 
+    const DOWNLOAD_TARGETS = [
+      { name: "Linux 실행모듈 다운로드", file: "tts-preprocessor.zip" },
+      { name: "Windows 실행모듈 다운로드", file: "tts-preprocessor-windows.zip" },
+      { name: "macOS 실행모듈 다운로드", file: "tts-preprocessor-macos.zip" },
+    ];
+
+    async function checkDownloadAvailable(file) {
+      try {
+        const response = await fetch(
+          `${getBackendBase()}/downloads/${encodeURIComponent(file)}`,
+          { method: "HEAD" }
+        );
+        return response.ok;
+      } catch {
+        return false;
+      }
+    }
+
     function renderDownloads(items) {
       if (!Array.isArray(items) || items.length === 0) {
         downloadsListEl.innerHTML = '<div class="download-empty">다운로드 가능한 패키지가 없습니다.</div>';
@@ -576,17 +594,30 @@
       }
 
       downloadsListEl.innerHTML = items.map((item) => {
-        const name = escapeHtml(typeof item.name === "string" ? item.name : "tts-preprocessor");
-        const file = encodeURIComponent(typeof item.file === "string" ? item.file : "");
-        const downloadHref = `${getBackendBase()}/downloads/${file}`;
+        const name = escapeHtml(typeof item.name === "string" ? item.name : "실행모듈");
+        const file = escapeHtml(typeof item.file === "string" ? item.file : "");
+        const available = item.available === true;
+
+        if (available) {
+          const downloadHref = `${getBackendBase()}/downloads/${encodeURIComponent(item.file)}`;
+          return `
+            <div class="download-item">
+              <div class="download-meta">
+                <div class="download-version">${name}</div>
+                <div class="download-date">${file}</div>
+              </div>
+              <a class="download-link" href="${downloadHref}" download>다운로드</a>
+            </div>
+          `;
+        }
 
         return `
           <div class="download-item">
             <div class="download-meta">
               <div class="download-version">${name}</div>
-              <div class="download-date">${file}</div>
+              <div class="download-date">${file} · 준비 중</div>
             </div>
-            <a class="download-link" href="${downloadHref}" download>다운로드</a>
+            <span class="download-empty">준비 중</span>
           </div>
         `;
       }).join("");
@@ -594,22 +625,26 @@
 
     async function loadDownloads() {
       downloadsStatusEl.textContent = "다운로드 패키지를 확인하는 중...";
+      downloadsStatusEl.className = "status";
 
-      try {
-        const response = await fetch(`${getBackendBase()}/downloads/tts-preprocessor.zip`, {
-          method: "HEAD",
-        });
-        if (!response.ok) {
-          throw new Error("다운로드 패키지를 찾지 못했습니다.");
-        }
+      const items = await Promise.all(
+        DOWNLOAD_TARGETS.map(async (target) => ({
+          ...target,
+          available: await checkDownloadAvailable(target.file),
+        }))
+      );
 
-        renderDownloads([{ name: "tts-preprocessor", file: "tts-preprocessor.zip" }]);
+      renderDownloads(items);
+
+      const availableCount = items.filter((item) => item.available).length;
+      if (availableCount === 0) {
+        downloadsStatusEl.textContent = "현재 다운로드 가능한 실행모듈이 없습니다.";
+      } else if (availableCount < items.length) {
+        downloadsStatusEl.textContent = `${availableCount}개 다운로드 가능 (${items.length - availableCount}개 준비 중)`;
+      } else {
         downloadsStatusEl.textContent = "";
-      } catch (error) {
-        renderDownloads([]);
-        downloadsStatusEl.textContent = error instanceof Error ? error.message : "다운로드 패키지를 찾지 못했습니다.";
-        downloadsStatusEl.className = "status error";
       }
+      downloadsStatusEl.className = "status";
     }
 
     function getBackendBase() {
