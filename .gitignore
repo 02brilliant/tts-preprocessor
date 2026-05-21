@@ -1,4 +1,4 @@
-# Python
+# Python bytecode / caches
 __pycache__/
 *.py[cod]
 *.pyo
@@ -6,53 +6,32 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Virtualenv
+# Virtual environments
 .venv/
 venv/
 env/
 
-# Build artifacts
+# Build / packaging artifacts
 build/
 dist/
 packages/
+downloads/
 *.spec
 
-# Runtime/log/temp
+# Runtime state / logs
 logs/
 run/
 *.log
 
-# OS/editor
-.DS_Store
-.vscode/
-.idea/
-
-# Release archives
-downloads/*.zip
-
 # Test temp
 .pytest_tmp/
 
-# Local/dev/build artifacts
-.venv/
-.pytest_tmp/
-build/
-dist/
-packages/
-downloads/
-__pycache__/
-*.pyc
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
 
-# Local/dev/build artifacts
-.venv/
-.pytest_tmp/
-build/
-dist/
-packages/
-downloads/
-__pycache__/
-*.pyc
-
-# Runtime state
-logs/
-run/
+# Local agent/tool state
+.agents/
+.codex/
+.cursor/

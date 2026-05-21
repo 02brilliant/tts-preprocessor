@@ -1,0 +1,77 @@
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 990aeda..d3beec0 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-# Python[m
+[32m+[m[32m# Python bytecode / caches[m
+ __pycache__/[m
+ *.py[cod][m
+ *.pyo[m
+[36m@@ -6,53 +6,32 @@[m [m__pycache__/[m
+ .mypy_cache/[m
+ .ruff_cache/[m
+ [m
+[31m-# Virtualenv[m
+[32m+[m[32m# Virtual environments[m
+ .venv/[m
+ venv/[m
+ env/[m
+ [m
+[31m-# Build artifacts[m
+[32m+[m[32m# Build / packaging artifacts[m
+ build/[m
+ dist/[m
+ packages/[m
+[32m+[m[32mdownloads/[m
+ *.spec[m
+ [m
+[31m-# Runtime/log/temp[m
+[32m+[m[32m# Runtime state / logs[m
+ logs/[m
+ run/[m
+ *.log[m
+ [m
+[31m-# OS/editor[m
+[31m-.DS_Store[m
+[31m-.vscode/[m
+[31m-.idea/[m
+[31m-[m
+[31m-# Release archives[m
+[31m-downloads/*.zip[m
+[31m-[m
+ # Test temp[m
+ .pytest_tmp/[m
+ [m
+[31m-# Local/dev/build artifacts[m
+[31m-.venv/[m
+[31m-.pytest_tmp/[m
+[31m-build/[m
+[31m-dist/[m
+[31m-packages/[m
+[31m-downloads/[m
+[31m-__pycache__/[m
+[31m-*.pyc[m
+[31m-[m
+[31m-# Local/dev/build artifacts[m
+[31m-.venv/[m
+[31m-.pytest_tmp/[m
+[31m-build/[m
+[31m-dist/[m
+[31m-packages/[m
+[31m-downloads/[m
+[31m-__pycache__/[m
+[31m-*.pyc[m
+[32m+[m[32m# OS / editor[m
+[32m+[m[32m.DS_Store[m
+[32m+[m[32m.idea/[m
+[32m+[m[32m.vscode/[m
+ [m
+[31m-# Runtime state[m
+[31m-logs/[m
+[31m-run/[m
+[32m+[m[32m# Local agent/tool state[m
+[32m+[m[32m.agents/[m
+[32m+[m[32m.codex/[m
+[32m+[m[32m.cursor/[m
+\ No newline at end of file[m
