@@ -3,7 +3,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOCAL_ARCHIVE_PATH="$ROOT_DIR/downloads/tts-preprocessor.zip"
 
 REMOTE_USER="brilliant"
 REMOTE_HOST="10.20.10.162"
@@ -15,6 +14,7 @@ REMOTE_DOWNLOADS_DIR="$REMOTE_APP_DIR/downloads"
 
 REMOTE_BUILD_SRC_DIR="$REMOTE_BASE_DIR/buildsrc"
 REMOTE_BUILD_SRC_DOCS_DIR="$REMOTE_BUILD_SRC_DIR/docs"
+REMOTE_BUILD_SRC_PROBES_DIR="$REMOTE_BUILD_SRC_DIR/scripts/probes"
 
 REMOTE_LOGS_DIR="$REMOTE_BASE_DIR/logs"
 REMOTE_RUN_DIR="$REMOTE_BASE_DIR/run"
@@ -35,15 +35,8 @@ RSYNC_COMMON_ARGS=(
 )
 
 echo "[deploy] Root directory: $ROOT_DIR"
-echo "[deploy] Artifact: $LOCAL_ARCHIVE_PATH"
 echo "[deploy] Remote target: $SSH_TARGET"
 echo "[deploy] Remote base dir: $REMOTE_BASE_DIR"
-
-if [ ! -f "$LOCAL_ARCHIVE_PATH" ]; then
-  echo "[deploy][ERROR] Missing release artifact: $LOCAL_ARCHIVE_PATH" >&2
-  echo "[deploy][ERROR] Run python scripts/release.py first." >&2
-  exit 1
-fi
 
 if [ ! -f "$LOCAL_README_TEMPLATE_PATH" ]; then
   echo "[deploy][ERROR] Missing package README template: $LOCAL_README_TEMPLATE_PATH" >&2
@@ -58,6 +51,7 @@ ssh "$SSH_TARGET" "
     $REMOTE_DOWNLOADS_DIR \
     $REMOTE_BUILD_SRC_DIR \
     $REMOTE_BUILD_SRC_DOCS_DIR \
+    $REMOTE_BUILD_SRC_PROBES_DIR \
     $REMOTE_LOGS_DIR \
     $REMOTE_RUN_DIR \
     $REMOTE_SCRIPTS_DIR
@@ -75,6 +69,11 @@ rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/scripts/" "$SSH_TARGET:$REMOTE_SCRIPT
 echo "[deploy] Syncing remote build sources -> $REMOTE_BUILD_SRC_DIR/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/bin/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
+
+echo "[deploy] Syncing semantic build probes -> $REMOTE_BUILD_SRC_PROBES_DIR/"
+rsync "${RSYNC_COMMON_ARGS[@]}" \
+  "$ROOT_DIR/scripts/probes/" \
+  "$SSH_TARGET:$REMOTE_BUILD_SRC_PROBES_DIR/"
 
 echo "[deploy] Syncing package README template -> $REMOTE_README_TEMPLATE_PATH"
 rsync -avz \

@@ -10433,6 +10433,6 @@ unchanged. Valid unsigned standalone comma decimal is claimed:
 ```
 
 Runtime coverage is provided by
-`scripts/dev_probe_decimal_fractional_zero_reading.py`, which validates source
-and production_source by default and supports optional `--binary` and `--api`
+`scripts/probes/decimal_fractional_zero.py`, which validates source and
+production_source by default and supports optional `--binary` and `--api`
 runners through the shared probe runtime matrix helper.

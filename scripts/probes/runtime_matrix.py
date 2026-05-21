@@ -5,12 +5,13 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
@@ -34,6 +35,8 @@ class ProbeResult:
 
 
 RunnerFunc = Callable[[str], str]
+RuntimeRunner = tuple[str, RunnerFunc]
+RUNTIME_CHOICES = ("source", "production_source", "binary", "api")
 
 
 def run_source_transform(text: str) -> str:
@@ -128,6 +131,47 @@ def check_cases(
     return results
 
 
+def add_runtime_filter_argument(parser: ArgumentParser) -> None:
+    parser.add_argument(
+        "--only-runtime",
+        choices=RUNTIME_CHOICES,
+        help=(
+            "Run only one runtime. Defaults remain unchanged: source and "
+            "production_source always run, with binary/api added when provided."
+        ),
+    )
+
+
+def build_runtime_runners(args: Namespace) -> list[RuntimeRunner]:
+    selected_runtime = getattr(args, "only_runtime", None)
+
+    runtime_factories: dict[str, Callable[[], RuntimeRunner]] = {
+        "source": lambda: ("source", run_source_transform),
+        "production_source": lambda: (
+            "production_source",
+            run_production_source_transform,
+        ),
+        "binary": lambda: _build_binary_runner(args),
+        "api": lambda: _build_api_runner(args),
+    }
+
+    if selected_runtime is not None:
+        return [runtime_factories[selected_runtime]()]
+
+    runners = [
+        runtime_factories["source"](),
+        runtime_factories["production_source"](),
+    ]
+
+    if getattr(args, "binary", None) is not None:
+        runners.append(runtime_factories["binary"]())
+
+    if getattr(args, "api", None):
+        runners.append(runtime_factories["api"]())
+
+    return runners
+
+
 def format_failure(result: ProbeResult) -> str:
     lines = [
         f"[FAIL] runner={result.runner}",
@@ -140,6 +184,21 @@ def format_failure(result: ProbeResult) -> str:
     else:
         lines.append(f"actual={result.actual!r}")
     return "\n".join(lines)
+
+
+def _build_binary_runner(args: Namespace) -> RuntimeRunner:
+    binary = getattr(args, "binary", None)
+    if binary is None:
+        raise ValueError("--only-runtime binary requires --binary PATH")
+    binary_path = Path(binary).expanduser()
+    return ("binary", lambda text: run_binary_transform(binary_path, text))
+
+
+def _build_api_runner(args: Namespace) -> RuntimeRunner:
+    api = getattr(args, "api", None)
+    if not api:
+        raise ValueError("--only-runtime api requires --api URL")
+    return ("api", lambda text: run_api_transform(api, text))
 
 
 def _check_case(

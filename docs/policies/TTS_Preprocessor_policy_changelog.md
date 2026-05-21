@@ -6,7 +6,7 @@
 
 ## 0. Latest Addendum: Numeric Surface Broad Reading
 
-- Added `scripts/dev_probe_decimal_fractional_zero_reading.py` using the shared
+- Added `scripts/probes/decimal_fractional_zero.py` using the shared
   source/production_source/binary/API probe runtime matrix helper.
 - Finalized ordinary decimal fractional zero documentation to implementation
   complete status, including protected, invalid/malformed, leading-zero, and

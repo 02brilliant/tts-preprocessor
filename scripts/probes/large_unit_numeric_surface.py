@@ -4,16 +4,16 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from probe_runtime_matrix import (
+from scripts.probes.runtime_matrix import (
     ProbeCase,
+    add_runtime_filter_argument,
+    build_runtime_runners,
     check_cases,
     format_failure,
-    run_api_transform,
-    run_binary_transform,
-    run_production_source_transform,
-    run_source_transform,
 )
 
 
@@ -186,23 +186,18 @@ def parse_args() -> argparse.Namespace:
         "--api",
         help="Optional API base URL, for example http://10.20.10.162:8010.",
     )
+    add_runtime_filter_argument(parser)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     all_cases = [*CASES, *SOURCE_ONLY_REGRESSION_CASES]
-    runners = [
-        ("source", run_source_transform),
-        ("production_source", run_production_source_transform),
-    ]
-
-    if args.binary is not None:
-        binary_path = args.binary.expanduser()
-        runners.append(("binary", lambda text: run_binary_transform(binary_path, text)))
-
-    if args.api:
-        runners.append(("api", lambda text: run_api_transform(args.api, text)))
+    try:
+        runners = build_runtime_runners(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     for runner_name, runner in runners:
         results = check_cases(runner_name, runner, all_cases)

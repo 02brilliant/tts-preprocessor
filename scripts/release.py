@@ -8,17 +8,8 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PYTHON_BIN = ROOT_DIR / ".venv" / "bin" / "python"
 BUILD_BINARY_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
-BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
-LARGE_UNIT_SMOKE_CASES = (
-    (
-        "2천8백28억, 2천8백28억테스트",
-        "이천팔백이십팔억, 이천팔백이십팔억 테스트",
-    ),
-    (
-        "2345억, 2,345억, 1만, 140만, 3백4십만, 5억4천만, 12만3천4백, 2백만3천4백, 54천만, 1억2천3백만4천5백, 25.50억, 2천8백28억테스트, 2천8백28억abc",
-        "이천삼백사십오억, 이천삼백사십오억, 일만, 백사십만, 삼백사십만, 오억사천만, 십이만삼천사백, 이백만삼천사백, 오십사천만, 일억이천삼백만사천오백, 이십오쩜오영 억, 이천팔백이십팔억 테스트, 이천팔백이십팔억abc",
-    ),
-)
+PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "bin" / "tts_preprocessor"
+SEMANTIC_PROBE_RUNNER = ROOT_DIR / "scripts" / "probes" / "run_semantic_probes.py"
 
 
 def run_pytest(*extra_args: str) -> subprocess.CompletedProcess[str]:
@@ -40,44 +31,35 @@ def run_build_binary() -> subprocess.CompletedProcess[str]:
     )
 
 
-def run_large_unit_binary_smoke() -> subprocess.CompletedProcess[str]:
-    # Release must verify the packaged binary path, which is the API runtime contract.
-    if not BINARY_PATH.exists():
+def run_semantic_binary_probes(binary_path: Path, label: str) -> subprocess.CompletedProcess[str]:
+    if not binary_path.exists():
         return subprocess.CompletedProcess(
-            args=[str(BINARY_PATH)],
+            args=[str(binary_path)],
             returncode=1,
             stdout="",
-            stderr=f"Binary not found: {BINARY_PATH}",
+            stderr=f"{label} binary not found: {binary_path}",
+        )
+    if not SEMANTIC_PROBE_RUNNER.exists():
+        return subprocess.CompletedProcess(
+            args=[str(SEMANTIC_PROBE_RUNNER)],
+            returncode=1,
+            stdout="",
+            stderr=f"Semantic probe runner not found: {SEMANTIC_PROBE_RUNNER}",
         )
 
-    for text, expected in LARGE_UNIT_SMOKE_CASES:
-        result = subprocess.run(
-            [str(BINARY_PATH), "--rollout-mode", "span_default", "--text", text],
-            cwd=ROOT_DIR,
-            capture_output=True,
-            text=True,
-        )
-        actual = result.stdout.rstrip("\n")
-        if result.returncode != 0:
-            return result
-        if actual != expected:
-            return subprocess.CompletedProcess(
-                args=result.args,
-                returncode=1,
-                stdout=result.stdout,
-                stderr=(
-                    "Large-unit binary smoke failed\n"
-                    f"input={text!r}\n"
-                    f"expected={expected!r}\n"
-                    f"actual={actual!r}\n"
-                ),
-            )
-
-    return subprocess.CompletedProcess(
-        args=[str(BINARY_PATH), "--rollout-mode", "span_default"],
-        returncode=0,
-        stdout="Large-unit binary smoke passed.\n",
-        stderr="",
+    python_bin = str(PYTHON_BIN if PYTHON_BIN.exists() else sys.executable)
+    return subprocess.run(
+        [
+            python_bin,
+            str(SEMANTIC_PROBE_RUNNER),
+            "--runtime",
+            "binary",
+            "--binary",
+            str(binary_path),
+        ],
+        cwd=ROOT_DIR,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -125,23 +107,6 @@ def main(argv: list[str]) -> int:
         print("Binary build failed. Release aborted.", file=sys.stderr)
         return 1
 
-    binary_smoke_result = run_large_unit_binary_smoke()
-    if binary_smoke_result.stdout:
-        print(
-            binary_smoke_result.stdout,
-            end="" if binary_smoke_result.stdout.endswith("\n") else "\n",
-        )
-    if binary_smoke_result.stderr:
-        print(
-            binary_smoke_result.stderr,
-            file=sys.stderr,
-            end="" if binary_smoke_result.stderr.endswith("\n") else "\n",
-        )
-
-    if binary_smoke_result.returncode != 0:
-        print("Binary large-unit smoke failed. Release aborted.", file=sys.stderr)
-        return 1
-
     binary_test_result = run_pytest("-m", "binary_runtime")
     if binary_test_result.stdout:
         print(
@@ -169,6 +134,23 @@ def main(argv: list[str]) -> int:
 
     if build_result.returncode != 0:
         return build_result.returncode
+
+    packaged_probe_result = run_semantic_binary_probes(PACKAGE_BINARY_PATH, "packaged binary")
+    if packaged_probe_result.stdout:
+        print(
+            packaged_probe_result.stdout,
+            end="" if packaged_probe_result.stdout.endswith("\n") else "\n",
+        )
+    if packaged_probe_result.stderr:
+        print(
+            packaged_probe_result.stderr,
+            file=sys.stderr,
+            end="" if packaged_probe_result.stderr.endswith("\n") else "\n",
+        )
+
+    if packaged_probe_result.returncode != 0:
+        print("Packaged binary semantic probe failed. Release aborted.", file=sys.stderr)
+        return 1
 
     print("Release completed: downloads/tts-preprocessor.zip")
     return 0

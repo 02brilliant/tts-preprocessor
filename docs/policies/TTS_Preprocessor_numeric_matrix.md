@@ -820,7 +820,7 @@ No xfail remains for the ordinary decimal fractional-zero policy.
 
 ### 12.8 Runtime probe status
 
-`scripts/dev_probe_decimal_fractional_zero_reading.py` covers representative
+`scripts/probes/decimal_fractional_zero.py` covers representative
 ordinary decimal owner groups, protected contexts, invalid/malformed preserve
 surfaces, and leading-zero/digit-owner regressions.
 
@@ -834,6 +834,6 @@ Optional runners:
 - `--binary ./dist/tts_preprocessor`
 - `--api http://host:port`
 
-The optional binary/API matrix uses the shared `scripts/probe_runtime_matrix.py`
+The optional binary/API matrix uses the shared `scripts/probes/runtime_matrix.py`
 helper. A stale binary can fail until rebuilt through the normal release
 workflow; this policy section does not require running build scripts directly.
