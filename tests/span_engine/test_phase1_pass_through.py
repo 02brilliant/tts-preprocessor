@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from engine.prosody.paragraph import split_paragraphs
 from engine.span_engine import transform, transform_with_trace
 
 
@@ -27,7 +28,7 @@ TRANSFORM_CASES = [
     ("€50을 냈다", "오십 유로를 냈다"),
     ("-2.5℃", "영하 이쩜오도"),
     ("ㄱㄴㄷ", "기역 니은 디귿"),
-    ("전문\n가", "전문\n가"),
+    ("전문\n가", "전문\n\n가"),
     ("emoji 😀 테스트", "emoji 😀 테스트"),
     ("zero\u200bwidth", "zero\u200bwidth"),
     ("[[K:사용자입력]]", "[K:사용자입력]"),
@@ -47,7 +48,8 @@ def test_transform_with_trace_normalized_text_matches_expected(
     output = transform_with_trace(text)
 
     assert output.normalized_text == expected
+    rendered = "".join(piece.text for piece in output.render_pieces)
     if "[" in text or "(" in text:
-        assert "".join(piece.text for piece in output.render_pieces) != ""
+        assert rendered != ""
     else:
-        assert "".join(piece.text for piece in output.render_pieces) == expected
+        assert split_paragraphs(rendered) == expected

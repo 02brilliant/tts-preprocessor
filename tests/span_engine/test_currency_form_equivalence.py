@@ -240,7 +240,11 @@ def test_invalid_currency_numeric_blocks_preserve_without_partial_fallback(
 def test_currency_spacing_limited_to_attached_or_one_ascii_space(
     source: str,
 ) -> None:
-    assert transform(source) == source
+    from engine.prosody.paragraph import split_paragraphs
+    from engine.span_engine.language_gate import has_hangul_syllable
+
+    expected = split_paragraphs(source) if has_hangul_syllable(source) else source
+    assert transform(source) == expected
     trace = transform_with_trace(source).trace
     assert trace is not None
     assert not any(log.owner == "currency" for log in trace.claim_logs)

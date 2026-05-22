@@ -76,25 +76,61 @@ jobs:
             "$ROOT_DIR/bin/build_binary_entrypoint.py"
           test -f "dist/${{ matrix.executable_name }}"
 
-      - name: Prepare artifact
+      - name: Prepare artifact (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $readme = "docs\Release_Package_README.txt"
+          if (-not (Test-Path -LiteralPath $readme)) {
+            throw "README template not found: $readme"
+          }
+          New-Item -ItemType Directory -Force -Path package, artifact | Out-Null
+          Copy-Item -LiteralPath "dist\tts-preprocessor.exe" -Destination "package\tts-preprocessor.exe"
+          Copy-Item -LiteralPath $readme -Destination "package\README.txt"
+          $zip = "artifact\tts-preprocessor-windows.zip"
+          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+          Compress-Archive -Path "package\*" -DestinationPath $zip -Force
+
+      - name: Verify artifact (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $zip = "artifact\tts-preprocessor-windows.zip"
+          Expand-Archive -Path $zip -DestinationPath verify-windows -Force
+          if (-not (Test-Path -LiteralPath "verify-windows\README.txt")) {
+            throw "README.txt missing in $zip"
+          }
+          if (-not (Test-Path -LiteralPath "verify-windows\tts-preprocessor.exe")) {
+            throw "tts-preprocessor.exe missing in $zip"
+          }
+          Write-Host "Contents of $zip :"
+          Get-ChildItem verify-windows | Format-Table Name, Length
+
+      - name: Prepare artifact (macOS)
+        if: matrix.target == 'macos'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifact
-          cp "dist/${{ matrix.executable_name }}" "artifact/"
-          if [ "${{ matrix.target }}" = "macos" ]; then
-            chmod +x "artifact/${{ matrix.executable_name }}"
-          fi
-          python - <<'PY'
-          import zipfile
-          from pathlib import Path
+          test -f "docs/Release_Package_README.txt"
+          mkdir -p package artifact
+          cp "dist/tts-preprocessor" "package/tts-preprocessor"
+          cp "docs/Release_Package_README.txt" "package/README.txt"
+          chmod +x "package/tts-preprocessor"
+          rm -f "artifact/tts-preprocessor-macos.zip"
+          (cd package && zip -r "../artifact/tts-preprocessor-macos.zip" .)
+          echo "Contents of artifact/tts-preprocessor-macos.zip:"
+          unzip -l "artifact/tts-preprocessor-macos.zip"
 
-          artifact_dir = Path("artifact")
-          exe = artifact_dir / "${{ matrix.executable_name }}"
-          archive = artifact_dir / "${{ matrix.archive_name }}"
-          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-              zf.write(exe, arcname=exe.name)
-          PY
+      - name: Verify artifact (macOS)
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf verify-macos
+          unzip -q "artifact/tts-preprocessor-macos.zip" -d verify-macos
+          test -f "verify-macos/README.txt"
+          test -f "verify-macos/tts-preprocessor"
+          ls -la verify-macos
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

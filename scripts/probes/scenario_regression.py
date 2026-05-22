@@ -643,6 +643,55 @@ CASES = [
         INTEGRATED_D,
         exact="통합 문장 D: invalid 입력 +01.5kg, +01.5 %, KRW+01.5, ₩+01.5, +01.5℃, +01.5~2, +01.5:2, 2,34억, 25..50억, 2천8백..28억, 1.5-2테스트는 부분 변환 없이 유지되어야 한다.",
     ),
+    ScenarioCase(
+        "paragraph_long_single_korean",
+        (
+            "첫 번째 설명은 현재 정책 검증을 위해 충분히 길게 작성되어 여러 조건과 배경을 차분하게 이어서 말합니다. "
+            "두 번째 설명도 같은 주제를 이어 가며 일정과 예산과 결과를 자세히 정리하여 전체 문단 길이를 안정적으로 늘립니다. "
+            "세 번째 설명 역시 앞선 내용과 같은 흐름을 유지하며 독자가 숫자와 일반 서술을 함께 듣는 상황을 가정합니다. "
+            "한편 마지막 설명은 다른 주제로 전환되어 후속 계획과 검토 항목을 분명하게 알립니다."
+        ),
+        contains=("\n", "한편"),
+        note="production paragraph split after span transform",
+    ),
+    ScenarioCase(
+        "paragraph_existing_newline",
+        "첫 문장입니다.\n두 번째 문장입니다.",
+        contains=("\n\n",),
+        note="single newline normalized to paragraph boundary",
+    ),
+    ScenarioCase(
+        "paragraph_long_numeric",
+        (
+            "보고서에는 12,345,678,901원과 3.5톤과 250m/L이 포함되어 "
+            "재무팀과 물류팀이 함께 검토할 예정이며 이 문장은 의도적으로 길게 작성합니다. "
+            "첫 번째 설명은 현재 정책 검증을 위해 충분히 길게 작성되어 여러 조건과 배경을 차분하게 이어서 말합니다. "
+            "두 번째 설명도 같은 주제를 이어 가며 일정과 예산과 결과를 자세히 정리하여 전체 문단 길이를 안정적으로 늘립니다. "
+            "세 번째 설명 역시 앞선 내용과 같은 흐름을 유지하며 독자가 숫자와 일반 서술을 함께 듣는 상황을 가정합니다. "
+            "한편 마지막 설명은 다른 주제로 전환되어 후속 계획과 검토 항목을 분명하게 알립니다."
+        ),
+        contains=("\n", "삼쩜오톤", "리터당", "한편"),
+        not_contains=("3.5톤", "250m/L"),
+        note="numeric readings preserved across paragraph split",
+    ),
+    ScenarioCase(
+        "paragraph_protected_inline",
+        (
+            "설명은 https://example.com/v1/items 경로와 "
+            '{"enabled": true, "retry": 3} 설정과 `curl -X POST` 명령을 참고합니다. '
+            "첫 번째 설명은 현재 정책 검증을 위해 충분히 길게 작성되어 여러 조건과 배경을 차분하게 이어서 말합니다. "
+            "두 번째 설명도 같은 주제를 이어 가며 일정과 예산과 결과를 자세히 정리하여 전체 문단 길이를 안정적으로 늘립니다. "
+            "세 번째 설명 역시 앞선 내용과 같은 흐름을 유지하며 독자가 숫자와 일반 서술을 함께 듣는 상황을 가정합니다. "
+            "한편 마지막 설명은 다른 주제로 전환되어 후속 계획과 검토 항목을 분명하게 알립니다."
+        ),
+        preserves=(
+            "https://example.com/v1/items",
+            '"enabled": true',
+            "`curl -X POST`",
+        ),
+        contains=("\n", "한편"),
+        note="protected spans preserved; split only at outer sentence boundaries",
+    ),
 ]
 
 

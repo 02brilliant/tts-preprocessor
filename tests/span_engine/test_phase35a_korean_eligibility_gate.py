@@ -64,8 +64,8 @@ def test_phase35a_korean_mixed_sentence_remains_eligible(
 def test_phase35a_numeric_list_line_in_korean_context_transforms() -> None:
     text = "오늘 관측값입니다.\n25℃, 3시간 18분, 2.5%p, 1/3, 45m², $25.99\n이상입니다."
     expected = (
-        "오늘 관측값입니다.\n"
-        "이십오도, 세 시간 십팔분, 이쩜오 퍼센트포인트, 삼분의 일, 사십오 제곱미터, 이십오쩜구구 달러\n"
+        "오늘 관측값입니다.\n\n"
+        "이십오도, 세 시간 십팔분, 이쩜오 퍼센트포인트, 삼분의 일, 사십오 제곱미터, 이십오쩜구구 달러\n\n"
         "이상입니다."
     )
     assert transform(text) == expected
@@ -74,8 +74,8 @@ def test_phase35a_numeric_list_line_in_korean_context_transforms() -> None:
 def test_phase35a_numeric_list_line_supports_compound_and_data_tokens() -> None:
     text = "측정값입니다.\n90km/h, 15.2km/L, 60Hz, pH 7.4, 2.4PB\n확인했습니다."
     expected = (
-        "측정값입니다.\n"
-        "시속 구십 킬로미터, 리터당 십오쩜이 킬로미터, 육십 헤르츠, 피에이치 칠쩜사, 이쩜사 페타바이트\n"
+        "측정값입니다.\n\n"
+        "시속 구십 킬로미터, 리터당 십오쩜이 킬로미터, 육십 헤르츠, 피에이치 칠쩜사, 이쩜사 페타바이트\n\n"
         "확인했습니다."
     )
     assert transform(text) == expected
@@ -86,7 +86,7 @@ def test_phase35a_numeric_list_line_supports_compound_and_data_tokens() -> None:
     [
         (
             "오늘 원문 인용입니다.\nThe temperature is 25℃ and pH 7.4.\n이상입니다.",
-            "오늘 원문 인용입니다.\nThe temperature is 25℃ and pH 7.4.\n이상입니다.",
+            "오늘 원문 인용입니다.\n\nThe temperature is 25℃ and pH 7.4.\n\n이상입니다.",
         ),
         (
             "오늘 관측값입니다.\n\n25℃, 3시간 18분",
@@ -94,7 +94,7 @@ def test_phase35a_numeric_list_line_supports_compound_and_data_tokens() -> None:
         ),
         (
             '오늘 설정입니다.\n{"temp":"25℃","duration":"3시간 18분"}\n이상입니다.',
-            '오늘 설정입니다.\n{"temp":"25℃","duration":"3시간 18분"}\n이상입니다.',
+            '오늘 설정입니다.\n\n{"temp":"25℃","duration":"3시간 18분"}\n\n이상입니다.',
         ),
     ],
 )
@@ -106,5 +106,5 @@ def test_phase35a_numeric_list_adjacency_boundaries_preserve(
 
 def test_phase35a_all_korean_lines_fast_path_regression_output() -> None:
     text = "오늘 온도는 25℃이고 경기 시간은 3시간 18분이었다.\n12.3 비상계엄과 90km/h이다."
-    expected = "오늘 온도는 이십오도이고 경기 시간은 세 시간 십팔분이었다.\n십이삼 비상계엄과 시속 구십 킬로미터이다."
+    expected = "오늘 온도는 이십오도이고 경기 시간은 세 시간 십팔분이었다.\n\n십이삼 비상계엄과 시속 구십 킬로미터이다."
     assert transform(text) == expected

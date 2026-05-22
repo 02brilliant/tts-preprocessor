@@ -19,8 +19,9 @@
 | Owner / claim / gate | span 엔진에서 표면 소유·청구·게이트로 충돌을 막고, owner가 처리하지 못한 구간은 preserve 또는 full-claim 규칙을 따른다. (세부: policy 문서) |
 | 표면 복원 | 분석 결과는 최종 단계에서만 읽기 텍스트로 렌더링한다. |
 | Prosody insert-only | 쉼표·문단 구분은 **삽입만** 허용하며, 기존 부호 삭제·이동은 하지 않는다. |
+| Paragraph shaping | `span_default` 최종 출력은 `engine.prosody.paragraph.split_paragraphs`로 긴 문단을 보수적으로 나눈다. 기존 `\n`은 문단 경계 정책(`\n+` → `\n\n`)에 따라 정규화될 수 있다. 쉼표 prosody(comma adapter) 이후·bracket filter 이후 문자열 단계에서만 적용한다. |
 
-파이프라인 단계(early preprocess → dictionary → rules → typed surface → restoration → prosody)는 `docs/pipeline_architecture.md`를 본다.
+파이프라인 단계(early preprocess → dictionary → rules → typed surface → restoration → prosody comma → paragraph split)는 `docs/pipeline_architecture.md`를 본다.
 
 ## 3. 실행 경로와 entrypoint
 
@@ -35,7 +36,7 @@
 | 바이너리 탐색 순서 | `TTS_PREPROCESSOR_BINARY` → `dist/tts_preprocessor` → `packages/.../tts_preprocessor` | `api/binary_runtime.py` |
 | Desktop 바이너리 (GHA) | `tts-preprocessor.exe` / `tts-preprocessor` | Linux 운영 패키지와 **파일명·빌드 경로 분리** |
 
-`bin/build_binary_entrypoint.py`는 기본 `--rollout-mode span_default`로 `engine.main.transform_with_rollout`을 호출한다. API production 경로는 소스 import 없이 패키지 바이너리만 실행한다 (`api/server.py` 주석).
+`bin/build_binary_entrypoint.py`는 기본 `--rollout-mode span_default`로 `engine.main.transform_with_rollout`을 호출한다. 이 경로는 span 엔진 변환·comma adapter·bracket filter 후 `split_paragraphs()`로 문단을 나눈다. API production 경로는 소스 import 없이 패키지 바이너리만 실행한다 (`api/server.py` 주석).
 
 ## 4. Linux 운영 빌드·릴리스·배포
 
@@ -170,7 +171,7 @@ semantic regression **대체가 아니다**. Windows·macOS zip 존재는 확인
 | Windows | `tts-preprocessor-windows` | `tts-preprocessor-windows.zip` |
 | macOS | `tts-preprocessor-macos` | `tts-preprocessor-macos.zip` |
 
-Artifact에는 zip만 포함된다. macOS **code signing / notarization은 포함되지 않는다** (Gatekeeper 경고 가능).
+각 desktop zip 루트에는 실행 파일과 `README.txt`(`docs/Release_Package_README.txt` 복사본)가 함께 들어간다. Artifact 업로드물은 zip 파일 하나뿐이다. macOS **code signing / notarization은 포함되지 않는다** (Gatekeeper 경고 가능).
 
 ## 6. 웹서비스 다운로드 구조
 

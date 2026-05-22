@@ -27,6 +27,7 @@ from engine.span_engine.models import TraceLogEntry, TransformOutput, Validation
 from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import apply_safe_post_surface_particle_exception
 from engine.span_engine.public_number import build_public_number_gate_logs
+from engine.prosody.paragraph import split_paragraphs
 from engine.span_engine.prosody import apply_prosody_comma_adapter
 from engine.span_engine.render import join_render_pieces, render_tokens_with_surfaces
 from engine.span_engine.shadow import build_shadow_buffer
@@ -56,11 +57,24 @@ def transform(text: str) -> str:
 def transform_with_trace(text: str) -> TransformOutput:
     checked_text = _ensure_str(text)
     try:
-        return _transform_with_language_gate_trace(checked_text)
+        output = _transform_with_language_gate_trace(checked_text)
     except Exception as exc:
         if has_hangul_syllable(checked_text):
-            return _transform_hangul_with_segment_fallback(checked_text, exc)
-        raise
+            output = _transform_hangul_with_segment_fallback(checked_text, exc)
+        else:
+            raise
+    return _apply_paragraph_split_to_output(output)
+
+
+def _apply_paragraph_split_to_output(output: TransformOutput) -> TransformOutput:
+    text = output.normalized_text
+    if not has_hangul_syllable(text):
+        return output
+    return TransformOutput(
+        normalized_text=split_paragraphs(text),
+        render_pieces=output.render_pieces,
+        trace=output.trace,
+    )
 
 
 def contains_hangul_syllable(text: str) -> bool:
