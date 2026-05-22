@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+import importlib
+import sys
+
+
+def test_phase20c_importing_shadow_helpers_does_not_force_legacy_pipeline_import() -> None:
+    before = {name for name in sys.modules if name.startswith("engine.pipeline")}
+    adapter = importlib.import_module("engine.span_engine.production_adapter")
+    after = {name for name in sys.modules if name.startswith("engine.pipeline")}
+
+    assert adapter is not None
+    assert after == before
+
+
+def test_phase20c_run_shadow_compare_with_injected_legacy_transform_does_not_force_legacy_pipeline_import() -> None:
+    adapter = importlib.import_module("engine.span_engine.production_adapter")
+    run_shadow_compare = getattr(adapter, "run_shadow_compare")
+    before = {name for name in sys.modules if name.startswith("engine.pipeline")}
+
+    run_shadow_compare("90km/h", legacy_transform=lambda text: text)
+
+    after = {name for name in sys.modules if name.startswith("engine.pipeline")}
+    assert after == before
+
+
+def test_phase20c_build_shadow_compare_payload_with_injected_legacy_transform_does_not_force_legacy_pipeline_import() -> None:
+    adapter = importlib.import_module("engine.span_engine.production_adapter")
+    build_shadow_compare_payload = getattr(adapter, "build_shadow_compare_payload")
+    before = {name for name in sys.modules if name.startswith("engine.pipeline")}
+
+    build_shadow_compare_payload({"text": "90km/h"}, legacy_transform=lambda text: text)
+
+    after = {name for name in sys.modules if name.startswith("engine.pipeline")}
+    assert after == before
+

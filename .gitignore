@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+packages/
+*.spec
+
+# Runtime/log/temp
+logs/
+run/
+*.log
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Release archives
+downloads/*.zip
+
+# Test temp
+.pytest_tmp/
+
+# Local/dev/build artifacts
+.venv/
+.pytest_tmp/
+build/
+dist/
+packages/
+downloads/
+__pycache__/
+*.pyc
+
+# Local/dev/build artifacts
+.venv/
+.pytest_tmp/
+build/
+dist/
+packages/
+downloads/
+__pycache__/
+*.pyc
+
+# Runtime state
+logs/
+run/

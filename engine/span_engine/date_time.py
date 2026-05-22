@@ -1,0 +1,793 @@
+from __future__ import annotations
+
+import calendar
+import re
+
+from engine.span_engine.brackets import BracketRange
+from engine.span_engine.counter import native_number_under_100
+from engine.span_engine.delimiters import COLON_LIKE_DELIMITERS
+from engine.span_engine.models import SourceSpan, SurfaceCandidate, TraceLogEntry
+from engine.span_engine.number import number_to_korean_under_10000
+
+_DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
+_SHORT_DOTTED_YEAR_MONTH_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
+_KOREAN_YMD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월\s+(\d{1,2})일")
+_KOREAN_YM_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월")
+_KOREAN_MD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월\s+(\d{1,2})일")
+_KOREAN_YEAR_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년")
+_KOREAN_MONTH_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월")
+
+_COLON_LIKE_RE_CLASS = "".join(re.escape(ch) for ch in COLON_LIKE_DELIMITERS)
+_COLON_TIME_RE = re.compile(
+    rf"(?<![A-Za-z0-9])(\d{{1,2}})[{_COLON_LIKE_RE_CLASS}](\d{{2}})(?![A-Za-z0-9])"
+)
+_ANY_COLON_TIME_RE = re.compile(
+    rf"(?<![A-Za-z0-9])\d{{1,2}}[{_COLON_LIKE_RE_CLASS}]\d{{2}}"
+    rf"(?:[{_COLON_LIKE_RE_CLASS}]\d{{2}})?(?![A-Za-z0-9])"
+)
+_KOREAN_TIME_RE = re.compile(
+    r"(?<![A-Za-z0-9가-힣])(\d{1,2})시(?!간)(?:\s+(\d{1,2})분(?:\s+(\d{1,2})초)?)?"
+)
+
+TIME_PREFIXES = ("오전", "오후", "새벽", "아침", "정오", "밤", "저녁", "AM", "PM", "am", "pm")
+TIME_POSTPOSITIONS = ("에", "까지", "부터", "경", "쯤", "정각")
+TIME_EVENT_KEYWORDS = (
+    "출발",
+    "도착",
+    "시작",
+    "종료",
+    "마감",
+    "개시",
+    "오픈",
+    "폐장",
+    "예약",
+    "탑승",
+    "발차",
+    "상영",
+    "회의",
+    "수업",
+    "진료",
+    "시각",
+)
+DATE_CONTEXT_KEYWORDS = ("오늘", "내일", "어제", "모레", "다음날", "당일")
+SCORE_CONTEXT_KEYWORDS = (
+    "score",
+    "스코어",
+    "점수",
+    "비율",
+    "화면비",
+    "희석",
+    "축척",
+    "승리",
+    "패배",
+    "무승부",
+    "세트",
+    "대결",
+    "ratio",
+    "line",
+    "case",
+    "verse",
+    "chapter",
+    "라인",
+)
+MEDIA_DURATION_CONTEXT_KEYWORDS = ("영상", "재생시간", "타임라인")
+CODE_CONTEXT_KEYWORDS = (
+    "version",
+    "ver",
+    "log",
+    "model",
+    "code",
+    "file",
+    "id",
+    "버전",
+    "로그",
+    "모델",
+    "코드",
+    "파일",
+    "문서",
+    "참조",
+    "요한복음",
+    "창세기",
+    "시편",
+)
+
+
+def scan_date_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    consumed_spans: list[SourceSpan] = []
+    for match in _DATE_SEP_RE.finditer(raw_text):
+        year_raw = match.group(1)
+        separator = match.group(2)
+        month_raw = match.group(3)
+        day_raw = match.group(4)
+        year = int(year_raw)
+        month = int(month_raw)
+        day = int(day_raw)
+        span = SourceSpan(match.start(), match.end())
+
+        # If it looks like a date but has bad boundaries or explicit code context,
+        # claim it as preserve so later decimal fallback cannot partially consume it.
+        if not _valid_separator_date_boundary(raw_text, span) or _has_explicit_code_context(raw_text, span):
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=span,
+                    full_span=span,
+                    owner="preserve",
+                    surface_type="DATE_PRESERVE_SURFACE",
+                    reason="date_boundary_preserve",
+                )
+            )
+            consumed_spans.append(span)
+            continue
+
+        if not _year_in_supported_range(year):
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=span,
+                    full_span=span,
+                    owner="preserve",
+                    surface_type="DATE_PRESERVE_SURFACE",
+                    reason="date_year_range_preserve",
+                )
+            )
+            consumed_spans.append(span)
+            continue
+
+        if not is_valid_date(year, month, day):
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=span,
+                    full_span=span,
+                    owner="date",
+                    surface_type="CODE_SEPARATOR_BLOCK_SURFACE",
+                    reason=f"date_{_separator_name(separator)}_yyyy_mm_dd_calendar_invalid_fallback",
+                    metadata={
+                        "year": year,
+                        "month": month,
+                        "day": day,
+                        "separator": separator,
+                        "fallback_owner": "code_separator_block",
+                        "fallback_reason": "calendar_invalid_date_like",
+                        "reading": separator_date_fallback_reading(
+                            year_raw, month_raw, day_raw, separator
+                        ),
+                    },
+                )
+            )
+            consumed_spans.append(span)
+            continue
+
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="date",
+                surface_type="DATE_SURFACE",
+                reason=f"date_{_separator_name(separator)}_yyyy_mm_dd_gate",
+                metadata={
+                    "year": year,
+                    "month": month,
+                    "day": day,
+                    "separator": separator,
+                    "reading": date_number_reading(year, month, day),
+                },
+            )
+        )
+        consumed_spans.append(span)
+
+    for match in _SHORT_DOTTED_YEAR_MONTH_RE.finditer(raw_text):
+        span = SourceSpan(match.start(), match.end())
+        if _overlaps_any(span, consumed_spans):
+            continue
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="DATE_PRESERVE_SURFACE",
+                reason="short_dotted_year_month_preserve",
+            )
+        )
+        consumed_spans.append(span)
+
+    for regex, builder in (
+        (_KOREAN_YMD_RE, _korean_ymd_candidates),
+        (_KOREAN_YM_RE, _korean_ym_candidates),
+        (_KOREAN_MD_RE, _korean_md_candidates),
+        (_KOREAN_YEAR_RE, _korean_year_candidates),
+        (_KOREAN_MONTH_RE, _korean_month_candidates),
+    ):
+        for match in regex.finditer(raw_text):
+            span = SourceSpan(match.start(), match.end())
+            if not _valid_korean_date_boundary(raw_text, span):
+                continue
+            if _overlaps_any(span, consumed_spans):
+                continue
+            built = builder(match)
+            if built is None:
+                consumed_spans.append(span)
+                continue
+            candidates.extend(built)
+            consumed_spans.append(span)
+    return candidates
+
+
+def scan_time_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if excluded_ranges is None:
+        excluded_ranges = []
+    
+    sanitized = _mask_ranges(raw_text, excluded_ranges)
+    candidates: list[SurfaceCandidate] = []
+    colon_matches = list(_COLON_TIME_RE.finditer(sanitized))
+    multiple_colon_times = len(colon_matches) > 1
+    for match in colon_matches:
+        span = SourceSpan(match.start(), match.end())
+        if multiple_colon_times:
+            continue
+        if _is_part_of_seconds_time(sanitized, span):
+            continue
+        hour = int(match.group(1))
+        minute = int(match.group(2))
+        gate = evaluate_time_colon_gate(
+            sanitized, span, hour, minute, strong_context_text=raw_text
+        )
+        if gate["decision"] != "pass":
+            continue
+        reading = (
+            strong_time_number_reading(match.group(1), hour, minute)
+            if gate["reason"] == "strong_time_like_bare"
+            else time_number_reading(hour, minute)
+        )
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="time",
+                surface_type="TIME_SURFACE",
+                reason=gate["reason"],
+                metadata={
+                    "hour": hour,
+                    "minute": minute,
+                    "reading": reading,
+                    "gate_reason": gate["reason"],
+                },
+            )
+        )
+
+    for match in _KOREAN_TIME_RE.finditer(raw_text):
+        candidates.extend(_korean_time_candidates(raw_text, match))
+    return candidates
+
+
+def parse_date_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
+    if candidate.owner != "date":
+        return None
+    reading = candidate.metadata.get("reading")
+    return reading if isinstance(reading, str) else None
+
+
+def parse_time_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
+    if candidate.owner != "time":
+        return None
+    reading = candidate.metadata.get("reading")
+    return reading if isinstance(reading, str) else None
+
+
+def is_valid_date(year: int, month: int, day: int) -> bool:
+    if not all(isinstance(value, int) for value in (year, month, day)):
+        raise TypeError("year, month, day must be int")
+    if year < 1900 or year > 2099:
+        return False
+    if month < 1 or month > 12:
+        return False
+    return 1 <= day <= calendar.monthrange(year, month)[1]
+
+
+def _year_in_supported_range(year: int) -> bool:
+    return 1900 <= year <= 2099
+
+
+def dotted_date_fallback_reading(year: str, month: str, day: str) -> str:
+    return f"{_digit_block_reading(year)}쩜 {_digit_block_reading(month)}쩜 {_digit_block_reading(day)}"
+
+
+def separator_date_fallback_reading(year: str, month: str, day: str, separator: str) -> str:
+    if separator == ".":
+        return dotted_date_fallback_reading(year, month, day)
+    return f"{_digit_block_reading(year)} {_digit_block_reading(month)} {_digit_block_reading(day)}"
+
+
+def is_valid_time(hour: int, minute: int, second: int | None = None) -> bool:
+    if not isinstance(hour, int) or not isinstance(minute, int):
+        raise TypeError("hour and minute must be int")
+    if hour < 0 or hour > 24 or minute < 0 or minute > 59:
+        return False
+    if second is not None and (not isinstance(second, int) or second < 0 or second > 59):
+        return False
+    return True
+
+
+def is_valid_korean_clock_time(
+    hour: int, minute: int | None = None, second: int | None = None
+) -> bool:
+    if not isinstance(hour, int):
+        raise TypeError("hour must be int")
+    if hour < 1 or hour > 24:
+        return False
+    if minute is not None and (not isinstance(minute, int) or minute < 0 or minute > 59):
+        return False
+    if second is not None and (not isinstance(second, int) or second < 0 or second > 59):
+        return False
+    return True
+
+
+def date_number_reading(year: int, month: int, day: int | None = None) -> str:
+    year_reading = f"{number_to_korean_under_10000(year)}년"
+    month_reading = f"{_month_reading(month)}월"
+    if day is None:
+        return f"{year_reading} {month_reading}"
+    day_reading = f"{number_to_korean_under_10000(day)}일"
+    return f"{year_reading} {month_reading} {day_reading}"
+
+
+def time_number_reading(hour: int, minute: int, second: int | None = None) -> str:
+    hour_reading = clock_hour_reading(hour) or number_to_korean_under_10000(hour)
+    reading = f"{hour_reading}시"
+    if minute != 0:
+        reading += f" {number_to_korean_under_10000(minute)}분"
+    if second is not None:
+        reading += f" {number_to_korean_under_10000(second)}초"
+    return reading
+
+
+def strong_time_number_reading(hour_text: str, hour: int, minute: int) -> str:
+    hour_reading = _strong_time_hour_reading(hour_text, hour)
+    reading = f"{hour_reading}시"
+    if minute != 0:
+        reading += f" {number_to_korean_under_10000(minute)}분"
+    return reading
+
+
+def _strong_time_hour_reading(hour_text: str, hour: int) -> str:
+    if hour_text == "00":
+        return "영"
+    if hour_text == "01":
+        return "한"
+    if len(hour_text) == 2 and hour_text.startswith("0"):
+        return number_to_korean_under_10000(hour)
+    return clock_hour_reading(hour) or number_to_korean_under_10000(hour)
+
+
+def clock_hour_reading(hour: int) -> str | None:
+    if not isinstance(hour, int):
+        raise TypeError("hour must be int")
+    if 1 <= hour <= 12:
+        return native_number_under_100(hour)
+    if 13 <= hour <= 24:
+        return number_to_korean_under_10000(hour)
+    return None
+
+
+def evaluate_time_colon_gate(
+    raw_text: str,
+    candidate_span: SourceSpan,
+    hour: int,
+    minute: int,
+    strong_context_text: str | None = None,
+) -> dict[str, str]:
+    raw = raw_text[candidate_span.start : candidate_span.end]
+    if _score_or_ratio_context(raw_text, candidate_span):
+        return {"decision": "fail", "reason": "score_context", "raw": raw}
+    if _media_duration_context(raw_text, candidate_span):
+        return {"decision": "fail", "reason": "media_duration_context", "raw": raw}
+    next_text = raw_text[candidate_span.end :]
+    prev_text = raw_text[: candidate_span.start]
+    prefix = _time_prefix(prev_text)
+    if _has_explicit_code_context(raw_text, candidate_span):
+        return {"decision": "fail", "reason": "code_context", "raw": raw}
+    if prefix is not None and not (1 <= hour <= 12):
+        return {"decision": "fail", "reason": "time_prefix_hour_range", "raw": raw}
+    if not is_valid_time(hour, minute):
+        return {"decision": "fail", "reason": "invalid_time", "raw": raw}
+    hour_text, minute_text = re.split("[:：]", raw, maxsplit=1)
+    if is_strong_time_like_colon(hour_text, minute_text) and _valid_strong_time_like_context(
+        strong_context_text or raw_text, candidate_span
+    ):
+        return {"decision": "pass", "reason": "strong_time_like_bare", "raw": raw}
+    if raw_text == raw:
+        return {"decision": "fail", "reason": "bare_time_preserve", "raw": raw}
+    if next_text.startswith(TIME_POSTPOSITIONS) or next_text.startswith("입니다"):
+        return {"decision": "pass", "reason": "time_postposition", "raw": raw}
+    if prefix is not None:
+        return {"decision": "pass", "reason": "time_prefix", "raw": raw}
+    has_ctx = _has_context_nearby(prev_text, next_text)
+    if has_ctx:
+        return {"decision": "pass", "reason": "time_event_context", "raw": raw}
+    return {"decision": "fail", "reason": "time_context_missing", "raw": raw}
+
+
+def is_strong_time_like_colon(hour_text: str, minute_text: str) -> bool:
+    if not hour_text.isdigit() or not minute_text.isdigit():
+        return False
+    if not (1 <= len(hour_text) <= 2) or len(minute_text) != 2:
+        return False
+    hour = int(hour_text)
+    minute = int(minute_text)
+    if not is_valid_time(hour, minute):
+        return False
+    return (len(hour_text) == 2 and hour_text.startswith("0")) or 0 <= minute <= 9
+
+
+def _valid_strong_time_like_context(raw_text: str, span: SourceSpan) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
+    if prev_char in {"+", "-"}:
+        return False
+    if next_char is None or next_char.isspace():
+        return True
+    if next_char in {".", ",", "!", "?", ";", ":", "。", "，", "！", "？"}:
+        return True
+    return False
+
+
+def build_time_gate_logs(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[TraceLogEntry]:
+    if excluded_ranges is None:
+        excluded_ranges = []
+    sanitized = _mask_ranges(raw_text, excluded_ranges)
+    logs: list[TraceLogEntry] = []
+    matches = list(_COLON_TIME_RE.finditer(sanitized))
+    multiple = len(matches) > 1
+    for match in matches:
+        span = SourceSpan(match.start(), match.end())
+        raw = raw_text[span.start : span.end]
+        if multiple:
+            decision = {"decision": "fail", "reason": "multiple_time_candidates", "raw": raw}
+        elif _is_part_of_seconds_time(sanitized, span):
+            decision = {"decision": "fail", "reason": "seconds_time_unsupported", "raw": raw}
+        else:
+            decision = evaluate_time_colon_gate(
+                sanitized, span, int(match.group(1)), int(match.group(2))
+            )
+        logs.append(
+            TraceLogEntry(
+                stage="time_gate",
+                event="time_colon_gate",
+                span=span,
+                raw=raw,
+                owner="time",
+                decision=decision["decision"],
+                reason=decision["reason"],
+                action="allow_time_parse" if decision["decision"] == "pass" else "preserve",
+            )
+        )
+    return logs
+
+
+def _korean_ymd_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None:
+    year = int(match.group(1))
+    month = int(match.group(2))
+    day = int(match.group(3))
+    if not is_valid_date(year, month, day):
+        return None
+    return [
+        _numeric_marker_candidate(match, 1, "date_korean_year_month_day_gate", year),
+        _numeric_marker_candidate(
+            match,
+            2,
+            "date_korean_year_month_day_gate",
+            month,
+            reading=_month_reading(month),
+        ),
+        _numeric_marker_candidate(match, 3, "date_korean_year_month_day_gate", day),
+    ]
+
+
+def _korean_ym_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None:
+    year = int(match.group(1))
+    month = int(match.group(2))
+    if year < 1900 or year > 2099 or month < 1 or month > 12:
+        return None
+    return [
+        _numeric_marker_candidate(match, 1, "date_korean_year_month_gate", year),
+        _numeric_marker_candidate(
+            match,
+            2,
+            "date_korean_year_month_gate",
+            month,
+            reading=_month_reading(month),
+        ),
+    ]
+
+
+def _korean_md_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None:
+    month = int(match.group(1))
+    day = int(match.group(2))
+    if month < 1 or month > 12:
+        return None
+    if day < 1 or day > calendar.monthrange(2024, month)[1]:
+        return None
+    return [
+        _numeric_marker_candidate(
+            match,
+            1,
+            "date_korean_month_day_gate",
+            month,
+            reading=_month_reading(month),
+        ),
+        _numeric_marker_candidate(match, 2, "date_korean_month_day_gate", day),
+    ]
+
+
+def _korean_year_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None:
+    year = int(match.group(1))
+    if year < 1900 or year > 2099:
+        return None
+    return [_numeric_marker_candidate(match, 1, "date_korean_year_gate", year)]
+
+
+def _korean_month_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None:
+    month = int(match.group(1))
+    if month < 1 or month > 12:
+        return None
+    reading = number_to_korean_under_10000(month)
+    if not match.string.startswith("개", match.end()):
+        reading = _month_reading(month)
+    return [
+        _numeric_marker_candidate(
+            match, 1, "date_korean_month_gate", month, reading=reading
+        )
+    ]
+
+
+def _korean_time_candidates(
+    raw_text: str, match: re.Match[str]
+) -> list[SurfaceCandidate]:
+    hour = int(match.group(1))
+    minute = int(match.group(2)) if match.group(2) is not None else None
+    second = int(match.group(3)) if match.group(3) is not None else None
+    span = SourceSpan(match.start(), match.end())
+    if not is_valid_korean_clock_time(hour, minute, second):
+        return _preserve_numeric_groups(match, "invalid_korean_time_preserve")
+    if not _valid_korean_time_boundary(raw_text, span):
+        prev_char = raw_text[span.start - 1] if span.start > 0 else None
+        if prev_char in {"~", "∼", "～", "〜"}:
+            return []
+        return _preserve_numeric_groups(match, "attached_korean_time_preserve")
+    candidates = [
+        _numeric_marker_candidate(
+            match,
+            1,
+            "time_hour_korean_context",
+            hour,
+            owner="time",
+            reading=f"{clock_hour_reading(hour)} ",
+        )
+    ]
+    if minute is not None:
+        if minute > 59:
+            return None
+        candidates.append(
+            _numeric_marker_candidate(match, 2, "time_minute_korean_context", minute, owner="time")
+        )
+    if second is not None:
+        if second > 59:
+            return None
+        candidates.append(
+            _numeric_marker_candidate(match, 3, "time_second_korean_context", second, owner="time")
+        )
+    return candidates
+
+
+def _preserve_numeric_groups(match: re.Match[str], reason: str) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for group in (1, 2, 3):
+        if match.group(group) is None:
+            continue
+        span = SourceSpan(match.start(group), match.end(group))
+        raw = match.group(group)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=SourceSpan(match.start(), match.end()),
+                owner="time",
+                surface_type="TIME_PRESERVE_SURFACE",
+                reason=reason,
+                metadata={"reading": raw, "preserve": True},
+            )
+        )
+    return candidates
+
+
+def _numeric_marker_candidate(
+    match: re.Match[str],
+    group: int,
+    reason: str,
+    value: int,
+    owner: str = "date",
+    reading: str | None = None,
+) -> SurfaceCandidate:
+    span = SourceSpan(match.start(group), match.end(group))
+    return SurfaceCandidate(
+        core_span=span,
+        full_span=SourceSpan(match.start(), match.end()),
+        owner=owner,
+        surface_type="DATE_SURFACE" if owner == "date" else "TIME_SURFACE",
+        reason=reason,
+        metadata={"value": value, "reading": reading or number_to_korean_under_10000(value)},
+    )
+
+
+def _month_reading(month: int) -> str:
+    if month == 6:
+        return "유"
+    if month == 10:
+        return "시"
+    return number_to_korean_under_10000(month)
+
+
+def _valid_separator_date_boundary(raw_text: str, span: SourceSpan) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
+    if prev_char is not None and (prev_char.isalnum() or prev_char in {"-", "/", "／", ".", "~", "∼"}):
+        return False
+    if next_char is None:
+        return True
+    if next_char.isascii() and (next_char.isalnum() or next_char in {"-", "/", ".", "~"}):
+        return False
+    if next_char in {"-", "/", "／", ".", "~"}:
+        return False
+    return True
+
+
+def _has_explicit_code_context(raw_text: str, span: SourceSpan) -> bool:
+    left = raw_text[: span.start].rstrip()
+    if not left:
+        return False
+    return left.split()[-1].lower() in CODE_CONTEXT_KEYWORDS
+
+
+def _separator_name(separator: str) -> str:
+    if separator == "-":
+        return "hyphen"
+    if separator in {"/", "／"}:
+        return "slash"
+    if separator == ".":
+        return "dotted"
+    return "separator"
+
+
+def _digit_block_reading(block: str) -> str:
+    readings = {
+        "0": "공",
+        "1": "일",
+        "2": "이",
+        "3": "삼",
+        "4": "사",
+        "5": "오",
+        "6": "육",
+        "7": "칠",
+        "8": "팔",
+        "9": "구",
+    }
+    return "".join(readings[digit] for digit in block)
+
+
+def _valid_korean_date_boundary(raw_text: str, span: SourceSpan) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    if prev_char is None:
+        return True
+    if prev_char in {"~", "∼", "～", "〜", "-", "/", "."}:
+        return False
+    if prev_char.isascii() and prev_char.isalnum():
+        return False
+    return True
+
+
+def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
+    if prev_char in {"~", "∼", "～", "〜", "-", "/", "."}:
+        return False
+    if prev_char is not None and (prev_char.isascii() and prev_char.isalnum()):
+        return False
+    if prev_char is not None and "\uac00" <= prev_char <= "\ud7a3":
+        return False
+    if next_char is None:
+        return True
+    if next_char.isascii() and next_char.isalnum():
+        return False
+    if "\uac00" <= next_char <= "\ud7a3":
+        next_text = raw_text[span.end :]
+        return next_text.startswith(TIME_POSTPOSITIONS) or next_text.startswith("입니다")
+    return True
+
+
+def _is_part_of_seconds_time(raw_text: str, span: SourceSpan) -> bool:
+    return span.end < len(raw_text) and raw_text[span.end] in {":", "："}
+
+
+def _score_or_ratio_context(raw_text: str, span: SourceSpan) -> bool:
+    left = raw_text[max(0, span.start - 12) : span.start].lower()
+    right = raw_text[span.end : span.end + 12].lower()
+    if any(keyword in left for keyword in SCORE_CONTEXT_KEYWORDS):
+        return True
+    if any(keyword in right for keyword in SCORE_CONTEXT_KEYWORDS):
+        return True
+    raw = raw_text[span.start : span.end]
+    hour, minute = re.split("[:：]", raw, maxsplit=1)
+    return len(hour) == 1 and len(minute) == 1
+
+
+def _time_prefix(prev_text: str) -> str | None:
+    compact = prev_text.rstrip()
+    for prefix in TIME_PREFIXES:
+        if compact.endswith(prefix):
+            return prefix
+    return None
+
+
+def _has_time_prefix(prev_text: str) -> bool:
+    return _time_prefix(prev_text) is not None
+
+
+def _media_duration_context(raw_text: str, span: SourceSpan) -> bool:
+    left = raw_text[max(0, span.start - 12) : span.start]
+    return any(keyword in left for keyword in MEDIA_DURATION_CONTEXT_KEYWORDS)
+
+
+def _has_context_nearby(prev_text: str, next_text: str) -> bool:
+    left = prev_text[-12:]
+    right = next_text[:12]
+    compact_left = left.rstrip()
+    if any(compact_left.endswith(keyword) for keyword in TIME_EVENT_KEYWORDS + ("일정",)):
+        return True
+    if any(keyword in left for keyword in TIME_EVENT_KEYWORDS + DATE_CONTEXT_KEYWORDS):
+        if right.startswith("입니다") or right.startswith(" "):
+            return True
+        if right.startswith(("은", "는", "을", "를", "이", "가")):
+            return True
+    if right.startswith(" "):
+        return any(keyword in right for keyword in TIME_EVENT_KEYWORDS)
+    return False
+
+
+def _mask_ranges(raw_text: str, ranges: list[BracketRange]) -> str:
+    chars = list(raw_text)
+    for bracket_range in ranges:
+        for index in range(bracket_range.span.start, bracket_range.span.end):
+            chars[index] = " "
+    return "".join(chars)
+
+
+def _overlaps_any(span: SourceSpan, spans: list[SourceSpan]) -> bool:
+    return any(span.start < other.end and other.start < span.end for other in spans)
+
+
+__all__ = [
+    "DATE_CONTEXT_KEYWORDS",
+    "SCORE_CONTEXT_KEYWORDS",
+    "TIME_EVENT_KEYWORDS",
+    "TIME_POSTPOSITIONS",
+    "TIME_PREFIXES",
+    "build_time_gate_logs",
+    "date_number_reading",
+    "evaluate_time_colon_gate",
+    "is_strong_time_like_colon",
+    "is_valid_date",
+    "is_valid_time",
+    "parse_date_candidate",
+    "parse_time_candidate",
+    "scan_date_candidates",
+    "scan_time_candidates",
+    "time_number_reading",
+]

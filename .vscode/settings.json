@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "/home/brilliant/tts-preprocessor/.venv/bin/python",
+  "terminal.integrated.cwd": "${workspaceFolder}"
+}
