@@ -74,7 +74,7 @@ Deployment-related changes must preserve:
 - feature-level semantic probe support for binary/API paths
 
 Release/deploy scripts must not own feature-specific expected normalized text.
-Feature semantic expectations belong in tests and `scripts/probes/` probe files.
+Feature semantic expectations belong in `tests/probes/` and the `scripts/probes/` probe files that the runner executes.
 Release/deploy scripts may orchestrate semantic probes and fail on non-zero exit
 status, but they must not duplicate feature policy expected strings.
 
@@ -97,14 +97,16 @@ Remote package build must run binary-only semantic probes against the dist
 binary and the packaged binary. It must not run source or `production_source`
 semantic runners on the remote Python environment.
 
-`check_server.sh` is a server health check. It may include a small API sanity
-case, but it is not the canonical semantic regression test. Feature semantic
-validation belongs in source/main/binary/API matrix probes such as
+`check_server.sh` is a server health check. It may include one small API sanity
+case, but it is not the canonical semantic regression test. That fixed expected
+string is only a wiring canary. Feature semantic validation belongs in
+source/main/binary/API matrix probes such as
 `scripts/probes/run_semantic_probes.py --suite core --runtime binary --binary ...`,
 `scripts/probes/run_semantic_probes.py --suite core --runtime api --api ...`,
 and the manual scenario suite, plus integration parity tests. Existing
 individual `scripts/probes/*.py` probe commands remain available for development
-and debugging.
+and debugging. Canonical feature expectations live in `tests/probes/` and the
+probe files consumed by the semantic runner.
 
 Feature-specific semantic probes should use the shared runtime matrix helper
 when possible. Probe output must explicitly name `source`,

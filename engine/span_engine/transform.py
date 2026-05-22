@@ -29,11 +29,14 @@ from engine.span_engine.particle import apply_safe_post_surface_particle_excepti
 from engine.span_engine.public_number import build_public_number_gate_logs
 from engine.prosody.paragraph import split_paragraphs
 from engine.span_engine.prosody import apply_prosody_comma_adapter
+from engine.span_engine.protected import protected_literal_spans
 from engine.span_engine.render import join_render_pieces, render_tokens_with_surfaces
 from engine.span_engine.shadow import build_shadow_buffer
 from engine.span_engine.source_map import build_source_map, source_map_summary
 from engine.span_engine.tokenizer import tokenize_immutable_spans, validate_token_coverage
 from engine.span_engine.validation import validate_shadow
+
+_SPACED_ASCII_SLASH_DELIMITER_RE = re.compile(r" +/ +")
 
 
 def _ensure_str(text: Any) -> str:
@@ -92,7 +95,9 @@ def may_whole_input_preserve(text: str, reason: str) -> bool:
     }
 
 
-def _transform_with_language_gate_trace(text: str) -> TransformOutput:
+def _transform_with_language_gate_trace(
+    text: str, *, split_spaced_slash_boundaries: bool = True
+) -> TransformOutput:
     stripped = text.strip()
     if (
         len(stripped) >= 3
@@ -133,10 +138,14 @@ def _transform_with_language_gate_trace(text: str) -> TransformOutput:
         line.has_hangul and not line.is_numeric_list and not line.is_code_like
         for line in non_empty
     ):
-        return _transform_core_with_trace(text)
+        return _transform_core_or_spaced_slash_boundaries_with_trace(
+            text, split_spaced_slash_boundaries=split_spaced_slash_boundaries
+        )
 
     def core_transform(segment: str) -> str:
-        return _transform_core_with_trace(segment).normalized_text
+        return _transform_core_or_spaced_slash_boundaries_with_trace(
+            segment, split_spaced_slash_boundaries=split_spaced_slash_boundaries
+        ).normalized_text
 
     normalized_text = transform_with_language_gate(text, core_transform)
     core_output = _try_core_trace_for_whole_input(text, normalized_text)
@@ -148,6 +157,87 @@ def _transform_with_language_gate_trace(text: str) -> TransformOutput:
             _preserve_render_piece(normalized_text, 0, len(text)),
         ],
         trace=None,
+    )
+
+
+def _transform_core_or_spaced_slash_boundaries_with_trace(
+    text: str, *, split_spaced_slash_boundaries: bool
+) -> TransformOutput:
+    if split_spaced_slash_boundaries:
+        split_output = _transform_spaced_slash_boundaries_with_trace(text)
+        if split_output is not None:
+            return split_output
+    return _transform_core_with_trace(text)
+
+
+def _transform_spaced_slash_boundaries_with_trace(text: str) -> TransformOutput | None:
+    if not has_hangul_syllable(text):
+        return None
+
+    parts = _split_on_unprotected_spaced_ascii_slash(text)
+    if parts is None:
+        return None
+
+    transformed: list[str] = []
+    for raw, is_delimiter in parts:
+        if is_delimiter or not raw or not raw.strip():
+            transformed.append(raw)
+            continue
+        transformed.append(
+            _transform_with_language_gate_trace(
+                raw, split_spaced_slash_boundaries=False
+            ).normalized_text
+        )
+    normalized_text = "".join(transformed)
+    return TransformOutput(
+        normalized_text=normalized_text,
+        render_pieces=[_preserve_render_piece(normalized_text, 0, len(text))],
+        trace=None,
+    )
+
+
+def _split_on_unprotected_spaced_ascii_slash(
+    text: str,
+) -> list[tuple[str, bool]] | None:
+    protected_ranges = _spaced_slash_protected_ranges(text)
+    parts: list[tuple[str, bool]] = []
+    cursor = 0
+    matched = False
+
+    for match in _SPACED_ASCII_SLASH_DELIMITER_RE.finditer(text):
+        if _span_overlaps_ranges(match.start(), match.end(), protected_ranges):
+            continue
+        parts.append((text[cursor : match.start()], False))
+        parts.append((match.group(0), True))
+        cursor = match.end()
+        matched = True
+
+    if not matched:
+        return None
+
+    parts.append((text[cursor:], False))
+    return parts
+
+
+def _spaced_slash_protected_ranges(text: str) -> list[tuple[int, int]]:
+    ranges = [(span.start, span.end) for span in protected_literal_spans(text)]
+    ranges.extend(
+        (bracket_range.span.start, bracket_range.span.end)
+        for bracket_range in find_bracket_ranges(text)
+    )
+    ranges.extend(
+        (bracket_range.span.start, bracket_range.span.end)
+        for bracket_range in find_incomplete_bracket_ranges(text)
+    )
+    return ranges
+
+
+def _span_overlaps_ranges(
+    start: int, end: int, ranges: list[tuple[int, int]]
+) -> bool:
+    return any(
+        start < range_end and range_start < end
+        for range_start, range_end in ranges
     )
 
 

@@ -49,9 +49,57 @@ def test_phase25a_binary_runtime_future_rollout_command_includes_rollout_flags(m
     assert result["ok"] is True
 
 
-def test_phase25a_binary_runtime_future_debug_payload_contract(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "unrecognized arguments: --rollout-mode span_shadow_compare",
+        "unrecognized arguments: --include-debug",
+    ],
+)
+def test_phase25a_binary_runtime_old_binary_rollout_args_fail_without_source_fallback(
+    monkeypatch,
+    stderr: str,
+) -> None:
     import api.binary_runtime as binary_runtime
 
+    real_import_module = binary_runtime.importlib.import_module
+
+    def fail_import_engine_main(name: str):
+        if name == "engine.main":
+            raise AssertionError("production default must not import engine.main as fallback")
+        return real_import_module(name)
+
+    monkeypatch.delenv(binary_runtime.SOURCE_ROLLOUT_FALLBACK_ENV, raising=False)
+    monkeypatch.setattr(binary_runtime, "resolve_binary_path", lambda: Path("/tmp/fake-binary"))
+    monkeypatch.setattr(
+        binary_runtime.subprocess,
+        "run",
+        lambda cmd, *, input, capture_output, text, check: SimpleNamespace(
+            returncode=2,
+            stdout="",
+            stderr=stderr,
+        ),
+    )
+    monkeypatch.setattr(binary_runtime.importlib, "import_module", fail_import_engine_main)
+
+    with pytest.raises(binary_runtime.BinaryRuntimeError) as excinfo:
+        binary_runtime.run_transform_binary_with_rollout(
+            "[3kg]",
+            rollout_mode="span_shadow_compare",
+            include_debug=True,
+        )
+
+    message = str(excinfo.value)
+    assert "does not support rollout/debug arguments" in message
+    assert "source rollout fallback is disabled by default for production runtime" in message
+    assert "rebuild or update the packaged binary" in message
+    assert stderr in message
+
+
+def test_phase25a_binary_runtime_old_binary_rollout_source_fallback_requires_opt_in(monkeypatch) -> None:
+    import api.binary_runtime as binary_runtime
+
+    monkeypatch.setenv(binary_runtime.SOURCE_ROLLOUT_FALLBACK_ENV, "true")
     monkeypatch.setattr(binary_runtime, "resolve_binary_path", lambda: Path("/tmp/fake-binary"))
     monkeypatch.setattr(
         binary_runtime.subprocess,

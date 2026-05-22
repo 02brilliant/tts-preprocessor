@@ -2,6 +2,9 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/policies/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Clarified paragraph debug contract: `normalized_text` is the final paragraph-shaped TTS output; `render_pieces` may remain a pre-paragraph debug/provenance stream; `render_pieces` parity is not currently required.
+- Added spaced slash boundary handling for Korean-eligible text: ASCII-space-wrapped `/` may split independent transform segments while raw-preserving the delimiter and avoiding protected spans, no-space slash policies, no-Hangul expansion, and cross-delimiter context sharing.
+
 ---
 
 ## 0. Latest Addendum: Numeric Surface Broad Reading

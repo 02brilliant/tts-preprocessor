@@ -30,6 +30,10 @@ check_post_transform() {
   local payload='{"text":"K-1, K-푸드, 112명, 6월"}'
   local expected_normalized='케이 원, 케이푸드, 백십이 명, 유월'
 
+  # Tiny API wiring sanity canary only:
+  # this checks the packaged binary path and HTTP wiring are alive.
+  # It is not a semantic regression gate; feature validation belongs in
+  # scripts/probes/run_semantic_probes.py --suite core --runtime api --api ...
   echo "[check] API transform: ${TRANSFORM_URL}"
   if ! curl -fsS \
     -X POST "$TRANSFORM_URL" \

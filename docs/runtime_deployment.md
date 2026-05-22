@@ -19,9 +19,11 @@
 | Owner / claim / gate | span 엔진에서 표면 소유·청구·게이트로 충돌을 막고, owner가 처리하지 못한 구간은 preserve 또는 full-claim 규칙을 따른다. (세부: policy 문서) |
 | 표면 복원 | 분석 결과는 최종 단계에서만 읽기 텍스트로 렌더링한다. |
 | Prosody insert-only | 쉼표·문단 구분은 **삽입만** 허용하며, 기존 부호 삭제·이동은 하지 않는다. |
-| Paragraph shaping | `span_default` 최종 출력은 `engine.prosody.paragraph.split_paragraphs`로 긴 문단을 보수적으로 나눈다. 기존 `\n`은 문단 경계 정책(`\n+` → `\n\n`)에 따라 정규화될 수 있다. 쉼표 prosody(comma adapter) 이후·bracket filter 이후 문자열 단계에서만 적용한다. |
+| Paragraph shaping | `span_default` 최종 출력은 `normalized_text` 기준이며 `engine.prosody.paragraph.split_paragraphs`로 긴 문단을 보수적으로 나눈다. 기존 `\n`은 문단 경계 정책(`\n+` → `\n\n`)에 따라 정규화될 수 있다. 쉼표 prosody(comma adapter) 이후·bracket filter 이후 문자열 단계에서만 적용한다. |
 
 파이프라인 단계(early preprocess → dictionary → rules → typed surface → restoration → prosody comma → paragraph split)는 `docs/pipeline_architecture.md`를 본다.
+
+`include_debug=True` 또는 `span_debug.render_pieces` 소비자는 paragraph split 이전 stream을 볼 수 있으며, 최종 TTS 문자열이 필요하면 `normalized_text`를 기준으로 삼아야 한다. `render_pieces`와 `trace`는 paragraph split 이전 render stream을 반영할 수 있고, `render_pieces` parity 보장은 현재 contract가 아니다. parity 또는 generated paragraph-boundary provenance가 필요하면 future enhancement로 별도 설계한다.
 
 ## 3. 실행 경로와 entrypoint
 
@@ -143,6 +145,10 @@ bash scripts/check_server.sh
 - `GET /docs` (FastAPI OpenAPI UI)
 - `POST /api/transform` — 고정 payload 1건과 기대 `normalized_text` 문자열 포함 여부
 
+이 `POST`는 패키징된 API wiring이 살아 있는지 보는 작은 sanity canary다.
+semantic regression gate가 아니며, 기능 기대값의 canonical 위치는
+`tests/probes/`와 `scripts/probes/run_semantic_probes.py`다.
+
 semantic regression **대체가 아니다**. Windows·macOS zip 존재는 확인하지 않는다.
 
 ## 5. Windows·macOS 실행모듈 보조 빌드
@@ -200,6 +206,9 @@ semantic regression **대체가 아니다**. Windows·macOS zip 존재는 확인
 ```bash
 bash scripts/check_server.sh
 ```
+
+`check_server.sh`는 서버 생존성과 최소 API wiring만 확인한다. 기능별
+정상성은 별도 semantic probe 실행으로 검증한다.
 
 ### 7.2 Semantic regression (별도 실행)
 

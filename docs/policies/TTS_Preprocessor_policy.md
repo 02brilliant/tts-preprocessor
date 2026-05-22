@@ -180,6 +180,28 @@ The temperature is 25℃ and pH 7.4.
 이상입니다.
 ```
 
+### 0.0.4.1 Spaced Slash Boundary Handling
+
+Korean-eligible text 내부에서 ASCII space로 둘러싸인 slash는 visual
+separator로 쓰일 수 있으므로 segment boundary로 취급할 수 있다. 이 처리는
+새 broad slash owner가 아니며, unit/temperature/currency/percent 같은 item
+type을 직접 판정하지 않는다.
+
+Boundary delimiter는 하나 이상의 ASCII space, `/`, 하나 이상의 ASCII
+space로만 제한한다. delimiter와 주변 공백은 raw 그대로 preserve하며, 공백
+개수를 줄이거나 늘리지 않는다. delimiter로 나뉜 각 non-empty segment는
+기존 transform pipeline/core로 독립 처리한다. slash-separated segments는
+delimiter 건너편 문맥을 공유하지 않으며, time-like/context-sensitive 판단도
+반대편 segment를 사용하지 않는다.
+
+공백 없는 slash는 기존 fraction/date/compound-unit/path/URL 정책을 따른다.
+protected span 내부에는 적용하지 않는다. URL, path, email, JSON-like string,
+backtick, fenced code, square bracket 내부 slash는 split하지 않는다.
+
+전체 입력에 한글이 없는 no-Hangul global bypass 정책은 유지한다. 이 boundary
+처리는 no-Hangul slash list를 새 transform 대상으로 확장하지 않는다.
+newline-crossing slash split은 현재 범위에서 제외한다.
+
 ### 0.0.5 Preserve 대상 exact preservation 계약
 
 `Absolute Preserve`로 분류된 line 또는 전체 입력은 exact string preservation을 보장해야 한다. 다음 항목은 transform 대상이 아니면 공백, 문장부호, 기호, 대소문자, escape sequence를 변경하지 않고 그대로 반환한다.
@@ -1360,6 +1382,7 @@ class TransformOutput:
 | `trace` | claim/gate/parser/fallback/validation log | debug optional |
 
 `normalized_text`는 표준 발음 전사가 아니라 TTS 입력용 읽기 문자열이다.
+`normalized_text`는 paragraph shaping을 반영한 최종 TTS 문자열이다. `render_pieces`는 provenance/source span을 포함한 debug/provenance 중간 출력이며, future contract가 별도로 명시되지 않는 한 최종 문자열 전용 paragraph shaping을 포함하지 않을 수 있다.
 
 공개 API와 디버그 API는 다음처럼 분리한다.
 
@@ -6132,6 +6155,8 @@ def insert_commas_insert_only(pieces: list[RenderPiece]) -> list[RenderPiece]:
 새로 삽입되는 쉼표는 source_span이 없고 provenance는 generated punctuation으로 둘 수 있다. 다만 기존 schema에 provenance enum을 추가하지 않는다면 owner metadata에 `generated_prosody=True`를 둔다.
 
 ### 15.5 Paragraph Split
+
+여기서도 최종 TTS 문자열 기준은 `normalized_text`다. `render_pieces`는 debug/provenance 스트림으로 paragraph split 이전 상태를 유지할 수 있으며, parity를 보장하는 contract는 현재 없다.
 
 Paragraph split도 기존 사용자 개행 block을 먼저 존중한다.
 

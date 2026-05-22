@@ -119,6 +119,24 @@ The owner-attached policy is stricter than the standalone fallback policy:
 3. Protected spans outrank owner claims.
 4. Standalone malformed numeric partial fallback is a separate follow-up audit.
 
+## 6.1 Spaced slash boundary handling
+
+ASCII-space-wrapped slash delimiters inside Korean-eligible text are handled as
+segment boundaries, not as a new slash owner. The delimiter and its surrounding
+ASCII spaces are raw-preserved, and each non-empty segment is sent through the
+existing transform pipeline/core independently.
+
+This layer does not classify item types such as unit, temperature, currency, or
+percent. Invalid owner-attached numeric surfaces such as `+.5kg`, `1,00kg`, and
+`+01.5kg` remain full-preserved by their existing owner rules, while a valid
+segment on the other side of the delimiter may still transform.
+
+No-space slash surfaces remain under existing fraction/date/compound-unit/path
+and URL policies. Protected spans, including URL/path/email/JSON/backtick/fenced
+code and square bracket interiors, are not split. Slash-separated segments do
+not share context across the delimiter. No-Hangul global bypass behavior remains
+out of scope for expansion, and newline-crossing slash split is not supported.
+
 ## 7. Trailing zero current state
 
 This section records the implemented ordinary decimal fractional-zero

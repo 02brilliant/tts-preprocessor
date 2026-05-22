@@ -56,6 +56,7 @@ tts-preprocessor-windows → tts-preprocessor-windows.zip
 tts-preprocessor-macos   → tts-preprocessor-macos.zip
 
 downloads 폴더에 복사 후, 서버 복사 실행
+
 cd ~/tts-preprocessor
 scp downloads/tts-preprocessor-windows.zip \
     downloads/tts-preprocessor-macos.zip \

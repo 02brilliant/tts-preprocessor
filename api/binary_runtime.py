@@ -11,6 +11,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_BINARY_NAME = "tts_preprocessor"
 # API production runtime resolves and executes this packaged binary instead of
 # importing engine.* source modules from the deployed server filesystem.
+SOURCE_ROLLOUT_FALLBACK_ENV = "TTS_PREPROCESSOR_ALLOW_SOURCE_ROLLOUT_FALLBACK"
+SOURCE_ROLLOUT_FALLBACK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 SUPPORTED_ROLLOUT_MODES = frozenset(
     {
         "legacy_default",
@@ -82,6 +84,13 @@ def run_transform_binary_with_rollout(
         raw_output = _run_binary_command(command, text=text)
     except BinaryRuntimeError as exc:
         if _should_fallback_to_source(exc):
+            if not _allow_source_rollout_fallback():
+                raise BinaryRuntimeError(
+                    "packaged runtime binary does not support rollout/debug arguments; "
+                    "source rollout fallback is disabled by default for production runtime; "
+                    "rebuild or update the packaged binary. "
+                    f"Original binary error: {exc}"
+                ) from exc
             return _run_source_rollout_fallback(
                 text,
                 rollout_mode=normalized_mode,
@@ -134,12 +143,19 @@ def _should_fallback_to_source(exc: BinaryRuntimeError) -> bool:
     return "unrecognized arguments: --rollout-mode" in message or "unrecognized arguments: --include-debug" in message
 
 
+def _allow_source_rollout_fallback() -> bool:
+    value = os.getenv(SOURCE_ROLLOUT_FALLBACK_ENV, "")
+    return value.strip().lower() in SOURCE_ROLLOUT_FALLBACK_TRUE_VALUES
+
+
 def _run_source_rollout_fallback(
     text: str,
     *,
     rollout_mode: str,
     include_debug: bool,
 ):
+    # Local/dev compatibility escape hatch only. Production default must use
+    # the packaged binary and fail old binaries instead of importing sources.
     engine_main = importlib.import_module("engine.main")
 
     return engine_main.transform_with_rollout(
