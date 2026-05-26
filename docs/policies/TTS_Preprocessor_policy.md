@@ -2896,9 +2896,14 @@ S&P
 
 - dictionary longest match 우선
 - dictionary가 safe acronym fallback보다 우선
+- span production lexicon must include canonical managed lexicon entries required by this policy.
+- managed lexicon/fixed dictionary claims must precede uppercase acronym fallback.
 - mixed-case는 safe acronym fallback 금지
 - alnum/hyphen 형태는 safe acronym fallback 금지
 - unit token과 충돌하면 unit owner 판단을 우선 검토하되, dictionary fixed surface가 있으면 dictionary가 이긴다.
+- finance index fixed terms may allow whitelist-based numeric suffix full-claim.
+- broad acronym+number fallback remains prohibited.
+- protected/path/URL/JSON/backtick/square bracket contexts remain preserve-first.
 
 예:
 
@@ -2939,7 +2944,7 @@ dictionary output:
 ```text
 AI -> 에이아이
 USB -> 유에스비
-OECD -> 오이시디
+OECD -> 오이씨디
 S&P -> 에스앤피
 ```
 
@@ -3122,7 +3127,7 @@ class LexiconEntry:
 | `CPI` | `씨피아이` |
 | `PPI` | `피피아이` |
 | `FOMC` | `에프오엠씨` |
-| `OECD` | `오이시디` |
+| `OECD` | `오이씨디` |
 | `IMF` | `아이엠에프` |
 | `WTO` | `더블유티오` |
 | `WHO` | `더블유에이치오` |
@@ -9762,7 +9767,7 @@ full consume 실패 후 raw residue 유지
 | `BOK` | 비오케이 | Korean finance context |
 | `IMF` | 아이엠에프 | finance/institution context |
 | `WTO` | 더블유티오 | institution context |
-| `OECD` | 오이시디 | institution context |
+| `OECD` | 오이씨디 | institution context |
 | `WHO` | 더블유에이치오 | institution context |
 | `UN` | 유엔 | institution context |
 | `EU` | 이유 | institution context |
@@ -10016,7 +10021,7 @@ GPU -> 지피유
 KOSPI -> 코스피
 KOSDAQ -> 코스닥
 IMF -> 아이엠에프
-OECD -> 오이시디
+OECD -> 오이씨디
 WTO -> 더블유티오
 WHO -> 더블유에이치오
 UN -> 유엔

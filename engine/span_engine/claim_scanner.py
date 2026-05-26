@@ -52,6 +52,7 @@ from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
     scan_k_hangul_lexical_candidates,
+    scan_finance_index_numeric_suffix_candidates,
     scan_lexical_compound_candidates,
 )
 from engine.span_engine.models import ClaimedRange, SourceSpan, SpanToken, SurfaceCandidate
@@ -174,6 +175,7 @@ CLAIM_ORDER_DOC = (
     "bracket",
     "protected_literal",
     "dictionary",
+    "finance_index",
     "k_hangul_lexical",
     "lexical_compound",
     "single_letter_alnum_code",
@@ -235,6 +237,7 @@ def claim_surfaces(
     candidates: list[SurfaceCandidate] = []
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(tokens, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_single_letter_alnum_code_candidates(raw_text), registry, excluded_ranges))

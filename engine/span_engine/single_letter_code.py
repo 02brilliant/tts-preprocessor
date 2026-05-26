@@ -156,7 +156,7 @@ def _is_unsafe_tail(char: str) -> bool:
         return True
     if "\u3130" <= char <= "\u318f":
         return True
-    return char in {"_", "-", "/", ".", "·", "ㆍ", "∙"}
+    return char in {"_", "-", "/", ".", "&", "·", "ㆍ", "∙"}
 
 
 def _has_previous_uppercase_context_token(raw_text: str, start: int) -> bool:
@@ -179,7 +179,7 @@ def _is_code_identifier_char(char: str) -> bool:
         return True
     if "\uac00" <= char <= "\ud7a3" or "\u3130" <= char <= "\u318f":
         return True
-    return char in {"_", "-", "/", ".", "·", "ㆍ", "∙"}
+    return char in {"_", "-", "/", ".", "&", "·", "ㆍ", "∙"}
 
 
 __all__ = [

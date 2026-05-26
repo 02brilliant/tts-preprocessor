@@ -29,6 +29,7 @@ from engine.span_engine.lexicon import (
     dictionary_reading,
     k_hangul_lexical_reading,
     lexical_compound_reading,
+    parse_finance_index_numeric_suffix_candidate,
     spell_uppercase_acronym,
 )
 from engine.span_engine.middle_dot import parse_middle_dot_candidate
@@ -66,6 +67,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
 
     if candidate.owner == "dictionary":
         reading = dictionary_reading(raw)
+    elif candidate.owner == "finance_index":
+        reading = parse_finance_index_numeric_suffix_candidate(raw_text, candidate)
     elif candidate.owner == "k_hangul_lexical":
         return _make_k_hangul_lexical_surface(raw_text, candidate, raw)
     elif candidate.owner == "lexical_compound":

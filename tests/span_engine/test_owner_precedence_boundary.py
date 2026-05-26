@@ -11,6 +11,7 @@ def test_claim_order_documentation_snapshot() -> None:
         "bracket",
         "protected_literal",
         "dictionary",
+        "finance_index",
         "k_hangul_lexical",
         "lexical_compound",
         "single_letter_alnum_code",

@@ -1,30 +1,90 @@
 from __future__ import annotations
 
+from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 
 DICTIONARY_READINGS: dict[str, str] = {
     "AI": "에이아이",
+    "ASR": "에이에스알",
+    "CSS": "씨에스에스",
+    "CSV": "씨에스브이",
     "FTA": "에프티에이",
+    "FOMC": "에프오엠씨",
+    "GDP": "지디피",
     "MFN": "엠에프엔",
+    "HTML": "에이치티엠엘",
+    "IMF": "아이엠에프",
+    "IPTV": "아이피티비",
+    "JS": "제이에스",
     "KOSPI": "코스피",
     "KOSDAQ": "코스닥",
+    "NASA": "나사",
+    "NASDAQ": "나스닥",
+    "NATO": "나토",
+    "NLP": "엔엘피",
+    "PPI": "피피아이",
+    "RAM": "램",
+    "REST": "레스트",
+    "ROM": "롬",
+    "S&P": "에스앤피",
     "TTS": "티티에스",
+    "STT": "에스티티",
     "API": "에이피아이",
+    "CPI": "씨피아이",
     "CPU": "씨피유",
     "GPU": "지피유",
+    "UI": "유아이",
+    "UX": "유엑스",
     "PDF": "피디에프",
     "JSON": "제이슨",
     "URL": "유알엘",
+    "URI": "유알아이",
+    "USB": "유에스비",
+    "XML": "엑스엠엘",
+    "YAML": "야믈",
     "K-POP": "케이팝",
     "4K": "포케이",
     "KBS": "케이비에스",
+    "MBC": "엠비씨",
+    "SBS": "에스비에스",
+    "EBS": "이비에스",
+    "JTBC": "제이티비씨",
+    "OTT": "오티티",
+    "VOD": "브이오디",
     "LLM": "엘엘엠",
     "OECD": "오이씨디",
     "WHO": "더블유에이치오",
+    "UN": "유엔",
+    "UNESCO": "유네스코",
+    "UNICEF": "유니세프",
+    "WTO": "더블유티오",
+    "HD": "에이치디",
+    "FHD": "에프에이치디",
+    "UHD": "유에이치디",
+    "HDR": "에이치디알",
+    "SDR": "에스디알",
+    "SQL": "에스큐엘",
+    "DOCX": "닥스",
+    "XLSX": "엑스엘에스엑스",
+    "PPTX": "피피티엑스",
+    "NPU": "엔피유",
+    "SSD": "에스에스디",
+    "HDD": "에이치디디",
+    "HDMI": "에이치디엠아이",
+    "LTE": "엘티이",
+    "IP": "아이피",
+    "DNS": "디엔에스",
+    "VPN": "브이피엔",
 }
 
 LEXICAL_COMPOUND_READINGS: dict[str, str] = {
     "ISO·IEC": "아이에스오·아이이씨",
+}
+FINANCE_INDEX_BASE_READINGS: dict[str, str] = {
+    "S&P": "에스앤피",
+    "NASDAQ": "나스닥",
+    "KOSPI": "코스피",
+    "KOSDAQ": "코스닥",
 }
 _K_HANGUL_PREFIX = "K-"
 _K_HANGUL_UNSAFE_TAIL_CHARS = frozenset("-_/.")
@@ -71,6 +131,15 @@ def lexical_compound_reading(raw: str) -> str | None:
     return LEXICAL_COMPOUND_READINGS.get(raw)
 
 
+def parse_finance_index_numeric_suffix_candidate(
+    raw_text: str, candidate: SurfaceCandidate
+) -> str | None:
+    if candidate.owner != "finance_index":
+        return None
+    reading = candidate.metadata.get("reading")
+    return reading if isinstance(reading, str) else None
+
+
 def k_hangul_lexical_reading(raw: str) -> str | None:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
@@ -109,6 +178,40 @@ def scan_lexical_compound_candidates(raw_text: str) -> list[SurfaceCandidate]:
                     )
                 )
             start = raw_text.find(surface, start + 1)
+    return sorted(candidates, key=lambda candidate: candidate.core_span.start)
+
+
+def scan_finance_index_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    for base, base_reading in sorted(
+        FINANCE_INDEX_BASE_READINGS.items(), key=lambda item: len(item[0]), reverse=True
+    ):
+        start = raw_text.find(base)
+        while start != -1:
+            number_start = start + len(base)
+            if raw_text[number_start : number_start + 1] == " ":
+                number_start += 1
+            number_end = number_start
+            while number_end < len(raw_text) and raw_text[number_end].isdigit():
+                number_end += 1
+            if number_end > number_start and _safe_finance_index_boundary(raw_text, start, number_end):
+                number = raw_text[number_start:number_end]
+                number_reading = read_spaced_integer_text(number)
+                if number_reading is not None:
+                    span = SourceSpan(start, number_end)
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=span,
+                            full_span=span,
+                            owner="finance_index",
+                            surface_type="FINANCE_INDEX_NUMERIC_SUFFIX_SURFACE",
+                            reason="finance_index_numeric_suffix_full_claim",
+                            metadata={"reading": f"{base_reading} {number_reading}"},
+                        )
+                    )
+            start = raw_text.find(base, start + 1)
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
 
 
@@ -157,6 +260,24 @@ def _safe_fixed_surface_boundary(raw_text: str, start: int, end: int) -> bool:
     return True
 
 
+def _safe_finance_index_boundary(raw_text: str, start: int, end: int) -> bool:
+    prev_char = raw_text[start - 1] if start > 0 else None
+    next_char = raw_text[end] if end < len(raw_text) else None
+    if prev_char is not None and _is_identifier_neighbor(prev_char):
+        return False
+    if next_char is not None and _is_unsafe_finance_index_tail(next_char):
+        return False
+    return True
+
+
+def _is_unsafe_finance_index_tail(char: str) -> bool:
+    if char.isascii() and char.isalnum():
+        return True
+    if "\u3130" <= char <= "\u318f":
+        return True
+    return char in {"_", "-", "/", ".", "·", "ㆍ", "∙"}
+
+
 def _starts_with_trailing_particle(raw_text: str, index: int) -> bool:
     return any(
         raw_text.startswith(particle, index)
@@ -203,6 +324,8 @@ __all__ = [
     "dictionary_reading",
     "k_hangul_lexical_reading",
     "lexical_compound_reading",
+    "parse_finance_index_numeric_suffix_candidate",
+    "scan_finance_index_numeric_suffix_candidates",
     "scan_k_hangul_lexical_candidates",
     "scan_lexical_compound_candidates",
     "spell_uppercase_acronym",
