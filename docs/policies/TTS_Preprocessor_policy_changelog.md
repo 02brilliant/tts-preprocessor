@@ -10,6 +10,18 @@
   before uppercase acronym fallback, and finance index fixed terms may use
   whitelist-based numeric suffix full-claim while broad acronym+number fallback
   and protected-context reentry remain prohibited.
+- Split managed dictionary inventory into
+  `docs/policies/TTS_Preprocessor_managed_dictionary.md`, added
+  current/current_with_condition/pending/conflict/future/legacy-only labels, and
+  recorded that this pass changes documentation only, not production code.
+- Connected the managed dictionary `current` inventory to span production by
+  adding the missing `GUI` and `Wi-Fi` fixed entries, without promoting pending,
+  conflict, future, or legacy-only dictionary candidates.
+- Canonicalized managed dictionary inventory into the dedicated managed
+  dictionary policy, removed duplicate fixed lexical inventory tables from the
+  main policy, resolved `DOCX` to `디오씨엑스`, and promoted the user-approved
+  exact current entries and exact slash compounds to span production/test
+  parity without adding broad acronym, slash, mixed-case, or frequency fallback.
 - Added spaced slash boundary handling for Korean-eligible text: ASCII-space-wrapped `/` may split independent transform segments while raw-preserving the delimiter and avoiding protected spans, no-space slash policies, no-Hangul expansion, and cross-delimiter context sharing.
 
 ---

@@ -101,6 +101,12 @@ pH 7.4 -> 피에이치 칠쩜사
 3시간 18분 -> 세 시간 십팔분
 ```
 
+Managed dictionary-only no-Hangul inputs are a separate narrow exception:
+if the entire input is composed only of exact current managed dictionary entries
+and approved separators/whitespace, it may enter the core transform. The
+canonical inventory and detailed guard are defined in
+`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+
 ### 0.0.2.1 Hangul-containing input whole-fallback prohibition
 
 입력 전체에 한글 음절 `[가-힣]`이 하나라도 포함되어 있으면, 입력 전체 raw text를 통째로 preserve/fallback하여 반환하는 것은 금지한다.
@@ -3010,186 +3016,21 @@ K-POP -> 케이-팝
 
 #### 9.3.2 Dictionary Schema and Managed Lexicon
 
-모든 사전 기반 교정 용어는 문서 목록으로 관리하고 코드 구현과 테스트에 반영한다. 사전 항목은 broad fallback보다 우선한다.
+Managed dictionary entries are fixed lexical exceptions, not broad acronym,
+code, slash, or numeric fallback. The canonical surface/reading inventory,
+status labels, compound rendering decisions, pending/conflict items, and
+implementation/test contract are maintained in
+`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
 
-```python
-@dataclass
-class LexiconEntry:
-    surface: str
-    reading: str
-    entry_type: Literal[
-        "acronym",
-        "fixed_term",
-        "event",
-        "organization",
-        "unit_alias",
-        "technical_term",
-        "public_number",
-        "address_anchor",
-    ]
-    case_sensitive: bool = True
-    priority: int = 100
-    allow_particle_attach: bool = True
-    allow_inside_compound: bool = False
-    aliases: list[str] = field(default_factory=list)
-    domains: set[str] = field(default_factory=set)
-```
+This section keeps only the shared principles:
 
-#### 방송·미디어·TTS 도메인 약어
-
-| surface | reading |
-|---|---|
-| `KBS` | `케이비에스` |
-| `MBC` | `엠비씨` |
-| `SBS` | `에스비에스` |
-| `EBS` | `이비에스` |
-| `JTBC` | `제이티비씨` |
-| `tvN` | `티비엔` |
-| `OTT` | `오티티` |
-| `VOD` | `브이오디` |
-| `TTS` | `티티에스` |
-| `STT` | `에스티티` |
-| `ASR` | `에이에스알` |
-| `NLP` | `엔엘피` |
-| `AI` | `에이아이` |
-| `API` | `에이피아이` |
-| `UI` | `유아이` |
-| `UX` | `유엑스` |
-
-#### 영상·방송 기술 단위
-
-| surface | reading |
-|---|---|
-| `HD` | `에이치디` |
-| `FHD` | `에프에이치디` |
-| `UHD` | `유에이치디` |
-| `4K` | `포케이` |
-| `8K` | `에이트케이` |
-| `HDR` | `에이치디알` |
-| `SDR` | `에스디알` |
-| `fps` | `에프피에스` |
-| `FPS` | `에프피에스` |
-| `bitrate` | `비트레이트` |
-| `kbps` | `킬로비피에스` |
-| `Mbps` | `메가비피에스` |
-| `Gbps` | `기가비피에스` |
-
-#### 웹·파일·개발 포맷
-
-| surface | reading |
-|---|---|
-| `URL` | `유알엘` |
-| `URI` | `유알아이` |
-| `HTML` | `에이치티엠엘` |
-| `CSS` | `씨에스에스` |
-| `JS` | `제이에스` |
-| `JSON` | `제이슨` |
-| `XML` | `엑스엠엘` |
-| `YAML` | `야믈` |
-| `CSV` | `씨에스브이` |
-| `PDF` | `피디에프` |
-| `DOCX` | `디오씨엑스` |
-| `XLSX` | `엑스엘에스엑스` |
-| `PPTX` | `피피티엑스` |
-| `SQL` | `에스큐엘` |
-| `REST` | `레스트` |
-| `gRPC` | `지알피씨` |
-
-#### 하드웨어·네트워크
-
-| surface | reading |
-|---|---|
-| `CPU` | `씨피유` |
-| `GPU` | `지피유` |
-| `NPU` | `엔피유` |
-| `RAM` | `램` |
-| `ROM` | `롬` |
-| `SSD` | `에스에스디` |
-| `HDD` | `에이치디디` |
-| `USB` | `유에스비` |
-| `HDMI` | `에이치디엠아이` |
-| `Wi-Fi` | `와이파이` |
-| `LTE` | `엘티이` |
-| `5G` | `파이브지` |
-| `IP` | `아이피` |
-| `DNS` | `디엔에스` |
-| `VPN` | `브이피엔` |
-
-#### 경제·정책·뉴스 용어
-
-| surface | reading |
-|---|---|
-| `KOSPI` | `코스피` |
-| `KOSDAQ` | `코스닥` |
-| `NASDAQ` | `나스닥` |
-| `S&P` | `에스앤피` |
-| `GDP` | `지디피` |
-| `CPI` | `씨피아이` |
-| `PPI` | `피피아이` |
-| `FOMC` | `에프오엠씨` |
-| `OECD` | `오이씨디` |
-| `IMF` | `아이엠에프` |
-| `WTO` | `더블유티오` |
-| `WHO` | `더블유에이치오` |
-| `UN` | `유엔` |
-| `EU` | `이유` |
-
-#### 긴급·공공번호 후보
-
-긴급·공공번호는 bare number로 읽지 않는다. 반드시 context + allowed tail gate를 통과해야 한다.
-
-| number | context 예 | reading |
-|---|---|---|
-| `112` | 경찰, 신고, 긴급번호 | `일일이` |
-| `119` | 화재, 구급, 소방, 신고 | `일일구` |
-| `110` | 국민콜, 민원, 상담 | `일일공` |
-| `120` | 다산콜, 지자체 콜센터 | `일이공` |
-| `117` | 학교폭력, 신고 | `일일칠` |
-| `118` | 사이버, 신고, 상담 | `일일팔` |
-| `1339` | 질병, 응급의료, 상담 | `일삼삼구` |
-| `182` | 경찰민원 | `일팔이` |
-| `125` | 밀수 신고 | `일이오` |
-
-#### 사건형 날짜 사전
-
-| surface/context | reading |
-|---|---|
-| `3·1절` | `삼일절` |
-| `4·19 혁명` | `사일구 혁명` |
-| `5·18 민주화운동` | `오일팔 민주화운동` |
-| `6·25 전쟁` | `육이오 전쟁` |
-| `8·15 광복` | `팔일오 광복` |
-| `9·11 테러` | `구일일 테러` |
-| `10·29 참사` | `십이구 참사` |
-| `12.12 사태` | `십이십이 사태` |
-
-Bare form은 preserve한다. event keyword immediate adjacency일 때만 event reading을 허용한다.
-
-현재 large-unit 결정:
-
-- bare `5·18`은 keyword 없는 fixed event shortcut으로 강제하지 않는다.
-- bare `5·18`에는 middle-dot numeric block fallback을 적용한다.
-- event keyword/profile이 인접한 `5·18 민주화운동`은 event owner가 처리한다.
-
-canonical:
-
-```text
-5·18 -> 오 일팔
-5·18 민주화운동 -> 오일팔 민주화운동
-```
-
-#### 주소/행정 suffix anchor 사전
-
-행정 suffix owner는 address anchor 없이는 broad parse하지 않는다.
-
-```text
-시, 도, 군, 구, 동, 읍, 면, 리
-로, 길, 번길, 대로, 가, 번지, 호
-서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종
-강남, 종로, 역삼, 여의도, 마포, 상암, 목동
-```
-
-사전 항목은 모두 dictionary smoke test에 포함한다. 충돌 가능성이 있는 항목은 dictionary collision test에도 포함한다.
+- managed dictionary entries claim before acronym/code/numeric fallback;
+- entries match at safe boundaries and must full-claim the approved surface;
+- protected path, URL, email, JSON-like, backtick, fenced code, shell/code-like,
+  and square bracket interiors remain preserve-first;
+- every current managed dictionary entry requires span production test coverage;
+- policy tables outside the managed dictionary document are reference context,
+  not the canonical dictionary inventory.
 
 #### 9.3.3 Dictionary와 Unit Parser 충돌 정책
 
@@ -9582,232 +9423,31 @@ full consume 실패 후 raw residue 유지
 
 `CAD`, `AUD`, `SGD` 등은 단독 acronym fallback으로 읽지 말고 currency context 또는 numeric required 조건을 둔다.
 
-### 35.7 Technical / IT dictionary
+### 35.7 Managed fixed lexical dictionary
 
-#### 개발 / 웹
+Technical, IT, file-format, media-display, finance, institution, and sports
+fixed lexical entries are no longer maintained as repeated inventory tables in
+this canonical policy. They are managed as fixed lexical exceptions in
+`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
 
-| 입력 | reading | 조건 |
-|---|---|---|
-| `API` | 에이피아이 | always with boundary |
-| `SDK` | 에스디케이 | always with boundary |
-| `CLI` | 씨엘아이 | always with boundary |
-| `GUI` | 지유아이 | always with boundary |
-| `UI` | 유아이 | always with boundary |
-| `UX` | 유엑스 | always with boundary |
-| `HTML` | 에이치티엠엘 | always with boundary |
-| `CSS` | 씨에스에스 | always with boundary |
-| `JS` | 제이에스 | always with boundary |
-| `JSON` | 제이슨 | always with boundary |
-| `XML` | 엑스엠엘 | always with boundary |
-| `YAML` | 야믈 | always with boundary |
-| `CSV` | 씨에스브이 | always with boundary |
-| `SQL` | 에스큐엘 | always with boundary |
-| `NoSQL` | 노에스큐엘 | exact dictionary |
-| `HTTP` | 에이치티티피 | always with boundary |
-| `HTTPS` | 에이치티티피에스 | always with boundary |
-| `URL` | 유알엘 | always with boundary |
-| `URI` | 유알아이 | always with boundary |
-| `DNS` | 디엔에스 | always with boundary |
-| `IP` | 아이피 | context or boundary |
-| `TCP` | 티씨피 | always with boundary |
-| `UDP` | 유디피 | always with boundary |
-| `TLS` | 티엘에스 | always with boundary |
-| `SSL` | 에스에스엘 | always with boundary |
-| `SSH` | 에스에스에이치 | always with boundary |
-| `FTP` | 에프티피 | always with boundary |
-| `SFTP` | 에스에프티피 | always with boundary |
-| `SMTP` | 에스엠티피 | always with boundary |
-| `REST` | 레스트 | technical context recommended |
-| `GraphQL` | 그래프큐엘 | exact dictionary |
-| `gRPC` | 지알피씨 | exact dictionary |
-| `OAuth` | 오어스 | exact dictionary |
-| `JWT` | 제이더블유티 | always with boundary |
+This section keeps only the binding rules:
 
-#### AI / 음성 / 언어처리
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `AI` | 에이아이 | always with boundary |
-| `AGI` | 에이지아이 | always with boundary |
-| `LLM` | 엘엘엠 | always with boundary |
-| `ML` | 엠엘 | technical context recommended |
-| `DL` | 디엘 | technical context recommended |
-| `NLP` | 엔엘피 | always with boundary |
-| `NLU` | 엔엘유 | always with boundary |
-| `NLG` | 엔엘지 | always with boundary |
-| `TTS` | 티티에스 | always with boundary |
-| `STT` | 에스티티 | always with boundary |
-| `ASR` | 에이에스알 | always with boundary |
-| `OCR` | 오씨알 | always with boundary |
-| `RAG` | 래그 | AI context recommended |
-| `GPT` | 지피티 | always with boundary |
-| `BERT` | 버트 | AI context recommended |
-| `CNN` | 씨엔엔 | AI/media ambiguity, context recommended |
-| `RNN` | 알엔엔 | AI context recommended |
-| `GPU` | 지피유 | always with boundary |
-| `TPU` | 티피유 | technical context recommended |
-| `NPU` | 엔피유 | technical context recommended |
-
-#### 하드웨어 / 네트워크
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `CPU` | 씨피유 | always with boundary |
-| `GPU` | 지피유 | always with boundary |
-| `RAM` | 램 | hardware context recommended |
-| `ROM` | 롬 | hardware context recommended |
-| `SSD` | 에스에스디 | always with boundary |
-| `HDD` | 에이치디디 | always with boundary |
-| `USB` | 유에스비 | always with boundary |
-| `HDMI` | 에이치디엠아이 | always with boundary |
-| `PCIe` | 피씨아이이 | exact dictionary |
-| `LAN` | 랜 | network context recommended |
-| `WAN` | 왠 | network context recommended |
-| `Wi-Fi`, `WIFI` | 와이파이 | exact dictionary |
-| `LTE` | 엘티이 | always with boundary |
-| `5G` | 파이브지 | technical context/profile |
-| `4G` | 포지 | technical context/profile |
-| `3G` | 쓰리지 | technical context/profile |
-| `NFC` | 엔에프씨 | always with boundary |
-| `RFID` | 알에프아이디 | always with boundary |
-| `QR` | 큐알 | context recommended |
-| `SIM` | 심 | telecom context recommended |
-| `USIM` | 유심 | telecom context recommended |
-
-### 35.8 File format / extension dictionary
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `PDF`, `.pdf` | 피디에프 | boundary or file/path context |
-| `DOC` | 디오씨 | file context |
-| `DOCX` | 닥스 | file context |
-| `XLS` | 엑스엘에스 | file context |
-| `XLSX` | 엑스엘에스엑스 | file context |
-| `PPT` | 피피티 | file context |
-| `PPTX` | 피피티엑스 | file context |
-| `TXT` | 티엑스티 | file context |
-| `MD` | 엠디 | file context |
-| `RTF` | 알티에프 | file context |
-| `HWP` | 에이치더블유피 | Korean doc context |
-| `JPG` | 제이피지 | file context |
-| `JPEG` | 제이펙 | file context |
-| `PNG` | 피엔지 | file context |
-| `GIF` | 지프 | file context |
-| `WEBP` | 웹피 | file context |
-| `SVG` | 에스브이지 | file context |
-| `MP3` | 엠피쓰리 | file/media context |
-| `MP4` | 엠피포 | file/media context |
-| `AVI` | 에이브이아이 | file/media context |
-| `MOV` | 엠오브이 | file/media context |
-| `MKV` | 엠케이브이 | file/media context |
-| `WAV` | 웨이브 | file/media context |
-| `FLAC` | 플랙 | file/media context |
-| `ZIP` | 집 | file context |
-| `RAR` | 라 | file context |
-| `7z` | 세븐집 | file context |
-| `TAR` | 타르 | file context |
-| `GZ` | 지지 | file context |
-| `EXE` | 이엑스이 | file context |
-| `APK` | 에이피케이 | file context |
-| `IPA` | 아이피에이 | file context |
-| `DMG` | 디엠지 | file context |
-| `ISO` | 아이에스오 | file or standard context |
-
-`MD`, `MOV`, `ISO`, `ZIP`은 일반 단어/약어와 충돌 가능하므로 확장자 점 또는 file context를 우선한다.
-
-### 35.9 Media / broadcast dictionary
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `HD` | 에이치디 | media context |
-| `FHD` | 에프에이치디 | media context |
-| `QHD` | 큐에이치디 | media context |
-| `UHD` | 유에이치디 | media context |
-| `4K` | 포케이 | media/display context |
-| `8K` | 에이트케이 | media/display context |
-| `HDR` | 에이치디알 | media context |
-| `SDR` | 에스디알 | media context |
-| `FPS`, `fps` | 에프피에스 | numeric prefix or media/game context |
-| `VOD` | 브이오디 | media context |
-| `OTT` | 오티티 | media context |
-| `IPTV` | 아이피티비 | media context |
-| `EPG` | 이피지 | broadcast context |
-| `DMB` | 디엠비 | broadcast context |
-| `FM` | 에프엠 | broadcast context |
-| `AM` | 에이엠 | broadcast/time ambiguity, context |
-| `TV` | 티비 | boundary/context |
-| `MC` | 엠씨 | media context |
-| `BGM` | 비지엠 | media context |
-| `OST` | 오에스티 | media context |
-| `CG` | 씨지 | media context |
-| `VFX` | 브이에프엑스 | media context |
-| `SFX` | 에스에프엑스 | media context |
-| `K-POP` | 케이팝 | always with boundary |
-| `K-푸드` | 케이푸드 | K-Hangul lexical prefix |
-| `K-뷰티` | 케이뷰티 | K-Hangul lexical prefix |
-
-### 35.10 Finance / economy / news dictionary
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `KOSPI` | 코스피 | always with boundary |
-| `KOSDAQ` | 코스닥 | always with boundary |
-| `NASDAQ` | 나스닥 | finance context |
-| `S&P` | 에스앤피 | finance context |
-| `DOW` | 다우 | finance context |
-| `GDP` | 지디피 | finance/economy context |
-| `GNP` | 지엔피 | finance/economy context |
-| `CPI` | 씨피아이 | finance/economy context |
-| `PPI` | 피피아이 | finance/economy context |
-| `PMI` | 피엠아이 | finance/economy context |
-| `FOMC` | 에프오엠씨 | finance/economy context |
-| `Fed` | 연준 | profile/context |
-| `ECB` | 이씨비 | finance context |
-| `BOJ` | 비오제이 | finance context |
-| `BOK` | 비오케이 | Korean finance context |
-| `IMF` | 아이엠에프 | finance/institution context |
-| `WTO` | 더블유티오 | institution context |
-| `OECD` | 오이씨디 | institution context |
-| `WHO` | 더블유에이치오 | institution context |
-| `UN` | 유엔 | institution context |
-| `EU` | 이유 | institution context |
-| `ETF` | 이티에프 | finance context |
-| `ETN` | 이티엔 | finance context |
-| `IPO` | 아이피오 | finance context |
-| `ROE` | 알오이 | finance context |
-| `PER` | 피이알 | finance context |
-| `PBR` | 피비알 | finance context |
-| `EPS` | 이피에스 | finance context |
-| `BPS` | 비피에스 | finance context |
-| `YoY` | 와이오와이 | finance context |
-| `MoM` | 엠오엠 | finance context |
-| `QoQ` | 큐오큐 | finance context |
-
-`PER`, `BPS`, `EPS`는 단위/기술 약어와 충돌할 수 있으므로 finance context가 필요하다.
-
-### 35.11 Institution / country / sports dictionary
-
-| 입력 | reading | 조건 |
-|---|---|---|
-| `KR` | 케이알 | country/code context |
-| `KOR` | 코리아 / 케이오알 | profile |
-| `US` | 미국 / 유에스 | context/profile |
-| `USA` | 유에스에이 | context |
-| `UK` | 영국 / 유케이 | context/profile |
-| `JP` | 제이피 | country/code context |
-| `JPN` | 재팬 / 제이피엔 | profile |
-| `CN` | 씨엔 | country/code context |
-| `CHN` | 차이나 / 씨에이치엔 | profile |
-| `ASEAN` | 아세안 | institution context |
-| `NATO` | 나토 | institution context |
-| `OPEC` | 오펙 | institution context |
-| `IAEA` | 아이에이이에이 | institution context |
-| `IOC` | 아이오씨 | sports/institution context |
-| `FIFA` | 피파 | sports context |
-| `AFC` | 에이에프씨 | sports context |
-| `KBO` | 케이비오 | sports context |
-| `KBL` | 케이비엘 | sports context |
-| `KFA` | 케이에프에이 | sports context |
+- Managed dictionary entries are fixed lexical exceptions, not broad acronym,
+  code, slash, hyphen, or numeric fallback.
+- The canonical surface/reading inventory, status labels, pending/conflict
+  decisions, exact slash compounds, and implementation contract live in
+  `docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+- `current` and `current_with_condition` entries require span production
+  coverage. Adding or changing a managed dictionary reading requires updating
+  the managed dictionary policy and its parity tests in the same change.
+- Managed dictionary claims run before acronym/code/numeric fallback and must
+  full-claim only at safe token boundaries.
+- Protected spans remain preserve-first: path, URL, email, JSON-like,
+  backtick/fenced code, and square-bracket internal content must not be
+  rewritten by dictionary reentry.
+- Existing unit, currency, file-size, public number, event, jamo, symbol, and
+  roman-numeral sections remain owner-specific policy where they are not fixed
+  managed lexical exceptions.
 
 ### 35.12 Public number dictionary
 
@@ -9988,45 +9628,13 @@ URL/path/email 내부 기호는 preserve
 
 로마 숫자는 모델명, 챕터, 게임, 영화 제목에서 읽기가 달라지므로 기본 preserve가 안전하다. Unicode roman numeral 문자만 context가 있으면 처리한다.
 
-### 35.17 Immediately addable S0 candidates
+### 35.17 Managed dictionary candidate status
 
-조건 없이 boundary만 맞으면 추가해도 비교적 안전한 항목이다.
-
-```text
-AI -> 에이아이
-API -> 에이피아이
-TTS -> 티티에스
-STT -> 에스티티
-ASR -> 에이에스알
-OCR -> 오씨알
-NLP -> 엔엘피
-LLM -> 엘엘엠
-GPT -> 지피티
-PDF -> 피디에프
-HTML -> 에이치티엠엘
-CSS -> 씨에스에스
-JSON -> 제이슨
-XML -> 엑스엠엘
-CSV -> 씨에스브이
-HTTP -> 에이치티티피
-HTTPS -> 에이치티티피에스
-URL -> 유알엘
-URI -> 유알아이
-USB -> 유에스비
-HDMI -> 에이치디엠아이
-SSD -> 에스에스디
-HDD -> 에이치디디
-CPU -> 씨피유
-GPU -> 지피유
-KOSPI -> 코스피
-KOSDAQ -> 코스닥
-IMF -> 아이엠에프
-OECD -> 오이씨디
-WTO -> 더블유티오
-WHO -> 더블유에이치오
-UN -> 유엔
-EU -> 이유
-```
+이전 문서의 "immediately addable" 목록은 더 이상 canonical inventory가
+아니다. fixed lexical candidate의 승격 여부와 reading은
+`docs/policies/TTS_Preprocessor_managed_dictionary.md`의 status taxonomy에
+따른다. `current`로 승격된 항목만 span production과 parity test의 구현
+대상이다.
 
 ### 35.18 Dictionary test requirements
 

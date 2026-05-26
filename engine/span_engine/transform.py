@@ -19,6 +19,7 @@ from engine.span_engine.language_gate import (
     has_hyphenated_english_multi_colon_context,
     has_hangul_syllable,
     is_code_like_line,
+    is_managed_dictionary_phrase,
     is_non_korean_prose_line,
     is_standalone_supported_token,
     transform_with_language_gate,
@@ -122,6 +123,8 @@ def _transform_with_language_gate_trace(
             render_pieces=[_preserve_render_piece(text, 0, len(text))],
             trace=None,
         )
+    if not has_hangul_syllable(text) and is_managed_dictionary_phrase(text):
+        return _transform_core_with_trace(text)
     if not has_hangul_syllable(text) and is_non_korean_prose_line(text):
         if has_hyphenated_english_multi_colon_context(text):
             return _transform_core_with_trace(text)

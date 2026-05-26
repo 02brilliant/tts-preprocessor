@@ -236,7 +236,7 @@ def claim_surfaces(
 
     candidates: list[SurfaceCandidate] = []
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_dictionary(tokens, registry, excluded_ranges))
+    candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
@@ -288,6 +288,7 @@ def claim_surfaces(
 
 
 def _claim_dictionary(
+    raw_text: str,
     tokens: list[SpanToken],
     registry: SurfaceClaimRegistry,
     excluded_ranges: list[BracketRange],
@@ -305,6 +306,7 @@ def _claim_dictionary(
                 span = SourceSpan(token.span.start + start, token.span.start + end)
                 if (
                     _safe_fixed_dictionary_boundary(token.raw, start, end)
+                    and _safe_numeric_dictionary_boundary(raw_text, span, surface)
                     and not _span_overlaps_excluded_range(span, excluded_ranges)
                     and registry.can_claim(span, "dictionary")
                 ):
@@ -449,6 +451,20 @@ def _claim_candidate(
 def _safe_fixed_dictionary_boundary(raw: str, start: int, end: int) -> bool:
     prev_char = raw[start - 1] if start > 0 else None
     next_char = raw[end] if end < len(raw) else None
+    if prev_char is not None and _is_fixed_dictionary_identifier_neighbor(prev_char):
+        return False
+    if next_char is not None and _is_fixed_dictionary_identifier_neighbor(next_char):
+        return False
+    return True
+
+
+def _safe_numeric_dictionary_boundary(
+    raw_text: str, span: SourceSpan, surface: str
+) -> bool:
+    if not surface[:1].isdigit():
+        return True
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
     if prev_char is not None and _is_fixed_dictionary_identifier_neighbor(prev_char):
         return False
     if next_char is not None and _is_fixed_dictionary_identifier_neighbor(next_char):

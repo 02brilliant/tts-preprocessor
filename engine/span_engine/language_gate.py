@@ -9,6 +9,7 @@ from engine.span_engine.currency import (
     CURRENCY_SYMBOL_READINGS,
     KOREAN_CURRENCY_SUFFIX_READINGS,
 )
+from engine.span_engine.lexicon import DICTIONARY_READINGS
 from engine.span_engine.protected import (
     is_standalone_protected_literal,
     mask_protected_literals,
@@ -200,6 +201,18 @@ def is_standalone_supported_token(text: str) -> bool:
     return any(pattern.fullmatch(stripped) for pattern in _STANDALONE_PATTERNS)
 
 
+def is_managed_dictionary_phrase(text: str) -> bool:
+    if not isinstance(text, str):
+        raise TypeError("text must be str")
+    stripped = text.strip()
+    if not stripped or has_hangul_syllable(stripped):
+        return False
+    parts = stripped.split()
+    if len(parts) < 2:
+        return False
+    return all(part in DICTIONARY_READINGS for part in parts)
+
+
 def is_numeric_list_line(text: str) -> bool:
     if not isinstance(text, str):
         raise TypeError("text must be str")
@@ -278,6 +291,8 @@ def transform_with_language_gate(
     if stripped and is_standalone_supported_token(stripped):
         return core_transform(text)
     if not has_hangul_syllable(text):
+        if is_managed_dictionary_phrase(text):
+            return core_transform(text)
         if is_non_korean_prose_line(text):
             if has_hyphenated_english_multi_colon_context(text):
                 return core_transform(text)
@@ -388,6 +403,7 @@ __all__ = [
     "has_hyphenated_english_multi_colon_context",
     "has_hangul_syllable",
     "is_code_like_line",
+    "is_managed_dictionary_phrase",
     "is_numeric_list_line",
     "is_non_korean_prose_line",
     "is_standalone_supported_token",
