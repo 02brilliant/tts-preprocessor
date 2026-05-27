@@ -75,10 +75,9 @@ ssh brilliant@10.20.10.162 'ls -lh ~/tts-preprocessor/app/downloads/'   # 서버
 cd ~/tts-preprocessor
 source .venv/bin/activate
 
-PYTHONPATH=. ./.venv/bin/pytest -q -s tests ## 로컬 개발 테스트
+# PYTHONPATH=. ./.venv/bin/pytest -q -s tests ## 로컬 개발 테스트 전체 실행
 
-bash scripts/build_binary.sh
-python scripts/release.py
+python scripts/release.py ## 테스트 실행 포함
 
 bash scripts/start_server.sh    # 로컬 서버 시작 [http://localhost:8010/web/]
 bash scripts/stop_server.sh     # 로컬 서버 종료

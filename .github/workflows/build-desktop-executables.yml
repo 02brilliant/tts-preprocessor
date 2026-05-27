@@ -3,6 +3,9 @@ name: Build desktop executables
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build ${{ matrix.target }}
@@ -39,7 +42,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # No root requirements.txt; engine runtime is stdlib-only.
-          pip install pyinstaller
+          pip install --no-cache-dir pyinstaller
 
       - name: Create StrEnum runtime hook (Python 3.10)
         shell: bash
