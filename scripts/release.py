@@ -66,7 +66,12 @@ def run_semantic_binary_probes(binary_path: Path, label: str) -> subprocess.Comp
 def run_build() -> subprocess.CompletedProcess[str]:
     python_bin = str(PYTHON_BIN if PYTHON_BIN.exists() else sys.executable)
     return subprocess.run(
-        [python_bin, "scripts/build_package.py"],
+        [
+            python_bin,
+            "scripts/build_package.py",
+            "--binary",
+            "dist/tts_preprocessor",
+        ],
         cwd=ROOT_DIR,
         capture_output=True,
         text=True,

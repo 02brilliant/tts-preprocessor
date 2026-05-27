@@ -3,13 +3,20 @@
 ## 1. 문서 목적과 범위
 
 이 문서는 TTS Preprocessor의 **런타임 실행 경로**, **아키텍처 개요**, **Linux 운영 빌드/릴리스/배포**, **Windows·macOS 보조 빌드**, **웹 다운로드**, **배포 후 검증**을 한곳에 정리한다.
+운영자용 runtime/deployment runbook으로서 실제 실행 경로, 빌드, 릴리스,
+배포, 검증 명령, artifact 업로드 절차를 설명한다.
 
+- 배포/runtime 정책의 authoritative 기준은 `docs/policies/TTS_Preprocessor_deployment_policy.md`이다.
+- 이 문서는 정책을 새로 정의하지 않고 deployment policy를 운영 절차로 풀어 쓴다.
+- 충돌 시 source-free runtime, binary/API contract, validation ownership 판단은 deployment policy를 우선한다.
 - 숫자·기호·단위 등 **변환 정책의 세부 규칙**은 `docs/policies/` 아래 policy 문서가 기준이다.
 - 파이프라인 단계 개요만 필요하면 `docs/pipeline_architecture.md`를 참고한다.
 - Windows·macOS GHA 빌드 절차만 빠르게 볼 때는 `docs/build_desktop_executables.md`를 참고할 수 있다.
 
 ## 2. 핵심 아키텍처 원칙
 
+아래 표는 운영자가 런타임 동작을 이해하기 위한 요약이다. 규범적 정책은
+`docs/policies/` 아래 policy 문서와 deployment policy를 기준으로 한다.
 제품 런타임은 **한글 원문 불변**을 전제로, 숫자·기호 등만 구조적으로 읽는다.
 
 | 원칙 | 요약 |
@@ -39,6 +46,12 @@
 | Desktop 바이너리 (GHA) | `tts-preprocessor.exe` / `tts-preprocessor` | Linux 운영 패키지와 **파일명·빌드 경로 분리** |
 
 `bin/build_binary_entrypoint.py`는 기본 `--rollout-mode span_default`로 `engine.main.transform_with_rollout`을 호출한다. 이 경로는 span 엔진 변환·comma adapter·bracket filter 후 `split_paragraphs()`로 문단을 나눈다. API production 경로는 소스 import 없이 패키지 바이너리만 실행한다 (`api/server.py` 주석).
+
+`start_server.sh`는 `TTS_PREPROCESSOR_BINARY`가 이미 설정되어 있으면 그 값을
+사용하고, 없으면 `packages/tts-preprocessor/bin/tts_preprocessor`를 기본
+런타임 바이너리로 설정해 `api.server`를 시작한다. `api.binary_runtime.py`의
+탐색 순서는 로컬 개발/검증 편의를 포함하지만, 운영 절차는 패키지 바이너리를
+명시적으로 주입하는 `start_server.sh` 흐름을 기준으로 한다.
 
 ## 4. Linux 운영 빌드·릴리스·배포
 
@@ -73,6 +86,10 @@ pyinstaller \
 ### 4.3 `scripts/release.py` (로컬 릴리스)
 
 릴리스 패키지는 배포 대상 Linux와 호환되는 빌드 환경에서 실행한다. 운영 서버 배포 기준은 `buildenv`이며, 로컬 `.venv` 실행은 개발/검증용으로만 취급한다.
+WSL Ubuntu 24.04 / glibc 2.39에서 `python scripts/release.py`가 성공해도
+그 결과는 로컬 개발/검증용 release 성공이다. 운영 서버용 Linux binary
+호환성은 Ubuntu 22.04 / glibc 2.35 `buildenv`에서의 remote
+build/package flow를 기준으로 한다.
 
 ```bash
 python scripts/release.py
@@ -81,8 +98,31 @@ python scripts/release.py
 1. `pytest -m "not binary_runtime"` — 소스 테스트
 2. `bash scripts/build_binary.sh` — `dist/tts_preprocessor`
 3. `pytest -m binary_runtime` — 바이너리 런타임 테스트
-4. `python scripts/build_package.py` — 패키징
+4. `python scripts/build_package.py --binary dist/tts_preprocessor` — 준비된 dist 바이너리 패키징
 5. `scripts/probes/run_semantic_probes.py --runtime binary --binary packages/tts-preprocessor/bin/tts_preprocessor` — **core** suite (기본값)
+
+`release.py`는 로컬 release orchestration을 담당하며 binary build 책임을
+단독 소유한다. `build_binary.sh`는 release 중 한 번만 실행된다.
+
+`scripts/build_package.py`는 packaging-only 스크립트다.
+
+- 기본 입력 바이너리: `dist/tts_preprocessor`
+- 대체 입력: `--binary <path>`
+- 입력 바이너리를 `packages/tts-preprocessor/bin/tts_preprocessor`로 복사
+- `docs/Release_Package_README.txt`를 `packages/tts-preprocessor/README.txt`로 포함
+- `downloads/tts-preprocessor.zip` 생성
+- `.py` 소스, `engine/`, `docs/`, `tests/` 트리가 package payload에 들어가면 실패
+- binary build를 직접 실행하지 않음
+
+입력 바이너리가 없으면 먼저 `bash scripts/build_binary.sh`를 실행하거나
+`--binary <path>`를 넘기라는 에러로 실패한다.
+
+최근 로컬 수동 검증에서는 WSL Ubuntu 24.04 / glibc 2.39 환경에서
+`python scripts/build_package.py`가 준비된 `dist/tts_preprocessor`를 패키징해
+`downloads/tts-preprocessor.zip`을 생성했고, `python scripts/release.py`가
+source tests, `build_binary.sh`, dist binary smoke, binary runtime tests,
+packaging, packaged binary core semantic probe를 순서대로 통과했다. 이 결과는
+로컬 개발/검증 결과이며 운영 서버용 Linux binary 호환성 판단은 아니다.
 
 **산출물**
 
@@ -213,6 +253,9 @@ bash scripts/check_server.sh
 ### 7.2 Semantic regression (별도 실행)
 
 Canonical runner: `scripts/probes/run_semantic_probes.py`
+Feature expectation ownership과 source-free runtime 판단 기준은
+`docs/policies/TTS_Preprocessor_deployment_policy.md`를 따른다. 이 절은 운영자가
+실제로 실행할 probe suite와 명령을 정리한다.
 
 | suite | probe 파일 |
 |-------|------------|
@@ -270,9 +313,11 @@ python scripts/release.py
 ## 9. 운영 금지·주의 사항
 
 - Linux **운영** 바이너리를 WSL Ubuntu 24.04(glibc 2.39)에서 빌드해 서버에 올리지 않는다.
+- WSL/glibc 2.39에서의 `python scripts/release.py` 성공은 로컬 검증 결과로만 취급한다.
 - desktop workflow에 **Linux job**을 추가하거나 push/tag에 연결하지 않는다.
 - Windows·macOS artifact → `downloads/` 업로드는 **수동**이다.
 - `check_server.sh`만으로 semantic 정상성을 판단하지 않는다.
 - `deploy_server.sh` / 원격 `build_remote_package.sh`는 `app/downloads/`를 비운 뒤 Linux zip만 재생성한다. desktop zip은 재업로드가 필요할 수 있다.
 - macOS 바이너리는 서명·공증 없이 배포되므로 Gatekeeper 경고가 날 수 있다.
 - API·제품 실행 경로에서 `engine/` 소스를 직접 import하지 않는다. 소스 변경 후에는 바이너리를 반드시 재빌드한다.
+- old binary가 `--rollout-mode` 또는 `--include-debug`를 지원하지 않으면 운영에서는 source fallback을 켜지 말고 바이너리를 재빌드/교체한다. `TTS_PREPROCESSOR_ALLOW_SOURCE_ROLLOUT_FALLBACK`는 local/dev escape hatch이며 production에서 사용하지 않는다.

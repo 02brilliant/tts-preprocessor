@@ -106,3 +106,19 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     assert "rm -rf \"$BUILD_SRC_DIR\"" in remote_build_script
     assert "subprocess.run" in binary_runtime
     assert "TTS_PREPROCESSOR_BINARY" in binary_runtime
+
+
+def test_phase31a_build_package_is_packaging_only() -> None:
+    build_package_script = Path("scripts/build_package.py").read_text(encoding="utf-8")
+    release_script = Path("scripts/release.py").read_text(encoding="utf-8")
+
+    assert "BUILD_BINARY_SCRIPT" not in build_package_script
+    assert "subprocess.run" not in build_package_script
+    assert "def build_binary" not in build_package_script
+    assert "--binary" in build_package_script
+    assert "dist/tts_preprocessor" in build_package_script
+
+    assert "build_binary.sh" in release_script
+    assert "\"scripts/build_package.py\"" in release_script
+    assert "\"--binary\"" in release_script
+    assert "\"dist/tts_preprocessor\"" in release_script

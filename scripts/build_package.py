@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import argparse
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -12,8 +12,7 @@ PACKAGES_DIR = ROOT_DIR / "packages"
 DOWNLOADS_DIR = ROOT_DIR / "downloads"
 PACKAGE_NAME = "tts-preprocessor"
 ARCHIVE_NAME = "tts-preprocessor.zip"
-BUILD_BINARY_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
-BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
+DEFAULT_BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
 README_TEMPLATE_PATH = ROOT_DIR / "docs" / "Release_Package_README.txt"
 
 
@@ -24,39 +23,40 @@ def build_readme() -> str:
     return README_TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
-def build_package() -> Path:
+def build_package(binary_path: Path = DEFAULT_BINARY_PATH) -> Path:
     package_dir = PACKAGES_DIR / PACKAGE_NAME
     archive_path = DOWNLOADS_DIR / ARCHIVE_NAME
 
-    build_binary()
+    prepared_binary = resolve_binary_path(binary_path)
+    require_prepared_binary(prepared_binary)
     remove_previous_artifacts(package_dir, archive_path)
-    create_package_structure(package_dir)
+    create_package_structure(package_dir, prepared_binary)
     validate_package_structure(package_dir)
     create_archive(package_dir, archive_path)
 
     return archive_path
 
 
-def build_binary() -> None:
-    if not BUILD_BINARY_SCRIPT.exists():
-        raise FileNotFoundError(f"Missing build script: {BUILD_BINARY_SCRIPT}")
+def resolve_binary_path(binary_path: Path) -> Path:
+    expanded = binary_path.expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return ROOT_DIR / expanded
 
-    result = subprocess.run(
-        ["bash", str(BUILD_BINARY_SCRIPT)],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-    )
 
-    if result.stdout:
-        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
-    if result.stderr:
-        print(result.stderr, file=sys.stderr, end="" if result.stderr.endswith("\n") else "\n")
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT_DIR))
+    except ValueError:
+        return str(path)
 
-    if result.returncode != 0:
-        raise RuntimeError("Binary build failed.")
-    if not BINARY_PATH.exists():
-        raise FileNotFoundError(f"Binary not found: {BINARY_PATH}")
+
+def require_prepared_binary(binary_path: Path) -> None:
+    if not binary_path.is_file():
+        raise FileNotFoundError(
+            f"Missing binary: {display_path(binary_path)}\n"
+            "Run `bash scripts/build_binary.sh` first, or pass `--binary <path>`."
+        )
 
 
 def remove_previous_artifacts(current_package_dir: Path, current_archive_path: Path) -> None:
@@ -80,7 +80,7 @@ def remove_previous_artifacts(current_package_dir: Path, current_archive_path: P
             path.unlink()
 
 
-def create_package_structure(package_dir: Path) -> None:
+def create_package_structure(package_dir: Path, binary_path: Path) -> None:
     if package_dir.exists():
         shutil.rmtree(package_dir)
 
@@ -89,7 +89,7 @@ def create_package_structure(package_dir: Path) -> None:
 
     (package_dir / "README.txt").write_text(build_readme(), encoding="utf-8")
     binary_target = bin_dir / "tts_preprocessor"
-    shutil.copy2(BINARY_PATH, binary_target)
+    shutil.copy2(binary_path, binary_target)
     binary_target.chmod(0o755)
 
 
@@ -122,13 +122,28 @@ def create_archive(package_dir: Path, archive_path: Path) -> None:
             zip_file.write(path, path.relative_to(package_dir.parent))
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) > 2:
-        print("Usage: python scripts/build_package.py [ignored-version]", file=sys.stderr)
-        return 1
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Package an already-built TTS preprocessor binary."
+    )
+    parser.add_argument(
+        "ignored_version",
+        nargs="?",
+        help="Deprecated compatibility argument; ignored.",
+    )
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=DEFAULT_BINARY_PATH,
+        help="Prepared binary to package. Defaults to dist/tts_preprocessor.",
+    )
+    return parser.parse_args(argv[1:])
 
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
     try:
-        archive_path = build_package()
+        archive_path = build_package(args.binary)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1

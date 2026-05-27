@@ -32,8 +32,8 @@ WSL에서 만든 Linux 바이너리는 운영 서버 glibc와 맞지 않을 수 
 cd ~/tts-preprocessor
 source .venv/bin/activate
 
-bash scripts/build_binary.sh    # 로컬 릴리즈 바이너리 생성 (서버 배포만 필요할 경우 생략 가능)
 python scripts/release.py       # 로컬 릴리즈 패키지 생성 (서버 배포만 필요할 경우 생략 가능)
+# (release.py 내부에서 scripts/build_binary.sh & scripts/build_package.py 실행 포함)
 
 bash scripts/deploy_server.sh   # 원격 buildsrc에서 패키지 생성 후 배포
 bash scripts/check_server.sh    # health/sanity 검증
