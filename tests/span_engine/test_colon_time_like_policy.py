@@ -79,6 +79,66 @@ def test_ambiguous_time_like_ratio_score_context_reads_as_dae(text: str, expecte
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
+        (
+            "회의 시간은 오후 3시 20분, 13:05, 10:30, 23:59이다.",
+            "회의 시간은 오후 세 시 이십분, 십삼시 오분, 열시 삼십분, 이십삼시 오십구분이다.",
+        ),
+        (
+            "회의 시간은 13:05, 10:30, 23:59이다.",
+            "회의 시간은 십삼시 오분, 열시 삼십분, 이십삼시 오십구분이다.",
+        ),
+        (
+            "회의는 13:05, 10:30, 23:59에 진행된다.",
+            "회의는 십삼시 오분, 열시 삼십분, 이십삼시 오십구분에 진행된다.",
+        ),
+        (
+            "일정은 09:30, 14:00, 18:30입니다.",
+            "일정은 아홉시 삼십분, 십사시, 십팔시 삼십분입니다.",
+        ),
+    ],
+)
+def test_comma_separated_time_list_with_explicit_context_reads_as_time(
+    text: str, expected: str
+) -> None:
+    assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("13:40, 24:50", "13:40, 24:50"),
+        ("메모는 10:30, 23:59", "메모는 10:30, 23:59"),
+        ("비율은 16:9, 4:3이다", "비율은 십육 대 구, 사 대 삼이다"),
+        ("요한복음 3:16, 4:12", "요한복음 3:16, 4:12"),
+        ("line 10:20, 30:40", "line 10:20, 30:40"),
+        ("version 1:23, 2:34", "version 1:23, 2:34"),
+    ],
+)
+def test_comma_separated_time_like_list_preserve_and_context_regressions(
+    text: str, expected: str
+) -> None:
+    assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("`13:05, 10:30`", "`13:05, 10:30`"),
+        ('{"times":"13:05, 10:30"}', '{"times":"13:05, 10:30"}'),
+        ("/path/13:05,10:30/log", "/path/13:05,10:30/log"),
+        ("https://example.com?q=13:05,10:30", "https://example.com?q=13:05,10:30"),
+        ("[13:05, 10:30]", "13:05, 10:30"),
+    ],
+)
+def test_comma_separated_time_like_list_protected_contexts_preserve(
+    text: str, expected: str
+) -> None:
+    assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
         ("25:30", "이십오 대 삼십"),
         ("3:4", "삼 대 사"),
         ("13:5", "십삼 대 오"),

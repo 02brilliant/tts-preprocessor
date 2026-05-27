@@ -288,6 +288,34 @@ Current implementation preserves ambiguous no-context surfaces, reads explicit
 time-postposition cases as time, and reads ambiguous ratio/score context as
 `대`.
 
+#### 9.4.1 Comma-separated HH:MM time-list context
+
+Same-sentence comma-separated `H:MM` / `HH:MM` lists may share time context only
+through the time owner's explicit time-list context gate. This is not a new
+broad colon owner, and it must not route through broad `N:M`.
+
+Allowed time-list context is limited to explicit time evidence such as a nearby
+schedule/time keyword, a time prefix/postposition, or a preceding already
+claimed Korean time expression in the same comma list:
+
+```text
+회의 시간은 13:05, 10:30, 23:59이다 -> 회의 시간은 십삼시 오분, 열시 삼십분, 이십삼시 오십구분이다
+회의는 13:05, 10:30, 23:59에 진행된다 -> 회의는 십삼시 오분, 열시 삼십분, 이십삼시 오십구분에 진행된다
+일정은 09:30, 14:00, 18:30입니다 -> 일정은 아홉시 삼십분, 십사시, 십팔시 삼십분입니다
+```
+
+Comma delimiters remain raw, and each `H:MM` / `HH:MM` item is independently
+claimed by the time owner. No-context lists preserve:
+
+```text
+13:40, 24:50 -> 13:40, 24:50
+메모는 10:30, 23:59 -> 메모는 10:30, 23:59
+```
+
+Ratio/score, scripture-like, line/case/version/file, protected, URL/path/JSON/
+backtick/code-like contexts remain excluded and keep their existing preserve or
+owner behavior.
+
 ### 9.5 Non-time-like N:M fallback
 
 Non-time-like valid `N:M` surfaces can read as `N 대 M` when they are not inside

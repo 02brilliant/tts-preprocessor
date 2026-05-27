@@ -50,6 +50,16 @@ TIME_EVENT_KEYWORDS = (
     "시각",
 )
 DATE_CONTEXT_KEYWORDS = ("오늘", "내일", "어제", "모레", "다음날", "당일")
+TIME_LIST_CONTEXT_KEYWORDS = TIME_EVENT_KEYWORDS + (
+    "시간",
+    "일정",
+    "시간표",
+    "편성표",
+    "알림",
+    "예약시간",
+    "시작시간",
+    "종료시간",
+)
 SCORE_CONTEXT_KEYWORDS = (
     "score",
     "스코어",
@@ -228,17 +238,26 @@ def scan_time_candidates(
     candidates: list[SurfaceCandidate] = []
     colon_matches = list(_COLON_TIME_RE.finditer(sanitized))
     multiple_colon_times = len(colon_matches) > 1
+    time_list_spans = _comma_time_list_context_spans(sanitized, colon_matches)
     for match in colon_matches:
         span = SourceSpan(match.start(), match.end())
-        if multiple_colon_times:
-            continue
         if _is_part_of_seconds_time(sanitized, span):
+            continue
+        span_key = (span.start, span.end)
+        if multiple_colon_times and span_key not in time_list_spans:
             continue
         hour = int(match.group(1))
         minute = int(match.group(2))
-        gate = evaluate_time_colon_gate(
-            sanitized, span, hour, minute, strong_context_text=raw_text
-        )
+        if span_key in time_list_spans:
+            gate = {
+                "decision": "pass",
+                "reason": "time_list_context",
+                "raw": sanitized[span.start : span.end],
+            }
+        else:
+            gate = evaluate_time_colon_gate(
+                sanitized, span, hour, minute, strong_context_text=raw_text
+            )
         if gate["decision"] != "pass":
             continue
         reading = (
@@ -438,6 +457,149 @@ def _valid_strong_time_like_context(raw_text: str, span: SourceSpan) -> bool:
     return False
 
 
+def _comma_time_list_context_spans(
+    raw_text: str, matches: list[re.Match[str]]
+) -> set[tuple[int, int]]:
+    if len(matches) < 2:
+        return set()
+    allowed: set[tuple[int, int]] = set()
+    group: list[re.Match[str]] = []
+    previous: re.Match[str] | None = None
+    for match in matches:
+        if previous is None:
+            group = [match]
+        elif _is_comma_time_list_delimiter(raw_text[previous.end() : match.start()]):
+            group.append(match)
+        else:
+            allowed.update(_allowed_time_list_group_spans(raw_text, group))
+            group = [match]
+        previous = match
+    allowed.update(_allowed_time_list_group_spans(raw_text, group))
+    return allowed
+
+
+def _allowed_time_list_group_spans(
+    raw_text: str, group: list[re.Match[str]]
+) -> set[tuple[int, int]]:
+    if len(group) < 2 or not _valid_time_list_group(raw_text, group):
+        return set()
+    if not _has_explicit_time_list_context(raw_text, group):
+        return set()
+    return {(match.start(), match.end()) for match in group}
+
+
+def _valid_time_list_group(raw_text: str, group: list[re.Match[str]]) -> bool:
+    for match in group:
+        span = SourceSpan(match.start(), match.end())
+        if _is_part_of_seconds_time(raw_text, span):
+            return False
+        if _score_or_ratio_context(raw_text, span):
+            return False
+        if _media_duration_context(raw_text, span):
+            return False
+        if _has_explicit_code_context(raw_text, span):
+            return False
+        if not is_valid_time(int(match.group(1)), int(match.group(2))):
+            return False
+    return True
+
+
+def _has_explicit_time_list_context(
+    raw_text: str, group: list[re.Match[str]]
+) -> bool:
+    first = group[0]
+    last = group[-1]
+    segment_start = _time_list_segment_start(raw_text, first.start())
+    segment_end = _time_list_segment_end(raw_text, last.end())
+    segment = raw_text[segment_start:segment_end]
+    if _has_time_list_keyword_context(segment):
+        return True
+    if _has_direct_time_list_prefix(raw_text, first):
+        return True
+    if raw_text[last.end() :].startswith(TIME_POSTPOSITIONS):
+        return True
+    return _has_preceding_korean_time_list_context(
+        raw_text, segment_start, first.start()
+    )
+
+
+def _is_comma_time_list_delimiter(text: str) -> bool:
+    return re.fullmatch(r"\s*[,，]\s*", text) is not None
+
+
+def _time_list_segment_start(raw_text: str, start: int) -> int:
+    index = start - 1
+    while index >= 0:
+        if raw_text[index] in ".!?;。！？\n\r":
+            return index + 1
+        index -= 1
+    return 0
+
+
+def _time_list_segment_end(raw_text: str, end: int) -> int:
+    index = end
+    while index < len(raw_text):
+        if raw_text[index] in ".!?;。！？\n\r":
+            return index
+        index += 1
+    return len(raw_text)
+
+
+def _has_time_list_keyword_context(text: str) -> bool:
+    for keyword in sorted(TIME_LIST_CONTEXT_KEYWORDS, key=len, reverse=True):
+        start = text.find(keyword)
+        while start != -1:
+            end = start + len(keyword)
+            if _valid_time_list_keyword_tail(text[end:]):
+                return True
+            start = text.find(keyword, start + 1)
+    return False
+
+
+def _valid_time_list_keyword_tail(text: str) -> bool:
+    if not text:
+        return True
+    if text[0].isspace() or text[0] in {",", "，", ".", "!", "?", ";"}:
+        return True
+    return text.startswith(
+        (
+            "은",
+            "는",
+            "을",
+            "를",
+            "이",
+            "가",
+            "에",
+            "의",
+            "로",
+            "으로",
+            "부터",
+            "까지",
+            "에서",
+            "입니다",
+            "이다",
+        )
+    )
+
+
+def _has_direct_time_list_prefix(raw_text: str, first: re.Match[str]) -> bool:
+    prefix = _time_prefix(raw_text[: first.start()])
+    if prefix is None:
+        return False
+    return 1 <= int(first.group(1)) <= 12
+
+
+def _has_preceding_korean_time_list_context(
+    raw_text: str, segment_start: int, list_start: int
+) -> bool:
+    left = raw_text[segment_start:list_start]
+    for match in reversed(list(_KOREAN_TIME_RE.finditer(left))):
+        if _is_comma_time_list_delimiter(left[match.end() :]):
+            return True
+        break
+    return False
+
+
 def build_time_gate_logs(
     raw_text: str, excluded_ranges: list[BracketRange] | None = None
 ) -> list[TraceLogEntry]:
@@ -447,13 +609,17 @@ def build_time_gate_logs(
     logs: list[TraceLogEntry] = []
     matches = list(_COLON_TIME_RE.finditer(sanitized))
     multiple = len(matches) > 1
+    time_list_spans = _comma_time_list_context_spans(sanitized, matches)
     for match in matches:
         span = SourceSpan(match.start(), match.end())
         raw = raw_text[span.start : span.end]
-        if multiple:
-            decision = {"decision": "fail", "reason": "multiple_time_candidates", "raw": raw}
-        elif _is_part_of_seconds_time(sanitized, span):
+        span_key = (span.start, span.end)
+        if _is_part_of_seconds_time(sanitized, span):
             decision = {"decision": "fail", "reason": "seconds_time_unsupported", "raw": raw}
+        elif multiple and span_key in time_list_spans:
+            decision = {"decision": "pass", "reason": "time_list_context", "raw": raw}
+        elif multiple:
+            decision = {"decision": "fail", "reason": "multiple_time_candidates", "raw": raw}
         else:
             decision = evaluate_time_colon_gate(
                 sanitized, span, int(match.group(1)), int(match.group(2))

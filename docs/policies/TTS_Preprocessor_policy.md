@@ -699,6 +699,13 @@ surface에 좁게 인접한 schedule/time keyword(`회의`, `일정`, `시작`, 
 `마감`, `출발`, `도착`, `예약`)다. `24:09`는 time-like/time 대상이고,
 `25:30`은 explicit time context가 없으면 basic time-like가 아니다.
 
+Same-sentence comma-separated `H:MM` / `HH:MM` lists may share context only via
+the time owner's explicit time-list context gate. The gate requires nearby
+schedule/time keyword context, time prefix/postposition context, or a preceding
+already claimed Korean time expression in the same comma list. No-context lists
+preserve, and ratio/score, scripture-like, line/case/version/file, protected,
+URL/path/JSON/backtick/code-like contexts remain excluded.
+
 ```text
 09:30 -> 09:30
 09:30에 시작 -> 아홉시 삼십분에 시작
