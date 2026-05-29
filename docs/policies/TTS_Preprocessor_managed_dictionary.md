@@ -160,6 +160,7 @@ span production managed dictionary and covered by production-path tests.
 | `KFA` | 케이에프에이 | current | exact | safe token boundary | Fixed sports organization term. |
 | `KOSDAQ` | 코스닥 | current | exact | safe token boundary | Fixed finance index. |
 | `KOSPI` | 코스피 | current | exact | safe token boundary | Fixed finance index. |
+| `KTX` | 케이티엑스 | current | exact | safe token boundary | Fixed rail service acronym. |
 | `LAN` | 랜 | current | exact | safe token boundary | Fixed network term. |
 | `LLM` | 엘엘엠 | current | exact | safe token boundary | Fixed AI term. |
 | `LTE` | 엘티이 | current | exact | safe token boundary | Fixed network term. |
@@ -262,6 +263,7 @@ full-claim the entire conditional surface and must preserve protected contexts.
 | `112`, `119` emergency numbers | emergency digit reading | current_with_condition | emergency context gate | full claim | Context and allowed tail required; otherwise number/counter policy applies. |
 | public numbers such as `110`, `120`, `1339` | public digit reading | current_with_condition | public-number context gate | full claim | Context required; gate failure falls back to general number. |
 | `K-` + complete Hangul lexical prefix | 케이 + original Hangul | current_with_condition | K-Hangul lexical owner | full claim | `K-푸드`, `K-뷰티`; unsafe tails preserve. |
+| managed acronym + `-` + complete Hangul lexical token | managed/acronym reading + raw hyphen + original Hangul | current_with_condition | managed acronym-Hangul hyphen lexical compound | full claim | Left side must be a current managed dictionary entry, e.g. `KTX-이음`; not a broad hyphen rewrite. Code-like/path/URL/protected contexts preserve. |
 | `ISO·IEC` | 아이에스오·아이이씨 | current_with_condition | lexical compound | safe token boundary | Fixed lexical compound; not broad middle-dot normalization. |
 
 ## 8. Pending / Conflict / Future Entries

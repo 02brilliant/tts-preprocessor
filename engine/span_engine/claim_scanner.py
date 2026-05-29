@@ -51,6 +51,7 @@ from engine.span_engine.jamo import scan_jamo_candidates
 from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
+    scan_acronym_hangul_hyphen_candidates,
     scan_k_hangul_lexical_candidates,
     scan_finance_index_numeric_suffix_candidates,
     scan_lexical_compound_candidates,
@@ -178,6 +179,7 @@ CLAIM_ORDER_DOC = (
     "finance_index",
     "k_hangul_lexical",
     "lexical_compound",
+    "acronym_hangul_hyphen",
     "single_letter_alnum_code",
     "two_block_hyphen_code",
     "mixed_alnum_code_separator",
@@ -240,6 +242,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_acronym_hangul_hyphen_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_single_letter_alnum_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))

@@ -95,6 +95,8 @@ def apply_safe_post_surface_particle_exception(
                 continue
 
             generated_particle = choose_safe_particle(current.text, particle)
+            if current.owner == "decimal" and particle == "으로":
+                generated_particle = None
             if generated_particle is not None:
                 output.append(current)
                 output.append(

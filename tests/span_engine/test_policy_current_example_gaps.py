@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from engine.span_engine import transform
+from engine.main import transform_with_rollout
+from engine.span_engine import transform, transform_with_trace
+
+
+def prod(text: str) -> str:
+    return transform_with_rollout(text, mode="span_default", include_debug=False)
 
 
 def test_k_pop_fixed_dictionary_inside_lexical_chain() -> None:
@@ -89,6 +94,123 @@ def test_decimal_and_middle_dot_numeric_list_fallbacks() -> None:
 
 def test_decimal_trailing_zero_digits_are_preserved() -> None:
     assert transform("승률 0.600, 비율 2:1") == "승률 영쩜육영영, 비율 이 대 일"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("KTX와 KTX-이음 등 고속열차는", "케이티엑스와 케이티엑스-이음 등 고속열차는"),
+        ("KBS 11시뉴스입니다.", "케이비에스 열한시뉴스입니다."),
+        ("지금까지 KBS 11시뉴스였습니다.", "지금까지 케이비에스 열한시뉴스였습니다."),
+        (
+            "코스피는 전장보다 2.43% 오른 8,384.31로 출발했다.",
+            "코스피는 전장보다 이쩜사삼 퍼센트 오른 팔천삼백팔십사쩜삼일로 출발했다.",
+        ),
+        (
+            "전산업 생산지수는 117.8로 전달 대비 0.6% 줄었습니다.",
+            "전산업 생산지수는 백십칠쩜팔로 전달 대비 영쩜육 퍼센트 줄었습니다.",
+        ),
+        ("117.8으로", "백십칠쩜팔으로"),
+        ("8,384.31으로", "팔천삼백팔십사쩜삼일으로"),
+        ("0.6%로", "영쩜육 퍼센트로"),
+        ("70.5%로", "칠십쩜오 퍼센트로"),
+        ("KTX", "케이티엑스"),
+        ("KTX와", "케이티엑스와"),
+        ("KTX-이음", "케이티엑스-이음"),
+        ("11시뉴스", "열한시뉴스"),
+    ],
+)
+def test_news_attached_surface_current_gaps(text: str, expected: str) -> None:
+    assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1,00.5로", "1,00.5로"),
+        ("+.5로", "+.5로"),
+        ("01.5로", "01.5로"),
+        ("/path/117.8로/log", "/path/117.8로/log"),
+        ("https://example.com?q=117.8로", "https://example.com?q=117.8로"),
+        ('{"value":"117.8로"}', '{"value":"117.8로"}'),
+        ("`117.8로`", "`117.8로`"),
+        ("[117.8로]", "117.8로"),
+        ("model-KTX-이음", "model-KTX-이음"),
+        ("/path/KTX-이음/log", "/path/KTX-이음/log"),
+        ("https://example.com/KTX-이음", "https://example.com/KTX-이음"),
+        ("`KTX-이음`", "`KTX-이음`"),
+        ("[KTX-이음]", "KTX-이음"),
+        ("KTX-2024", "KTX-2024"),
+        ("KTX-A", "KTX-A"),
+        ("3시리즈", "3시리즈"),
+        ("11시점", "11시점"),
+        ("11시스템", "11시스템"),
+        ("/path/11시뉴스/log", "/path/11시뉴스/log"),
+        ("`11시뉴스`", "`11시뉴스`"),
+        ("[11시뉴스]", "11시뉴스"),
+    ],
+)
+def test_news_attached_surface_preserve_boundaries(text: str, expected: str) -> None:
+    assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("12로 나누다", "십이로 나누다"),
+        ("종로3가", "종로삼가"),
+        ("역삼동 12번지", "역삼동 십이번지"),
+        ("3로 이동", "삼로 이동"),
+        ("5로 설정", "오로 설정"),
+    ],
+)
+def test_decimal_ro_followup_keeps_existing_integer_and_address_outputs(
+    text: str, expected: str
+) -> None:
+    assert prod(text) == expected
+
+
+def test_acronym_hangul_hyphen_preserves_raw_hyphen_and_original_hangul() -> None:
+    output = transform_with_trace("KTX-이음")
+
+    assert output.normalized_text == "케이티엑스-이음"
+    assert [(piece.text, piece.provenance) for piece in output.render_pieces] == [
+        ("케이티엑스", "GENERATED_READING"),
+        ("-", "ORIGINAL_BOUNDARY"),
+        ("이음", "ORIGINAL_KOREAN"),
+    ]
+
+
+def test_broadcast_time_title_generates_only_hour_and_preserves_korean_tail() -> None:
+    output = transform_with_trace("11시뉴스")
+
+    assert output.normalized_text == "열한시뉴스"
+    assert [(piece.text, piece.provenance) for piece in output.render_pieces] == [
+        ("열한", "GENERATED_READING"),
+        ("시뉴스", "ORIGINAL_KOREAN"),
+    ]
+
+
+def test_full_news_example_attached_surface_regression_contains() -> None:
+    text = (
+        "안녕하십니까. KBS 11시뉴스입니다. 오늘의 주요 뉴스를 전해드리겠습니다.\n"
+        "서소문 고가도로 붕괴사고 나흘째인 오늘 철거 작업이 재개된 가운데 코레일은 오늘 열차 운행률이 73%라고 밝혔습니다. "
+        "KTX와 KTX-이음 등 고속열차는 383회에서 270회로 113회 운행 중지돼 운행률은 70.5% 정도입니다.\n"
+        "오늘(29일) 코스피는 개장 직후 가파른 상승세를 보이며 8,400선 부근에서 오르내리고 있습니다. "
+        "코스피는 전장보다 2.43% 오른 8,384.31로 출발해 한때 8,424.53까지 오르기도 했습니다.\n"
+        "중동 전쟁 영향이 본격화한 4월 국내 생산과 소비, 투자 모두 감소한 걸로 나타났습니다. "
+        "국가데이터처가 오늘 낸 자료를 보면 지난 4월 전산업 생산지수는 117.8로 전달 대비 0.6% 줄었습니다.\n"
+        "지금까지 KBS 11시뉴스였습니다. 시청해주셔서 감사합니다."
+    )
+
+    output = prod(text)
+
+    assert "케이티엑스-이음" in output
+    assert "케이비에스 열한시뉴스입니다" in output
+    assert "지금까지 케이비에스 열한시뉴스였습니다" in output
+    assert "팔천삼백팔십사쩜삼일로" in output
+    assert "백십칠쩜팔로" in output
+    assert "오늘 코스피는" in output
 
 
 def test_calendar_invalid_date_uses_code_separator_fallback() -> None:

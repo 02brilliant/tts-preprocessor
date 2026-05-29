@@ -14,6 +14,7 @@ def test_claim_order_documentation_snapshot() -> None:
         "finance_index",
         "k_hangul_lexical",
         "lexical_compound",
+        "acronym_hangul_hyphen",
         "single_letter_alnum_code",
         "two_block_hyphen_code",
         "mixed_alnum_code_separator",
@@ -60,6 +61,7 @@ def test_claim_order_documentation_snapshot() -> None:
     [
         ("K-POP", "dictionary"),
         ("K-푸드", "k_hangul_lexical"),
+        ("KTX-이음", "acronym_hangul_hyphen"),
         ("K-1", "single_letter_alnum_code"),
         ("A-10C", "single_letter_alnum_code"),
         ("B-2.5", "two_block_hyphen_code"),

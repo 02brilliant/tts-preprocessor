@@ -21,6 +21,7 @@ from engine.span_engine.span_guards import (
 )
 
 _DECIMAL_RE = re.compile(r"(\d{1,3}(?:,\d{3})+|\d+)\.(\d+)")
+_SAFE_DECIMAL_ATTACHED_PARTICLES = ("으로", "로")
 
 def scan_decimal_candidates(
     raw_text: str, excluded_ranges: list[BracketRange] | None = None
@@ -93,7 +94,7 @@ def scan_decimal_candidates(
                 and raw_text[span.end + 1].isdigit()
             ):
                 continue
-            if any(raw_text[span.end:].startswith(s) for s in ("가", "호", "동", "번", "로", "길", "번지")):
+            if _starts_with_blocking_korean_suffix(raw_text, span.end):
                 # This is 3.5가, preserve it.
                 continue
         
@@ -103,6 +104,8 @@ def scan_decimal_candidates(
 
         integer_reading = read_integer_text(left)
         if integer_reading is None and "," not in left and left.isascii() and left.isdigit():
+            if _has_attached_hangul_tail(raw_text, span.end):
+                continue
             # Preserve the existing standalone leading-zero decimal fallback
             # behavior. Owner-attached/code-like contexts are still blocked by
             # the surrounding boundary guards before this point.
@@ -124,6 +127,44 @@ def scan_decimal_candidates(
             )
         )
     return candidates
+
+
+def _starts_with_blocking_korean_suffix(raw_text: str, index: int) -> bool:
+    suffix = raw_text[index:]
+    for blocking_suffix in ("가", "호", "동", "번", "길", "번지"):
+        if suffix.startswith(blocking_suffix):
+            return True
+    if suffix.startswith("로") and _safe_decimal_particle_span(raw_text, index) is None:
+        return True
+    return False
+
+
+def _safe_decimal_particle_span(raw_text: str, index: int) -> SourceSpan | None:
+    for particle in _SAFE_DECIMAL_ATTACHED_PARTICLES:
+        if not raw_text.startswith(particle, index):
+            continue
+        end = index + len(particle)
+        if _valid_after_attached_particle(raw_text, end):
+            return SourceSpan(index, end)
+    return None
+
+
+def _valid_after_attached_particle(raw_text: str, index: int) -> bool:
+    if index >= len(raw_text):
+        return True
+    char = raw_text[index]
+    if char.isspace():
+        return True
+    if char in {".", ",", "!", "?", ";", ":", ")", "]", "}"}:
+        return True
+    return False
+
+
+def _has_attached_hangul_tail(raw_text: str, index: int) -> bool:
+    if index >= len(raw_text):
+        return False
+    char = raw_text[index]
+    return "\uac00" <= char <= "\ud7a3"
 
 
 def _decimal_counter_preserve_candidate(

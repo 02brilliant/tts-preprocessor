@@ -26,6 +26,7 @@ from engine.span_engine.large_unit import (
     parse_large_unit_candidate,
 )
 from engine.span_engine.lexicon import (
+    acronym_hangul_hyphen_render_pieces,
     dictionary_reading,
     k_hangul_lexical_reading,
     lexical_compound_reading,
@@ -73,6 +74,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         return _make_k_hangul_lexical_surface(raw_text, candidate, raw)
     elif candidate.owner == "lexical_compound":
         reading = lexical_compound_reading(raw)
+    elif candidate.owner == "acronym_hangul_hyphen":
+        return _make_acronym_hangul_hyphen_surface(raw_text, candidate, raw)
     elif candidate.owner == "acronym_fallback":
         reading = spell_uppercase_acronym(raw)
     elif candidate.owner == "mixed_alnum_code_separator":
@@ -180,6 +183,24 @@ def _make_k_hangul_lexical_surface(
                 metadata={"surface_type": candidate.surface_type},
             ),
         ],
+        metadata={"reason": candidate.reason},
+    )
+
+
+def _make_acronym_hangul_hyphen_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    pieces = acronym_hangul_hyphen_render_pieces(raw_text, candidate)
+    if pieces is None:
+        return None
+    reading = "".join(piece.text for piece in pieces)
+    return Surface(
+        surface_type=candidate.surface_type or "ACRONYM_HANGUL_HYPHEN_LEXICAL_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
         metadata={"reason": candidate.reason},
     )
 

@@ -849,6 +849,21 @@ Related signed forms remain claimed through signed numeric paths:
 remains preserve, for example `1,00.50 -> 1,00.50` and
 `1,0000.50 -> 1,0000.50`.
 
+Valid standalone decimal and valid comma decimal surfaces may claim their
+numeric core before directly attached safe Korean particles such as `로` and
+`으로`. The attached particle is original text, not a correction target in this
+decimal path:
+
+```text
+117.8로 -> 백십칠쩜팔로
+8,384.31로 -> 팔천삼백팔십사쩜삼일로
+117.8으로 -> 백십칠쩜팔으로
+1,00.5로 -> 1,00.5로
+01.5로 -> 01.5로
++.5로 -> +.5로
+/path/117.8로/log -> /path/117.8로/log
+```
+
 ### 12.7 Test status
 
 `tests/span_engine/test_decimal_fractional_zero_reading.py` currently has:

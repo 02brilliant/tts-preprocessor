@@ -31,6 +31,7 @@ _KOREAN_TIME_RE = re.compile(
 
 TIME_PREFIXES = ("오전", "오후", "새벽", "아침", "정오", "밤", "저녁", "AM", "PM", "am", "pm")
 TIME_POSTPOSITIONS = ("에", "까지", "부터", "경", "쯤", "정각")
+TIME_TITLE_SUFFIXES = ("뉴스",)
 TIME_EVENT_KEYWORDS = (
     "출발",
     "도착",
@@ -725,6 +726,17 @@ def _korean_time_candidates(
     if not is_valid_korean_clock_time(hour, minute, second):
         return _preserve_numeric_groups(match, "invalid_korean_time_preserve")
     if not _valid_korean_time_boundary(raw_text, span):
+        if minute is None and second is None and _starts_with_time_title_suffix(raw_text, span.end):
+            return [
+                _numeric_marker_candidate(
+                    match,
+                    1,
+                    "time_hour_broadcast_title_suffix",
+                    hour,
+                    owner="time",
+                    reading=clock_hour_reading(hour),
+                )
+            ]
         prev_char = raw_text[span.start - 1] if span.start > 0 else None
         if prev_char in {"~", "∼", "～", "〜"}:
             return []
@@ -876,6 +888,22 @@ def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
         next_text = raw_text[span.end :]
         return next_text.startswith(TIME_POSTPOSITIONS) or next_text.startswith("입니다")
     return True
+
+
+def _starts_with_time_title_suffix(raw_text: str, index: int) -> bool:
+    for suffix in TIME_TITLE_SUFFIXES:
+        if not raw_text.startswith(suffix, index):
+            continue
+        end = index + len(suffix)
+        if end >= len(raw_text):
+            return True
+        next_char = raw_text[end]
+        if next_char.isspace():
+            return True
+        if next_char in {".", ",", "!", "?", ";", ":", ")", "]", "}"}:
+            return True
+        return raw_text.startswith(("입니다", "였습니다"), end)
+    return False
 
 
 def _is_part_of_seconds_time(raw_text: str, span: SourceSpan) -> bool:

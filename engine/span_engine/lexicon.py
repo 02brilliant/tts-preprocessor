@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.numeric_reading import read_spaced_integer_text
-from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, SurfaceCandidate
 
 DICTIONARY_READINGS: dict[str, str] = {
     "AI": "에이아이",
@@ -45,6 +45,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "KFA": "케이에프에이",
     "KOSPI": "코스피",
     "KOSDAQ": "코스닥",
+    "KTX": "케이티엑스",
     "LAN": "랜",
     "MLB": "엠엘비",
     "NASA": "나사",
@@ -259,6 +260,121 @@ def scan_lexical_compound_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
 
 
+def scan_acronym_hangul_hyphen_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not _is_ascii_upper(raw_text[index]):
+            index += 1
+            continue
+        left_start = index
+        while index < len(raw_text) and _is_ascii_upper(raw_text[index]):
+            index += 1
+        left = raw_text[left_start:index]
+        if (
+            index >= len(raw_text)
+            or raw_text[index] != "-"
+            or index + 1 >= len(raw_text)
+            or not _is_complete_hangul(raw_text[index + 1])
+        ):
+            continue
+        hangul_start = index + 1
+        hangul_end = hangul_start
+        while hangul_end < len(raw_text) and _is_complete_hangul(raw_text[hangul_end]):
+            hangul_end += 1
+        if (
+            not _safe_acronym_hangul_left_boundary(raw_text, left_start)
+            or not _safe_acronym_hangul_right_boundary(raw_text, hangul_end)
+        ):
+            continue
+        reading = _acronym_hangul_left_reading(left)
+        if reading is None:
+            continue
+        span = SourceSpan(left_start, hangul_end)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="acronym_hangul_hyphen",
+                surface_type="ACRONYM_HANGUL_HYPHEN_LEXICAL_SURFACE",
+                reason="managed_acronym_hangul_hyphen_lexical_compound",
+                metadata={
+                    "left_reading": reading,
+                    "hyphen_span": SourceSpan(index, index + 1),
+                    "hangul_span": SourceSpan(hangul_start, hangul_end),
+                },
+            )
+        )
+    return candidates
+
+
+def acronym_hangul_hyphen_render_pieces(
+    raw_text: str, candidate: SurfaceCandidate
+) -> list[RenderPiece] | None:
+    if candidate.owner != "acronym_hangul_hyphen":
+        return None
+    left_reading = candidate.metadata.get("left_reading")
+    hyphen_span = candidate.metadata.get("hyphen_span")
+    hangul_span = candidate.metadata.get("hangul_span")
+    if (
+        not isinstance(left_reading, str)
+        or not isinstance(hyphen_span, SourceSpan)
+        or not isinstance(hangul_span, SourceSpan)
+    ):
+        return None
+    return [
+        RenderPiece(
+            text=left_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(candidate.core_span.start, hyphen_span.start),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=raw_text[hyphen_span.start : hyphen_span.end],
+            provenance="ORIGINAL_BOUNDARY",
+            source_span=hyphen_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=raw_text[hangul_span.start : hangul_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=hangul_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+
+
+def _acronym_hangul_left_reading(left: str) -> str | None:
+    return dictionary_reading(left)
+
+
+def _safe_acronym_hangul_left_boundary(raw_text: str, start: int) -> bool:
+    if start == 0:
+        return True
+    prev_char = raw_text[start - 1]
+    if prev_char.isspace():
+        return True
+    return not _is_identifier_neighbor(prev_char)
+
+
+def _safe_acronym_hangul_right_boundary(raw_text: str, end: int) -> bool:
+    if end >= len(raw_text):
+        return True
+    next_char = raw_text[end]
+    if next_char.isascii() and next_char.isalnum():
+        return False
+    return next_char not in {"_", "-", "/", "."}
+
+
+def _is_ascii_upper(char: str) -> bool:
+    return "A" <= char <= "Z"
+
+
 def scan_finance_index_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be str")
@@ -399,11 +515,13 @@ __all__ = [
     "DICTIONARY_READINGS",
     "LETTER_READINGS",
     "LEXICAL_COMPOUND_READINGS",
+    "acronym_hangul_hyphen_render_pieces",
     "dictionary_reading",
     "k_hangul_lexical_reading",
     "lexical_compound_reading",
     "parse_finance_index_numeric_suffix_candidate",
     "scan_finance_index_numeric_suffix_candidates",
+    "scan_acronym_hangul_hyphen_candidates",
     "scan_k_hangul_lexical_candidates",
     "scan_lexical_compound_candidates",
     "spell_uppercase_acronym",

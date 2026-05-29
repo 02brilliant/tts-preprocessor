@@ -647,6 +647,13 @@ temperature/unit/currency/percent/decimal surfaces and numeric-delimited range
 or colon surfaces, while invalid numeric blocks and protected/code-like spans
 remain preserve/fallback-block targets.
 
+A valid standalone decimal or valid comma decimal may claim its numeric core
+before a directly attached safe Korean particle such as `로`/`으로`, while
+preserving the original particle text. This is not broad particle correction:
+the engine must not rewrite `로` to `으로` or `으로` to `로` in this decimal
+attachment path. Invalid numeric forms and protected/code-like/path/URL/JSON/
+backtick/square bracket interiors remain preserve-first.
+
 ```text
 +25℃였고 -> 영상 이십오도였고
 -3℃였지만 -> 영하 삼도였지만
@@ -2902,6 +2909,7 @@ FTA
 MFN
 KOSPI
 KOSDAQ
+KTX
 S&P
 ```
 
@@ -3115,6 +3123,24 @@ docs/K-푸드/report.md -> preserve
 ```
 
 위 비대상 예시는 K-한글 owner가 처리하지 않는다는 뜻이다. 다음 owner/fallback이 별도 안전 규칙으로 처리할 수 있으면 그 규칙을 따르고, 현재 정책에 그런 규칙이 없으면 원문 유지한다.
+
+#### 9.4.0a Managed acronym-Hangul hyphen lexical compound
+
+A managed dictionary/acronym surface may form a narrow hyphen-Hangul lexical
+compound when the left side is a current managed dictionary entry and the right
+side is a complete Korean lexical token. The left side is rendered through the
+managed dictionary/acronym reading, the hyphen is raw-preserved, and the Korean
+token remains original text. This is not a broad hyphen rewrite.
+
+```text
+KTX-이음 -> 케이티엑스-이음
+KTX와 KTX-이음 등 -> 케이티엑스와 케이티엑스-이음 등
+model-KTX-이음 -> preserve
+/path/KTX-이음/log -> preserve
+https://example.com/KTX-이음 -> preserve
+KTX-2024 -> preserve
+KTX-A -> preserve
+```
 
 ### 9.4.1 Hangul Middle-dot Literal Policy
 
@@ -3457,6 +3483,7 @@ Time claim table:
 | `HH:MM:SS` | `date_time.time_colon` | 낮음 | `try_parse_time()` 성공 시 독립 clock pattern 허용 | 값 범위 오류 | 값 범위 오류면 preserve |
 | `HH:MM` | `date_time.time_colon` | 높음 | time prefix, time postposition, time-event keyword, 한국어 날짜 좌문맥 중 하나 | 단독 전체 입력, 다중 colon, score/ratio, 값 범위 오류 | gate 실패 시 preserve |
 | `H시` | `date_time.time_hour_korean` | 중간 | 좌우에 붙은 단어가 없고 독립 token 경계 | `3시리즈` 같은 attached word | gate 실패 시 preserve |
+| `H시뉴스` | `date_time.time_hour_broadcast_title` | 중간 | suffix가 정확히 `뉴스`이고 hour가 유효. 숫자 hour만 generated reading으로 렌더링하고 `시뉴스`/`뉴스` 한글 tail은 ORIGINAL_KOREAN literal로 보존 | broad `H시+임의한글` 금지, `3시리즈`, `11시점`, `11시스템` | gate 실패 시 preserve |
 | `H시 M분` | `date_time` | 낮음 | exact local parse 성공 | 값 범위 오류 | 실패 시 preserve |
 | `오전/오후 + H시` | `date_time` | 중간 | 앞 time prefix 허용 | attached word, 값 범위 오류 | 실패 시 preserve |
 
@@ -3466,6 +3493,10 @@ Time claim table:
 회의는 13:05에 시작한다 -> 회의는 십삼시 오분에 시작한다
 13:05 -> preserve
 score 12:30 -> preserve
+KBS 11시뉴스입니다 -> 케이비에스 열한시뉴스입니다
+3시리즈 -> preserve
+11시점 -> preserve
+11시스템 -> preserve
 ```
 
 ### 9.8 Currency Claim
