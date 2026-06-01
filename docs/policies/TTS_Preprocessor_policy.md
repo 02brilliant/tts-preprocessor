@@ -208,6 +208,32 @@ backtick, fenced code, square bracket 내부 slash는 split하지 않는다.
 처리는 no-Hangul slash list를 새 transform 대상으로 확장하지 않는다.
 newline-crossing slash split은 현재 범위에서 제외한다.
 
+#### Sentence-final slash punctuation alias
+
+A trailing ASCII slash run `/+` may be treated as a sentence-final period only
+when it appears at the end of a Korean-eligible sentence or line. This is not a
+broad slash owner and must not affect fraction, date, compound-unit, URL, path,
+email, JSON, backtick, fenced-code, or square-bracket protected contexts.
+
+The source span remains the original slash run. Rendering may emit one generated
+period `.` for TTS sentence-final punctuation. Multiple trailing slashes collapse
+to one period only under this sentence-final alias.
+
+Examples:
+
+```text
+안녕하세요/ -> 안녕하세요.
+안녕하세요// -> 안녕하세요.
+오늘 온도는 25℃입니다/ -> 오늘 온도는 이십오도입니다.
+https://example.com/a//b -> https://example.com/a//b
+`안녕하세요/` -> `안녕하세요/`
+[안녕하세요/] -> 안녕하세요/
+1/3 -> 삼분의 일
+2026/06/01 -> existing slash date policy
+15.2km/L -> existing compound unit policy
+A / B -> existing spaced slash boundary policy
+```
+
 ### 0.0.5 Preserve 대상 exact preservation 계약
 
 `Absolute Preserve`로 분류된 line 또는 전체 입력은 exact string preservation을 보장해야 한다. 다음 항목은 transform 대상이 아니면 공백, 문장부호, 기호, 대소문자, escape sequence를 변경하지 않고 그대로 반환한다.

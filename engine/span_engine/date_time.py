@@ -8,6 +8,7 @@ from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.delimiters import COLON_LIKE_DELIMITERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate, TraceLogEntry
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
 _SHORT_DOTTED_YEAR_MONTH_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
@@ -916,6 +917,8 @@ def _valid_time_title_suffix_tail(raw_text: str, index: int) -> bool:
         return True
     tail_next = raw_text[tail_end]
     if tail_next.isspace():
+        return True
+    if tail_next == "/" and is_sentence_final_slash_boundary(raw_text, tail_end):
         return True
     return tail_next in {".", ",", "!", "?", ";", ":", ")", "]", "}"}
 

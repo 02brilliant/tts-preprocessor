@@ -24,7 +24,13 @@ from engine.span_engine.language_gate import (
     is_standalone_supported_token,
     transform_with_language_gate,
 )
-from engine.span_engine.models import TraceLogEntry, TransformOutput, ValidationLog
+from engine.span_engine.models import (
+    RenderPiece,
+    SourceSpan,
+    TraceLogEntry,
+    TransformOutput,
+    ValidationLog,
+)
 from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import apply_safe_post_surface_particle_exception
 from engine.span_engine.public_number import build_public_number_gate_logs
@@ -32,6 +38,7 @@ from engine.prosody.paragraph import split_paragraphs
 from engine.span_engine.prosody import apply_prosody_comma_adapter
 from engine.span_engine.protected import protected_literal_spans
 from engine.span_engine.render import join_render_pieces, render_tokens_with_surfaces
+from engine.span_engine.sentence_final_slash import sentence_final_slash_spans
 from engine.span_engine.shadow import build_shadow_buffer
 from engine.span_engine.source_map import build_source_map, source_map_summary
 from engine.span_engine.tokenizer import tokenize_immutable_spans, validate_token_coverage
@@ -359,6 +366,10 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     )
     surfaces = parse_candidates(checked_text, candidates)
     pieces = render_tokens_with_surfaces(checked_text, tokens, surfaces)
+    slash_alias_logs: list[TraceLogEntry] = []
+    pieces, slash_alias_logs = _apply_sentence_final_slash_punctuation_alias(
+        pieces, checked_text, bracket_ranges + incomplete_bracket_ranges
+    )
     particle_result = apply_safe_post_surface_particle_exception(pieces)
     pieces = particle_result.pieces
     consumed_shadow_spans = _surface_internal_shadow_spans(surfaces, shadow)
@@ -486,6 +497,7 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
             },
         )
     )
+    trace.render_logs.extend(slash_alias_logs)
     trace.render_logs.extend(
         TraceLogEntry(
             stage="render",
@@ -513,6 +525,113 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     )
     trace.validation_logs.extend(validation.logs)
     return TransformOutput(normalized_text=normalized_text, render_pieces=pieces, trace=trace)
+
+
+def _apply_sentence_final_slash_punctuation_alias(
+    pieces: list[RenderPiece],
+    raw_text: str,
+    bracket_ranges: list[Any],
+) -> tuple[list[RenderPiece], list[TraceLogEntry]]:
+    protected_ranges = _sentence_final_slash_protected_ranges(raw_text, bracket_ranges)
+    slash_spans = sentence_final_slash_spans(raw_text, protected_ranges)
+    if not slash_spans:
+        return pieces, []
+
+    aliased_pieces: list[RenderPiece] = []
+    logs: list[TraceLogEntry] = []
+    slash_index = 0
+    for piece in pieces:
+        if piece.source_span is None or slash_index >= len(slash_spans):
+            aliased_pieces.append(piece)
+            continue
+
+        source_start = piece.source_span.start
+        source_end = piece.source_span.end
+        if source_end <= slash_spans[slash_index].start:
+            aliased_pieces.append(piece)
+            continue
+
+        current_start = source_start
+        replaced = False
+        while (
+            slash_index < len(slash_spans)
+            and slash_spans[slash_index].start < source_end
+        ):
+            slash_span = slash_spans[slash_index]
+            if slash_span.end <= source_start:
+                slash_index += 1
+                continue
+            if slash_span.start < source_start or source_end < slash_span.end:
+                break
+
+            if current_start < slash_span.start:
+                aliased_pieces.append(
+                    _copy_original_piece_fragment(
+                        piece, raw_text, current_start, slash_span.start
+                    )
+                )
+            aliased_pieces.append(
+                RenderPiece(
+                    text=".",
+                    provenance="GENERATED_PUNCT",
+                    source_span=slash_span,
+                    owner="sentence_final_slash",
+                    metadata={"reason": "sentence_final_slash"},
+                )
+            )
+            logs.append(
+                TraceLogEntry(
+                    stage="render",
+                    event="sentence_final_slash_alias_applied",
+                    span=slash_span,
+                    raw=raw_text[slash_span.start : slash_span.end],
+                    owner="sentence_final_slash",
+                    provenance="GENERATED_PUNCT",
+                    decision="render_generated",
+                    reason="sentence_final_slash",
+                    action="emit_generated_period",
+                )
+            )
+            current_start = slash_span.end
+            slash_index += 1
+            replaced = True
+
+        if not replaced:
+            aliased_pieces.append(piece)
+            continue
+        if current_start < source_end:
+            aliased_pieces.append(
+                _copy_original_piece_fragment(
+                    piece, raw_text, current_start, source_end
+                )
+            )
+
+    if slash_index < len(slash_spans):
+        return pieces, []
+    return aliased_pieces, logs
+
+
+def _copy_original_piece_fragment(
+    piece: RenderPiece, raw_text: str, start: int, end: int
+) -> RenderPiece:
+    return RenderPiece(
+        text=raw_text[start:end],
+        provenance=piece.provenance,
+        source_span=SourceSpan(start, end),
+        owner=piece.owner,
+        metadata=dict(piece.metadata),
+    )
+
+
+def _sentence_final_slash_protected_ranges(
+    text: str, bracket_ranges: list[Any]
+) -> list[tuple[int, int]]:
+    ranges = [(span.start, span.end) for span in protected_literal_spans(text)]
+    ranges.extend(
+        (bracket_range.span.start, bracket_range.span.end)
+        for bracket_range in bracket_ranges
+    )
+    return ranges
 
 
 def _count_by_attr(values: list[Any], attr: str) -> dict[str, int]:
