@@ -48,6 +48,7 @@ from engine.span_engine.protected import scan_protected_literal_candidates
 from engine.span_engine.separator import scan_spaced_separator_preserve_candidates
 from engine.span_engine.hyphen import scan_hyphen_digit_candidates
 from engine.span_engine.jamo import scan_jamo_candidates
+from engine.span_engine.korean_da_score_pair import scan_korean_da_score_pair_candidates
 from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
@@ -189,6 +190,7 @@ CLAIM_ORDER_DOC = (
     "date",
     "time",
     "colon_semantic_pair",
+    "korean_da_score_pair",
     "multi_colon_numeric",
     "event",
     "emergency",
@@ -252,6 +254,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_date_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_time_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_colon_semantic_pair_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_korean_da_score_pair_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_multi_colon_numeric_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_event_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_emergency_candidates(raw_text, excluded_ranges), registry, excluded_ranges))

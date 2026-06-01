@@ -21,6 +21,7 @@ from engine.span_engine.event import parse_event_candidate
 from engine.span_engine.fraction import parse_fraction_candidate
 from engine.span_engine.hyphen import hyphen_digit_reading
 from engine.span_engine.jamo import parse_jamo_candidate
+from engine.span_engine.korean_da_score_pair import parse_korean_da_score_pair_candidate
 from engine.span_engine.large_unit import (
     large_unit_render_pieces,
     parse_large_unit_candidate,
@@ -141,6 +142,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         return _make_large_unit_surface(raw_text, candidate, raw)
     elif candidate.owner == "administrative_suffix":
         reading = parse_administrative_suffix_candidate(raw_text, candidate)
+    elif candidate.owner == "korean_da_score_pair":
+        return parse_korean_da_score_pair_candidate(raw_text, candidate)
 
     if reading is None:
         return None

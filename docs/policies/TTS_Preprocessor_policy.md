@@ -776,7 +776,7 @@ validation.
 Approved first-pass semantic-pair keywords are:
 
 ```text
-비율, 화면비, 종횡비, 희석, 축척, 스코어, 점수, 승리, 패배, 무승부, 동점,
+비율, 화면비, 종횡비, 희석, 축척, 세트스코어, 스코어, 점수, 승리, 패배, 무승부, 동점,
 이겼다, 졌다, 비겼다, 완승, 압승, 역전승, 배율, 스케일, 전적, 세트,
 경기, 게임, 매치
 ```
@@ -833,6 +833,61 @@ signed numeric-delimited forms such as `+01:2 비율`, `+1.:2 비율`, `+.5:2 �
 surface and must not partially rewrite internal numeric fragments.
 
 Time owner precedence remains higher than semantic-pair owner. Leading-zero and time-like semantic-pair forms are not claimed by the semantic-pair owner.
+
+### Korean `대` score-pair owner
+
+The `korean_da_score_pair` owner handles only narrow Korean score/result
+relations in the `span_default` path. It claims the following spacing forms
+when a score/result context gate is present:
+
+```text
+N 대 M
+N대M
+N대 M
+```
+
+Both numeric sides must be natural-number Arabic integer blocks matching
+`[1-9][0-9]*`. The owner does not accept `0`, leading-zero integers, decimals,
+comma integers, signed numbers, `N 대M`, `N대`, `N 대`, colon forms, or hyphen
+forms. Numeric readings are Sino-Korean score readings, not native counter
+readings.
+
+Rendering follows the source spacing form:
+
+```text
+2 대 1 -> 이 대 일
+2대 1 -> 이 대 일
+2대1 -> 이대일
+```
+
+The approved score/result keyword gate is immediate. A keyword may appear
+directly to the left, directly to the right, or after a bridge particle
+`의`/`로`/`으로` following the score surface. Left context also permits a narrow
+topic/subject particle `은`, `는`, `이`, or `가` between the keyword and the score
+surface, as in `세트스코어는 2 대 1` and `경기는 2대 1`. The approved keyword
+inventory for this owner is:
+
+```text
+스코어, 세트스코어, 점수, 세트, 경기, 게임, 매치, 승리, 패배, 무승부,
+동점, 이겼다, 졌다, 비겼다, 완승, 압승, 역전승
+```
+
+Protected contexts remain higher priority: URL/path/email/JSON-like strings,
+backtick spans, fenced code, square bracket interiors, identifier-like tokens,
+and code-like tokens must not be claimed by this owner. If the context gate
+fails, the owner returns no claim so existing counter and number behavior
+continues unchanged.
+
+```text
+세트스코어는 2 대 1입니다. -> 세트스코어는 이 대 일입니다.
+점수는 2 대 1 이다. -> 점수는 이 대 일 이다.
+경기는 2대 1로 끝났다. -> 경기는 이 대 일로 끝났다.
+2대1 점수였다. -> 이대일 점수였다.
+2대1로 이겼다. -> 이대일로 이겼다.
+차량 2대입니다. -> 차량 두 대입니다.
+장비 3대 추가 -> 장비 세 대 추가
+2대1이다. -> 이대일이다.  # no korean_da_score_pair claim; existing fallback only
+```
 
 ```text
 13:05에 시작 -> 십삼시 오분에 시작
@@ -2789,33 +2844,34 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 11 | date format | `2025.01.03`, `2025-01-03`, `2025/01/03` | `date` |
 | 12 | time format | `13:05에`, `오전 3시` | `time` |
 | 13 | N:M semantic pair | `1:2 비율`, `3:1 승리` | `colon_semantic_pair` |
-| 14 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
-| 15 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
-| 16 | spaced separator preserve | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | `preserve` |
-| 17 | spaced hyphen numeric blocks | `1 - 2`, `12 - 34` | `spaced_hyphen_numeric_blocks` |
-| 18 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
-| 19 | percent point | `3%p` | `percent_point` |
-| 20 | duration | `3시간`, `20분` | `duration` |
-| 21 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
-| 22 | fraction | `1/2` | `fraction` |
-| 23 | signed temperature | `-2.5℃` | `signed_temperature` |
-| 24 | signed degree | `+3°` | `signed_degree` |
-| 25 | signed number | `-5.2` | `signed_number` |
-| 26 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
-| 27 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
-| 28 | compound exact unit | `1kWh` | `compound_exact_unit` |
-| 29 | special unit | `10Hz`, `45㎡` | `special_unit` |
-| 30 | simple unit | `50kg`, `3km` | `simple_unit` |
-| 31 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
-| 32 | decimal fallback | `12.3`, `7.25` | `decimal` |
-| 33 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
-| 34 | public number | `국민콜 110에`, `1339는` | `public_number` |
-| 35 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
-| 36 | phone | `123-456-7890` | `phone` |
-| 37 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
-| 38 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
-| 39 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
-| 40 | general number | `123`, `2025` | `number` |
+| 14 | Korean `대` score pair | `스코어 2대1`, `경기는 2대 1로` | `korean_da_score_pair` |
+| 15 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
+| 16 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
+| 17 | spaced separator preserve | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | `preserve` |
+| 18 | spaced hyphen numeric blocks | `1 - 2`, `12 - 34` | `spaced_hyphen_numeric_blocks` |
+| 19 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
+| 20 | percent point | `3%p` | `percent_point` |
+| 21 | duration | `3시간`, `20분` | `duration` |
+| 22 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
+| 23 | fraction | `1/2` | `fraction` |
+| 24 | signed temperature | `-2.5℃` | `signed_temperature` |
+| 25 | signed degree | `+3°` | `signed_degree` |
+| 26 | signed number | `-5.2` | `signed_number` |
+| 27 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
+| 28 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
+| 29 | compound exact unit | `1kWh` | `compound_exact_unit` |
+| 30 | special unit | `10Hz`, `45㎡` | `special_unit` |
+| 31 | simple unit | `50kg`, `3km` | `simple_unit` |
+| 32 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
+| 33 | decimal fallback | `12.3`, `7.25` | `decimal` |
+| 34 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
+| 35 | public number | `국민콜 110에`, `1339는` | `public_number` |
+| 36 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
+| 37 | phone | `123-456-7890` | `phone` |
+| 38 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
+| 39 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
+| 40 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
+| 41 | general number | `123`, `2025` | `number` |
 
 주의:
 
@@ -2899,6 +2955,7 @@ CLAIM_ORDER = [
     date_claim,
     time_claim,
     colon_semantic_pair_claim,
+    korean_da_score_pair_claim,
     event_claim,
     emergency_claim,
     spaced_separator_preserve_claim,
@@ -9376,21 +9433,36 @@ Boundary / unsafe tail:
 - 임의 hyphen range는 range owner canonical 대상이 아니다. Approved `N-M + range-compatible unit`만 별도 정책을 따른다.
 - slash 주변 공백은 여전히 미지원/preserve한다: `1,000 KB / s` preserve.
 
-#### Compact `N대M` relation fallback
+#### Korean `대` score-pair relation owner
 
-`N대M`처럼 공백 없이 `대`로 연결된 compact relation은 score/ratio owner를 새로 만들지 않고 일반 number fallback으로 양쪽 숫자 core를 각각 읽는다. `대`와 뒤 조사/어미는 원문 한글 literal로 유지한다. 이 규칙은 hyphen score/range(`1-1`, `1-2`)로 확장하지 않는다. Colon-like `N:M`은 최신 broad N:M 정책에 따라 time-like/protected/invalid guard 이후 `N 대 M`으로 읽을 수 있다.
+`N대M`처럼 공백 없이 `대`로 연결된 compact relation은 더 이상 score 문맥에서
+일반 number fallback에만 의존하지 않는다. `korean_da_score_pair` owner가
+approved score/result context 안에서 `N 대 M`, `N대M`, `N대 M` 세 형태를
+full-claim하고 양쪽 숫자를 Sino-Korean score number로 읽는다. 이 owner는
+`counter_noun`보다 먼저 평가되어야 하며, context gate가 실패하면 no-claim으로
+돌아가 기존 counter/number fallback이 동작한다.
+
+이 규칙은 bare `N대M`, `N대`, hyphen score/range(`1-1`, `1-2`), colon-like
+`N:M`, `N 대M`, signed/decimal/comma/leading-zero/zero 숫자로 확장하지 않는다.
+Colon-like `N:M`은 최신 broad N:M 정책에 따라 time-like/protected/invalid guard
+이후 `N 대 M`으로 읽을 수 있다.
 
 ```text
-1대1로 -> 일대일로
-1대1 교육 -> 일대일 교육
-2대1 구조 -> 이대일 구조
-10대1 경쟁률 -> 십대일 경쟁률
+스코어 1대1로 -> 스코어 일대일로
+점수 2대1 -> 점수 이대일
+경기는 2대 1로 끝났다 -> 경기는 이 대 일로 끝났다
+1대1로 -> 일대일로  # no korean_da_score_pair claim; existing fallback only
+1대1 교육 -> 일대일 교육  # no korean_da_score_pair claim; existing fallback only
+2대1 구조 -> 이대일 구조  # no korean_da_score_pair claim; existing fallback only
+10대1 경쟁률 -> 십대일 경쟁률  # no korean_da_score_pair claim; existing fallback only
 3:2 승 -> 삼 대 이 승
 3:2 세트 -> 삼 대 이 세트
 1-1 무 -> 1-1 무
 ```
 
-ASCII/Hangul identifier에 붙은 `N대M` 또는 unsafe alphabetic tail은 partial rewrite하지 않고 preserve한다.
+ASCII/Hangul identifier에 붙은 `N대M`, URL/path/email/JSON/backtick/fenced-code/
+square-bracket protected interior, 또는 unsafe alphabetic tail은
+`korean_da_score_pair`가 claim하지 않는다.
 
 #### Preserve taxonomy / owner fallback clarification
 

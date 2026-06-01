@@ -24,6 +24,7 @@ def test_claim_order_documentation_snapshot() -> None:
         "date",
         "time",
         "colon_semantic_pair",
+        "korean_da_score_pair",
         "multi_colon_numeric",
         "event",
         "emergency",
