@@ -2852,26 +2852,27 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 19 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
 | 20 | percent point | `3%p` | `percent_point` |
 | 21 | duration | `3시간`, `20분` | `duration` |
-| 22 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
-| 23 | fraction | `1/2` | `fraction` |
-| 24 | signed temperature | `-2.5℃` | `signed_temperature` |
-| 25 | signed degree | `+3°` | `signed_degree` |
-| 26 | signed number | `-5.2` | `signed_number` |
-| 27 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
-| 28 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
-| 29 | compound exact unit | `1kWh` | `compound_exact_unit` |
-| 30 | special unit | `10Hz`, `45㎡` | `special_unit` |
-| 31 | simple unit | `50kg`, `3km` | `simple_unit` |
-| 32 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
-| 33 | decimal fallback | `12.3`, `7.25` | `decimal` |
-| 34 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
-| 35 | public number | `국민콜 110에`, `1339는` | `public_number` |
-| 36 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
-| 37 | phone | `123-456-7890` | `phone` |
-| 38 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
-| 39 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
-| 40 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
-| 41 | general number | `123`, `2025` | `number` |
+| 22 | multiplier `배` | `3배`, `1.5 배` | `multiplier` |
+| 23 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
+| 24 | fraction | `1/2` | `fraction` |
+| 25 | signed temperature | `-2.5℃` | `signed_temperature` |
+| 26 | signed degree | `+3°` | `signed_degree` |
+| 27 | signed number | `-5.2` | `signed_number` |
+| 28 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
+| 29 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
+| 30 | compound exact unit | `1kWh` | `compound_exact_unit` |
+| 31 | special unit | `10Hz`, `45㎡` | `special_unit` |
+| 32 | simple unit | `50kg`, `3km` | `simple_unit` |
+| 33 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
+| 34 | decimal fallback | `12.3`, `7.25` | `decimal` |
+| 35 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
+| 36 | public number | `국민콜 110에`, `1339는` | `public_number` |
+| 37 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
+| 38 | phone | `123-456-7890` | `phone` |
+| 39 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
+| 40 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
+| 41 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
+| 42 | general number | `123`, `2025` | `number` |
 
 주의:
 
@@ -2882,7 +2883,7 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 - `single_letter_alnum_code`는 `B-2.5`, `x-3` 같은 two-block hyphen code보다 먼저 안전한 full-consume 후보만 claim한다.
 - `event`는 decimal/middle-dot numeric fallback보다 먼저 claim해야 한다.
 - `date`는 decimal/hyphen/slash numeric fallback보다 먼저 claim해야 한다.
-- `large_unit_atomic`, `currency`, `signed_*`, `range`, `duration`, `ph`, `compound_*_unit`, `special_unit`, `simple_unit`은 decimal fallback보다 먼저 claim해야 한다.
+- `large_unit_atomic`, `currency`, `signed_*`, `range`, `duration`, `multiplier`, `ph`, `compound_*_unit`, `special_unit`, `simple_unit`은 decimal fallback보다 먼저 claim해야 한다.
 - `decimal`은 event/date/ph/unit/currency/range 계열 owner가 모두 실패한 뒤에만 fallback으로 claim한다.
 - `middle_dot_numeric`은 event/date/lexical compound 계열 owner가 모두 실패한 뒤에만 fallback으로 claim한다.
 - `public_number`는 `counter_noun`보다 먼저 claim하지만, `112명`, `119건`처럼 emergency digit reading 대상이 아닌 explicit counter는 counter fallback을 허용한다.
@@ -2963,6 +2964,7 @@ CLAIM_ORDER = [
     range_claim,
     percent_point_claim,
     duration_claim,
+    multiplier_claim,
     unit_contamination_preserve_claim,
     fraction_claim,
     signed_temperature_claim,
@@ -10119,6 +10121,57 @@ rewriting.
 1년 -> 일년
 1년간abc -> 1년간abc
 ```
+
+### 38.1.1 Multiplier `배` owner
+
+`N배` and `N 배` may be claimed as multiplier surfaces when `N` is a valid
+unsigned integer, valid comma integer, unsigned decimal, or valid comma decimal
+numeric block. This is an owner-attached numeric rule, not a broad Hangul suffix
+fallback.
+
+For integer `1..39`, the integer part uses native Korean counter-style reading:
+
+```text
+1배 -> 한 배
+2배 -> 두 배
+3배 -> 세 배
+10배 -> 열 배
+20배 -> 스무 배
+39배 -> 서른아홉 배
+```
+
+For integer `40+`, including `100+`, use Sino-Korean reading:
+
+```text
+40배 -> 사십 배
+100배 -> 백 배
+1000배 -> 천 배
+```
+
+For decimal or comma-decimal numeric blocks, use the ordinary decimal/Sino
+numeric reading and append original `배` with one generated space:
+
+```text
+1.5배 -> 일쩜오 배
+2.25배 -> 이쩜이오 배
+1,000.5배 -> 천쩜오 배
+```
+
+Both attached and spaced input surfaces render with one generated space before
+the original `배`.
+
+```text
+3배 -> 세 배
+3 배 -> 세 배
+1.5배 -> 일쩜오 배
+1.5 배 -> 일쩜오 배
+```
+
+The owner full-claims the numeric core, optional ASCII space, and `배` suffix.
+Protected, code-like, URL, path, JSON, backtick, fenced-code, and square-bracket
+interiors remain preserve-first. Signed and malformed numeric forms are out of
+scope for this phase and must not be partially rewritten by the multiplier
+owner.
 
 ### 38.2 Percent-point `%p`
 

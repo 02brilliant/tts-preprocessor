@@ -36,6 +36,10 @@ from engine.span_engine.lexicon import (
 )
 from engine.span_engine.middle_dot import parse_middle_dot_candidate
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.multiplier import (
+    multiplier_render_pieces,
+    parse_multiplier_candidate,
+)
 from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ph import parse_ph_candidate
@@ -97,6 +101,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_time_candidate(raw_text, candidate)
     elif candidate.owner == "duration":
         reading = parse_duration_candidate(raw_text, candidate)
+    elif candidate.owner == "multiplier":
+        return _make_multiplier_surface(raw_text, candidate, raw)
     elif candidate.owner == "event":
         reading = parse_event_candidate(raw_text, candidate)
     elif candidate.owner == "middle_dot_numeric":
@@ -220,6 +226,26 @@ def _make_large_unit_surface(
         owner=candidate.owner,
         raw=raw,
         span=candidate.core_span,
+        reading=reading,
+        render_pieces=render_pieces,
+        metadata={"reason": candidate.reason},
+    )
+
+
+def _make_multiplier_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    reading = parse_multiplier_candidate(raw_text, candidate)
+    if reading is None:
+        return None
+    render_pieces = multiplier_render_pieces(raw_text, candidate)
+    if render_pieces is None:
+        return None
+    return Surface(
+        surface_type=candidate.surface_type or "MULTIPLIER_SURFACE",
+        owner=candidate.owner,
+        raw=raw_text[candidate.full_span.start : candidate.full_span.end],
+        span=candidate.full_span,
         reading=reading,
         render_pieces=render_pieces,
         metadata={"reason": candidate.reason},

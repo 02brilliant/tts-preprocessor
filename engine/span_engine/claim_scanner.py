@@ -41,6 +41,7 @@ from engine.span_engine.emergency import scan_emergency_candidates
 from engine.span_engine.event import scan_event_candidates
 from engine.span_engine.fraction import scan_fraction_candidates
 from engine.span_engine.middle_dot import scan_middle_dot_candidates
+from engine.span_engine.multiplier import scan_multiplier_candidates
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
 from engine.span_engine.ph import scan_ph_candidates
 from engine.span_engine.percent_point import scan_percent_point_candidates
@@ -200,6 +201,7 @@ CLAIM_ORDER_DOC = (
     "range",
     "percent_point",
     "duration",
+    "multiplier",
     "unit_contamination_preserve",
     "fraction",
     "signed_temperature",
@@ -265,6 +267,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_range_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_percent_point_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_duration_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_multiplier_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_unit_contamination_preserve_candidates(raw_text), registry, excluded_ranges))
 
     # Priority: signed and unit owners must full-consume before generic decimals.

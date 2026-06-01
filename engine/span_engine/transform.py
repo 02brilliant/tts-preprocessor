@@ -676,7 +676,7 @@ def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> se
                 consumed.add((unit.span.start, unit.span.end))
                 continue
             if (
-                getattr(surface, "owner", None) == "counter_noun"
+                getattr(surface, "owner", None) in {"counter_noun", "multiplier"}
                 and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
             ):
                 consumed.add((unit.span.start, unit.span.end))

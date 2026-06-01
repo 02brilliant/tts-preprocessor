@@ -162,6 +162,12 @@ from engine.span_engine.large_unit import (
     parse_large_unit_candidate,
     scan_large_unit_candidates,
 )
+from engine.span_engine.multiplier import (
+    multiplier_number_reading,
+    multiplier_render_pieces,
+    parse_multiplier_candidate,
+    scan_multiplier_candidates,
+)
 from engine.span_engine.signed import (
     parse_signed_candidate,
     parse_signed_numeric,
@@ -319,6 +325,7 @@ __all__ = [
     "parse_range_with_unit_candidate",
     "parse_jamo_candidate",
     "parse_large_unit_candidate",
+    "parse_multiplier_candidate",
     "parse_signed_candidate",
     "parse_signed_numeric",
     "parse_time_candidate",
@@ -326,6 +333,7 @@ __all__ = [
     "scan_date_candidates",
     "scan_jamo_candidates",
     "scan_large_unit_candidates",
+    "scan_multiplier_candidates",
     "scan_range_candidates",
     "scan_signed_degree_candidates",
     "scan_signed_temperature_candidates",
@@ -339,6 +347,8 @@ __all__ = [
     "jamo_sequence_reading",
     "signed_temperature_reading",
     "read_decimal_for_compound_unit_only",
+    "multiplier_number_reading",
+    "multiplier_render_pieces",
     "TIME_EVENT_KEYWORDS",
     "TIME_POSTPOSITIONS",
     "TIME_PREFIXES",
