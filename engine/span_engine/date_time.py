@@ -895,15 +895,33 @@ def _starts_with_time_title_suffix(raw_text: str, index: int) -> bool:
         if not raw_text.startswith(suffix, index):
             continue
         end = index + len(suffix)
-        if end >= len(raw_text):
-            return True
-        next_char = raw_text[end]
-        if next_char.isspace():
-            return True
-        if next_char in {".", ",", "!", "?", ";", ":", ")", "]", "}"}:
-            return True
-        return raw_text.startswith(("입니다", "였습니다"), end)
+        return _valid_time_title_suffix_tail(raw_text, end)
     return False
+
+
+def _valid_time_title_suffix_tail(raw_text: str, index: int) -> bool:
+    if index >= len(raw_text):
+        return True
+    next_char = raw_text[index]
+    if next_char.isspace():
+        return True
+    if next_char in {".", ",", "!", "?", ";", ":", ")", "]", "}"}:
+        return True
+    if not _is_hangul_syllable(next_char):
+        return False
+    tail_end = index + 1
+    while tail_end < len(raw_text) and _is_hangul_syllable(raw_text[tail_end]):
+        tail_end += 1
+    if tail_end >= len(raw_text):
+        return True
+    tail_next = raw_text[tail_end]
+    if tail_next.isspace():
+        return True
+    return tail_next in {".", ",", "!", "?", ";", ":", ")", "]", "}"}
+
+
+def _is_hangul_syllable(value: str) -> bool:
+    return "\uac00" <= value <= "\ud7a3"
 
 
 def _is_part_of_seconds_time(raw_text: str, span: SourceSpan) -> bool:

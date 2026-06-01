@@ -4,6 +4,13 @@ from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.sign_aliases import (
+    MINUS_SIGN_ALIASES,
+    SIGNED_NUMERIC_SIGN_ALIASES,
+    is_minus_sign_alias,
+    is_signed_numeric_sign,
+    strip_signed_numeric_sign,
+)
 from engine.span_engine.units import starts_with_supported_unit
 
 _ALLOWED_TAILS = (
@@ -37,8 +44,8 @@ _ALLOWED_TAILS = (
 _TAIL_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，", "！", "？"})
 _CELSIUS_UNITS = frozenset({"℃", "ºC", "°C", "º C", "° C"})
 _FAHRENHEIT_UNITS = frozenset({"℉", "ºF", "°F", "º F", "° F"})
-_SIGN_CHARS = frozenset({"+", "-", "−", "－"})
-_MINUS_CHARS = frozenset({"-", "−", "－"})
+_SIGN_CHARS = SIGNED_NUMERIC_SIGN_ALIASES
+_MINUS_CHARS = MINUS_SIGN_ALIASES
 # Both ASCII degree ° and ordinal indicator º are treated as bare degree.
 _BARE_DEGREE_UNITS = frozenset({"°", "º"})
 _SIGNED_TEMPERATURE_UNITS = tuple(
@@ -93,7 +100,7 @@ def signed_temperature_reading(
         return None
     if sign == "+":
         reading = f"영상 {number_reading}도"
-    elif sign in _MINUS_CHARS:
+    elif is_minus_sign_alias(sign):
         reading = f"영하 {number_reading}도"
     else:
         return None
@@ -137,13 +144,13 @@ def signed_degree_reading(sign: str, numeric: str, unit: str = "\u00b0") -> str 
     if unit == "\u00ba":
         if sign == "+":
             return f"영상 {number_reading}도"
-        if sign in _MINUS_CHARS:
+        if is_minus_sign_alias(sign):
             return f"영하 {number_reading}도"
         return None
     # ° (U+00B0) – classic degree sign, keeps existing 플러스/마이너스 reading.
     if sign == "+":
         return f"플러스 {number_reading}도"
-    if sign in _MINUS_CHARS:
+    if is_minus_sign_alias(sign):
         return f"마이너스 {number_reading}도"
     return None
 
@@ -441,20 +448,22 @@ def _scan_signed_span(raw_text: str, start: int, unit: str) -> SourceSpan | None
 def _parse_signed_surface(raw: str) -> tuple[str, str, str] | None:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
-    if len(raw) < 2 or raw[0] not in _SIGN_CHARS:
+    if len(raw) < 2 or not is_signed_numeric_sign(raw[0]):
         return None
-    sign = raw[0]
+    sign, unsigned_raw = strip_signed_numeric_sign(raw)
+    if sign is None:
+        return None
     
     temperature_unit = _signed_temperature_unit_suffix(raw)
     if temperature_unit is not None:
         unit = temperature_unit
-        numeric = raw[1 : -len(unit)]
+        numeric = unsigned_raw[: -len(unit)]
     elif raw[-1] in _BARE_DEGREE_UNITS:
         unit = raw[-1]
-        numeric = raw[1:-1]
+        numeric = unsigned_raw[:-1]
     else:
         unit = ""
-        numeric = raw[1:]
+        numeric = unsigned_raw
         
     if parse_signed_numeric(numeric) is None:
         return None
@@ -544,7 +553,7 @@ def _is_blocked_start(raw_text: str, start: int, owner: str) -> bool:
     return (
         (prev_char.isascii() and prev_char.isalnum())
         or ("\u3130" <= prev_char <= "\u318f")
-        or (prev_char in {"+", "-", ".", "_", "/", "℃", "℉", "°", ","})
+        or (prev_char in SIGNED_NUMERIC_SIGN_ALIASES | {".", "_", "/", "℃", "℉", "°", ","})
     )
 
 
@@ -562,7 +571,7 @@ def _valid_boundaries(raw_text: str, span: SourceSpan, unit: str) -> bool:
                 return False
         elif "\u3130" <= prev_char <= "\u318f":
             return False
-        if prev_char in {"+", "-", ".", "_", "/", "℃", "℉", "°"}:
+        if prev_char in SIGNED_NUMERIC_SIGN_ALIASES | {".", "_", "/", "℃", "℉", "°"}:
             return False
         if prev_char == ",":
             if span.start > 1 and _is_ascii_digit(raw_text[span.start - 2]):
@@ -577,7 +586,7 @@ def _valid_boundaries(raw_text: str, span: SourceSpan, unit: str) -> bool:
         next_next = raw_text[span.end + 1] if span.end + 1 < len(raw_text) else None
         if next_next is not None and _is_ascii_digit(next_next):
             return False
-    elif next_char in {"+", "-", "_", "/", "℃", "℉", "°"}:
+    elif next_char in SIGNED_NUMERIC_SIGN_ALIASES | {"_", "/", "℃", "℉", "°"}:
         return False
     if next_char == ",":
         if span.end + 1 < len(raw_text) and _is_ascii_digit(raw_text[span.end + 1]):

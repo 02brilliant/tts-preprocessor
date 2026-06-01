@@ -3,6 +3,12 @@ from __future__ import annotations
 from engine.span_engine.amount_reading import read_decimal_amount_text
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
+from engine.span_engine.sign_aliases import (
+    SIGNED_NUMERIC_SIGN_ALIASES,
+    is_minus_sign_alias,
+    is_signed_numeric_sign,
+    strip_signed_numeric_sign,
+)
 
 SIMPLE_UNIT_READINGS: dict[str, str] = {
     "kHz": "킬로헤르츠",
@@ -27,6 +33,7 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "GB": "기가바이트",
     "PB": "페타바이트",
     "m": "미터",
+    "ｍ": "미터",
     "g": "그램",
     "L": "리터",
     "%": "퍼센트",
@@ -87,9 +94,9 @@ _SPECIAL_UNITS_BY_LENGTH = sorted(SPECIAL_UNIT_READINGS, key=len, reverse=True)
 _RANGE_COMPATIBLE_UNITS_BY_LENGTH = sorted(
     RANGE_COMPATIBLE_UNIT_READINGS, key=len, reverse=True
 )
-_PREV_BLOCKERS = frozenset("+-.,~:/")
+_PREV_BLOCKERS = frozenset(".,~:/") | SIGNED_NUMERIC_SIGN_ALIASES
 _PREV_SYMBOL_BLOCKERS = frozenset("$€£¥₩")
-_NEXT_BLOCKERS = frozenset(",+-~:/")
+_NEXT_BLOCKERS = frozenset(",~:/") | SIGNED_NUMERIC_SIGN_ALIASES
 _SUPERSCRIPT_EXPONENTS = frozenset("²³")
 _UNSAFE_TAIL_UNITS_BY_LENGTH = sorted(
     {
@@ -195,6 +202,7 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
         "ML",
         "dB",
         "m",
+        "ｍ",
         "g",
         "L",
         "Hz",
@@ -251,11 +259,16 @@ def scan_unit_contamination_preserve_candidates(raw_text: str) -> list[SurfaceCa
     candidates: list[SurfaceCandidate] = []
     index = 0
     while index < len(raw_text):
-        if not (_is_ascii_digit(raw_text[index]) or raw_text[index] in {"+", "-"}):
+        if not (_is_ascii_digit(raw_text[index]) or is_signed_numeric_sign(raw_text[index])):
             index += 1
             continue
         if _has_blocking_previous_context(raw_text, index):
             index += 1
+            continue
+        repeated_sign_candidate = _repeated_sign_unit_preserve_candidate(raw_text, index)
+        if repeated_sign_candidate is not None:
+            candidates.append(repeated_sign_candidate)
+            index = repeated_sign_candidate.full_span.end
             continue
         suffix_spacing_candidate = _unit_suffix_spacing_preserve_candidate(
             raw_text, index
@@ -264,9 +277,9 @@ def scan_unit_contamination_preserve_candidates(raw_text: str) -> list[SurfaceCa
             candidates.append(suffix_spacing_candidate)
             index = suffix_spacing_candidate.full_span.end
             continue
-        numeric_start = index + 1 if raw_text[index] in {"+", "-"} else index
+        numeric_start = index + 1 if is_signed_numeric_sign(raw_text[index]) else index
         numeric_end = _consume_decimal_number(raw_text, index)
-        if raw_text[index] in {"+", "-"}:
+        if is_signed_numeric_sign(raw_text[index]):
             numeric_end = _consume_decimal_number(raw_text, numeric_start)
         if numeric_end is None:
             index += 1
@@ -332,11 +345,11 @@ def _scan_unit_candidates(
     candidates: list[SurfaceCandidate] = []
     index = 0
     while index < len(raw_text):
-        if not (_is_ascii_digit(raw_text[index]) or raw_text[index] in {"+", "-"}):
+        if not (_is_ascii_digit(raw_text[index]) or is_signed_numeric_sign(raw_text[index])):
             index += 1
             continue
         amount_start = index
-        numeric_start = amount_start + 1 if raw_text[amount_start] in {"+", "-"} else amount_start
+        numeric_start = amount_start + 1 if is_signed_numeric_sign(raw_text[amount_start]) else amount_start
         amount_end = _consume_decimal_number(raw_text, numeric_start)
         if amount_end is None:
             index += 1
@@ -407,7 +420,7 @@ def _amount_reading(amount: str) -> str:
         raise ValueError("invalid signed unit amount")
     if sign == "+":
         return "플러스 " + _plus_decimal_amount_reading(unsigned)
-    if sign == "-":
+    if sign is not None and is_minus_sign_alias(sign):
         return "마이너스 " + _plus_decimal_amount_reading(unsigned)
     return _plus_decimal_amount_reading(unsigned)
 
@@ -425,19 +438,13 @@ def _plus_decimal_amount_reading(amount: str) -> str:
 
 
 def _amount_sign(amount: str) -> str | None:
-    if amount.startswith("+"):
-        return "+"
-    if amount.startswith("-"):
-        return "-"
-    return None
+    sign, _ = strip_signed_numeric_sign(amount)
+    return sign
 
 
 def _unsigned_amount(amount: str) -> str | None:
-    if amount.startswith("+"):
-        unsigned = amount[1:]
-        return unsigned if unsigned else None
-    if amount.startswith("-"):
-        unsigned = amount[1:]
+    sign, unsigned = strip_signed_numeric_sign(amount)
+    if sign is not None:
         return unsigned if unsigned else None
     return amount
 
@@ -582,9 +589,33 @@ def _unit_suffix_spacing_preserve_candidate(
     )
 
 
+def _repeated_sign_unit_preserve_candidate(
+    raw_text: str, start: int
+) -> SurfaceCandidate | None:
+    if not is_signed_numeric_sign(raw_text[start]):
+        return None
+    index = start + 1
+    if index >= len(raw_text) or not is_signed_numeric_sign(raw_text[index]):
+        return None
+    while index < len(raw_text) and is_signed_numeric_sign(raw_text[index]):
+        index += 1
+    numeric_end = _consume_decimal_number(raw_text, index)
+    if numeric_end is None:
+        return None
+    unit_start = _consume_optional_ascii_space(raw_text, numeric_end)
+    unit = _supported_unit_at(raw_text, unit_start)
+    if unit is None:
+        return None
+    return _preserve_candidate(
+        start,
+        unit_start + len(unit),
+        "unit_percent_repeated_sign_preserve",
+    )
+
+
 def _consume_numeric_like_surface(raw_text: str, start: int) -> int | None:
     index = start
-    if index < len(raw_text) and raw_text[index] in {"+", "-"}:
+    if index < len(raw_text) and is_signed_numeric_sign(raw_text[index]):
         index += 1
     numeric_start = index
     while index < len(raw_text) and (

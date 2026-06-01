@@ -16,6 +16,7 @@ _DURATION_RE = re.compile(
     rf"(?P<hour_only>{_NUMBER_RE})시간|"
     rf"(?P<minute_only>{_NUMBER_RE})분"
 )
+_YEAR_PERIOD_RE = re.compile(rf"(?P<year>{_INTEGER_RE})년간")
 _NEGATIVE_DURATION_RE = re.compile(
     rf"-(?:{_NUMBER_RE})시간(?:\s*-?(?:{_NUMBER_RE})분)?|"
     rf"(?:{_NUMBER_RE})시간\s*-(?:{_NUMBER_RE})분|"
@@ -34,6 +35,7 @@ def scan_duration_candidates(
 
     candidates: list[SurfaceCandidate] = []
     candidates.extend(_scan_negative_preserve_candidates(raw_text, excluded_ranges))
+    candidates.extend(_scan_year_period_candidates(raw_text, excluded_ranges))
     for match in _DURATION_RE.finditer(raw_text):
         span = SourceSpan(match.start(), match.end())
         if _span_overlaps_excluded_range(span, excluded_ranges):
@@ -125,6 +127,79 @@ def _scan_negative_preserve_candidates(
             )
         )
     return candidates
+
+
+def _scan_year_period_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange]
+) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for match in _YEAR_PERIOD_RE.finditer(raw_text):
+        span = SourceSpan(match.start(), match.end())
+        if _span_overlaps_excluded_range(span, excluded_ranges):
+            continue
+        if not _valid_year_period_left_boundary(raw_text, span):
+            continue
+        if _has_year_period_unsafe_tail(raw_text, span.end):
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=SourceSpan(match.start(), _year_period_token_end(raw_text, span.end)),
+                    full_span=SourceSpan(match.start(), _year_period_token_end(raw_text, span.end)),
+                    owner="preserve",
+                    surface_type="DURATION_PRESERVE_SURFACE",
+                    reason="year_period_unsafe_tail_preserve",
+                )
+            )
+            continue
+        year = match.group("year")
+        year_reading = _duration_amount_reading(year, "년")
+        if year_reading is None:
+            continue
+        candidates.append(
+            _duration_candidate(
+                match.start("year"),
+                match.end("year"),
+                span,
+                f"{year_reading} ",
+                "duration_year_period_numeric_gate",
+            )
+        )
+    return candidates
+
+
+def _valid_year_period_left_boundary(raw_text: str, span: SourceSpan) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    if prev_char is None:
+        return True
+    if prev_char.isascii() and prev_char.isalnum():
+        return False
+    if "\uac00" <= prev_char <= "\ud7a3":
+        return False
+    if prev_char in _PREV_BLOCKERS:
+        return False
+    if prev_char == "-" and raw_text[span.start] != "-":
+        return False
+    return True
+
+
+def _has_year_period_unsafe_tail(raw_text: str, end: int) -> bool:
+    next_char = raw_text[end] if end < len(raw_text) else None
+    if next_char is None:
+        return False
+    if next_char.isspace():
+        return False
+    if next_char in {",", ".", "!", "?", ")", "]", "}", ";", ":"}:
+        return False
+    return True
+
+
+def _year_period_token_end(raw_text: str, start: int) -> int:
+    index = start
+    while index < len(raw_text):
+        char = raw_text[index]
+        if char.isspace() or char in {",", ".", "!", "?", ")", "]", "}", ";", ":"}:
+            break
+        index += 1
+    return index
 
 
 def _duration_candidate(

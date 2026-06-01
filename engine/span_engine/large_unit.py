@@ -239,10 +239,33 @@ def _parse_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse | None:
 class _SmallGroupParse:
     end: int
     reading: str
+    value: int
     final_bare_value: int | None
     saw_small_unit: bool
     saw_thousand: bool
     saw_lower_after_thousand: bool
+
+
+@dataclass(frozen=True)
+class MixedIntegerCoreParse:
+    end: int
+    reading: str
+    value: int
+
+
+def parse_mixed_integer_core_at(
+    raw_text: str, start: int
+) -> MixedIntegerCoreParse | None:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    group = _parse_small_group(raw_text, start)
+    if group is None or not group.saw_small_unit:
+        return None
+    return MixedIntegerCoreParse(
+        end=group.end,
+        reading=group.reading,
+        value=group.value,
+    )
 
 
 def _parse_structured_integer_large_unit_at(
@@ -309,6 +332,7 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
     index = start
     previous_small_order = 4
     parts: list[str] = []
+    total = 0
     final_bare_value: int | None = None
     saw_small_unit = False
     saw_thousand = False
@@ -321,6 +345,7 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
             if order >= previous_small_order:
                 return None
             parts.append(char)
+            total += _SMALL_UNITS[char]
             saw_small_unit = True
             saw_thousand = saw_thousand or order == 3
             saw_lower_after_thousand = saw_lower_after_thousand or (
@@ -346,6 +371,7 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
             if order >= previous_small_order:
                 return None
             parts.append(f"{number_reading}{unit}")
+            total += int(number_text.replace(",", "")) * _SMALL_UNITS[unit]
             saw_small_unit = True
             saw_thousand = saw_thousand or order == 3
             saw_lower_after_thousand = saw_lower_after_thousand or (
@@ -357,6 +383,7 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
 
         parts.append(number_reading)
         final_bare_value = int(number_text.replace(",", ""))
+        total += final_bare_value
         index = number_end
         break
 
@@ -365,6 +392,7 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
     return _SmallGroupParse(
         end=index,
         reading="".join(parts),
+        value=total,
         final_bare_value=final_bare_value,
         saw_small_unit=saw_small_unit,
         saw_thousand=saw_thousand,
@@ -749,9 +777,11 @@ def _valid_boundaries(raw_text: str, core_span: SourceSpan, unit_char: str) -> b
 
 __all__ = [
     "LARGE_UNIT_ATOMIC_INVENTORY",
+    "MixedIntegerCoreParse",
     "is_large_unit",
     "is_unsafe_large_unit_tail",
     "large_unit_render_pieces",
     "parse_large_unit_candidate",
+    "parse_mixed_integer_core_at",
     "scan_large_unit_candidates",
 ]

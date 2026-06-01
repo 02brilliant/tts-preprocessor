@@ -6,6 +6,14 @@
   plus original `로`/`으로`, managed `KTX-이음` acronym-Hangul hyphen compounds,
   and the narrow `N시뉴스` broadcast title pattern without broad fallback,
   hyphen rewrite, or particle correction expansion.
+- Clarified `H시뉴스` as a broadcast title core-marker pattern rather than a
+  finite post-`뉴스` tail inventory: the hour may be generated while `시뉴스`
+  and complete Hangul tails remain original Korean, with ASCII/identifier-like
+  tails and protected contexts preserve-first.
+- Added owner-local dash-like signed numeric aliases for signed numeric-aware
+  owners under full-claim conditions, without global dash normalization and
+  without changing range, connector, sentence dash, invalid, or protected
+  preserve behavior.
 - Clarified paragraph debug contract: `normalized_text` is the final paragraph-shaped TTS output; `render_pieces` may remain a pre-paragraph debug/provenance stream; `render_pieces` parity is not currently required.
 - Corrected the current canonical managed lexicon reading for `OECD` to
   `오이씨디`; span policy, lexicon, and tests should use this reading.
@@ -85,6 +93,12 @@
 - Clarified that `check_server.sh` is a health/sanity check and semantic regression coverage belongs in source/main/binary/API probes and parity tests.
 - Expanded large-unit numeric input coverage for comma integer and signed decimal surfaces.
 - Added mixed Arabic-Hangul large-unit full-claim handling.
+- Added mixed Korean-Arabic numeric counter full-claim handling for registered
+  counter suffixes such as `6천400명`, while blocking broad numeric fallback from
+  producing partial outputs such as `육천400명`.
+- Added narrow `N년간` year-period handling as duration/year owner behavior,
+  preserving the exact original `년간` suffix and avoiding broad `N년+Hangul`
+  expansion.
 - Added Hangul-tail spacing and English-tail literal retention behavior for large-unit numeric surfaces.
 - Clarified large-unit English-tail behavior: valid numeric-large-unit cores are read and following English tails are kept literally without inserted spacing.
 - Preserved code-like English-prefix large-unit surfaces.
@@ -220,6 +234,9 @@ symbol alias는 owner-local matcher에서만 적용한다. 전역 Unicode normal
 - tilde/range alias: `~`, `∼`, `～`, `〜`
 - signed minus alias: `−`, `－`
 - temperature/unit aliases: `°C`, `°F`, `㎜`, `㎝`, `㎞`, `㎎`, `㎏`, `㎡`, `㎥`, `㎐`, `㎒`, `㎓`, etc.
+- fullwidth Latin meter unit alias: `ｍ` is owner-local for unit and
+  range-compatible unit owners; this is not global fullwidth Latin
+  normalization.
 
 명시 non-goal:
 

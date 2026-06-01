@@ -536,6 +536,9 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
     if _is_url_or_path_context(raw_text, span):
         return False
 
+    if _starts_compact_mixed_korean_arabic_numeric(raw_text, span.end):
+        return False
+
     if _has_invalid_spaced_ordinal_prefix(raw_text, span.start):
         return False
 
@@ -610,6 +613,13 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
         return not suffix.startswith(_NUMBER_BLOCKING_KOREAN_SUFFIXES)
 
     return True
+
+
+def _starts_compact_mixed_korean_arabic_numeric(raw_text: str, start: int) -> bool:
+    if start >= len(raw_text) or raw_text[start] not in {"천", "백", "십"}:
+        return False
+    next_index = start + 1
+    return next_index < len(raw_text) and raw_text[next_index].isascii() and raw_text[next_index].isdigit()
 
 
 def _is_first_number_in_compact_dae_relation(

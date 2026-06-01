@@ -5,16 +5,17 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_fraction_text, read_number_text
+from engine.span_engine.sign_aliases import MINUS_SIGN_ALIASES
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
 _SLASH_ALIASES = "/／"
-_MINUS_ALIASES = "-−－"
+_MINUS_ALIAS_CLASS = re.escape("".join(sorted(MINUS_SIGN_ALIASES)))
 _PERCENT_ALIASES = "%％﹪"
 _FRACTION_RE = rf"{_INTEGER_RE}[{_SLASH_ALIASES}]{_INTEGER_RE}"
 _NUMBER_RE = rf"(?:{_FRACTION_RE}|{_DECIMAL_RE}|{_INTEGER_RE})"
 _PERCENT_POINT_RE = re.compile(
-    rf"(?P<sign>[{_MINUS_ALIASES}]?)(?P<number>{_NUMBER_RE})[{_PERCENT_ALIASES}]p"
+    rf"(?P<sign>[{_MINUS_ALIAS_CLASS}]?)(?P<number>{_NUMBER_RE})[{_PERCENT_ALIASES}]p"
 )
 _PREV_BLOCKERS = frozenset("+.,~:/_")
 

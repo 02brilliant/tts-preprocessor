@@ -43,6 +43,7 @@ Current standalone valid forms:
 | `1.5` | `일쩜오` | unsigned decimal |
 | `+1.5` | `플러스 일쩜오` | signed decimal |
 | `-1.5` | `마이너스 일쩜오` | signed decimal |
+| `–1.5` | `마이너스 일쩜오` | owner-local dash-like signed numeric alias; not global dash normalization |
 | `0.05` | `영쩜영오` | unsigned decimal |
 | `+0.05` | `플러스 영쩜영오` | signed decimal |
 | `-0.05` | `마이너스 영쩜영오` | signed decimal |
@@ -77,16 +78,28 @@ Current standalone invalid/malformed forms:
 
 | Owner | Valid numeric forms | Sign | Decimal | Comma | Spacing | Invalid handling | Trailing zero state |
 |---|---|---|---|---|---|---|---|
-| unit | integer, decimal, comma integer/decimal for supported unit policy | `+`/`-` supported in signed unit paths | yes | yes for allowed unit matrix | no space or one ASCII space | malformed numeric+unit preserves as full surface, e.g. `+.5kg`, `1,00kg` | ordinary decimal fractional zero uses `영`, e.g. `25.50kg -> 이십오쩜오영 킬로그램` |
-| percent | integer, decimal, slash fraction for `%p`; `%` supports signed decimal-aware forms | `+`/`-` supported | yes | yes where numeric reader accepts | no space or one ASCII space | malformed percent/percent-point preserves | ordinary decimal fractional zero uses `영`, e.g. `25.50% -> 이십오쩜오영 퍼센트` |
-| temperature / degree | signed temperature, signed degree, unsigned degree-like unit surfaces | signed temperature uses `영상/영하`; bare degree has separate policy | yes | signed parser accepts comma where valid | optional one space for signed unit variants | malformed signed temperature preserves, e.g. `+.5℃` | ordinary decimal fractional zero uses `영`, e.g. `25.50℃ -> 이십오쩜오영도`, `+25.50℃ -> 영상 이십오쩜오영도` |
+| unit | integer, decimal, comma integer/decimal for supported unit policy; owner-local meter aliases include `m` and fullwidth Latin `ｍ` | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes | yes for allowed unit matrix | no space or one ASCII space | malformed numeric+unit preserves as full surface, e.g. `+.5kg`, `+.5ｍ`, `1,00kg`, `1,00ｍ`, `–.5%`, `––2.03%` | ordinary decimal fractional zero uses `영`, e.g. `25.50kg -> 이십오쩜오영 킬로그램` |
+| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun, e.g. `6400명`, `6,400명`, `6천400명` | no arithmetic sign semantics | no | yes for valid integer/comma integer; mixed compact core must parse fully | no space or one ASCII space before counter; generated space follows counter policy | unsafe mixed counter tails preserve and broad internal digit fallback is blocked, e.g. `6천400명abc`, `6천400명/log`; standalone compact `6천400` preserves in this phase | not a decimal owner |
+| duration/year-period | duration `시간`/`분`; narrow exact `N년간` year-period form | negative duration preserves | yes for `시간`/`분`; `N년간` is integer-only | yes where duration numeric reader accepts | owner-scoped; `N년간` renders generated numeric space before original `년간` | unsafe exact year-period tails preserve, e.g. `1년간abc` | duration decimal follows ordinary decimal `영` |
+| percent | integer, decimal, slash fraction for `%p`; `%` supports signed decimal-aware forms | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed percent conditions | yes | yes where numeric reader accepts | no space or one ASCII space | malformed percent/percent-point preserves; dash-like invalid forms preserve, e.g. `–1,00.5%` | ordinary decimal fractional zero uses `영`, e.g. `25.50% -> 이십오쩜오영 퍼센트`, `–2.03% -> 마이너스 이쩜영삼 퍼센트` |
+| temperature / degree | signed temperature, signed degree, unsigned degree-like unit surfaces | signed temperature uses `영상/영하`; bare degree has separate policy; dash-like minus aliases are owner-local under full-claim signed temperature/degree conditions | yes | signed parser accepts comma where valid | optional one space for signed unit variants | malformed signed temperature preserves, e.g. `+.5℃` | ordinary decimal fractional zero uses `영`, e.g. `25.50℃ -> 이십오쩜오영도`, `+25.50℃ -> 영상 이십오쩜오영도` |
 | KRW currency | registered KRW code/symbol/suffix forms | `+`/`-` supported around registered markers | yes | yes | no space or one ASCII space | invalid comma/leading-zero forms preserve; no partial fallback | ordinary decimal fractional zero uses `영`, e.g. `KRW25.50 -> 이십오쩜오영 원` |
 | non-KRW currency | registered USD/EUR/JPY/GBP forms within current currency matrix | partial sign support by marker form | USD/EUR decimal currently allowed; JPY integer-focused | yes where amount parser accepts | no space or one ASCII space | unsupported or malformed currency tokens preserve | current decimal fractional zero is `영`, e.g. `USD 25.50 -> 이십오쩜오영 달러` |
 | large-unit | Arabic integer/comma integer, signed decimal, Arabic-Hangul/Korean mixed full surface | `+`/`-` for decimal large-unit | yes for decimal large-unit lexical form | yes | tail/currency noun policies are owner-scoped | invalid comma/dot/mixed-unit structures preserve; no internal digit fallback | decimal large-unit uses `영`, e.g. `25.50억 -> 이십오쩜오영 억` |
-| tilde range | two numeric sides with tilde-like delimiter; optional compatible suffix/tail | limited signed range forms in current policy | yes | yes for valid numeric blocks | suffix/tail policy owner-scoped | malformed range preserves; no partial fallback for invalid owner surface | current range decimal output uses `영`, e.g. `1.50~2.50테스트 -> 일쩜오영에서 이쩜오영 테스트` |
+| tilde range | two numeric sides with tilde-like delimiter; optional compatible suffix/tail; range-compatible unit aliases include meter `ｍ` | limited signed range forms in current policy | yes | yes for valid numeric blocks | suffix/tail policy owner-scoped | malformed range preserves; no partial fallback for invalid owner surface, e.g. `1~~2ｍ` | current range decimal output uses `영`, e.g. `1.50~2.50테스트 -> 일쩜오영에서 이쩜오영 테스트` |
 | colon / N:M | broad non-time-like `N:M`; multi-colon supported separately | signed decimal in approved paths | yes | yes | Korean tail spacing owner-scoped | invalid/multi-delimiter/time-like/code-like guards preserve | ordinary decimal fractional zero uses `영`, e.g. `3:4.50테스트 -> 삼 대 사쩜오영 테스트` |
 | hyphen restricted range | approved `N-M + range-compatible unit`, e.g. `1-2kg` | broad signed hyphen ranges out of scope | decimal broad signed hyphen remains out of scope | narrow owner-specific support only | attached compatible unit required for range reading | arbitrary `1-2`, `1-2테스트`, `+1.5-2kg` preserve | follows owner parser when valid; no broad trailing-zero policy |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
+
+Dash-like signed numeric alias examples:
+
+| Surface | Expected output | Policy note |
+|---|---|---|
+| `–2.03%` | `마이너스 이쩜영삼 퍼센트` | signed percent/unit owner full-claims the complete surface |
+| `1–2kg` | `일에서 이 킬로그램` | range owner remains authoritative; dash is not a sign alias here |
+| `서울–부산` | `서울–부산` | connector dash preserve |
+| `–2.03abc` | `–2.03abc` | unsafe tail preserve; no internal partial rewrite |
+| `` `–2.03%` `` | `` `–2.03%` `` | protected preserve |
 
 ## 5. Invalid / malformed numeric handling
 
@@ -97,7 +110,13 @@ look like an owner candidate but fail numeric validation. Examples:
 1,00원 -> 1,00원
 USD 1,00 -> USD 1,00
 +.5℃ -> +.5℃
++.5ｍ -> +.5ｍ
+1,00ｍ -> 1,00ｍ
+6천400명abc -> 6천400명abc
+6천400명/log -> 6천400명/log
+1년간abc -> 1년간abc
 1~~2테스트 -> 1~~2테스트
+1~~2ｍ -> 1~~2ｍ
 3::4테스트 -> 3::4테스트
 1-2테스트 -> 1-2테스트
 2,34억 -> 2,34억

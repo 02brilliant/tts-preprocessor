@@ -3,6 +3,7 @@ from __future__ import annotations
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_spaced_integer_value
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.large_unit import parse_mixed_integer_core_at
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
 NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살"})
@@ -220,7 +221,12 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             index += 1
             continue
         number_start = index
-        number_end = _consume_integer(raw_text, number_start)
+        mixed_core = parse_mixed_integer_core_at(raw_text, number_start)
+        number_end = (
+            mixed_core.end
+            if mixed_core is not None
+            else _consume_integer(raw_text, number_start)
+        )
         if number_end is None:
             index += 1
             continue
@@ -234,7 +240,11 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             if not raw_text.startswith(counter, counter_start):
                 continue
             counter_end = counter_start + len(counter)
-            reading = counter_number_reading(raw_number, counter)
+            reading = (
+                _mixed_counter_number_reading(mixed_core, counter)
+                if mixed_core is not None
+                else counter_number_reading(raw_number, counter)
+            )
             if reading is None:
                 continue
             if has_space_before_counter and reading.endswith(" "):
@@ -247,6 +257,10 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             if _has_supported_counter_prefix_tail(raw_text, counter_start, counter_end):
                 break
             if _has_supported_counter_unsafe_tail(raw_text, counter_end):
+                break
+            if mixed_core is not None and _has_mixed_counter_path_tail(
+                raw_text, counter_end
+            ):
                 break
             candidates.append(
                 SurfaceCandidate(
@@ -270,6 +284,16 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return candidates
 
 
+def _mixed_counter_number_reading(
+    mixed_core, counter: str
+) -> str | None:
+    if mixed_core is None or not is_supported_counter(counter):
+        return None
+    if mixed_core.value < 100:
+        return None
+    return mixed_core.reading + ("" if counter in SPACELESS_COUNTERS else " ")
+
+
 def _has_supported_counter_prefix_tail(
     raw_text: str, counter_start: int, counter_end: int
 ) -> bool:
@@ -285,6 +309,10 @@ def _has_supported_counter_prefix_tail(
 def _has_supported_counter_unsafe_tail(raw_text: str, counter_end: int) -> bool:
     next_char = raw_text[counter_end] if counter_end < len(raw_text) else None
     return next_char is not None and next_char.isascii() and next_char.isalnum()
+
+
+def _has_mixed_counter_path_tail(raw_text: str, counter_end: int) -> bool:
+    return counter_end < len(raw_text) and raw_text[counter_end] == "/"
 
 
 def parse_counter_candidate(

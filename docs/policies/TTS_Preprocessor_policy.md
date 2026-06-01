@@ -1030,16 +1030,27 @@ unsafe tail은 preserve한다.
 
 #### Minus sign alias
 
-`-`, `−`, `－`는 signed number, signed temperature, signed percent-point, signed slash fraction owner-local alias로 적용한다.
+`-`, `−`, `－`는 signed number, signed temperature, signed percent,
+signed percent-point, signed unit, signed slash fraction owner-local alias로
+적용한다. Dash-like signs such as `–`, `—`, `‒`, and `‑` may also be accepted
+as owner-local minus sign aliases only by signed numeric-aware owners when the
+owner can full-claim the complete signed numeric surface. This is not global
+dash normalization.
 
 ```text
 −2.5℃ -> 영하 이쩜오도
 －2.5℉ -> 화씨 영하 이쩜오도
+–2.03% -> 마이너스 이쩜영삼 퍼센트
+—2.03kg -> 마이너스 이쩜영삼 킬로그램
 −2.5%p -> 마이너스 이쩜오 퍼센트포인트
 −1/3 -> 마이너스 삼분의 일
 ```
 
-`–`, `—`, `‑` 등 dash-like punctuation은 현재 정책에서 minus alias로 적용하지 않는다.
+Range dash, connector dash, sentence dash, invalid numeric forms, and
+protected/code-like/path/URL/JSON/backtick/square bracket interiors remain
+excluded. If a signed numeric-aware owner cannot full-claim the surface, the
+dash-like character must remain original and the owner must not partially
+rewrite the internal numeric fragment.
 
 #### Temperature degree alias
 
@@ -1129,6 +1140,20 @@ Frequency:
 60㎐ -> 육십 헤르츠
 3.2㎒ -> 삼쩜이 메가헤르츠
 3.2㎓ -> 삼쩜이 기가헤르츠
+```
+
+#### Fullwidth Latin meter unit alias
+
+Fullwidth Latin `ｍ` may be treated as an owner-local meter unit alias by the
+unit and range-compatible unit owners. This is not global fullwidth Latin
+normalization. The original source span remains `ｍ`; only the owner-rendered
+unit reading is `미터`. Protected/code-like/path/URL/JSON/backtick/square
+bracket interiors remain preserve-first.
+
+```text
+1ｍ -> 일 미터
+1~2ｍ -> 일에서 이 미터
+1~2ｍ로 -> 일에서 이 미터로
 ```
 
 #### Compound slash unit alias
@@ -3483,9 +3508,17 @@ Time claim table:
 | `HH:MM:SS` | `date_time.time_colon` | 낮음 | `try_parse_time()` 성공 시 독립 clock pattern 허용 | 값 범위 오류 | 값 범위 오류면 preserve |
 | `HH:MM` | `date_time.time_colon` | 높음 | time prefix, time postposition, time-event keyword, 한국어 날짜 좌문맥 중 하나 | 단독 전체 입력, 다중 colon, score/ratio, 값 범위 오류 | gate 실패 시 preserve |
 | `H시` | `date_time.time_hour_korean` | 중간 | 좌우에 붙은 단어가 없고 독립 token 경계 | `3시리즈` 같은 attached word | gate 실패 시 preserve |
-| `H시뉴스` | `date_time.time_hour_broadcast_title` | 중간 | suffix가 정확히 `뉴스`이고 hour가 유효. 숫자 hour만 generated reading으로 렌더링하고 `시뉴스`/`뉴스` 한글 tail은 ORIGINAL_KOREAN literal로 보존 | broad `H시+임의한글` 금지, `3시리즈`, `11시점`, `11시스템` | gate 실패 시 preserve |
+| `H시뉴스` | `date_time.time_hour_broadcast_title` | 중간 | `H시` 뒤 exact literal marker `뉴스`가 있고 hour가 유효. `뉴스` 뒤 end, punctuation, whitespace, or complete Hangul tail을 허용한다. 숫자 hour만 generated reading으로 렌더링하고 `시뉴스` plus following Hangul tail은 ORIGINAL_KOREAN literal로 보존 | broad `H시+임의한글` 금지, `3시리즈`, `11시점`, `11시스템`, ASCII/identifier-like tail | gate 실패 시 preserve |
 | `H시 M분` | `date_time` | 낮음 | exact local parse 성공 | 값 범위 오류 | 실패 시 preserve |
 | `오전/오후 + H시` | `date_time` | 중간 | 앞 time prefix 허용 | attached word, 값 범위 오류 | 실패 시 preserve |
+
+`H시뉴스` is a broadcast/news-title core-marker pattern, not a finite
+post-`뉴스` tail inventory. A valid hour followed by the exact Korean literal
+marker `시뉴스` may claim only the numeric hour while preserving `시뉴스` and
+any following complete Hangul tail as ORIGINAL_KOREAN. This does not authorize
+broad `H시+Hangul` rewriting; the literal marker `시뉴스` is required. ASCII,
+digit, slash/path, URL, JSON, backtick, and square-bracket protected interiors
+remain preserve-first.
 
 예:
 
@@ -3494,6 +3527,9 @@ Time claim table:
 13:05 -> preserve
 score 12:30 -> preserve
 KBS 11시뉴스입니다 -> 케이비에스 열한시뉴스입니다
+KBS 24시뉴스이었습니다 -> 케이비에스 이십사시뉴스이었습니다
+24시뉴스룸 -> 이십사시뉴스룸
+24시뉴스abc -> preserve
 3시리즈 -> preserve
 11시점 -> preserve
 11시스템 -> preserve
@@ -3650,6 +3686,7 @@ Simple Unit Inventory:
 | `mm` | `밀리미터` | numeric prefix 필요 |
 | `cm` | `센티미터` | numeric prefix 필요 |
 | `m` | `미터` | numeric prefix 필요 |
+| `ｍ` | `미터` | numeric prefix 필요, owner-local alias only |
 | `km` | `킬로미터` | numeric prefix 필요 |
 | `mg` | `밀리그램` | numeric prefix 필요 |
 | `g` | `그램` | numeric prefix 필요 |
@@ -4253,6 +4290,21 @@ Counter 100+ Sino policy:
 - For all counters, if the numeric value is `100` or greater, the entire number is read in Sino-Korean.
 - No tail-native reading is applied for `100+` counter values.
 - Large counter numbers follow the large-number group spacing policy first; the counter literal is then appended with one space unless that counter is explicitly spaceless.
+
+Mixed Korean-Arabic numeric cores such as `6천400` may be claimed by the
+counter owner only when the full numeric core can be parsed without value
+reinterpretation and is followed by a registered counter noun such as `명`.
+The owner must full-claim the numeric core and counter suffix, rendering the
+numeric reading plus the original counter noun according to counter spacing
+policy. Partial output such as `육천400명` is forbidden. Standalone compact
+mixed cores without a registered suffix remain preserve-first in this policy
+phase; they must not be internally rewritten by the broad number fallback.
+
+```text
+6천400명 -> 육천사백 명
+6천400 -> 6천400
+6천400명abc -> 6천400명abc
+```
 
 숫자+counter에서 `1~99`는 기존 counter별 고유어/native, hybrid threshold 39, 한자어 정책을 따른다. 하지만 `100` 이상은 counter 종류와 관계없이 숫자 전체를 한자어로 읽는다. `100` 이상에서는 마지막 두 자리만 고유어로 읽는 tail-native 방식을 사용하지 않는다.
 
@@ -9050,7 +9102,7 @@ class LexiconEntry:
 |---|---|---|
 | `mm`, `㎜` | 밀리미터 | numeric prefix required |
 | `cm`, `㎝` | 센티미터 | numeric prefix required |
-| `m`, `㎙` | 미터 | numeric prefix required, single-letter strict |
+| `m`, `ｍ`, `㎙` | 미터 | numeric prefix required, single-letter strict, `ｍ` is owner-local alias only |
 | `km`, `㎞` | 킬로미터 | numeric prefix required |
 | `µm`, `μm` | 마이크로미터 | numeric prefix required |
 | `nm` | 나노미터 | numeric prefix required |
@@ -9955,6 +10007,19 @@ Duration, percent-point, and fraction policy는 duration, percent-point, slash f
 3시간18분 -> 세 시간 십팔분
 -3시간 -> -3시간
 3시간 -18분 -> 3시간 -18분
+```
+
+The narrow year-period form `N년간` may be treated as a duration/year unit plus
+the exact original `간` suffix. It renders with the normal generated space
+between the numeric reading and `년`, preserving `년간` as original Korean after
+the generated numeric reading. This does not authorize broad `N년+Hangul`
+rewriting.
+
+```text
+1년간 -> 일 년간
+10년간 -> 십 년간
+1년 -> 일년
+1년간abc -> 1년간abc
 ```
 
 ### 38.2 Percent-point `%p`
