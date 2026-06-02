@@ -6206,6 +6206,21 @@ strong connectors:
 - `한편`
 - `따라서`
 
+### 15.3.1 Mid-sentence discourse marker comma insertion
+
+The span-default prosody layer may insert one generated comma before a
+mid-sentence discourse marker when the left clause is sufficiently long,
+predicate-like, and not already separated by punctuation. This is an insert-only
+prosody rule and must not remove, move, or overwrite existing punctuation.
+
+Initial markers are `하지만`, `그러나`, `다만`, `반면`, `한편`, `이에 따라`,
+and `그 결과`.
+
+The rule is not a general long-clause comma insertion algorithm. It must not
+insert inside protected spans, code-like segments, URLs, paths, JSON, backticks,
+square-bracket protected interiors, or owner-claimed numeric surfaces. At most
+one mid-sentence discourse comma may be inserted per sentence in this phase.
+
 ### 15.4 Prosody insertion pseudo-code
 
 ```python
