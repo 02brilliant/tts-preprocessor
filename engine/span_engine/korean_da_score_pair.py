@@ -10,12 +10,29 @@ from engine.span_engine.currency import (
 )
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.multiplier import multiplier_number_reading
-from engine.span_engine.numeric_reading import read_spaced_integer_text
+from engine.span_engine.numeric_reading import (
+    normalize_integer_text,
+    read_fraction_text,
+    read_number_text,
+)
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
 from engine.span_engine.range import COLON_SEMANTIC_PAIR_KEYWORDS
+from engine.span_engine.signed import parse_signed_numeric
 from engine.span_engine.units import supported_unit_prefix_length
 
-_DA_SCORE_PAIR_RE = re.compile(r"([1-9][0-9]*)(?: 대 ([1-9][0-9]*)|대 ?([1-9][0-9]*))")
+_INTEGER_PATTERN = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+_DECIMAL_PATTERN = rf"(?:{_INTEGER_PATTERN})\.\d+"
+_FRACTION_PATTERN = rf"{_INTEGER_PATTERN}/{_INTEGER_PATTERN}"
+_SIGNED_NUMBER_PATTERN = rf"[+-](?:{_DECIMAL_PATTERN}|{_INTEGER_PATTERN})"
+_NUMERIC_OPERAND_PATTERN = (
+    rf"(?:{_SIGNED_NUMBER_PATTERN}|{_FRACTION_PATTERN}|"
+    rf"{_DECIMAL_PATTERN}|{_INTEGER_PATTERN})"
+)
+_DA_SCORE_PAIR_RE = re.compile(
+    rf"(?P<left>{_NUMERIC_OPERAND_PATTERN})"
+    rf"(?: 대 (?P<right_spaced>{_NUMERIC_OPERAND_PATTERN})|"
+    rf"대 ?(?P<right_compact>{_NUMERIC_OPERAND_PATTERN}))"
+)
 _SENTENCE_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，", "！", "？"})
 _LEFT_CONTEXT_PARTICLES = ("은", "는", "이", "가")
 _BRIDGE_PARTICLES = ("으로", "로", "의")
@@ -121,23 +138,36 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
         if not _valid_left_boundary(raw_text, span.start):
             continue
 
-        left = match.group(1)
-        right = match.group(2) or match.group(3)
+        left = match.group("left")
+        right = match.group("right_spaced") or match.group("right_compact")
         if right is None:
             continue
-        left_reading = read_spaced_integer_text(left)
-        right_reading = read_spaced_integer_text(right)
+        left_reading = _readable_numeric_operand_reading(left)
+        right_reading = _readable_numeric_operand_reading(right)
         if left_reading is None or right_reading is None:
             continue
 
-        left_span = SourceSpan(match.start(1), match.end(1))
-        right_group_index = 2 if match.group(2) is not None else 3
-        right_span = SourceSpan(match.start(right_group_index), match.end(right_group_index))
+        left_span = SourceSpan(match.start("left"), match.end("left"))
+        right_group_name = (
+            "right_spaced"
+            if match.group("right_spaced") is not None
+            else "right_compact"
+        )
+        right_span = SourceSpan(match.start(right_group_name), match.end(right_group_name))
         gate_reason = _score_pair_gate_reason(raw_text, span, right, right_span)
         if gate_reason is None:
             continue
         delimiter_span = SourceSpan(left_span.end, right_span.start)
-        reading = _reading_for_surface(raw_text, left_reading, right_reading, delimiter_span)
+        compact_integer_rendering = _uses_compact_integer_rendering(
+            raw_text, left, right, delimiter_span
+        )
+        reading = _reading_for_surface(
+            raw_text,
+            left_reading,
+            right_reading,
+            delimiter_span,
+            compact_integer_rendering=compact_integer_rendering,
+        )
         candidates.append(
             SurfaceCandidate(
                 core_span=span,
@@ -154,6 +184,7 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
                     "left_reading": left_reading,
                     "right_reading": right_reading,
                     "reading": reading,
+                    "compact_integer_rendering": compact_integer_rendering,
                 },
             )
         )
@@ -171,6 +202,7 @@ def parse_korean_da_score_pair_candidate(
     left_span = candidate.metadata.get("left_span")
     right_span = candidate.metadata.get("right_span")
     delimiter_span = candidate.metadata.get("delimiter_span")
+    compact_integer_rendering = candidate.metadata.get("compact_integer_rendering")
     if not (
         isinstance(reading, str)
         and isinstance(left_reading, str)
@@ -178,6 +210,7 @@ def parse_korean_da_score_pair_candidate(
         and isinstance(left_span, SourceSpan)
         and isinstance(right_span, SourceSpan)
         and isinstance(delimiter_span, SourceSpan)
+        and isinstance(compact_integer_rendering, bool)
     ):
         return None
     raw = raw_text[candidate.core_span.start : candidate.core_span.end]
@@ -195,7 +228,12 @@ def parse_korean_da_score_pair_candidate(
                 owner=candidate.owner,
                 metadata={"surface_type": candidate.surface_type},
             ),
-            *_delimiter_render_pieces(raw_text, delimiter_span, candidate),
+            *_delimiter_render_pieces(
+                raw_text,
+                delimiter_span,
+                candidate,
+                compact_integer_rendering=compact_integer_rendering,
+            ),
             RenderPiece(
                 text=right_reading,
                 provenance="GENERATED_READING",
@@ -209,20 +247,28 @@ def parse_korean_da_score_pair_candidate(
 
 
 def _reading_for_surface(
-    raw_text: str, left_reading: str, right_reading: str, delimiter_span: SourceSpan
+    raw_text: str,
+    left_reading: str,
+    right_reading: str,
+    delimiter_span: SourceSpan,
+    *,
+    compact_integer_rendering: bool,
 ) -> str:
-    delimiter = raw_text[delimiter_span.start : delimiter_span.end]
-    if delimiter == "대":
+    if compact_integer_rendering:
         return f"{left_reading}대{right_reading}"
     return f"{left_reading} 대 {right_reading}"
 
 
 def _delimiter_render_pieces(
-    raw_text: str, delimiter_span: SourceSpan, candidate: SurfaceCandidate
+    raw_text: str,
+    delimiter_span: SourceSpan,
+    candidate: SurfaceCandidate,
+    *,
+    compact_integer_rendering: bool,
 ) -> list[RenderPiece]:
     pieces: list[RenderPiece] = []
     delimiter = raw_text[delimiter_span.start : delimiter_span.end]
-    if delimiter == "대 ":
+    if not compact_integer_rendering and not delimiter.startswith(" "):
         pieces.append(
             RenderPiece(
                 text=" ",
@@ -243,7 +289,59 @@ def _delimiter_render_pieces(
                 metadata={"surface_type": candidate.surface_type},
             )
         )
+    if not compact_integer_rendering and not delimiter.endswith(" "):
+        pieces.append(
+            RenderPiece(
+                text=" ",
+                provenance="GENERATED_READING",
+                source_span=None,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
     return pieces
+
+
+def _readable_numeric_operand_reading(raw_operand: str) -> str | None:
+    if not isinstance(raw_operand, str):
+        raise TypeError("raw_operand must be str")
+    if not raw_operand:
+        return None
+    if raw_operand[0] in {"+", "-"}:
+        if "/" in raw_operand:
+            return None
+        unsigned = raw_operand[1:]
+        number_reading = parse_signed_numeric(unsigned)
+        if number_reading is None:
+            return None
+        if raw_operand[0] == "+":
+            return f"플러스 {number_reading}"
+        return f"마이너스 {number_reading}"
+    if "/" in raw_operand:
+        if raw_operand.count("/") != 1:
+            return None
+        numerator, denominator = raw_operand.split("/", 1)
+        return read_fraction_text(numerator, denominator)
+    return read_number_text(raw_operand)
+
+
+def _uses_compact_integer_rendering(
+    raw_text: str, left: str, right: str, delimiter_span: SourceSpan
+) -> bool:
+    delimiter = raw_text[delimiter_span.start : delimiter_span.end]
+    return (
+        delimiter == "대"
+        and _is_plain_unsigned_integer_operand(left)
+        and _is_plain_unsigned_integer_operand(right)
+    )
+
+
+def _is_plain_unsigned_integer_operand(raw_operand: str) -> bool:
+    return (
+        raw_operand.isascii()
+        and raw_operand.isdigit()
+        and normalize_integer_text(raw_operand) is not None
+    )
 
 
 def _valid_left_boundary(raw_text: str, start: int) -> bool:
@@ -277,6 +375,13 @@ def _valid_right_boundary(raw_text: str, span: SourceSpan) -> bool:
         return True
     if next_char.isspace():
         return True
+    if (
+        next_char in {",", "."}
+        and span.end + 1 < len(raw_text)
+        and raw_text[span.end + 1].isascii()
+        and raw_text[span.end + 1].isdigit()
+    ):
+        return False
     if next_char in _SENTENCE_PUNCTUATION:
         return True
     if _is_complete_hangul(next_char):
@@ -293,7 +398,7 @@ def is_independent_right_number_for_da_pair(
         raise TypeError("right_number must be str")
     if not isinstance(right_span, SourceSpan):
         raise TypeError("right_span must be SourceSpan")
-    if not re.fullmatch(r"[1-9][0-9]*", right_number):
+    if _readable_numeric_operand_reading(right_number) is None:
         return False
 
     next_char = raw_text[right_span.end] if right_span.end < len(raw_text) else None
@@ -301,6 +406,13 @@ def is_independent_right_number_for_da_pair(
         if next_char in _RIGHT_NUMBER_BLOCKING_ASCII_CONTINUATIONS:
             return False
         if next_char.isascii() and next_char.isalnum():
+            return False
+        if (
+            next_char in {",", "."}
+            and right_span.end + 1 < len(raw_text)
+            and raw_text[right_span.end + 1].isascii()
+            and raw_text[right_span.end + 1].isdigit()
+        ):
             return False
         if next_char in {"/"}:
             return False
@@ -332,7 +444,9 @@ def right_number_blocks_registered_owner_suffix(
         suffix_start,
         right_number,
         _RIGHT_NUMBER_DURATION_SUFFIXES,
-        numeric_reader=lambda number, suffix: read_spaced_integer_text(number),
+        numeric_reader=lambda number, suffix: _readable_unsigned_number_or_fraction(
+            number
+        ),
     ):
         return True
     if _blocks_registered_suffixes(
@@ -361,13 +475,13 @@ def _blocks_unit_suffix(suffix_text: str) -> bool:
 def _blocks_currency_suffix(
     raw_text: str, right_number: str, right_start: int, suffix_start: int
 ) -> bool:
+    if _readable_numeric_operand_reading(right_number) is None:
+        return False
     for suffix in _RIGHT_NUMBER_CURRENCY_SUFFIXES:
         if not raw_text.startswith(suffix, suffix_start):
             continue
         suffix_end = suffix_start + len(suffix)
         if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
-            continue
-        if suffix in KOREAN_CURRENCY_SUFFIX_READINGS and right_number.startswith("0"):
             continue
         if suffix in KOREAN_CURRENCY_SUFFIX_READINGS or suffix in CURRENCY_SYMBOL_READINGS:
             return True
@@ -388,7 +502,7 @@ def _blocks_counter_or_numeric_suffix(
             if counter_number_reading(right_number, suffix) is None:
                 continue
             return True
-        return read_spaced_integer_text(right_number) is not None
+        return read_number_text(right_number) is not None
     return False
 
 
@@ -413,15 +527,29 @@ def _blocks_registered_suffixes(
 
 
 def _blocks_clock_suffix(raw_text: str, right_number: str, suffix_start: int) -> bool:
+    normalized = normalize_integer_text(right_number)
+    if normalized is None:
+        return False
     for suffix in _RIGHT_NUMBER_CLOCK_SUFFIXES:
         if not raw_text.startswith(suffix, suffix_start):
             continue
         suffix_end = suffix_start + len(suffix)
         if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
             continue
-        hour = int(right_number)
+        hour = int(normalized)
         return 1 <= hour <= 24
     return False
+
+
+def _readable_unsigned_number_or_fraction(raw_number: str) -> str | None:
+    if "/" in raw_number:
+        if raw_number.count("/") != 1:
+            return None
+        numerator, denominator = raw_number.split("/", 1)
+        return read_fraction_text(numerator, denominator)
+    if raw_number.startswith(("+", "-")):
+        return None
+    return read_number_text(raw_number)
 
 
 def _registered_suffix_boundary(raw_text: str, suffix: str, suffix_end: int) -> bool:

@@ -129,6 +129,47 @@ def test_korean_da_score_pair_independent_right_number_gate(
 @pytest.mark.parametrize(
     ("src", "expected"),
     [
+        ("2.1대 1.5", "이쩜일 대 일쩜오"),
+        ("2.1대 1.5다", "이쩜일 대 일쩜오다"),
+        ("1/3대 2/5", "삼분의 일 대 오분의 이"),
+        ("+2대 -1", "플러스 이 대 마이너스 일"),
+        ("0대1이다.", "영대일이다."),
+        ("1,000대2", "천 대 이"),
+        ("1,000.5대2.5", "천쩜오 대 이쩜오"),
+        ("+2.5대-1.5", "플러스 이쩜오 대 마이너스 일쩜오"),
+        ("2.1대1.5", "이쩜일 대 일쩜오"),
+        ("1/3대2/5", "삼분의 일 대 오분의 이"),
+        ("+2대-1", "플러스 이 대 마이너스 일"),
+    ],
+)
+def test_korean_da_score_pair_readable_numeric_operands(
+    src: str, expected: str
+) -> None:
+    assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("2대1", "이대일"),
+        ("2대 1", "이 대 일"),
+        ("2 대 1", "이 대 일"),
+        ("2.1대1.5", "이쩜일 대 일쩜오"),
+        ("1/3대2/5", "삼분의 일 대 오분의 이"),
+        ("+2대-1", "플러스 이 대 마이너스 일"),
+    ],
+)
+def test_korean_da_score_pair_compact_rendering_only_for_plain_integer_compact_form(
+    src: str, expected: str
+) -> None:
+    assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
         ("세트스코어는 2 대 1입니다.", "세트스코어는 이 대 일입니다."),
         ("점수는 2 대 1 이다.", "점수는 이 대 일 이다."),
         ("경기는 2대 1로 끝났다.", "경기는 이 대 일로 끝났다."),
@@ -171,6 +212,12 @@ def test_korean_da_score_pair_left_context_does_not_block_independent_right_numb
         "배율은 2대 1배입니다.",
         "시간은 2대 1시간입니다.",
         "기간은 2대 1분입니다.",
+        "중량은 2.1대 1.5kg입니다.",
+        "비율은 2.1대 1.5%입니다.",
+        "금액은 2.1대 1.5원입니다.",
+        "배율은 2.1대 1.5배입니다.",
+        "금액은 +2대 -1원입니다.",
+        "기간은 1/3대 2/5시간입니다.",
     ],
 )
 def test_korean_da_score_pair_blocks_when_right_side_forms_registered_owner_surface(
@@ -198,13 +245,18 @@ def test_korean_da_score_pair_does_not_misclassify_copula_tail_as_day_suffix(
 @pytest.mark.parametrize(
     "src",
     [
-        "점수는 0대1이다.",
         "점수는 01대1이다.",
         "점수는 1대01이다.",
-        "점수는 1.5대2이다.",
-        "점수는 1,000대2이다.",
-        "점수는 +1대2이다.",
-        "점수는 -1대2이다.",
+        "점수는 001대1이다.",
+        "점수는 .5대1이다.",
+        "점수는 1.대2이다.",
+        "점수는 1,00대2이다.",
+        "점수는 1,0000대2이다.",
+        "점수는 1.2.3대1이다.",
+        "점수는 1/대2이다.",
+        "점수는 1//2대3이다.",
+        "점수는 2대1,00이다.",
+        "점수는 2대1.2.3이다.",
         "점수는 1 대2이다.",
     ],
 )
