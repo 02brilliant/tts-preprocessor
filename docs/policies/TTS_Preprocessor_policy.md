@@ -1100,6 +1100,24 @@ Compound unit, path, URL owner에는 `⁄`, `∕`를 일괄 적용하지 않는�
 2.5﹪p -> 이쩜오 퍼센트포인트
 ```
 
+#### Percent-point suffix uppercase alias
+
+The percent-point owner treats suffix `p` and `P` equivalently after a supported
+percent sign alias. This is owner-local and does not imply global case
+normalization.
+
+Examples:
+
+```text
+3%p -> 삼 퍼센트포인트
+3%P -> 삼 퍼센트포인트
+3％P -> 삼 퍼센트포인트
+3﹪P -> 삼 퍼센트포인트
+```
+
+Unsafe alphabetic tails such as `%Pa` or `%Point`, and protected/code-like/path/
+URL/JSON/backtick/square-bracket contexts, remain preserve-first.
+
 unsafe tail은 preserve한다.
 
 ```text
@@ -10222,17 +10240,21 @@ interiors remain preserve-first. Signed and malformed numeric forms are out of
 scope for this phase and must not be partially rewritten by the multiplier
 owner.
 
-### 38.2 Percent-point `%p`
+### 38.2 Percent-point `%p` / `%P`
 
-`##%p`는 `[숫자 reading] 퍼센트포인트`로 읽는다. 숫자는 정수, 음수, 소수, slash fraction, 규칙적인 comma 자리수 숫자를 허용한다. `%p`는 일반 `%` percent보다 먼저 full consume한다.
+`##%p`와 `##%P`는 `[숫자 reading] 퍼센트포인트`로 읽는다. 숫자는 정수, signed owner-local numeric sign, 소수, slash fraction, 규칙적인 comma 자리수 숫자를 허용한다. `%p`/`%P` suffix alias는 percent-point owner-local 정책이며 전역 case normalization을 의미하지 않는다. percent-point는 일반 `%` percent보다 먼저 full consume한다.
 
 ```text
 2.5%p -> 이쩜오 퍼센트포인트
+2.5%P -> 이쩜오 퍼센트포인트
++2.5%P -> 플러스 이쩜오 퍼센트포인트
 -2.5%p -> 마이너스 이쩜오 퍼센트포인트
 1/2%p -> 이분의 일 퍼센트포인트
 1,200%p -> 천이백 퍼센트포인트
 0.5%p -> 영쩜오 퍼센트포인트
 33%p -> 삼십삼 퍼센트포인트
+2.5%Pa -> 2.5%Pa
+2.5%Point -> 2.5%Point
 2.5%point -> 2.5%point
 2.5%pa -> 2.5%pa
 A2.5%p -> A2.5%p
