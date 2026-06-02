@@ -834,11 +834,12 @@ surface and must not partially rewrite internal numeric fragments.
 
 Time owner precedence remains higher than semantic-pair owner. Leading-zero and time-like semantic-pair forms are not claimed by the semantic-pair owner.
 
-### Korean `대` score-pair owner
+### Korean `대` score-pair owner: independent right-number gate
 
-The `korean_da_score_pair` owner handles only narrow Korean score/result
-relations in the `span_default` path. It claims the following spacing forms
-when a score/result context gate is present:
+The `korean_da_score_pair` owner handles narrow Korean score/result relations in
+the `span_default` path. In addition to explicit semantic-pair keyword context,
+Korean `대` score-pair surfaces may be claimed without a score keyword when the
+right-side numeric block is independent. It claims the following spacing forms:
 
 ```text
 N 대 M
@@ -851,6 +852,13 @@ Both numeric sides must be natural-number Arabic integer blocks matching
 comma integers, signed numbers, `N 대M`, `N대`, `N 대`, colon forms, or hyphen
 forms. Numeric readings are Sino-Korean score readings, not native counter
 readings.
+
+The right-side `M` is independent when it is not immediately attached to a
+registered owner-attached numeric suffix/counter/unit/currency/percent/date-time/
+duration/multiplier surface. This must be determined structurally using existing
+owner-attached suffix semantics or an equivalent registry-backed helper, not by
+a long positive list of Korean endings and not by a naive first-character suffix
+match.
 
 Rendering follows the source spacing form:
 
@@ -874,9 +882,13 @@ inventory for this owner is:
 
 Protected contexts remain higher priority: URL/path/email/JSON-like strings,
 backtick spans, fenced code, square bracket interiors, identifier-like tokens,
-and code-like tokens must not be claimed by this owner. If the context gate
-fails, the owner returns no claim so existing counter and number behavior
-continues unchanged.
+and code-like tokens must not be claimed by this owner.
+
+The owner must not claim when the right side forms another owner-attached numeric
+surface. Left-side lexical context such as `차량`, `장비`, or `카메라` does not by
+itself block the owner when the right-side number is independent. The
+disambiguation is based on whether the right-side number forms a registered
+owner-attached numeric surface.
 
 ```text
 세트스코어는 2 대 1입니다. -> 세트스코어는 이 대 일입니다.
@@ -884,9 +896,17 @@ continues unchanged.
 경기는 2대 1로 끝났다. -> 경기는 이 대 일로 끝났다.
 2대1 점수였다. -> 이대일 점수였다.
 2대1로 이겼다. -> 이대일로 이겼다.
+2 대 1이다. -> 이 대 일이다.
+2대1이다. -> 이대일이다.
+3 대 1은 아닙니다. -> 삼 대 일은 아닙니다.
+4대 3일까요? -> 사 대 삼일까요?
+차량은 2대 1입니다. -> 차량은 이 대 일입니다.
+장비는 3대 1일까요? -> 장비는 삼 대 일일까요?
 차량 2대입니다. -> 차량 두 대입니다.
 장비 3대 추가 -> 장비 세 대 추가
-2대1이다. -> 이대일이다.  # no korean_da_score_pair claim; existing fallback only
+차량 2대 1대를 점검했다. -> 차량 두 대 한 대를 점검했다.
+장비 2대 1개를 추가했다. -> 장비 두 대 한 개를 추가했다.
+2대 1kg, 2대 1%, 2대 1원, 2대 1배 are not claimed by this owner.
 ```
 
 ```text
@@ -9437,26 +9457,31 @@ Boundary / unsafe tail:
 
 #### Korean `대` score-pair relation owner
 
-`N대M`처럼 공백 없이 `대`로 연결된 compact relation은 더 이상 score 문맥에서
-일반 number fallback에만 의존하지 않는다. `korean_da_score_pair` owner가
-approved score/result context 안에서 `N 대 M`, `N대M`, `N대 M` 세 형태를
-full-claim하고 양쪽 숫자를 Sino-Korean score number로 읽는다. 이 owner는
-`counter_noun`보다 먼저 평가되어야 하며, context gate가 실패하면 no-claim으로
-돌아가 기존 counter/number fallback이 동작한다.
+`N대M`처럼 공백 없이 `대`로 연결된 compact relation은 더 이상 일반 number
+fallback에만 의존하지 않는다. `korean_da_score_pair` owner가 approved
+score/result context 또는 independent right-number gate 안에서 `N 대 M`,
+`N대M`, `N대 M` 세 형태를 full-claim하고 양쪽 숫자를 Sino-Korean score
+number로 읽는다. 이 owner는 `counter_noun`보다 먼저 평가되어야 하며, 오른쪽
+숫자가 등록된 owner-attached counter/unit/currency/percent/date-time/duration/
+multiplier/numeric-suffix surface를 형성하면 score keyword 문맥에서도
+claim하지 않는다.
 
-이 규칙은 bare `N대M`, `N대`, hyphen score/range(`1-1`, `1-2`), colon-like
-`N:M`, `N 대M`, signed/decimal/comma/leading-zero/zero 숫자로 확장하지 않는다.
-Colon-like `N:M`은 최신 broad N:M 정책에 따라 time-like/protected/invalid guard
-이후 `N 대 M`으로 읽을 수 있다.
+이 규칙은 `N대`, hyphen score/range(`1-1`, `1-2`), colon-like `N:M`,
+`N 대M`, signed/decimal/comma/leading-zero/zero 숫자로 확장하지 않는다.
+Colon-like `N:M`은 최신 broad N:M 정책에 따라 time-like/protected/invalid
+guard 이후 `N 대 M`으로 읽을 수 있다. Bare `N대M`, `N대 M`, `N 대 M`은
+오른쪽 숫자가 독립 numeric block이면 claim 가능하다.
 
 ```text
 스코어 1대1로 -> 스코어 일대일로
 점수 2대1 -> 점수 이대일
 경기는 2대 1로 끝났다 -> 경기는 이 대 일로 끝났다
-1대1로 -> 일대일로  # no korean_da_score_pair claim; existing fallback only
-1대1 교육 -> 일대일 교육  # no korean_da_score_pair claim; existing fallback only
-2대1 구조 -> 이대일 구조  # no korean_da_score_pair claim; existing fallback only
-10대1 경쟁률 -> 십대일 경쟁률  # no korean_da_score_pair claim; existing fallback only
+1대1로 -> 일대일로
+2대1 구조 -> 이대일 구조
+4대 3일까요 -> 사 대 삼일까요
+차량은 2대 1입니다 -> 차량은 이 대 일입니다
+차량 2대 1대를 점검했다 -> 차량 두 대 한 대를 점검했다
+장비 2대 1개를 추가했다 -> 장비 두 대 한 개를 추가했다
 3:2 승 -> 삼 대 이 승
 3:2 세트 -> 삼 대 이 세트
 1-1 무 -> 1-1 무

@@ -2,41 +2,23 @@ from __future__ import annotations
 
 import re
 
+from engine.span_engine.counter import COUNTERS_BY_LENGTH, counter_number_reading
+from engine.span_engine.currency import (
+    CURRENCY_CODE_READINGS,
+    CURRENCY_SYMBOL_READINGS,
+    KOREAN_CURRENCY_SUFFIX_READINGS,
+)
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.multiplier import multiplier_number_reading
 from engine.span_engine.numeric_reading import read_spaced_integer_text
+from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
 from engine.span_engine.range import COLON_SEMANTIC_PAIR_KEYWORDS
+from engine.span_engine.units import supported_unit_prefix_length
 
 _DA_SCORE_PAIR_RE = re.compile(r"([1-9][0-9]*)(?: 대 ([1-9][0-9]*)|대 ?([1-9][0-9]*))")
 _SENTENCE_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，", "！", "？"})
 _LEFT_CONTEXT_PARTICLES = ("은", "는", "이", "가")
 _BRIDGE_PARTICLES = ("으로", "로", "의")
-_ATTACHED_TAILS = (
-    "였고",
-    "였지만",
-    "이었다",
-    "였습니다",
-    "였다",
-    "입니다",
-    "이다",
-    "이고",
-    "으로",
-    "에서",
-    "에게",
-    "처럼",
-    "로",
-    "은",
-    "는",
-    "이",
-    "가",
-    "을",
-    "를",
-    "의",
-    "에",
-    "와",
-    "과",
-    "도",
-    "만",
-)
 _SCORE_RESULT_KEYWORD_SET = frozenset(
     {
         "스코어",
@@ -66,6 +48,68 @@ KOREAN_DA_SCORE_PAIR_KEYWORDS = tuple(
     )
 )
 _KEYWORDS_BY_LENGTH = sorted(KOREAN_DA_SCORE_PAIR_KEYWORDS, key=len, reverse=True)
+_OWNER_ATTACHED_HANGUL_TAILS = (
+    "입니다",
+    "였습니다",
+    "이었다",
+    "였다",
+    "이다",
+    "이고",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "에",
+    "에서",
+    "부터",
+    "까지",
+    "으로",
+    "로",
+    "와",
+    "과",
+    "도",
+    "만",
+    "씩",
+    "짜리",
+)
+_AMBIGUOUS_DATE_OWNER_PARTICLES = (
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "에",
+    "에서",
+    "에게",
+    "부터",
+    "까지",
+    "으로",
+    "로",
+    "와",
+    "과",
+    "도",
+    "만",
+)
+_AMBIGUOUS_DATE_SUFFIXES = frozenset({"년", "월", "일"})
+_RIGHT_NUMBER_COUNTER_SUFFIXES = tuple(
+    sorted(set(COUNTERS_BY_LENGTH) | set(NUMERIC_SUFFIXES), key=len, reverse=True)
+)
+_RIGHT_NUMBER_CURRENCY_SUFFIXES = tuple(
+    sorted(
+        set(CURRENCY_SYMBOL_READINGS)
+        | set(CURRENCY_CODE_READINGS)
+        | set(KOREAN_CURRENCY_SUFFIX_READINGS),
+        key=len,
+        reverse=True,
+    )
+)
+_RIGHT_NUMBER_DURATION_SUFFIXES = ("년간", "시간", "분")
+_RIGHT_NUMBER_MULTIPLIER_SUFFIXES = ("배",)
+_RIGHT_NUMBER_CLOCK_SUFFIXES = ("시",)
+_RIGHT_NUMBER_BLOCKING_ASCII_CONTINUATIONS = frozenset("_")
 
 
 def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -75,10 +119,6 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
     for match in _DA_SCORE_PAIR_RE.finditer(raw_text):
         span = SourceSpan(match.start(), match.end())
         if not _valid_left_boundary(raw_text, span.start):
-            continue
-        if not _valid_right_boundary(raw_text, span):
-            continue
-        if not _has_score_pair_context(raw_text, span):
             continue
 
         left = match.group(1)
@@ -93,6 +133,9 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
         left_span = SourceSpan(match.start(1), match.end(1))
         right_group_index = 2 if match.group(2) is not None else 3
         right_span = SourceSpan(match.start(right_group_index), match.end(right_group_index))
+        gate_reason = _score_pair_gate_reason(raw_text, span, right, right_span)
+        if gate_reason is None:
+            continue
         delimiter_span = SourceSpan(left_span.end, right_span.start)
         reading = _reading_for_surface(raw_text, left_reading, right_reading, delimiter_span)
         candidates.append(
@@ -101,7 +144,7 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
                 full_span=span,
                 owner="korean_da_score_pair",
                 surface_type="KOREAN_DA_SCORE_PAIR_SURFACE",
-                reason="korean_da_score_pair_score_context_gate",
+                reason=gate_reason,
                 metadata={
                     "left": left,
                     "right": right,
@@ -211,7 +254,21 @@ def _valid_left_boundary(raw_text: str, start: int) -> bool:
         return False
     if _is_complete_hangul(prev_char):
         return False
-    return prev_char not in {"_", "+", "-", "/", ".", ",", ":", "~", "∼"}
+    return prev_char not in {"_", "+", "-", "/", ".", ",", ":", "~", "∼", "="}
+
+
+def _score_pair_gate_reason(
+    raw_text: str, span: SourceSpan, right: str, right_span: SourceSpan
+) -> str | None:
+    if not _valid_right_boundary(raw_text, span):
+        return None
+    if right_number_blocks_registered_owner_suffix(raw_text, right, right_span):
+        return None
+    if _has_score_pair_context(raw_text, span):
+        return "korean_da_score_pair_score_context_gate"
+    if is_independent_right_number_for_da_pair(raw_text, right, right_span):
+        return "korean_da_score_pair_independent_right_number_gate"
+    return None
 
 
 def _valid_right_boundary(raw_text: str, span: SourceSpan) -> bool:
@@ -223,19 +280,165 @@ def _valid_right_boundary(raw_text: str, span: SourceSpan) -> bool:
     if next_char in _SENTENCE_PUNCTUATION:
         return True
     if _is_complete_hangul(next_char):
-        return _has_attached_tail(raw_text, span.end)
+        return True
     return False
 
 
-def _has_attached_tail(raw_text: str, tail_start: int) -> bool:
-    for tail in _ATTACHED_TAILS:
-        if not raw_text.startswith(tail, tail_start):
+def is_independent_right_number_for_da_pair(
+    raw_text: str, right_number: str, right_span: SourceSpan
+) -> bool:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(right_number, str):
+        raise TypeError("right_number must be str")
+    if not isinstance(right_span, SourceSpan):
+        raise TypeError("right_span must be SourceSpan")
+    if not re.fullmatch(r"[1-9][0-9]*", right_number):
+        return False
+
+    next_char = raw_text[right_span.end] if right_span.end < len(raw_text) else None
+    if next_char is not None:
+        if next_char in _RIGHT_NUMBER_BLOCKING_ASCII_CONTINUATIONS:
+            return False
+        if next_char.isascii() and next_char.isalnum():
+            return False
+        if next_char in {"/"}:
+            return False
+
+    return not right_number_blocks_registered_owner_suffix(
+        raw_text, right_number, right_span
+    )
+
+
+def right_number_blocks_registered_owner_suffix(
+    raw_text: str, right_number: str, right_span: SourceSpan
+) -> bool:
+    suffix_start = _consume_optional_ascii_space(raw_text, right_span.end)
+    suffix_gap = raw_text[right_span.end : suffix_start]
+    suffix_text = raw_text[suffix_start:]
+    if not suffix_text:
+        return False
+    if suffix_gap not in {"", " "}:
+        return False
+
+    if _blocks_unit_suffix(suffix_text):
+        return True
+    if _blocks_currency_suffix(raw_text, right_number, right_span.start, suffix_start):
+        return True
+    if _blocks_counter_or_numeric_suffix(raw_text, right_number, suffix_start):
+        return True
+    if _blocks_registered_suffixes(
+        raw_text,
+        suffix_start,
+        right_number,
+        _RIGHT_NUMBER_DURATION_SUFFIXES,
+        numeric_reader=lambda number, suffix: read_spaced_integer_text(number),
+    ):
+        return True
+    if _blocks_registered_suffixes(
+        raw_text,
+        suffix_start,
+        right_number,
+        _RIGHT_NUMBER_MULTIPLIER_SUFFIXES,
+        numeric_reader=lambda number, suffix: multiplier_number_reading(number),
+    ):
+        return True
+    if _blocks_clock_suffix(raw_text, right_number, suffix_start):
+        return True
+    return False
+
+
+def _consume_optional_ascii_space(raw_text: str, start: int) -> int:
+    if start < len(raw_text) and raw_text[start] == " ":
+        return start + 1
+    return start
+
+
+def _blocks_unit_suffix(suffix_text: str) -> bool:
+    return supported_unit_prefix_length(suffix_text) is not None
+
+
+def _blocks_currency_suffix(
+    raw_text: str, right_number: str, right_start: int, suffix_start: int
+) -> bool:
+    for suffix in _RIGHT_NUMBER_CURRENCY_SUFFIXES:
+        if not raw_text.startswith(suffix, suffix_start):
             continue
-        if len(tail) > 1:
+        suffix_end = suffix_start + len(suffix)
+        if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
+            continue
+        if suffix in KOREAN_CURRENCY_SUFFIX_READINGS and right_number.startswith("0"):
+            continue
+        if suffix in KOREAN_CURRENCY_SUFFIX_READINGS or suffix in CURRENCY_SYMBOL_READINGS:
             return True
-        after = tail_start + len(tail)
-        return after == len(raw_text) or not _is_complete_hangul(raw_text[after])
+        return right_start < suffix_start
     return False
+
+
+def _blocks_counter_or_numeric_suffix(
+    raw_text: str, right_number: str, suffix_start: int
+) -> bool:
+    for suffix in _RIGHT_NUMBER_COUNTER_SUFFIXES:
+        if not raw_text.startswith(suffix, suffix_start):
+            continue
+        suffix_end = suffix_start + len(suffix)
+        if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
+            continue
+        if suffix in COUNTERS_BY_LENGTH:
+            if counter_number_reading(right_number, suffix) is None:
+                continue
+            return True
+        return read_spaced_integer_text(right_number) is not None
+    return False
+
+
+def _blocks_registered_suffixes(
+    raw_text: str,
+    suffix_start: int,
+    right_number: str,
+    suffixes: tuple[str, ...],
+    *,
+    numeric_reader,
+) -> bool:
+    for suffix in suffixes:
+        if not raw_text.startswith(suffix, suffix_start):
+            continue
+        suffix_end = suffix_start + len(suffix)
+        if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
+            continue
+        if numeric_reader(right_number, suffix) is None:
+            continue
+        return True
+    return False
+
+
+def _blocks_clock_suffix(raw_text: str, right_number: str, suffix_start: int) -> bool:
+    for suffix in _RIGHT_NUMBER_CLOCK_SUFFIXES:
+        if not raw_text.startswith(suffix, suffix_start):
+            continue
+        suffix_end = suffix_start + len(suffix)
+        if not _registered_suffix_boundary(raw_text, suffix, suffix_end):
+            continue
+        hour = int(right_number)
+        return 1 <= hour <= 24
+    return False
+
+
+def _registered_suffix_boundary(raw_text: str, suffix: str, suffix_end: int) -> bool:
+    next_char = raw_text[suffix_end] if suffix_end < len(raw_text) else None
+    if next_char is None:
+        return True
+    if next_char.isspace():
+        return True
+    if next_char in _SENTENCE_PUNCTUATION or next_char in {")", "]", "}"}:
+        return True
+    if next_char.isascii():
+        return True
+    if not _is_complete_hangul(next_char):
+        return True
+    if suffix not in _AMBIGUOUS_DATE_SUFFIXES:
+        return raw_text.startswith(_OWNER_ATTACHED_HANGUL_TAILS, suffix_end)
+    return raw_text.startswith(_AMBIGUOUS_DATE_OWNER_PARTICLES, suffix_end)
 
 
 def _has_score_pair_context(raw_text: str, span: SourceSpan) -> bool:

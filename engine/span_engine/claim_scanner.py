@@ -671,7 +671,7 @@ def _valid_compact_dae_relation(
             return False
         if "\uac00" <= prev_char <= "\ud7a3" or "\u3130" <= prev_char <= "\u318f":
             return False
-        if prev_char in {"_", "-", "/", "."}:
+        if prev_char in {"_", "-", "/", ".", "="}:
             return False
     next_char = raw_text[right_end] if right_end < len(raw_text) else None
     if next_char is None:

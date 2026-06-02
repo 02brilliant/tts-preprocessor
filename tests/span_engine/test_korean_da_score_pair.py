@@ -101,16 +101,98 @@ def test_korean_da_score_pair_does_not_break_counter_da(
 @pytest.mark.parametrize(
     ("src", "expected"),
     [
-        ("2 대 1이다.", "두 대 일이다."),
+        (
+            "점수는 2 대 1 입니다. 3 대 1은 아닙니다. 내일은 4대 3일까요?",
+            "점수는 이 대 일 입니다. 삼 대 일은 아닙니다. 내일은 사 대 삼일까요?",
+        ),
+        ("2 대 1이다.", "이 대 일이다."),
+        ("2 대 1 입니다.", "이 대 일 입니다."),
         ("2대1이다.", "이대일이다."),
-        ("2대 1이다.", "두 대 일이다."),
+        ("2대 1이다.", "이 대 일이다."),
+        ("3 대 1은 아닙니다.", "삼 대 일은 아닙니다."),
+        ("3대1은 아닙니다.", "삼대일은 아닙니다."),
+        ("4대 3일까요?", "사 대 삼일까요?"),
+        ("4 대 3일까요?", "사 대 삼일까요?"),
+        ("4대3일까요?", "사대삼일까요?"),
+        ("2 대 1.", "이 대 일."),
+        ("2대1?", "이대일?"),
+        ("2대 1, 다시 말해 3대 1은 아닙니다.", "이 대 일, 다시 말해 삼 대 일은 아닙니다."),
     ],
 )
-def test_korean_da_score_pair_bare_forms_do_not_claim_without_context(
+def test_korean_da_score_pair_independent_right_number_gate(
     src: str, expected: str
 ) -> None:
     assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("세트스코어는 2 대 1입니다.", "세트스코어는 이 대 일입니다."),
+        ("점수는 2 대 1 이다.", "점수는 이 대 일 이다."),
+        ("경기는 2대 1로 끝났다.", "경기는 이 대 일로 끝났다."),
+        ("스코어 2대1이었다.", "스코어 이대일이었다."),
+        ("2대1의 점수", "이대일의 점수"),
+        ("2대 1로 승리했다.", "이 대 일로 승리했다."),
+    ],
+)
+def test_korean_da_score_pair_existing_keyword_gate_still_works(
+    src: str, expected: str
+) -> None:
+    assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("차량은 2대 1입니다.", "차량은 이 대 일입니다."),
+        ("장비는 3대 1일까요?", "장비는 삼 대 일일까요?"),
+        ("카메라는 4 대 3은 아닙니다.", "카메라는 사 대 삼은 아닙니다."),
+    ],
+)
+def test_korean_da_score_pair_left_context_does_not_block_independent_right_number(
+    src: str, expected: str
+) -> None:
+    assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "차량 2대 1대를 점검했다.",
+        "장비 2대 1개를 추가했다.",
+        "인원은 2대 1명입니다.",
+        "중량은 2대 1kg입니다.",
+        "비율은 2대 1%입니다.",
+        "금액은 2대 1원입니다.",
+        "배율은 2대 1배입니다.",
+        "시간은 2대 1시간입니다.",
+        "기간은 2대 1분입니다.",
+    ],
+)
+def test_korean_da_score_pair_blocks_when_right_side_forms_registered_owner_surface(
+    src: str,
+) -> None:
     assert "korean_da_score_pair" not in _claim_owners(src)
+
+
+@pytest.mark.parametrize(
+    ("src", "expected"),
+    [
+        ("내일은 4대 3일까요?", "내일은 사 대 삼일까요?"),
+        ("결과는 2대 1이다.", "결과는 이 대 일이다."),
+        ("결과는 2대1이었다.", "결과는 이대일이었다."),
+        ("결과는 2 대 1입니다.", "결과는 이 대 일입니다."),
+    ],
+)
+def test_korean_da_score_pair_does_not_misclassify_copula_tail_as_day_suffix(
+    src: str, expected: str
+) -> None:
+    assert _normalize(src) == expected
+    assert "korean_da_score_pair" in _claim_owners(src)
 
 
 @pytest.mark.parametrize(
@@ -141,6 +223,8 @@ def test_korean_da_score_pair_invalid_forms_do_not_partial_score_claim(
         ('{"score":"2대1"}', '{"score":"2대1"}'),
         ("A2대1", "A2대1"),
         ("v2대1", "v2대1"),
+        ("2대1abc", "2대1abc"),
+        ("x=2대1", "x=2대1"),
     ],
 )
 def test_korean_da_score_pair_protected_contexts(
