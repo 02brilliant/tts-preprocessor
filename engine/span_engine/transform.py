@@ -36,6 +36,7 @@ from engine.span_engine.particle import apply_safe_post_surface_particle_excepti
 from engine.span_engine.public_number import build_public_number_gate_logs
 from engine.prosody.paragraph import split_paragraphs
 from engine.span_engine.prosody import apply_prosody_comma_adapter
+from engine.span_engine.prosody_extra import apply_extra_prosody_comma_adapter
 from engine.span_engine.protected import protected_literal_spans
 from engine.span_engine.render import join_render_pieces, render_tokens_with_surfaces
 from engine.span_engine.sentence_final_slash import sentence_final_slash_spans
@@ -383,6 +384,10 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
         raise RuntimeError("shadow validation failed")
     prosody_result = apply_prosody_comma_adapter(pieces, checked_text, bracket_ranges)
     pieces = prosody_result.pieces
+    extra_prosody_result = apply_extra_prosody_comma_adapter(
+        pieces, checked_text, bracket_ranges
+    )
+    pieces = extra_prosody_result.pieces
     pre_filter_text = join_render_pieces(pieces)
     bracket_filter = apply_final_bracket_filter(pieces, bracket_ranges)
     normalized_text = bracket_filter.normalized_text
@@ -408,6 +413,7 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     )
     trace.particle_exception_logs.extend(particle_result.logs)
     trace.prosody_logs.extend(prosody_result.logs)
+    trace.prosody_logs.extend(extra_prosody_result.logs)
     trace.bracket_filter_logs.extend(bracket_filter.logs)
     trace.parser_logs.extend(
         TraceLogEntry(

@@ -6221,6 +6221,62 @@ insert inside protected spans, code-like segments, URLs, paths, JSON, backticks,
 square-bracket protected interiors, or owner-claimed numeric surfaces. At most
 one mid-sentence discourse comma may be inserted per sentence in this phase.
 
+### 15.3.2 Extra span prosody comma layer
+
+The span-default pipeline may run an optional extra prosody layer after the base
+span prosody comma adapter. This layer is insert-only and may be disabled by
+skipping its adapter call.
+
+The extra layer generates comma candidates for a small set of high-confidence
+patterns such as leading time-frame phrases, marked subordinate clause endings,
+and clear serial parallel lists. Candidates are filtered against protected
+spans, code-like spans, and owner-claimed render surfaces. Candidates are then
+selected under a conservative sentence-level comma budget to avoid
+over-insertion.
+
+This layer must not route span-default through the legacy string-based
+`engine.prosody.comma` implementation. Legacy comma rules may be used only as
+reference examples for span-safe reimplementation.
+
+Initial supported leading time-frame patterns are narrow: `오늘 아침`, `오늘 오전`,
+`오늘 오후`, `오늘 저녁`, `내일 아침`, `내일 오전`, `내일 오후`, `내일 저녁`,
+`어제 아침`, `어제 오전`, `어제 오후`, `어제 저녁`, `지난달`, `지난해`,
+`올해`, `이번 주`, `다음 주`, `지난 N일`, `오늘 서울에서`, and
+`내일 서울에서`. The phrase must occur at sentence start, remain within a
+bounded visible length, be followed by whitespace, and precede a meaningful
+predicate-like clause. Broad topic splitting such as `오늘 회의는 ...` and
+`올해 실적은 ...` remains out of scope.
+
+Initial subordinate marker patterns are `고 나서`, clause endings shaped like
+`한 뒤`, `한 이후`, `한 다음`, `하는 경우`, and clause-final `지만`.
+The insertion point is immediately after the marker phrase. Both sides must have
+at least two whitespace chunks, and suffix-like false positives such as `뒤쪽`,
+`경우의 수`, and `이후보다는` must not trigger a comma. `하지만` is handled by
+the base discourse-marker layer and is not treated as generic `지만`.
+
+Initial serial list support is limited to clear three-plus natural-language
+lists before final `그리고`, such as `A와 B와 C 그리고 D`, with an optional
+already comma-separated `A, B, C 그리고 D` shape. Items must be short,
+non-numeric, non-code-like Korean phrases, and an existing comma immediately
+before `그리고` blocks insertion.
+
+The initial extra-layer budget is sentence-local:
+
+- fewer than 12 visible characters: 0 extra commas
+- 12 to 89 visible characters: at most 1 extra comma
+- 90 or more visible characters: at most 2 extra commas
+- if the base span prosody layer already inserted a generated comma in the
+  sentence, reduce the extra budget by 1
+- if any original or generated comma is already present, cap the extra budget at
+  1
+- if the original sentence already has 2 or more commas, the extra budget is 0
+- selected comma positions must be at least 18 visible/source characters apart
+
+Candidate priority is leading time-frame, then subordinate marker, then serial
+list. The short-sentence threshold is lower than the legacy reference examples
+because the span-default extra layer is constrained to the narrow patterns above
+and must cover short production utterances such as `오늘 아침 우리는 출발했습니다.`
+
 ### 15.4 Prosody insertion pseudo-code
 
 ```python
