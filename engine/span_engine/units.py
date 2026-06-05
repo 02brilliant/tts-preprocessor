@@ -129,6 +129,7 @@ _COMPOUND_SLASH_UNIT_SURFACES_BASE = frozenset(
         "m/L",
         "m/l",
         "mg/L",
+        "㎎/L",
         "g/L",
         "KB/s",
         "Kb/s",
@@ -162,6 +163,7 @@ _COMPOUND_SLASH_NUMERATOR_PREFIXES = frozenset(
         "㎞",
         "m",
         "mg",
+        "㎎",
         "g",
         "KB",
         "Kb",
@@ -677,7 +679,7 @@ def _compound_slash_tail_preserve_candidate(
     while segment_end < len(raw_text) and (
         raw_text[segment_end].isascii()
         and raw_text[segment_end].isalpha()
-        or raw_text[segment_end] in {"㎞", "ℓ", "/", "／"}
+        or raw_text[segment_end] in {"㎞", "㎎", "ℓ", "/", "／"}
     ):
         segment_end += 1
     if segment_end == segment_start or not any(

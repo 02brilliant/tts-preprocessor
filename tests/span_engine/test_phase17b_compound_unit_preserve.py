@@ -13,8 +13,6 @@ from engine.span_engine import transform
         "60 fps",
         "10 Mbps",
         "9 dBi",
-        "3.5km/h",
-        "120.5mg/dL",
         "-10MB/s",
         "+10MB/s",
         "010MB/s",
@@ -52,3 +50,16 @@ def test_phase36b_one_space_compound_inventory_now_transforms(
 
 def test_phase36b_comma_data_rate_compound_unit_now_transforms() -> None:
     assert transform("1,000KB/s") == "초당 천 킬로바이트"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("3.5km/h", "시속 삼쩜오 킬로미터"),
+        ("120.5mg/dL", "데시리터당 백이십쩜오 밀리그램"),
+    ],
+)
+def test_decimal_registered_compound_inventory_now_transforms(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected

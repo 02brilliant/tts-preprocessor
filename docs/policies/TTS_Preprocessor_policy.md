@@ -1306,6 +1306,35 @@ bracket interiors remain preserve-first.
 3.2GB／s -> 초당 삼쩜이 기가바이트
 ```
 
+### Decimal numeric cores for registered compound slash units
+
+Registered compound slash units keep their existing reading templates for both
+integer and decimal numeric cores. This is not a broad slash owner and does not
+introduce a new slash reading such as `퍼`.
+
+If a compound slash unit is explicitly registered for integer numeric cores, the
+same registered surface may accept a valid decimal numeric core when the unit
+registry enables decimal support. Rendering reuses the existing compound-unit
+template and reads only the numeric core with the ordinary decimal/Sino reading.
+
+Examples:
+
+```text
+90km/h -> 시속 구십 킬로미터
+5.6km/h -> 시속 오쩜육 킬로미터
+
+5m/s -> 초속 오 미터
+7.8m/s -> 초속 칠쩜팔 미터
+
+15.2km/L -> 리터당 십오쩜이 킬로미터
+3.2mg/L -> 리터당 삼쩜이 밀리그램
+```
+
+The owner must full-claim the numeric core and complete registered compound
+unit suffix. It must not partially claim `5.6km` and leave `/h`. Fraction, date,
+path, URL, JSON, backtick, fenced-code, square-bracket protected interiors, and
+code-like continuations remain preserve-first.
+
 #### Currency symbol alias
 
 Dollar owner는 `$`, `＄`, `﹩`를 동일한 달러 기호로 처리한다.
@@ -3930,7 +3959,7 @@ Slash Compound Unit Reading Inventory:
 | `m/L`, `m/l`, `m/ℓ` | `리터당 {number} 미터` | efficiency family, numeric required |
 | `mg/dL` | `데시리터당 {number} 밀리그램` | medical/scientific fixed Korean reading |
 | `g/dL` | `데시리터당 {number} 그램` | medical/scientific fixed Korean reading |
-| `mg/L` | `리터당 {number} 밀리그램` | concentration family |
+| `mg/L`, `㎎/L` | `리터당 {number} 밀리그램` | concentration family |
 | `g/L` | `리터당 {number} 그램` | concentration family |
 | `kg/m3` | `세제곱미터당 {number} 킬로그램` | density family |
 | `MB/s` | `초당 {number} 메가바이트` | data throughput family |

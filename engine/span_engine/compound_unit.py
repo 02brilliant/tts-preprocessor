@@ -28,6 +28,7 @@ COMPOUND_SLASH_UNIT_READINGS: dict[str, str] = {
     "m/L": "리터당 {number} 미터",
     "m/l": "리터당 {number} 미터",
     "mg/L": "리터당 {number} 밀리그램",
+    "㎎/L": "리터당 {number} 밀리그램",
     "g/L": "리터당 {number} 그램",
     "KB/s": "초당 {number} 킬로바이트",
     "Kb/s": "초당 {number} 킬로바이트",
@@ -66,67 +67,7 @@ _ORDERED_COMPOUND_UNITS = sorted(
 _ORDERED_COMPOUND_EXACT_UNITS = sorted(
     COMPOUND_EXACT_UNIT_READINGS, key=len, reverse=True
 )
-_DECIMAL_ENABLED_UNITS = frozenset(
-    {
-        "KB/s",
-        "Kb/s",
-        "kb/s",
-        "MB/s",
-        "Mb/s",
-        "mb/s",
-        "GB/s",
-        "Gb/s",
-        "gb/s",
-        "TB/s",
-        "Tb/s",
-        "tb/s",
-        "PB/s",
-        "Pb/s",
-        "pb/s",
-        "km/L",
-        "km/l",
-        "km/ℓ",
-        "㎞/L",
-        "㎞/l",
-        "㎞/ℓ",
-        "m/min",
-        "m/s",
-        "m/sec",
-        "m/L",
-        "m/l",
-    }
-    | {
-        unit.replace("/", "／")
-        for unit in {
-            "KB/s",
-            "Kb/s",
-            "kb/s",
-            "MB/s",
-            "Mb/s",
-            "mb/s",
-            "GB/s",
-            "Gb/s",
-            "gb/s",
-            "TB/s",
-            "Tb/s",
-            "tb/s",
-            "PB/s",
-            "Pb/s",
-            "pb/s",
-            "km/L",
-            "km/l",
-            "km/ℓ",
-            "㎞/L",
-            "㎞/l",
-            "㎞/ℓ",
-            "m/min",
-            "m/s",
-            "m/sec",
-            "m/L",
-            "m/l",
-        }
-    }
-)
+_DECIMAL_ENABLED_UNITS = frozenset(COMPOUND_SLASH_UNIT_READINGS)
 _COMMA_ENABLED_UNITS = frozenset(COMPOUND_SLASH_UNIT_READINGS)
 _TAIL_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":"})
 _BLOCKING_PREV_CHARS = frozenset("+-.,~:/_")

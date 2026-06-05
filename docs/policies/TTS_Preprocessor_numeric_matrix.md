@@ -91,12 +91,19 @@ Current standalone invalid/malformed forms:
 | tilde range | two numeric sides with tilde-like delimiter; optional compatible suffix/tail; range-compatible unit aliases include meter `ｍ` | limited signed range forms in current policy | yes | yes for valid numeric blocks | suffix/tail policy owner-scoped | malformed range preserves; no partial fallback for invalid owner surface, e.g. `1~~2ｍ` | current range decimal output uses `영`, e.g. `1.50~2.50테스트 -> 일쩜오영에서 이쩜오영 테스트` |
 | colon / N:M | broad non-time-like `N:M`; multi-colon supported separately | signed decimal in approved paths | yes | yes | Korean tail spacing owner-scoped | invalid/multi-delimiter/time-like/code-like guards preserve | ordinary decimal fractional zero uses `영`, e.g. `3:4.50테스트 -> 삼 대 사쩜오영 테스트` |
 | Korean `대` score pair | valid readable numeric operands already supported by `span_default` numeric owners as standalone numeric expressions; plain integer compact `N대M` keeps compact score reading | ASCII `+`/`-` signed integer/decimal operands where standalone signed owner validates them | yes | yes | supports `LEFT 대 RIGHT`, `LEFT대RIGHT`, `LEFT대 RIGHT`; `LEFT 대RIGHT` remains unsupported | malformed/unsafe operands and protected/code-like contexts are not claimed; right operand attached to registered owner suffix/unit/currency/percent/duration/multiplier/counter surface blocks this owner | ordinary decimal fractional zero follows the underlying standalone numeric reading; non-plain operands render spaced around `대`, e.g. `2.1대1.5 -> 이쩜일 대 일쩜오` |
+| compound slash unit | exact registered compound slash unit surfaces, including `/` and owner-local `／` aliases; examples include `km/h`, `m/s`, `km/L`, `mg/L`, `㎎/L`, `mg/dL`, `MB/s` | no signed compound slash broadening in this phase | yes for registered slash surfaces that already support integer numeric cores | yes for valid comma integer/decimal through the compound owner parser | no space or one ASCII space before the full registered suffix | malformed numeric cores, unregistered slash pairs, unsafe tails, spaced slash boundaries, URL/path/protected contexts preserve; no partial `5.6km` rewrite | ordinary decimal/Sino reading reuses the unchanged template, e.g. `5.6km/h -> 시속 오쩜육 킬로미터`, `3.2mg/L -> 리터당 삼쩜이 밀리그램` |
 | hyphen restricted range | approved `N-M + range-compatible unit`, e.g. `1-2kg` | broad signed hyphen ranges out of scope | decimal broad signed hyphen remains out of scope | narrow owner-specific support only | attached compatible unit required for range reading | arbitrary `1-2`, `1-2테스트`, `+1.5-2kg` preserve | follows owner parser when valid; no broad trailing-zero policy |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
 
-Known follow-up: compound slash unit decimal coverage remains owner-specific.
-Integer `90km/h` is supported, but decimal `5.6km/h` remains preserve unless
-the compound unit registry explicitly enables that unit for decimals.
+Registered compound slash unit decimal coverage is implemented owner-locally.
+The reading templates are unchanged from the integer compound slash registry:
+`90km/h -> 시속 구십 킬로미터` and
+`5.6km/h -> 시속 오쩜육 킬로미터`; `5m/s` and `7.8m/s` both use the same
+`초속 {number} 미터` template; `15.2km/L` and `3.2mg/L` both use the same
+`리터당 {number} ...` family. Unsupported or unregistered slash pairs such as
+`foo/bar`, spaced slash boundaries such as `5.6km / h`, and malformed numeric
+cores such as `.5km/h`, `01.5km/h`, `1.km/h`, `1..5km/h`, and `1,00.5km/h`
+remain preserve-first and must not route through a broad slash fallback.
 
 Dash-like signed numeric alias examples:
 
