@@ -225,7 +225,10 @@ def _duration_amount_reading(raw: str, unit: str) -> str | None:
         numerator, denominator = raw.split("/", 1)
         return read_fraction_text(numerator, denominator)
     if "." in raw or "," in raw:
-        return read_number_text(raw)
+        reading = read_number_text(raw)
+        if reading is not None and unit == "분" and "." in raw:
+            return f"{reading} "
+        return reading
     if len(raw) > 1 and raw.startswith("0"):
         if len(raw) == 2 and int(raw) > 0:
             return read_number_text(str(int(raw)))

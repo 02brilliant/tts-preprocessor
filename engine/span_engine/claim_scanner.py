@@ -31,6 +31,9 @@ from engine.span_engine.code_separator import (
 )
 from engine.span_engine.date_time import scan_date_candidates, scan_time_candidates
 from engine.span_engine.decimal import scan_decimal_candidates
+from engine.span_engine.decimal_registered_suffix import (
+    scan_decimal_registered_suffix_candidates,
+)
 from engine.span_engine.delimiters import (
     COLON_LIKE_DELIMITERS,
     RANGE_LIKE_DELIMITERS,
@@ -212,6 +215,7 @@ CLAIM_ORDER_DOC = (
     "compound_exact_unit",
     "special_unit",
     "simple_unit",
+    "decimal_registered_suffix",
     "numeric_suffix",
     "decimal",
     "middle_dot_numeric",
@@ -280,6 +284,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_simple_unit_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
 
     candidates.extend(_claim_scanned_candidates(scan_decimal_candidates(raw_text, excluded_ranges), registry, excluded_ranges))

@@ -3974,10 +3974,34 @@ invalid tail preserve examples:
 
 명시 owner가 소유한 숫자+단위 또는 숫자+한글 suffix는 숫자가 소수/valid comma decimal이어도 preserve하지 않고 full consume한다. 숫자 core는 generated reading으로 바꾸고, 한글 suffix는 원문 literal을 유지한다.
 
+For registered owner-attached numeric suffixes, integer numeric cores keep the
+existing owner-specific reading. Native/hybrid counters remain native/hybrid for
+integer cores.
+
+When a valid decimal numeric core is attached to a registered/approved suffix,
+the owner should full-claim the surface and render the numeric core with the
+ordinary decimal/Sino reading followed by the registered suffix reading/literal.
+This applies even when the corresponding integer counter uses native Korean.
+
+```text
+3명 -> 세 명
+4.3명 -> 사쩜삼 명
+
+5개 -> 다섯 개
+2.5개 -> 이쩜오 개
+
+4대 -> 네 대
+1.5대 -> 일쩜오 대
+```
+
+Malformed decimal forms, arbitrary Hangul suffixes, protected spans, and
+code-like continuations remain preserve-first. This rule must not become a broad
+generic Hangul suffix fallback.
+
 원칙:
 
 - 숫자와 단위/suffix 사이에는 공백 없음 또는 ASCII space 한 칸만 허용한다.
-- `0.8초`처럼 한글 suffix가 붙은 경우 suffix 자체는 원문 한글 literal이므로 rewrite하지 않는다.
+- `0.8초`처럼 한글 suffix가 붙은 경우 suffix 자체는 원문 한글 literal이므로 rewrite하지 않고 숫자 reading과 suffix 사이에 한 칸을 둔다.
 - `2,645.35선`, `제15권`처럼 숫자 앞뒤에 한글 anchor가 있는 경우 숫자 core만 변환한다.
 - 한글 prefix/suffix에 공백 없이 붙은 숫자는 별도 고유어 counter 정책 또는 아래 `제+숫자+등록된 한글표기단위` 정책이 명확히 적용되는 경우가 아니면 기본 한자어 숫자로 읽는다.
 - `제` followed by an integer and a registered Hangul counter/suffix is normalized as an ordinal-like prefixed numeric suffix.
@@ -10222,7 +10246,7 @@ Duration, percent-point, and fraction policy는 duration, percent-point, slash f
 
 - `시간` 앞 1~23 자연수는 고유어 duration form을 따른다.
 - `시간` 앞 0, 24 이상, 소수, 분수, comma 큰 수는 한자어 숫자 reading을 사용하고 `시간` 앞에 공백을 둔다.
-- `분`은 기존 duration policy처럼 한자어 숫자 reading을 사용하고 `분`을 붙인다.
+- `분`은 한자어 숫자 reading을 사용한다. 정수와 분수는 기존처럼 `분`을 붙이고, 소수는 등록 suffix decimal 정책에 따라 `분` 앞에 공백을 둔다.
 - `05분`처럼 두 자리 leading zero minute은 `오분`으로 허용한다.
 
 ```text
@@ -10239,7 +10263,7 @@ Duration, percent-point, and fraction policy는 duration, percent-point, slash f
 18분 -> 십팔분
 05분 -> 오분
 1,200분 -> 천이백분
-2.5분 -> 이쩜오분
+2.5분 -> 이쩜오 분
 1/2분 -> 이분의 일분
 3시간 18분 -> 세 시간 십팔분
 3시간18분 -> 세 시간 십팔분

@@ -15,6 +15,9 @@ from engine.span_engine.code_separator import (
 )
 from engine.span_engine.date_time import parse_date_candidate, parse_time_candidate
 from engine.span_engine.decimal import parse_decimal_candidate
+from engine.span_engine.decimal_registered_suffix import (
+    parse_decimal_registered_suffix_candidate,
+)
 from engine.span_engine.duration import parse_duration_candidate
 from engine.span_engine.emergency import parse_emergency_candidate
 from engine.span_engine.event import parse_event_candidate
@@ -93,6 +96,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = read_spaced_integer_text(raw)
     elif candidate.owner == "decimal":
         reading = parse_decimal_candidate(raw_text, candidate)
+    elif candidate.owner == "decimal_registered_suffix":
+        reading = parse_decimal_registered_suffix_candidate(raw_text, candidate)
     elif candidate.owner == "currency":
         reading = parse_currency_candidate(raw_text, candidate)
     elif candidate.owner == "date":
