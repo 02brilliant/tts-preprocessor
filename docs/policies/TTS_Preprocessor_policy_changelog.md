@@ -2,6 +2,12 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/policies/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Clarified malformed numeric follow-up taxonomy in the numeric matrix: the
+  immediate cleanup target is only standalone leading-zero malformed decimals
+  (`01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, `-001.5`); segmented malformed
+  numeric reading remains a separate future design track; file-like,
+  version-like, and code-like protection gaps remain a separate prerequisite
+  safety track.
 - Hardened news attached-surface policy notes for valid decimal/comma decimal
   plus original `로`/`으로`, managed `KTX-이음` acronym-Hangul hyphen compounds,
   and the narrow `N시뉴스` broadcast title pattern without broad fallback,

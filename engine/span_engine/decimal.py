@@ -15,6 +15,7 @@ from engine.span_engine.numeric_reading import (
     read_integer_text,
 )
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.sign_aliases import is_signed_numeric_sign
 from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
     span_overlaps_excluded_ranges,
@@ -102,13 +103,18 @@ def scan_decimal_candidates(
         if is_decimal_like_url_or_path_context(raw_text, span):
             continue
 
+        if _is_leading_zero_malformed_decimal_integer(left):
+            preserve_candidate = _leading_zero_malformed_decimal_preserve_candidate(
+                raw_text, span, prev_char
+            )
+            if preserve_candidate is not None:
+                candidates.append(preserve_candidate)
+            continue
+
         integer_reading = read_integer_text(left)
         if integer_reading is None and "," not in left and left.isascii() and left.isdigit():
             if _has_attached_hangul_tail(raw_text, span.end):
                 continue
-            # Preserve the existing standalone leading-zero decimal fallback
-            # behavior. Owner-attached/code-like contexts are still blocked by
-            # the surrounding boundary guards before this point.
             value = int(left)
             if value <= 9999:
                 integer_reading = number_to_korean_under_10000(value)
@@ -165,6 +171,30 @@ def _has_attached_hangul_tail(raw_text: str, index: int) -> bool:
         return False
     char = raw_text[index]
     return "\uac00" <= char <= "\ud7a3"
+
+
+def _is_leading_zero_malformed_decimal_integer(left: str) -> bool:
+    if "," in left:
+        return False
+    if not left.isascii() or not left.isdigit():
+        return False
+    return len(left) >= 2 and left.startswith("0")
+
+
+def _leading_zero_malformed_decimal_preserve_candidate(
+    raw_text: str, decimal_span: SourceSpan, prev_char: str | None
+) -> SurfaceCandidate | None:
+    preserve_start = decimal_span.start
+    if prev_char is not None and is_signed_numeric_sign(prev_char):
+        preserve_start = decimal_span.start - 1
+    full_span = SourceSpan(preserve_start, decimal_span.end)
+    return SurfaceCandidate(
+        core_span=full_span,
+        full_span=full_span,
+        owner="preserve",
+        surface_type="LEADING_ZERO_MALFORMED_DECIMAL_PRESERVE_SURFACE",
+        reason="leading_zero_malformed_decimal_preserve",
+    )
 
 
 def _decimal_counter_preserve_candidate(

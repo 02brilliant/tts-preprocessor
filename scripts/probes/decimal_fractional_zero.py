@@ -134,7 +134,7 @@ CASES = [
     ),
     ProbeCase("leading_zero_integer", "01", "01"),
     ProbeCase("leading_zero_integer_long", "001", "001"),
-    ProbeCase("leading_zero_decimal", "01.5", "일쩜오"),
+    ProbeCase("leading_zero_decimal", "01.5", "01.5"),
     ProbeCase("code_like_v01", "v01", "v01"),
 ]
 

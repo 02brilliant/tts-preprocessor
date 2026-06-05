@@ -61,9 +61,12 @@ Current standalone invalid/malformed forms:
 | `01` | `01` | no | none |
 | `+01` | `+01` | no | none |
 | `-01` | `-01` | no | none |
-| `01.5` | `일쩜오` | yes | audit whether malformed decimal should preserve |
-| `+01.5` | `+일쩜오` | yes | audit signed malformed decimal preservation |
-| `-01.5` | `-일쩜오` | yes | audit signed malformed decimal preservation |
+| `01.5` | `일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
+| `+01.5` | `+일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
+| `-01.5` | `-일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
+| `001.5` | `일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
+| `+001.5` | `+일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
+| `-001.5` | `-일쩜오` | yes | leading-zero malformed decimal preserve cleanup |
 | `1,00` | `1,00` | no | none |
 | `1,00.5` | `1,00.5` | no | none |
 | `+1,00.5` | `+1,00.5` | no | none |
@@ -71,7 +74,7 @@ Current standalone invalid/malformed forms:
 | `-.5` | `-.5` | no | none |
 | `1.` | `일.` | yes | audit whether bare trailing dot should preserve |
 | `+1.` | `+1.` | no | none |
-| `3..140` | `삼..백사십` | yes | audit malformed dotted numeric preservation |
+| `3..140` | `삼..백사십` | yes | separate segmented reading design; not leading-zero cleanup |
 | `1,0000` | `1,0000` | no | none |
 
 ## 4. Owner-attached numeric matrix
@@ -137,9 +140,74 @@ USD 1,00 -> USD 1,00
 25..50억 -> 25..50억
 ```
 
-Standalone malformed numeric behavior is not fully aligned yet. Current
-partial fallback cases such as `01.5 -> 일쩜오` and `3..140 -> 삼..백사십`
-are recorded as audit findings rather than changed in this pass.
+Standalone malformed numeric behavior is not fully aligned yet. Follow-up work
+is split into three separate policy tracks; see section 5.1. The immediate
+cleanup target is only standalone leading-zero malformed decimals such as
+`01.5 -> 일쩜오`. Segmented readings such as `3..140 -> 삼..백사십` and
+file-like/code-like protection gaps are separate topics and are not solved by
+that narrow cleanup.
+
+## 5.1 Malformed numeric follow-up taxonomy
+
+Malformed numeric-like surfaces are split into separate policy tracks.
+
+### Current targeted cleanup: standalone leading-zero malformed decimals
+
+Standalone malformed decimals whose integer part has more than one digit and
+starts with `0` should preserve rather than drop the leading zero through
+decimal fallback.
+
+Examples:
+
+```text
+01.5 -> 01.5
++01.5 -> +01.5
+-01.5 -> -01.5
+001.5 -> 001.5
++001.5 -> +001.5
+-001.5 -> -001.5
+```
+
+Reading them as `일쩜오`, `+일쩜오`, or `-일쩜오` drops leading-zero surface
+information. This cleanup does not change valid `0.x` decimals such as `0.5`,
+`0.03%`, `0.8초`, or `0.5명`.
+
+### Separate future design: segmented malformed numeric reading
+
+Segmented malformed numeric-like readings such as:
+
+```text
+1. -> 일.
+3..140 -> 삼..백사십
+25..50 -> 이십오..오십
+2,34 -> 2,34
+2,,345 -> 2,,345
+2,34억 -> 2,34억
+3백..4십만 -> 3백..4십만
+```
+
+are not part of the leading-zero cleanup. They remain current behavior or a
+separate future design area documented in section 11. Any future segmented
+reader must preserve original separators and avoid rewriting protected/code-like
+tokens. Segmented malformed numeric reading is not an active implementation
+target in this pass.
+
+### Separate prerequisite: file-like/version-like/code-like protection
+
+Before any broader segmented malformed numeric reader is expanded, file-like,
+version-like, and code-like tokens must remain protected or explicitly
+excluded:
+
+```text
+file-25..50.txt
+version-1.5
+v25..50
+SKU25..50
+```
+
+These are not solved by the standalone leading-zero malformed decimal cleanup.
+Current audit gaps for these surfaces are recorded in section 11.4 and must be
+addressed as a prerequisite safety track before any segmented reader ships.
 
 ## 6. Partial fallback policy
 
@@ -150,7 +218,10 @@ The owner-attached policy is stricter than the standalone fallback policy:
    preserve surface.
 2. Broad internal digit fallback must not rewrite inside invalid owner surfaces.
 3. Protected spans outrank owner claims.
-4. Standalone malformed numeric partial fallback is a separate follow-up audit.
+4. Standalone malformed numeric partial fallback is split into three separate
+   follow-up tracks in section 5.1: leading-zero malformed decimal preserve
+   cleanup, segmented malformed numeric reading design, and file-like/
+   version-like/code-like protection prerequisites.
 
 ## 6.1 Spaced slash boundary handling
 
@@ -405,16 +476,25 @@ Hyphen is not a broad numeric range delimiter:
    - Candidate principle: do not reinterpret values; preserve malformed
      separators; read only independent valid segments around separators; keep
      protected/path/URL/JSON/backtick spans protected.
-2. Standalone malformed numeric partial fallback:
-   - Audit current `01.5`, `+01.5`, `-01.5`, `1.`, and `3..140`.
-3. Non-KRW currency trailing zero targeted fix.
-4. Time-like `숫자:숫자` binary/API probe and final policy cleanup.
-5. Hyphen broad expansion remains a non-goal unless separately approved.
+2. Standalone leading-zero malformed decimal preserve cleanup:
+   - Targeted cleanup only: `01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`,
+     `-001.5`.
+   - Not in scope: `1.`, `3..140`, `25..50`, `2,34`, `2,,345`, `2,34억`,
+     `3백..4십만`; those belong to segmented reading design or other follow-ups.
+3. File-like/version-like/code-like protection prerequisite:
+   - `file-25..50.txt`, `version-1.5`, `v25..50`, `SKU25..50` remain open audit
+     gaps and must be resolved before any broad segmented malformed numeric
+     reader expands.
+4. Non-KRW currency trailing zero targeted fix.
+5. Time-like `숫자:숫자` binary/API probe and final policy cleanup.
+6. Hyphen broad expansion remains a non-goal unless separately approved.
 
 ## 11. Malformed Numeric Segmented Reading Policy Analysis
 
 This section is a policy analysis and audit inventory only. It does not define
-an implementation change and it is not a large-unit-only policy. The target
+an implementation change and it is not a large-unit-only policy. Segmented
+malformed numeric reading is a separate future design track from the narrow
+leading-zero malformed decimal preserve cleanup in section 5.1. The target
 surface is any malformed numeric-like input that is not already owned by a
 valid numeric owner, not protected, and not structurally meaningful under an
 existing delimiter owner.
@@ -519,8 +599,10 @@ Current production-source audit:
 | `v25..50` | `v25..오십` | current audit gap; code-like prefix exclusion must outrank segmented fallback |
 | `SKU25..50` | `SKU25..오십` | current audit gap; code-like token exclusion must outrank segmented fallback |
 
-These gaps are recorded only as audit findings. This pass does not change
-protected-span or code-like behavior.
+These gaps are recorded only as audit findings and belong to the separate
+file-like/version-like/code-like protection prerequisite in section 5.1. They
+are not solved by leading-zero malformed decimal cleanup. This pass does not
+change protected-span or code-like behavior.
 
 ### 11.5 Severe invalid preserve criteria
 
@@ -554,8 +636,10 @@ Current production-source audit:
 | `+.5억` | `+.5억` | owner-attached invalid preserve |
 | `1.` | `일.` | current standalone partial fallback gap; severe-invalid candidate for future preserve |
 | `1.억` | `1.억` | owner-attached invalid preserve |
-| `01.5` | `일쩜오` | current standalone leading-zero partial fallback gap |
-| `+01.5` | `+일쩜오` | current signed leading-zero partial fallback gap |
+| `01.5` | `일쩜오` | leading-zero malformed decimal preserve cleanup target |
+| `+01.5` | `+일쩜오` | leading-zero malformed decimal preserve cleanup target |
+| `-01.5` | `-일쩜오` | leading-zero malformed decimal preserve cleanup target |
+| `001.5` | `일쩜오` | leading-zero malformed decimal preserve cleanup target |
 | `01.5억` | `01.5억` | owner-attached invalid preserve |
 | `+01.5억` | `+01.5억` | owner-attached invalid preserve |
 | `1,00.5` | `1,00.5` | invalid comma decimal preserve |
@@ -687,8 +771,11 @@ Open decisions before any implementation:
      `2천8백.28억`, `3백..4십만`
    - owner-attached unit/percent/currency surfaces only after the above
 2. Severe invalid threshold:
-   - `01.5`, `+01.5`, `1,00.5`, `1.`, and `+.5` currently stay on the
-     preserve side of the design.
+   - `01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, and `-001.5` belong to the
+     separate leading-zero malformed decimal preserve cleanup in section 5.1,
+     not to segmented reading design.
+   - `1,00.5`, `1.`, and `+.5` currently stay on the preserve side of the
+     segmented-reading design.
 3. Initial separator set:
    - candidate separators are `.`, `..`, `,`, and `,,`, but the final set must
      follow the structural delimiter inventory.
@@ -780,24 +867,25 @@ Included decimal-aware owners:
 
 Excluded owners / non-goals:
 
-- leading-zero ownership or malformed fallback behavior
+- standalone leading-zero malformed decimal preserve cleanup
+- file-like/version-like/code-like protection gaps
+- malformed numeric segmented reading design
 - time-like leading-zero hour/minute behavior
 - phone number digit reading
 - code / identifier digit reading
 - date reading
 - time `HH:MM` / `HH:MM:SS` reading
 - version-like preserve
-- malformed numeric segmented reading
 - invalid numeric preserve policy
 - JSON-like/path/URL/backtick protection
 - hyphen range policy
 - currency form expansion
 - large-unit input coverage expansion
 
-### 12.4 Leading-zero non-goal
+### 12.4 Leading-zero malformed decimal cleanup boundary
 
-This policy treats only an integer part that is exactly `0` as valid ordinary
-decimal zero:
+Ordinary decimal fractional-zero canonicalization treats only an integer part
+that is exactly `0` as valid ordinary decimal zero:
 
 ```text
 0.5
@@ -807,8 +895,10 @@ decimal zero:
 -0.050
 ```
 
-The following remain leading-zero malformed decimal or existing owner cases and
-must not be newly read by this canonicalization:
+The following remain leading-zero malformed decimal cleanup targets or existing
+owner cases and must not be newly read by ordinary decimal fractional-zero
+canonicalization. The narrow preserve cleanup for standalone forms is defined
+in section 5.1:
 
 ```text
 01.5
@@ -830,6 +920,10 @@ Current regression audit preserves existing behavior for:
 001 -> 001
 01.5 -> 일쩜오
 +01.5 -> +일쩜오
+-01.5 -> -일쩜오
+001.5 -> 일쩜오
++001.5 -> +일쩜오
+-001.5 -> -일쩜오
 v01 -> v01
 version-01 -> version-01
 file-01.txt -> file-01.txt

@@ -75,9 +75,12 @@ GROUP_1_INVALID_PRESERVE = (
     "1,0000",
 )
 GROUP_1_INVALID_AUDIT = (
-    ScenarioCase("g01_current_leading_zero_decimal", "01.5", exact="일쩜오", note="current_behavior"),
-    ScenarioCase("g01_current_plus_leading_zero_decimal", "+01.5", exact="+일쩜오", note="current_behavior"),
-    ScenarioCase("g01_current_minus_leading_zero_decimal", "-01.5", exact="-일쩜오", note="current_behavior"),
+    ScenarioCase("g01_leading_zero_malformed_decimal", "01.5", exact="01.5", note="leading_zero_malformed_decimal_preserve"),
+    ScenarioCase("g01_plus_leading_zero_malformed_decimal", "+01.5", exact="+01.5", note="leading_zero_malformed_decimal_preserve"),
+    ScenarioCase("g01_minus_leading_zero_malformed_decimal", "-01.5", exact="-01.5", note="leading_zero_malformed_decimal_preserve"),
+    ScenarioCase("g01_long_leading_zero_malformed_decimal", "001.5", exact="001.5", note="leading_zero_malformed_decimal_preserve"),
+    ScenarioCase("g01_plus_long_leading_zero_malformed_decimal", "+001.5", exact="+001.5", note="leading_zero_malformed_decimal_preserve"),
+    ScenarioCase("g01_minus_long_leading_zero_malformed_decimal", "-001.5", exact="-001.5", note="leading_zero_malformed_decimal_preserve"),
     ScenarioCase("g01_current_trailing_dot", "1.", exact="일.", note="current_behavior"),
     ScenarioCase("g01_current_double_dot", "3..140", exact="삼..백사십", note="future malformed segmented reading candidate"),
 )

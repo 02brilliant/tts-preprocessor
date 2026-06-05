@@ -8046,8 +8046,8 @@ production source entrypoint is
 `engine.main.transform_with_rollout(text, mode="span_default", include_debug=False)`.
 
 For the detailed numeric valid/invalid matrix, owner-attached numeric behavior,
-partial fallback audit, and trailing-zero current state, see
-`docs/policies/TTS_Preprocessor_numeric_matrix.md`.
+partial fallback audit, malformed numeric follow-up taxonomy, and trailing-zero
+current state, see `docs/policies/TTS_Preprocessor_numeric_matrix.md`.
 
 ## 26. 새 규칙 추가 시 준수사항
 
@@ -10504,11 +10504,20 @@ Excluded owner families:
 - phone number digit reading
 - code / identifier digit reading
 - date and time-like reading
-- leading-zero malformed numeric fallback
-- version-like preserve
-- malformed numeric segmented reading
+- standalone leading-zero malformed decimal preserve cleanup
+- file-like/version-like/code-like protection gaps
+- malformed numeric segmented reading design
 - invalid numeric preserve policy
 - JSON-like/path/URL/backtick protected contexts
+
+Malformed numeric follow-up work is split into three separate tracks in
+`docs/policies/TTS_Preprocessor_numeric_matrix.md` section 5.1. The immediate
+cleanup target is only standalone leading-zero malformed decimals such as
+`01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, and `-001.5`. Segmented readings
+such as `3..140`, `25..50`, `2,34`, and `3백..4십만` are a separate future
+design track. File-like, version-like, and code-like tokens such as
+`file-25..50.txt`, `version-1.5`, `v25..50`, and `SKU25..50` are a separate
+prerequisite safety track and are not solved by leading-zero cleanup.
 
 Invalid comma grouping and leading-zero malformed decimal policy remain
 unchanged. Valid unsigned standalone comma decimal is claimed:
