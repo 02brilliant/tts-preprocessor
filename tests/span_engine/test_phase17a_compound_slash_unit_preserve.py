@@ -10,7 +10,6 @@ from engine.span_engine import transform
     [
         "90km / h",
         "90 km / h",
-        "3.5km/h",
         "-90km/h",
         "+90km/h",
         "090km/h",
@@ -31,6 +30,10 @@ from engine.span_engine import transform
 )
 def test_compound_slash_unit_preserve_and_forbidden(text: str) -> None:
     assert transform(text) == text
+
+
+def test_decimal_compound_slash_unit_now_transforms() -> None:
+    assert transform("3.5km/h") == "시속 삼쩜오 킬로미터"
 
 
 def test_phase36b_one_space_compound_slash_unit_now_transforms() -> None:

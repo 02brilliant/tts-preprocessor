@@ -98,10 +98,7 @@ def parse_decimal_registered_suffix_candidate(
 def _candidate_at_suffix(
     raw_text: str, decimal_span: SourceSpan, reading: str
 ) -> SurfaceCandidate | None:
-    suffix_start = _consume_optional_ascii_space(raw_text, decimal_span.end)
-    gap = raw_text[decimal_span.end : suffix_start]
-    if gap not in {"", " "}:
-        return None
+    suffix_start = decimal_span.end
     for suffix in _ORDERED_SUFFIXES:
         if not raw_text.startswith(suffix, suffix_start):
             continue
@@ -114,9 +111,8 @@ def _candidate_at_suffix(
                 ),
                 "decimal_registered_suffix_unsafe_tail_preserve",
             )
-        core_end = suffix_start if gap else decimal_span.end
         return SurfaceCandidate(
-            core_span=SourceSpan(decimal_span.start, core_end),
+            core_span=decimal_span,
             full_span=SourceSpan(decimal_span.start, suffix_end),
             owner="decimal_registered_suffix",
             surface_type="DECIMAL_REGISTERED_SUFFIX_SURFACE",
@@ -184,10 +180,7 @@ def _scan_malformed_decimal_suffix_preserves(
 
 
 def _registered_suffix_at(raw_text: str, numeric_end: int) -> tuple[int, int] | None:
-    suffix_start = _consume_optional_ascii_space(raw_text, numeric_end)
-    gap = raw_text[numeric_end:suffix_start]
-    if gap not in {"", " "}:
-        return None
+    suffix_start = numeric_end
     for suffix in _ORDERED_SUFFIXES:
         if raw_text.startswith(suffix, suffix_start):
             return suffix_start, suffix_start + len(suffix)

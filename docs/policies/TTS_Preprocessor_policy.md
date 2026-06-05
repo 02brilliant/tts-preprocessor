@@ -315,7 +315,7 @@ two-block N-M / N:M numeric-delimited candidate -> specific owner first, broad n
 12·3수치 -> 십이 삼수치
 2025-13-03 -> 이공이오 일삼 공삼
 010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔
-0.8초 -> 영쩜팔초
+0.8초 -> 영쩜팔 초
 제15권 -> 제 십오권
 ```
 
@@ -4029,7 +4029,8 @@ generic Hangul suffix fallback.
 
 원칙:
 
-- 숫자와 단위/suffix 사이에는 공백 없음 또는 ASCII space 한 칸만 허용한다.
+- 숫자와 단위 사이에는 공백 없음 또는 ASCII space 한 칸만 허용한다.
+- decimal registered suffix owner는 숫자와 suffix가 공백 없이 붙은 경우만 claim한다.
 - `0.8초`처럼 한글 suffix가 붙은 경우 suffix 자체는 원문 한글 literal이므로 rewrite하지 않고 숫자 reading과 suffix 사이에 한 칸을 둔다.
 - `2,645.35선`, `제15권`처럼 숫자 앞뒤에 한글 anchor가 있는 경우 숫자 core만 변환한다.
 - 한글 prefix/suffix에 공백 없이 붙은 숫자는 별도 고유어 counter 정책 또는 아래 `제+숫자+등록된 한글표기단위` 정책이 명확히 적용되는 경우가 아니면 기본 한자어 숫자로 읽는다.
@@ -4052,11 +4053,11 @@ canonical output:
 ```text
 1.2km -> 일쩜이 킬로미터
 1.2 km -> 일쩜이 킬로미터
-0.8초 -> 영쩜팔초
+0.8초 -> 영쩜팔 초
 2.5kg -> 이쩜오 킬로그램
 1,250m -> 천이백오십 미터
 1,250 m -> 천이백오십 미터
-2,645.35선 -> 이천육백사십오쩜삼오선
+2,645.35선 -> 이천육백사십오쩜삼오 선
 제5차 -> 제 오차
 제 5차 -> 제 오차
 제15권 -> 제 십오권
@@ -9580,8 +9581,8 @@ Boundary / unsafe tail:
 
 1. decimal simple unit / Korean suffix full consume
    - `1.2km -> 일쩜이 킬로미터`
-   - `0.8초 -> 영쩜팔초`
-   - `2,645.35선 -> 이천육백사십오쩜삼오선`
+   - `0.8초 -> 영쩜팔 초`
+   - `2,645.35선 -> 이천육백사십오쩜삼오 선`
    - `제15권 -> 제 십오권`
 2. Arabic `6월` and `10월` date rendering special case
    - `6월 -> 유월`

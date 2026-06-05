@@ -9,7 +9,7 @@ from engine.span_engine import transform
     ("source", "expected"),
     [
         ("1.2km", "일쩜이 킬로미터"),
-        ("0.8초", "영쩜팔초"),
+        ("0.8초", "영쩜팔 초"),
         ("3kg", "삼 킬로그램"),
         ("15g", "십오 그램"),
         ("250ml", "이백오십 밀리리터"),

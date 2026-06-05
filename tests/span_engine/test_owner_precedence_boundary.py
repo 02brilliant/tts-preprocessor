@@ -45,6 +45,7 @@ def test_claim_order_documentation_snapshot() -> None:
         "compound_exact_unit",
         "special_unit",
         "simple_unit",
+        "decimal_registered_suffix",
         "numeric_suffix",
         "decimal",
         "middle_dot_numeric",

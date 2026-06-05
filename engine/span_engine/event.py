@@ -25,6 +25,40 @@ EVENT_KEYWORDS = (
     "사고",
     "선거",
 )
+STRONG_EVENT_KEYWORDS = frozenset(
+    {
+        "민주화 운동",
+        "민주화운동",
+        "민주화",
+        "비상계엄",
+        "기념일",
+        "계엄",
+        "사태",
+        "혁명",
+        "전쟁",
+        "항쟁",
+    }
+)
+KNOWN_EVENT_KEYWORDS = frozenset({"부동산대책"})
+WEAK_EVENT_KEYWORDS = frozenset({"운동", "사건", "정책", "대책", "사고", "선거"})
+KNOWN_WEAK_EVENT_PATTERNS = frozenset(
+    {
+        ("3", "1", "운동"),
+        ("10", "26", "사건"),
+    }
+)
+WEAK_EVENT_ANCHORS = (
+    "사건",
+    "역사",
+    "정책",
+    "발표",
+    "대책",
+    "부동산",
+    "선거",
+    "참사",
+    "기념",
+    "항쟁",
+)
 
 _EVENT_RE = re.compile(r"(?<![A-Za-z0-9])(\d{1,2})([.·])(\d{1,2})(?![A-Za-z0-9.·])")
 
@@ -102,6 +136,8 @@ def evaluate_event_gate(
     keyword = _immediate_event_keyword(raw_text, span.end)
     if keyword is None:
         return {"decision": "fail", "reason": "missing_event_keyword"}
+    if not _event_keyword_gate_allows(raw_text, span, left, right, keyword):
+        return {"decision": "fail", "reason": "weak_event_keyword_context_fail"}
     
     return {
         "decision": "pass",
@@ -176,6 +212,30 @@ def _immediate_event_keyword(raw_text: str, end: int) -> tuple[str, int, int] | 
             if raw_text.startswith(keyword, keyword_start):
                 return (keyword, keyword_start, keyword_start + len(keyword))
     return None
+
+
+def _event_keyword_gate_allows(
+    raw_text: str,
+    span: SourceSpan,
+    left: str,
+    right: str,
+    keyword: tuple[str, int, int],
+) -> bool:
+    keyword_text, _, keyword_end = keyword
+    if keyword_text in STRONG_EVENT_KEYWORDS or keyword_text in KNOWN_EVENT_KEYWORDS:
+        return True
+    if keyword_text not in WEAK_EVENT_KEYWORDS:
+        return True
+    if (left, right, keyword_text) in KNOWN_WEAK_EVENT_PATTERNS:
+        return True
+    context_start = max(0, span.start - 12)
+    context_end = min(len(raw_text), keyword_end + 12)
+    left_context = raw_text[context_start : span.start]
+    right_context = raw_text[keyword_end:context_end]
+    return any(
+        anchor in left_context or anchor in right_context
+        for anchor in WEAK_EVENT_ANCHORS
+    )
 
 
 def _is_supported_event_date(left: str, right: str) -> bool:

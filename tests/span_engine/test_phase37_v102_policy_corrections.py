@@ -44,6 +44,7 @@ def test_phase37_event_numbers_pass_strict_event_gate(
         ("0.19 혁명", "영쩜일구 혁명"),
         ("4.0 혁명", "사쩜영 혁명"),
         ("14.35 대책", "십사쩜삼오 대책"),
+        ("3.5 대책", "삼쩜오 대책"),
         ("12.3-비상계엄", "십이쩜삼-비상계엄"),
         ("12.3 은 비상계엄", "십이쩜삼 은 비상계엄"),
     ],
@@ -52,6 +53,10 @@ def test_phase37_event_rejects_out_of_range_or_bad_context_decimal_fallback(
     text: str, expected: str
 ) -> None:
     assert transform(text) == expected
+
+
+def test_phase37_decimal_suffix_does_not_prefix_match_ordinary_noun() -> None:
+    assert transform("3.5대책") == "3.5대책"
 
 
 @pytest.mark.parametrize(
@@ -75,8 +80,8 @@ def test_phase37_middle_dot_event_failure_falls_back_to_numeric_blocks(
     [
         ("1.2km", "일쩜이 킬로미터"),
         ("1.2 km", "일쩜이 킬로미터"),
-        ("0.8초", "영쩜팔초"),
-        ("2,645.35선", "이천육백사십오쩜삼오선"),
+        ("0.8초", "영쩜팔 초"),
+        ("2,645.35선", "이천육백사십오쩜삼오 선"),
         ("제15권", "제 십오권"),
     ],
 )

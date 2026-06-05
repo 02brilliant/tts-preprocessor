@@ -85,10 +85,14 @@ def test_unsupported_counter_nouns_do_not_use_native_counter(
 
 @pytest.mark.parametrize(
     "text",
-    ["21명abc", "21명kg", "03명", "3.5명", "-3명", "+3명"],
+    ["21명abc", "21명kg", "03명", "-3명", "+3명"],
 )
 def test_counter_full_consume_unsafe_patterns_preserve(text: str) -> None:
     assert transform(text) == text
+
+
+def test_decimal_registered_counter_suffix_now_transforms() -> None:
+    assert transform("3.5명") == "삼쩜오 명"
 
 
 def test_phase36b_comma_counter_form_now_transforms() -> None:
