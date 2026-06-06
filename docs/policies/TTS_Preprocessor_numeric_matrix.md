@@ -96,6 +96,8 @@ Current standalone invalid/malformed forms:
 | Korean `대` score pair | valid readable numeric operands already supported by `span_default` numeric owners as standalone numeric expressions; plain integer compact `N대M` keeps compact score reading | ASCII `+`/`-` signed integer/decimal operands where standalone signed owner validates them | yes | yes | supports `LEFT 대 RIGHT`, `LEFT대RIGHT`, `LEFT대 RIGHT`; `LEFT 대RIGHT` remains unsupported | malformed/unsafe operands and protected/code-like contexts are not claimed; right operand attached to registered owner suffix/unit/currency/percent/duration/multiplier/counter surface blocks this owner | ordinary decimal fractional zero follows the underlying standalone numeric reading; non-plain operands render spaced around `대`, e.g. `2.1대1.5 -> 이쩜일 대 일쩜오` |
 | compound slash unit | exact registered compound slash unit surfaces, including `/` and owner-local `／` aliases; examples include `km/h`, `m/s`, `km/L`, `mg/L`, `㎎/L`, `mg/dL`, `MB/s` | no signed compound slash broadening in this phase | yes for registered slash surfaces that already support integer numeric cores | yes for valid comma integer/decimal through the compound owner parser | no space or one ASCII space before the full registered suffix | malformed numeric cores, unregistered slash pairs, unsafe tails, spaced slash boundaries, URL/path/protected contexts preserve; no partial `5.6km` rewrite | ordinary decimal/Sino reading reuses the unchanged template, e.g. `5.6km/h -> 시속 오쩜육 킬로미터`, `3.2mg/L -> 리터당 삼쩜이 밀리그램` |
 | hyphen restricted range | approved `N-M + range-compatible unit`, e.g. `1-2kg` | broad signed hyphen ranges out of scope | decimal broad signed hyphen remains out of scope | narrow owner-specific support only | attached compatible unit required for range reading | arbitrary `1-2`, `1-2테스트`, `+1.5-2kg` preserve | follows owner parser when valid; no broad trailing-zero policy |
+| single-letter numeric-code | single ASCII uppercase letter followed by unsigned integer/valid decimal, with optional ASCII `-` separator; integer tail letters remain owner-local, e.g. `K1`, `K-1`, `F-15C`, `B-2.5`, `K-1.5` | no sign; ASCII `-` is a separator, not minus | yes | no comma in current owner | no space or ASCII `-` separator | plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, unsafe tails, and protected contexts preserve or claim preserve to block partial decimal fallback | integer one-digit code readings use code digit forms such as `원`, `투`; decimals use ordinary `쩜`, e.g. `K-1.5 -> 케이 일쩜오` |
+| managed dictionary numeric-code | exact current English managed dictionary entry followed by a short unsigned integer/valid decimal suffix, with optional ASCII `-` separator, e.g. `GPT4`, `Wi-Fi-6`, `version-1.5`; simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` remain excluded | no sign; ASCII `-` is a separator, not minus | yes, but decimal integer part must be 1-2 digits | no comma in current owner | no space or ASCII `-` separator | unregistered ASCII word + numeric preserves; plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024`, unsafe tails, and URL/path/email/JSON/backtick/square bracket/file-like contexts preserve or claim preserve to block partial fallback | registry-backed from current managed dictionary entries and reuses single-letter numeric-code reader for accepted short suffixes, e.g. `GPT-4 -> 지피티 포`, `version-1.5 -> 버전 일쩜오` |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
 
 Registered compound slash unit decimal coverage is implemented owner-locally.
@@ -305,7 +307,12 @@ Protected and code-like contexts must outrank broad time or `N:M` claims:
 - path-like spans
 - URL spans
 - code-like contexts
-- line/case/version/file/scripture-like colon contexts
+- line/case/file/scripture-like colon contexts
+
+`version` is a current managed dictionary entry and no longer acts as a broad
+code-like marker for non-time-like two-block `N:M`; e.g. `version 1:2테스트`
+reads as `버전 일 대 이 테스트`. Time-like/version-like contexts can still
+preserve through the time/version protection rules.
 
 Current production-source audit examples:
 
@@ -416,7 +423,7 @@ claimed by the time owner. No-context lists preserve:
 메모는 10:30, 23:59 -> 메모는 10:30, 23:59
 ```
 
-Ratio/score, scripture-like, line/case/version/file, protected, URL/path/JSON/
+Ratio/score, scripture-like, line/case/file, protected, URL/path/JSON/
 backtick/code-like contexts remain excluded and keep their existing preserve or
 owner behavior.
 
@@ -481,10 +488,11 @@ Hyphen is not a broad numeric range delimiter:
      `-001.5`.
    - Not in scope: `1.`, `3..140`, `25..50`, `2,34`, `2,,345`, `2,34억`,
      `3백..4십만`; those belong to segmented reading design or other follow-ups.
-3. File-like/version-like/code-like protection prerequisite:
-   - `file-25..50.txt`, `version-1.5`, `v25..50`, `SKU25..50` remain open audit
-     gaps and must be resolved before any broad segmented malformed numeric
-     reader expands.
+3. File-like/code-like protection prerequisite:
+   - `file-25..50.txt`, `v25..50`, `SKU25..50` remain open audit gaps and must
+     be resolved before any broad segmented malformed numeric reader expands.
+   - `version-1.5` is no longer an open segmented-reader gap; it is a managed
+     dictionary numeric-code target and reads `버전 일쩜오`.
 4. Non-KRW currency trailing zero targeted fix.
 5. Time-like `숫자:숫자` binary/API probe and final policy cleanup.
 6. Hyphen broad expansion remains a non-goal unless separately approved.
@@ -547,7 +555,7 @@ The current inventory is:
 
 | Delimiter family | Existing owner / exception inventory |
 |---|---|
-| colon-like | strong time-like, explicit time context, ambiguous time-like preserve, semantic `N:M`, broad non-time-like `N:M`, multi-colon, timecode-like multi-colon preserve, invalid colon fallback block, scripture / line / case / version context preserve |
+| colon-like | strong time-like, explicit time context, ambiguous time-like preserve, semantic `N:M`, broad non-time-like `N:M`, multi-colon, timecode-like multi-colon preserve, invalid colon fallback block, scripture / line / case / file context preserve, time-like version preserve |
 | hyphen/dash-like | restricted `N-M` range with compatible unit/counter/currency suffix, standalone `N-M` preserve, signed hyphen range non-goal, date-like, file-like, version-like, K-prefix, single-letter code, phone-like, code separator fallback |
 | slash-like | fraction, modern slash date, compound unit, path, URL, slash ratio non-goal |
 | dot-like | decimal, event number, middle event fallback, version-like, file extension, pH, abbreviation/code-like dot, malformed dot candidate |
@@ -595,14 +603,14 @@ Current production-source audit:
 | `/path/25..50억/log` | `/path/25..50억/log` | path protected preserve |
 | `https://example.com?q=25..50억` | `https://example.com?q=25..50억` | URL protected preserve |
 | `file-25..50.txt` | `file-25..오십.txt` | current audit gap; future segmenter must treat file-like as excluded |
-| `version-1.5` | `브이 이 알 에스 아이 오 엔 일쩜오` | current audit gap; version-like exclusion needs explicit policy/implementation alignment before any segmenter |
+| `version-1.5` | `버전 일쩜오` | managed dictionary numeric-code target; no longer a segmented-reader audit gap |
 | `v25..50` | `v25..오십` | current audit gap; code-like prefix exclusion must outrank segmented fallback |
 | `SKU25..50` | `SKU25..오십` | current audit gap; code-like token exclusion must outrank segmented fallback |
 
-These gaps are recorded only as audit findings and belong to the separate
-file-like/version-like/code-like protection prerequisite in section 5.1. They
-are not solved by leading-zero malformed decimal cleanup. This pass does not
-change protected-span or code-like behavior.
+The remaining file-like/code-like gaps are recorded only as audit findings and
+belong to the separate protection prerequisite in section 5.1. They are not
+solved by leading-zero malformed decimal cleanup. `version-1.5` is handled by
+the managed dictionary numeric-code owner, not by a broad segmented fallback.
 
 ### 11.5 Severe invalid preserve criteria
 
@@ -783,9 +791,10 @@ Open decisions before any implementation:
    - decide how far the existing large-unit / Korean mixed-unit parser helpers
      can be reused without duplicating numeric reading logic.
 5. Code-like audit gaps:
-   - `file-25..50.txt`, `version-1.5`, `v25..50`, and `SKU25..50` currently do
-     not all exact-preserve. A segmented fallback must not ship before these
-     exclusion boundaries are explicit and tested.
+   - `file-25..50.txt`, `v25..50`, and `SKU25..50` currently do not all
+     exact-preserve. A segmented fallback must not ship before these exclusion
+     boundaries are explicit and tested.
+   - `version-1.5` is now a managed dictionary numeric-code target.
 
 ## 12. Ordinary Decimal Fractional Zero 영 Canonicalization
 

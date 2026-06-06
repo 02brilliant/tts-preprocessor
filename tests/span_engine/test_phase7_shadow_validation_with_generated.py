@@ -4,12 +4,12 @@ from engine.span_engine import transform_with_trace
 
 
 def test_shadow_validation_passes_with_dictionary_generated_reading() -> None:
-    output = transform_with_trace("AI는")
+    output = transform_with_trace("GPT는")
 
-    assert output.normalized_text == "에이아이는"
+    assert output.normalized_text == "지피티는"
     assert all(log.passed for log in output.trace.validation_logs)
     assert any(piece.text == "는" and piece.provenance == "GENERATED_PARTICLE" for piece in output.render_pieces)
-    assert any(piece.text == "에이아이" and piece.provenance == "GENERATED_READING" for piece in output.render_pieces)
+    assert any(piece.text == "지피티" and piece.provenance == "GENERATED_READING" for piece in output.render_pieces)
 
 
 def test_shadow_validation_passes_with_number_generated_reading() -> None:

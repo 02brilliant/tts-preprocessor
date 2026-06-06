@@ -4,7 +4,6 @@ from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.models import RenderPiece, SourceSpan, SurfaceCandidate
 
 DICTIONARY_READINGS: dict[str, str] = {
-    "AI": "에이아이",
     "AFC": "에이에프씨",
     "ASEAN": "아세안",
     "ASR": "에이에스알",
@@ -26,6 +25,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "FOMC": "에프오엠씨",
     "Fed": "연준",
     "GDP": "지디피",
+    "GPT": "지피티",
     "GraphQL": "그래프큐엘",
     "GUI": "지유아이",
     "HTTP": "에이치티티피",
@@ -64,6 +64,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "PCIe": "피씨아이이",
     "PPT": "피피티",
     "RAM": "램",
+    "release": "릴리즈",
     "REST": "레스트",
     "ROM": "롬",
     "S&P": "에스앤피",
@@ -71,7 +72,6 @@ DICTIONARY_READINGS: dict[str, str] = {
     "STT": "에스티티",
     "API": "에이피아이",
     "CPI": "씨피아이",
-    "CPU": "씨피유",
     "GPU": "지피유",
     "UI": "유아이",
     "UI/UX": "유아이 유엑스",
@@ -81,7 +81,6 @@ DICTIONARY_READINGS: dict[str, str] = {
     "JSON": "제이슨",
     "URL": "유알엘",
     "URI": "유알아이",
-    "USB": "유에스비",
     "XML": "엑스엠엘",
     "YAML": "야믈",
     "2G": "투지",
@@ -154,6 +153,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "PBR": "피비알",
     "EPS": "이피에스",
     "SDK": "에스디케이",
+    "version": "버전",
 }
 
 LEXICAL_COMPOUND_READINGS: dict[str, str] = {

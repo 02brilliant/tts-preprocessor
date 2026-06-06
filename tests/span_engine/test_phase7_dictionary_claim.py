@@ -30,10 +30,18 @@ def test_dictionary_fixed_lexical_transform(text: str, expected: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["OpenAI", "AIP", "AIA", "AI3", "3AI", "APIv2", "JSONParser"],
+    ["OpenAI", "AIP", "AI3", "3AI", "APIv2", "JSONParser"],
 )
 def test_dictionary_does_not_partial_consume_inside_mixed_tokens(text: str) -> None:
     assert transform(text) == text
+
+
+def test_fallback_covered_acronym_full_consumes_without_dictionary_partial_split() -> None:
+    output = transform_with_trace("AIA")
+
+    assert output.normalized_text == "에이아이에이"
+    assert any(claim.owner == "acronym_fallback" for claim in output.trace.claim_logs)
+    assert not any(claim.owner == "dictionary" for claim in output.trace.claim_logs)
 
 
 def test_dictionary_does_not_partial_consume_inside_multi_letter_hyphen_code() -> None:

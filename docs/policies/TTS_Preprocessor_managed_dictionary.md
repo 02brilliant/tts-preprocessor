@@ -98,7 +98,6 @@ span production managed dictionary and covered by production-path tests.
 | `6G` | 식스지 | current | exact | safe token boundary | Network generation term; does not apply inside frequency/unit tokens. |
 | `8K` | 에잇케이 | current | exact | safe token boundary | Fixed media/display term. |
 | `AFC` | 에이에프씨 | current | exact | safe token boundary | Fixed sports organization term. |
-| `AI` | 에이아이 | current | exact | safe token boundary | Fixed AI term. |
 | `API` | 에이피아이 | current | exact | safe token boundary | Fixed technical term. |
 | `ASEAN` | 아세안 | current | exact | safe token boundary | Fixed institution term. |
 | `ASR` | 에이에스알 | current | exact | safe token boundary | Fixed speech term. |
@@ -109,7 +108,6 @@ span production managed dictionary and covered by production-path tests.
 | `BPS` | 비피에스 | current | exact | safe token boundary | Fixed finance term. |
 | `CLI` | 씨엘아이 | current | exact | safe token boundary | Fixed technical term. |
 | `CPI` | 씨피아이 | current | exact | safe token boundary | Fixed economy term. |
-| `CPU` | 씨피유 | current | exact | safe token boundary | Fixed hardware term. |
 | `CSS` | 씨에스에스 | current | exact | safe token boundary | Fixed web term. |
 | `CSV` | 씨에스브이 | current | exact | safe token boundary | Fixed file/data term. |
 | `DB` | 디비 | current | exact | safe token boundary | Fixed database term. |
@@ -131,6 +129,7 @@ span production managed dictionary and covered by production-path tests.
 | `FHD` | 에프에이치디 | current | exact | safe token boundary | Fixed media term. |
 | `FIFA` | 피파 | current | exact | safe token boundary | Fixed sports organization term. |
 | `GDP` | 지디피 | current | exact | safe token boundary | Fixed economy term. |
+| `GPT` | 지피티 | current | exact | safe token boundary | Fixed AI/product acronym term. |
 | `GPU` | 지피유 | current | exact | safe token boundary | Fixed hardware term. |
 | `GUI` | 지유아이 | current | exact | safe token boundary | Fixed UI term. |
 | `GraphQL` | 그래프큐엘 | current | exact | safe token boundary | Fixed technical term. |
@@ -193,6 +192,7 @@ span production managed dictionary and covered by production-path tests.
 | `Q&A` | 큐앤에이 | current | exact | safe token boundary | Fixed question-answer term. |
 | `QoQ` | 큐오큐 | current | exact | safe token boundary | Fixed finance comparison term. |
 | `RAM` | 램 | current | exact | safe token boundary | Fixed hardware term. |
+| `release` | 릴리즈 | current | exact | safe token boundary | Fixed software/release term. |
 | `REST` | 레스트 | current | exact | safe token boundary | Fixed technical term. |
 | `ROE` | 알오이 | current | exact | safe token boundary | Fixed finance term. |
 | `ROM` | 롬 | current | exact | safe token boundary | Fixed hardware term. |
@@ -218,11 +218,11 @@ span production managed dictionary and covered by production-path tests.
 | `UNICEF` | 유니세프 | current | exact | safe token boundary | Fixed institution term. |
 | `URI` | 유알아이 | current | exact | safe token boundary | Fixed web term. |
 | `URL` | 유알엘 | current | exact | safe token boundary | Fixed web term. |
-| `USB` | 유에스비 | current | exact | safe token boundary | Fixed hardware term. |
 | `UWB` | 유더블유비 | current | exact | safe token boundary | Fixed network term. |
 | `UX` | 유엑스 | current | exact | safe token boundary | Fixed technical term. |
 | `VOD` | 브이오디 | current | exact | safe token boundary | Fixed media term. |
 | `VPN` | 브이피엔 | current | exact | safe token boundary | Fixed network term. |
+| `version` | 버전 | current | exact | safe token boundary | Fixed software/version term. |
 | `WAN` | 더블유에이엔 | current | exact | safe token boundary | Fixed network term. |
 | `WHO` | 더블유에이치오 | current | exact | safe token boundary | Fixed institution term. |
 | `WIFI` | 와이파이 | current | exact | safe token boundary | Fixed network alias. |
@@ -264,6 +264,7 @@ full-claim the entire conditional surface and must preserve protected contexts.
 | public numbers such as `110`, `120`, `1339` | public digit reading | current_with_condition | public-number context gate | full claim | Context required; gate failure falls back to general number. |
 | `K-` + complete Hangul lexical prefix | 케이 + original Hangul | current_with_condition | K-Hangul lexical owner | full claim | `K-푸드`, `K-뷰티`; unsafe tails preserve. |
 | managed acronym + `-` + complete Hangul lexical token | managed/acronym reading + raw hyphen + original Hangul | current_with_condition | managed acronym-Hangul hyphen lexical compound | full claim | Left side must be a current managed dictionary entry, e.g. `KTX-이음`; not a broad hyphen rewrite. Code-like/path/URL/protected contexts preserve. |
+| current English managed dictionary entry + short numeric-code suffix | managed reading + numeric-code reading | current_with_condition | `managed_acronym_numeric_code` | full claim | Left side must be a current exact managed dictionary entry that starts and ends with ASCII alphabetic text and contains only ASCII letters/digits or `-`. This is registry-backed from the span managed dictionary inventory, not an owner-local base allowlist. Entries that should not inherit numeric-code suffixes must not remain current managed dictionary entries. Simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` preserve because broad acronym+number fallback is forbidden. Supports no separator or ASCII `-`, e.g. `GPT4`, `GPT-4`, `KTX1`, `KBS-1`, `NASA1`, `GUI2`, `YAML-2`, `REST1`, `RAM2`, `ROM3`, `OAuth2`, `WAN1`, `WLAN2`, `Wi-Fi6`, `version-1.5`, `release-1.5`. The hyphen is a separator, not a minus sign, and is not read. Numeric block is a short unsigned code suffix only: integer suffixes must be 1-2 digits; decimal suffixes must have a 1-2 digit integer part and at least one fractional digit. No plus, signed number, leading-zero malformed decimal, bare dot, malformed comma, segmented malformed numeric, or unsafe tail. Long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024` preserve. Unregistered ASCII word + numeric surfaces such as `abc-1.5`, `build-25`, and `foo2` preserve. URL/path/email/JSON/backtick/fenced code/shell-like/square bracket/file-like contexts preserve. |
 | `ISO·IEC` | 아이에스오·아이이씨 | current_with_condition | lexical compound | safe token boundary | Fixed lexical compound; not broad middle-dot normalization. |
 
 ## 8. Pending / Conflict / Future Entries
@@ -277,6 +278,7 @@ changes their status.
 | file-extension family not listed as current | policy table readings | future_candidate | Requires file/path context design before implementation. |
 | event fixed phrases from legacy dictionary | event readings | pending_policy_decision | Event owner/gate behavior is separate from managed dictionary inventory. |
 | broad legacy inline dictionary leftovers | legacy readings | legacy_only_or_deprecated | Legacy `base_dictionary.py` is not the canonical span inventory. |
+| `AI`, `CPU`, `USB` | uppercase acronym fallback readings | legacy_only_or_deprecated | Removed from current managed dictionary because uppercase acronym fallback provides the same standalone and particle output, while broad acronym+number fallback remains forbidden (`AI3`, `CPU900`, `USB300` preserve). |
 
 ## 9. Implementation Contract
 

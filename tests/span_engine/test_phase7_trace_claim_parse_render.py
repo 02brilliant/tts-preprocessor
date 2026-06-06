@@ -6,7 +6,7 @@ from engine.span_engine import output_to_debug_dict, transform_with_trace
 
 
 def test_owner_first_claim_trace_for_dictionary_acronym_and_number() -> None:
-    cases = [("AI", "dictionary"), ("ABC", "acronym_fallback"), ("123", "number")]
+    cases = [("GPT", "dictionary"), ("AI", "acronym_fallback"), ("123", "number")]
 
     for text, owner in cases:
         output = transform_with_trace(text)
@@ -21,9 +21,9 @@ def test_preserved_unsupported_input_has_no_claim_log() -> None:
 
 
 def test_parser_and_render_trace_records_generated_owners() -> None:
-    output = transform_with_trace("AI 123")
+    output = transform_with_trace("GPT 123")
 
-    assert output.normalized_text == "에이아이 백이십삼"
+    assert output.normalized_text == "지피티 백이십삼"
     assert any(log.owner == "dictionary" and log.decision == "success" for log in output.trace.parser_logs)
     assert any(log.owner == "number" and log.decision == "success" for log in output.trace.parser_logs)
     assert any(log.owner == "dictionary" and log.provenance == "GENERATED_READING" for log in output.trace.render_logs)
@@ -32,7 +32,7 @@ def test_parser_and_render_trace_records_generated_owners() -> None:
 
 
 def test_debug_export_includes_generated_render_and_claim_parser_logs() -> None:
-    debug = output_to_debug_dict(transform_with_trace("AI 123"))
+    debug = output_to_debug_dict(transform_with_trace("GPT 123"))
 
     json.dumps(debug, ensure_ascii=False)
     assert any(piece["provenance"] == "GENERATED_READING" for piece in debug["render_pieces"])

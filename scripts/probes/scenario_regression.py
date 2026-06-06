@@ -441,7 +441,7 @@ GROUP_10_CODE_LIKE = (
     "file-2025-01.txt",
 )
 GROUP_10_CURRENT_AUDIT = (
-    ScenarioCase("g10_current_version_hyphen_decimal", "version-1.5", exact="브이 이 알 에스 아이 오 엔 일쩜오", note="current_behavior"),
+    ScenarioCase("g10_managed_version_hyphen_decimal", "version-1.5", exact="버전 일쩜오", note="managed_dictionary_numeric_code"),
 )
 
 GROUP_11_PROTECTED = (

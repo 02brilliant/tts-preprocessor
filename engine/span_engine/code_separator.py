@@ -90,7 +90,7 @@ def scan_two_block_hyphen_code_candidates(raw_text: str) -> list[SurfaceCandidat
         number = match.group(2)
         if left == "K":
             continue
-        if len(left) > 1 and left.isascii() and left.isupper():
+        if len(left) > 1 and all(char.isascii() and char.isalpha() for char in left):
             continue
         left_reading = _left_block_reading(left)
         number_reading = read_number_text(number)

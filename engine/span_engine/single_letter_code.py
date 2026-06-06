@@ -8,8 +8,23 @@ from engine.span_engine.numeric_reading import read_number_text
 
 _TAIL_MAX_LENGTH = 2
 _K_HYPHEN_YEAR_CODE_DIGITS = 4
-_CANDIDATE_RE = re.compile(rf"[A-Z]-?\d+[A-Z]{{0,{_TAIL_MAX_LENGTH}}}")
-_FULL_RE = re.compile(rf"([A-Z])(-?)(\d+)([A-Z]{{0,{_TAIL_MAX_LENGTH}}})")
+_CANDIDATE_RE = re.compile(
+    rf"[A-Z]-?\d+(?:\.\d+)?[A-Z]{{0,{_TAIL_MAX_LENGTH}}}"
+)
+_FULL_RE = re.compile(rf"([A-Z])(-?)(\d+(?:\.\d+)?)([A-Z]{{0,{_TAIL_MAX_LENGTH}}})")
+_MALFORMED_CANDIDATE_RE = re.compile(
+    r"[A-Z](?:"
+    r"\+-?\d+(?:\.\d+)?"
+    r"|-[-+]\d+(?:\.\d+)?"
+    r"|-?\.\d+"
+    r"|-?0\d+(?:\.\d+)?"
+    r"|-?\d+\."
+    r"|-?\d+(?:\.\d+){2,}"
+    r")"
+)
+_UNSAFE_DECIMAL_TAIL_RE = re.compile(
+    r"[A-Z]-?\d+\.\d+(?=[A-Za-z_%~/&.+\-·ㆍ∙℃℉°º])\S*"
+)
 
 _ENGLISH_DIGIT_READINGS = {
     "1": "원",
@@ -67,6 +82,8 @@ def scan_single_letter_alnum_code_candidates(
                 metadata={"reading": reading},
             )
         )
+    candidates.extend(_scan_malformed_preserve_candidates(raw_text))
+    candidates.extend(_scan_unsafe_decimal_tail_preserve_candidates(raw_text))
     return candidates
 
 
@@ -89,7 +106,9 @@ def _reading(raw: str) -> str | None:
     first_reading = _LETTER_READINGS.get(letter)
     if first_reading is None:
         return None
-    number_reading = _number_reading(number)
+    if "." in number and tail:
+        return None
+    number_reading = numeric_code_number_reading(number)
     if number_reading is None:
         return None
     parts = [first_reading, number_reading]
@@ -112,10 +131,10 @@ def _is_preserved_k_hyphen_year_code(
     )
 
 
-def _number_reading(number: str) -> str | None:
-    if not number or not number.isascii() or not number.isdigit():
+def numeric_code_number_reading(number: str) -> str | None:
+    if not number or not number.isascii():
         return None
-    if len(number) == 1 and number != "0":
+    if number.isdigit() and len(number) == 1 and number != "0":
         return _ENGLISH_DIGIT_READINGS[number]
     return read_number_text(number)
 
@@ -130,6 +149,49 @@ def _tail_reading(tail: str) -> str | None:
             return None
         readings.append(reading)
     return "".join(readings)
+
+
+def _scan_malformed_preserve_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for match in _MALFORMED_CANDIDATE_RE.finditer(raw_text):
+        if not _safe_boundary(raw_text, match.start(), match.end()):
+            continue
+        span = SourceSpan(match.start(), match.end())
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="MALFORMED_SINGLE_LETTER_NUMERIC_CODE_PRESERVE",
+                reason="malformed_single_letter_numeric_code_blocks_partial_fallback",
+            )
+        )
+    return candidates
+
+
+def _scan_unsafe_decimal_tail_preserve_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for match in _UNSAFE_DECIMAL_TAIL_RE.finditer(raw_text):
+        if not _safe_preserve_start(raw_text, match.start()):
+            continue
+        span = SourceSpan(match.start(), match.end())
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="UNSAFE_SINGLE_LETTER_DECIMAL_CODE_PRESERVE",
+                reason="unsafe_single_letter_decimal_tail_blocks_partial_fallback",
+            )
+        )
+    return candidates
+
+
+def _safe_preserve_start(raw_text: str, start: int) -> bool:
+    prev_char = raw_text[start - 1] if start > 0 else None
+    if prev_char is None:
+        return True
+    return not _is_code_identifier_char(prev_char)
 
 
 def _safe_boundary(raw_text: str, start: int, end: int) -> bool:
@@ -156,7 +218,7 @@ def _is_unsafe_tail(char: str) -> bool:
         return True
     if "\u3130" <= char <= "\u318f":
         return True
-    return char in {"_", "-", "/", ".", "&", "·", "ㆍ", "∙"}
+    return char in {"_", "-", "/", ".", "%", "~", "∼", "&", "·", "ㆍ", "∙", "℃", "℉", "°", "º"}
 
 
 def _has_previous_uppercase_context_token(raw_text: str, start: int) -> bool:
@@ -183,6 +245,7 @@ def _is_code_identifier_char(char: str) -> bool:
 
 
 __all__ = [
+    "numeric_code_number_reading",
     "parse_single_letter_alnum_code_candidate",
     "scan_single_letter_alnum_code_candidates",
 ]

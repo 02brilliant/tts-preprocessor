@@ -16,7 +16,7 @@ def test_transform_with_trace_populates_stable_debug_log_categories() -> None:
     assert output.trace.render_logs
     assert output.trace.validation_logs
     assert output.trace.claim_logs
-    assert {claim.owner for claim in output.trace.claim_logs} == {"dictionary", "number"}
+    assert {claim.owner for claim in output.trace.claim_logs} == {"acronym_fallback", "number"}
     assert output.trace.claim_collision_logs == []
     assert transform(raw_text) == "에이아이는 백이십삼입니다"
 

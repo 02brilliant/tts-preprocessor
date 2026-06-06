@@ -37,6 +37,9 @@ from engine.span_engine.lexicon import (
     parse_finance_index_numeric_suffix_candidate,
     spell_uppercase_acronym,
 )
+from engine.span_engine.managed_numeric_code import (
+    parse_managed_acronym_numeric_code_candidate,
+)
 from engine.span_engine.middle_dot import parse_middle_dot_candidate
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.multiplier import (
@@ -90,6 +93,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_mixed_alnum_code_separator_candidate(raw_text, candidate)
     elif candidate.owner == "single_letter_alnum_code":
         reading = parse_single_letter_alnum_code_candidate(raw_text, candidate)
+    elif candidate.owner == "managed_acronym_numeric_code":
+        reading = parse_managed_acronym_numeric_code_candidate(raw_text, candidate)
     elif candidate.owner == "two_block_hyphen_code":
         reading = parse_two_block_hyphen_code_candidate(raw_text, candidate)
     elif candidate.owner == "number":

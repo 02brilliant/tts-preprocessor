@@ -4,11 +4,11 @@ from engine.span_engine import SourceSpan, transform_with_trace
 
 
 def test_dictionary_surface_render_separates_generated_reading_and_original_korean() -> None:
-    output = transform_with_trace("AI는")
+    output = transform_with_trace("GPT는")
 
     assert [(piece.text, piece.provenance, piece.source_span, piece.owner) for piece in output.render_pieces] == [
-        ("에이아이", "GENERATED_READING", SourceSpan(0, 2), "dictionary"),
-        ("는", "GENERATED_PARTICLE", SourceSpan(2, 3), "dictionary"),
+        ("지피티", "GENERATED_READING", SourceSpan(0, 3), "dictionary"),
+        ("는", "GENERATED_PARTICLE", SourceSpan(3, 4), "dictionary"),
     ]
 
 

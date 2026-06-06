@@ -88,11 +88,9 @@ def test_finance_index_numeric_suffix_full_claim_blocks_partial_p500() -> None:
         ("TTS", "티티에스"),
         ("API", "에이피아이"),
         ("JSON", "제이슨"),
-        ("CPU", "씨피유"),
         ("GPU", "지피유"),
         ("GUI", "지유아이"),
         ("Wi-Fi", "와이파이"),
-        ("USB", "유에스비"),
         ("PDF", "피디에프"),
         ("OECD", "오이씨디"),
         ("WHO", "더블유에이치오"),
@@ -110,6 +108,24 @@ def test_managed_lexicon_representative_entries_are_span_dictionary(
     assert production_transform(f"{surface} 항목") == f"{expected} 항목"
     trace = transform_with_trace(f"{surface} 항목").trace
     assert any(claim.owner == "dictionary" for claim in trace.claim_logs)
+
+
+@pytest.mark.parametrize(
+    ("surface", "expected"),
+    [
+        ("AI", "에이아이"),
+        ("CPU", "씨피유"),
+        ("USB", "유에스비"),
+    ],
+)
+def test_fallback_covered_acronyms_are_not_current_managed_dictionary(
+    surface: str, expected: str
+) -> None:
+    assert surface not in DICTIONARY_READINGS
+    assert surface not in _managed_dictionary_current_entries()
+    assert production_transform(surface) == expected
+    trace = transform_with_trace(surface).trace
+    assert any(claim.owner == "acronym_fallback" for claim in trace.claim_logs)
 
 
 @pytest.mark.parametrize("text", ["USB300", "APIv2", "A12.3B", "OpenAI"])

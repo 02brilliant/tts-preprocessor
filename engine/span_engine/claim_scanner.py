@@ -61,6 +61,9 @@ from engine.span_engine.lexicon import (
     scan_finance_index_numeric_suffix_candidates,
     scan_lexical_compound_candidates,
 )
+from engine.span_engine.managed_numeric_code import (
+    scan_managed_acronym_numeric_code_candidates,
+)
 from engine.span_engine.models import ClaimedRange, SourceSpan, SpanToken, SurfaceCandidate
 from engine.span_engine.numeric_reading import normalize_integer_text
 from engine.span_engine.public_number import is_public_number, scan_public_number_candidates
@@ -186,6 +189,7 @@ CLAIM_ORDER_DOC = (
     "lexical_compound",
     "acronym_hangul_hyphen",
     "single_letter_alnum_code",
+    "managed_acronym_numeric_code",
     "two_block_hyphen_code",
     "mixed_alnum_code_separator",
     "acronym_fallback",
@@ -252,6 +256,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_acronym_hangul_hyphen_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_single_letter_alnum_code_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_managed_acronym_numeric_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_acronym_fallback(tokens, registry, excluded_ranges))
@@ -491,7 +496,7 @@ def _is_fixed_dictionary_identifier_neighbor(char: str) -> bool:
         return True
     if "\uac00" <= char <= "\ud7a3" or "\u3130" <= char <= "\u318f":
         return True
-    return char in {"-", "_", "/"}
+    return char in {"-", "_", "/", "+"}
 
 
 def _is_safe_acronym_fallback_token(raw: str) -> bool:
@@ -512,9 +517,13 @@ def _is_safe_acronym_fallback_token(raw: str) -> bool:
 def _safe_acronym_fallback_boundary(token_raw: str, start: int, end: int) -> bool:
     prev_char = token_raw[start - 1] if start > 0 else None
     next_char = token_raw[end] if end < len(token_raw) else None
+    if prev_char is not None and _is_compatibility_jamo(prev_char):
+        return False
     if prev_char is not None and prev_char.isascii() and prev_char.isalnum():
         return False
     if prev_char in {"_", "-", "/"}:
+        return False
+    if next_char is not None and _is_compatibility_jamo(next_char):
         return False
     if next_char is not None and next_char.isascii() and next_char.isalnum():
         return False

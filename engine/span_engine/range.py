@@ -144,7 +144,6 @@ _COLON_PAIR_ATTACHED_TAILS = (
 _COLON_PAIR_BLOCKED_PREV_WORDS = (
     "line",
     "case",
-    "version",
     "ver",
     "file",
     "code",

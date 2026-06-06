@@ -96,7 +96,6 @@ def test_colon_numeric_protected_and_code_like_preserve() -> None:
     for source in (
         "line 3:4테스트",
         "case 3:4테스트",
-        "version 1:2테스트",
         "/path/3:4테스트/log",
         "/path/+1:2/log",
         "`3:4테스트`",
@@ -104,6 +103,21 @@ def test_colon_numeric_protected_and_code_like_preserve() -> None:
         '{"ratio":"3:4테스트"}',
     ):
         assert transform(source) == source
+
+
+def test_colon_numeric_version_release_dictionary_context_parity() -> None:
+    cases = [
+        ("release 1:2 입니다", "릴리즈 일 대 이 입니다"),
+        ("version 1:2 입니다", "버전 일 대 이 입니다"),
+        ("release 1:2테스트 입니다", "릴리즈 일 대 이 테스트 입니다"),
+        ("version 1:2테스트 입니다", "버전 일 대 이 테스트 입니다"),
+        ("release 1.1:2.2 입니다", "릴리즈 일쩜일 대 이쩜이 입니다"),
+        ("version 1.1:2.2 입니다", "버전 일쩜일 대 이쩜이 입니다"),
+        ("release 1.1:2.2테스트 입니다", "릴리즈 일쩜일 대 이쩜이 테스트 입니다"),
+        ("version 1.1:2.2테스트 입니다", "버전 일쩜일 대 이쩜이 테스트 입니다"),
+    ]
+    for source, expected in cases:
+        assert transform(source) == expected
 
 
 def test_colon_numeric_invalid_preserve_and_blocks_partial_fallback() -> None:

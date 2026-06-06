@@ -715,6 +715,8 @@ attachment 정책을 따른다.
 +1:2테스트 -> 플러스 일 대 이 테스트
 1.5:2.0범위 -> 일쩜오 대 이쩜영 범위
 1,000:2,000테스트 -> 천 대 이천 테스트
+version 1:2테스트 -> 버전 일 대 이 테스트
+release 1:2테스트 -> 릴리즈 일 대 이 테스트
 3：4테스트 -> 삼 대 사 테스트
 3:4. -> 삼 대 사.
 3:4테스트. -> 삼 대 사 테스트.
@@ -736,7 +738,7 @@ Same-sentence comma-separated `H:MM` / `HH:MM` lists may share context only via
 the time owner's explicit time-list context gate. The gate requires nearby
 schedule/time keyword context, time prefix/postposition context, or a preceding
 already claimed Korean time expression in the same comma list. No-context lists
-preserve, and ratio/score, scripture-like, line/case/version/file, protected,
+preserve, and ratio/score, scripture-like, line/case/file, protected,
 URL/path/JSON/backtick/code-like contexts remain excluded.
 
 ```text
@@ -2915,46 +2917,52 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 0 | square bracket protection | `[12.3]`, `[3kg]`, `[2025/13/03]` | `bracket` |
 | 1 | URL/path/email/protected literal | `docs/2025/01/03`, `https://example.com/2026/04/17`, `user@example.com`, `v1.2.3-beta` | `preserve` (`PROTECTED_LITERAL_SURFACE`) |
 | 2 | dictionary / fixed lexical | `K-POP`, `KOSPI`, `AI`, `FTA` | `dictionary` |
-| 3 | K-Hangul lexical prefix | `K-푸드`, `K-뷰티`, `K-팝` | `k_hangul_lexical` |
-| 4 | lexical compound | `AI·반도체`, `ISO·IEC` | `lexical_compound` |
-| 5 | single-letter uppercase alnum code | `A-1`, `K1`, `F-15C`, `A-10C` | `single_letter_alnum_code` |
-| 6 | two-block hyphen code | `B-2.5`, `x-3` | `two_block_hyphen_code` |
-| 7 | mixed alnum code separator | `A1·B2` | `mixed_alnum_code_separator` |
-| 8 | uppercase acronym fallback | `NASA`, `CPU` | `acronym_fallback` |
-| 9 | large unit atomic/numeric surface | `1억`, `2,345억`, `25.50억`, `2천8백28억` | `large_unit_atomic` |
-| 10 | currency symbol/code | `€50`, `$100`, `USD 20`, `€1,234.56` | `currency` |
-| 11 | date format | `2025.01.03`, `2025-01-03`, `2025/01/03` | `date` |
-| 12 | time format | `13:05에`, `오전 3시` | `time` |
-| 13 | N:M semantic pair | `1:2 비율`, `3:1 승리` | `colon_semantic_pair` |
-| 14 | Korean `대` score pair | `스코어 2대1`, `경기는 2대 1로` | `korean_da_score_pair` |
-| 15 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
-| 16 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
-| 17 | spaced separator preserve | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | `preserve` |
-| 18 | spaced hyphen numeric blocks | `1 - 2`, `12 - 34` | `spaced_hyphen_numeric_blocks` |
-| 19 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
-| 20 | percent point | `3%p` | `percent_point` |
-| 21 | duration | `3시간`, `20분` | `duration` |
-| 22 | multiplier `배` | `3배`, `1.5 배` | `multiplier` |
-| 23 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
-| 24 | fraction | `1/2` | `fraction` |
-| 25 | signed temperature | `-2.5℃` | `signed_temperature` |
-| 26 | signed degree | `+3°` | `signed_degree` |
-| 27 | signed number | `-5.2` | `signed_number` |
-| 28 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
-| 29 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
-| 30 | compound exact unit | `1kWh` | `compound_exact_unit` |
-| 31 | special unit | `10Hz`, `45㎡` | `special_unit` |
-| 32 | simple unit | `50kg`, `3km` | `simple_unit` |
-| 33 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
-| 34 | decimal fallback | `12.3`, `7.25` | `decimal` |
-| 35 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
-| 36 | public number | `국민콜 110에`, `1339는` | `public_number` |
-| 37 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
-| 38 | phone | `123-456-7890` | `phone` |
-| 39 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
-| 40 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
-| 41 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
-| 42 | general number | `123`, `2025` | `number` |
+| 3 | finance index numeric suffix | `S&P500`, `NASDAQ100` | `finance_index` |
+| 4 | K-Hangul lexical prefix | `K-푸드`, `K-뷰티`, `K-팝` | `k_hangul_lexical` |
+| 5 | lexical compound | `AI·반도체`, `ISO·IEC` | `lexical_compound` |
+| 6 | managed acronym-Hangul hyphen lexical compound | `KTX-이음` | `acronym_hangul_hyphen` |
+| 7 | single-letter uppercase alnum code | `A-1`, `K1`, `F-15C`, `B-2.5`, `K-1.5` | `single_letter_alnum_code` |
+| 8 | current English managed dictionary entry short numeric-code suffix | `GPT4`, `GPT-4`, `Wi-Fi6`, `version-1.5` | `managed_acronym_numeric_code` |
+| 9 | two-block hyphen code | `x-3`, `가-3`, `ㄱ-2` | `two_block_hyphen_code` |
+| 10 | mixed alnum code separator | `A1·B2` | `mixed_alnum_code_separator` |
+| 11 | uppercase acronym fallback | `NASA`, `CPU` | `acronym_fallback` |
+| 12 | large unit atomic/numeric surface | `1억`, `2,345억`, `25.50억`, `2천8백28억` | `large_unit_atomic` |
+| 13 | currency symbol/code | `€50`, `$100`, `USD 20`, `€1,234.56` | `currency` |
+| 14 | date format | `2025.01.03`, `2025-01-03`, `2025/01/03` | `date` |
+| 15 | time format | `13:05에`, `오전 3시` | `time` |
+| 16 | N:M semantic pair | `1:2 비율`, `3:1 승리` | `colon_semantic_pair` |
+| 17 | Korean `대` score pair | `스코어 2대1`, `경기는 2대 1로` | `korean_da_score_pair` |
+| 18 | multi-colon numeric | `1:2:3` | `multi_colon_numeric` |
+| 19 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
+| 20 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
+| 21 | spaced separator preserve | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | `preserve` |
+| 22 | spaced hyphen numeric blocks | `1 - 2 - 3` | `spaced_hyphen_numeric_blocks` |
+| 23 | numeric delimited hyphen range | `1-2kg` | `numeric_delimited_hyphen_range` |
+| 24 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
+| 25 | percent point | `3%p` | `percent_point` |
+| 26 | duration | `3시간`, `20분` | `duration` |
+| 27 | multiplier `배` | `3배`, `1.5 배` | `multiplier` |
+| 28 | unit contamination preserve | `45m3abc`, `90km/hour` | `preserve` |
+| 29 | fraction | `1/2` | `fraction` |
+| 30 | signed temperature | `-2.5℃` | `signed_temperature` |
+| 31 | signed degree | `+3°` | `signed_degree` |
+| 32 | signed number | `-5.2` | `signed_number` |
+| 33 | pH prefix | `pH 7.4`, `pH7.4test` | `ph`, `preserve` |
+| 34 | compound slash unit | `90km/h`, `15.2km/L` | `compound_slash_unit` |
+| 35 | compound exact unit | `1kWh` | `compound_exact_unit` |
+| 36 | special unit | `10Hz`, `45㎡` | `special_unit` |
+| 37 | simple unit | `50kg`, `3km` | `simple_unit` |
+| 38 | decimal registered suffix | `1.5차`, `4.5주` | `decimal_registered_suffix` |
+| 39 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
+| 40 | decimal fallback | `12.3`, `7.25` | `decimal` |
+| 41 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
+| 42 | public number | `국민콜 110에`, `1339는` | `public_number` |
+| 43 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
+| 44 | phone | `123-456-7890` | `phone` |
+| 45 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
+| 46 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
+| 47 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
+| 48 | general number | `123`, `2025` | `number` |
 
 주의:
 
@@ -2962,7 +2970,8 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 - 최종 render 순서나 prosody 순서가 아니다.
 - 앞선 owner가 claim한 `reentry_allowed=False` span은 뒤 owner가 재진입할 수 없다.
 - `K-푸드` 계열은 lexical compound가 아니라 `k_hangul_lexical` owner가 처리한다.
-- `single_letter_alnum_code`는 `B-2.5`, `x-3` 같은 two-block hyphen code보다 먼저 안전한 full-consume 후보만 claim한다.
+- `single_letter_alnum_code`는 `B-2.5`, `K-1.5` 같은 single-letter numeric-code 후보를 two-block hyphen code보다 먼저 full-consume한다. 이 owner에서 ASCII `-`는 separator이며 minus sign으로 읽지 않는다.
+- `managed_acronym_numeric_code`는 current English managed dictionary exact entry 뒤의 no-separator 또는 ASCII `-` short numeric-code suffix만 full-consume한다. 이 owner는 broad acronym+number fallback이 아니며, unregistered ASCII word + numeric surfaces and fallback-covered acronyms outside the managed dictionary preserve.
 - `event`는 decimal/middle-dot numeric fallback보다 먼저 claim해야 한다.
 - `date`는 decimal/hyphen/slash numeric fallback보다 먼저 claim해야 한다.
 - `large_unit_atomic`, `currency`, `signed_*`, `range`, `duration`, `multiplier`, `ph`, `compound_*_unit`, `special_unit`, `simple_unit`은 decimal fallback보다 먼저 claim해야 한다.
@@ -3028,9 +3037,12 @@ CLAIM_ORDER = [
     bracket_excluded_range_preclaim,
     protected_literal_claim,
     dictionary_claim,
+    finance_index_claim,
     k_hangul_lexical_claim,
     lexical_compound_claim,
+    acronym_hangul_hyphen_claim,
     single_letter_alnum_code_claim,
+    managed_acronym_numeric_code_claim,
     two_block_hyphen_code_claim,
     mixed_alnum_code_separator_claim,
     acronym_fallback_claim,
@@ -3115,6 +3127,8 @@ S&P
 - alnum/hyphen 형태는 safe acronym fallback 금지
 - unit token과 충돌하면 unit owner 판단을 우선 검토하되, dictionary fixed surface가 있으면 dictionary가 이긴다.
 - finance index fixed terms may allow whitelist-based numeric suffix full-claim.
+- managed current entries may allow the narrow `managed_acronym_numeric_code`
+  suffix family documented below.
 - broad acronym+number fallback remains prohibited.
 - protected/path/URL/JSON/backtick/square bracket contexts remain preserve-first.
 
@@ -3126,6 +3140,62 @@ FTA -> 에프티에이
 OpenAI -> preserve 또는 dictionary 있을 때만 처리
 USB3 -> generic acronym fallback 금지
 A-1 -> acronym fallback 금지
+```
+
+#### 9.3.0.1 Managed Dictionary Numeric-Code Suffix
+
+`managed_acronym_numeric_code` extends the single-letter numeric-code suffix
+rule to exact current English managed dictionary entries. It is registry-backed
+from the span managed dictionary inventory and must not keep an owner-local base
+allowlist. Entries that should not inherit numeric-code suffixes must not remain
+current managed dictionary entries. Simple fallback-covered acronyms such as
+`AI`, `CPU`, and `USB` are handled by uppercase acronym fallback when standalone;
+`AI3`, `CPU900`, and `USB300` preserve because broad acronym+number fallback is
+forbidden.
+
+Supported forms:
+
+```text
+<managed-current-english><short-number>
+<managed-current-english>-<short-number>
+```
+
+`<short-number>` reuses the single-letter numeric-code reader after owner-local
+short-code validation. Unsigned integer suffixes must be 1-2 digits. Decimal
+suffixes must have a 1-2 digit integer part and at least one fractional digit.
+Single non-zero digit integer blocks use code digit readings such as `원`, `투`,
+`쓰리`, `포`; ordinary decimals use the canonical `쩜` decimal reading.
+
+Examples:
+
+```text
+GPT4 -> 지피티 포
+GPT-4 -> 지피티 포
+GPT-1.5 -> 지피티 일쩜오
+KTX1 -> 케이티엑스 원
+Wi-Fi-6 -> 와이파이 식스
+version-1.5 -> 버전 일쩜오
+release-1.5 -> 릴리즈 일쩜오
+KTX-2024 -> preserve
+GPT-2024 -> preserve
+version-2024 -> preserve
+```
+
+The ASCII hyphen is a separator, not a sign, and is not rendered. Plus signs,
+signed numeric blocks, leading-zero malformed decimals, bare dots, malformed
+comma forms, long numeric suffixes, unsafe alphabetic/identifier tails, and
+protected URL/path/email/JSON/backtick/fenced-code/shell-like/square-bracket/
+file-like contexts preserve.
+
+This is not a broad acronym+number fallback:
+
+```text
+abc1.5 -> abc1.5
+abc-1.5 -> abc-1.5
+build25 -> build25
+build-25 -> build-25
+foo2 -> foo2
+foo-2 -> foo-2
 ```
 #### 9.3.1 General Alphabet Fallback
 
@@ -10515,9 +10585,10 @@ Malformed numeric follow-up work is split into three separate tracks in
 cleanup target is only standalone leading-zero malformed decimals such as
 `01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, and `-001.5`. Segmented readings
 such as `3..140`, `25..50`, `2,34`, and `3백..4십만` are a separate future
-design track. File-like, version-like, and code-like tokens such as
-`file-25..50.txt`, `version-1.5`, `v25..50`, and `SKU25..50` are a separate
-prerequisite safety track and are not solved by leading-zero cleanup.
+design track. File-like and code-like tokens such as `file-25..50.txt`,
+`v25..50`, and `SKU25..50` remain a separate prerequisite safety track and are
+not solved by leading-zero cleanup. `version-1.5` is handled by the managed
+dictionary numeric-code owner.
 
 Invalid comma grouping and leading-zero malformed decimal policy remain
 unchanged. Valid unsigned standalone comma decimal is claimed:
