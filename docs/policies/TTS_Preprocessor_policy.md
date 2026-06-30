@@ -10221,6 +10221,11 @@ Clock hour `N시`는 시각이다. `1~12시`는 고유어 hour form으로 읽고
 23시 59분 -> 이십삼 시 오십구분
 ```
 
+Clock-hour `N시` may be followed by a safe attached Korean tail. The original tail is preserved verbatim; the preprocessor does not correct Korean particles or endings.
+Safe tails include `은/는/이/가/을/를/로/으로/와/과/도/만/부터/까지/에/에는/에서/에도/보다/처럼/마다`
+and `이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`.
+Lexical/code-like continuations such as `시리즈`, `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain preserve-first.
+
 Duration `N시간`은 지속 시간이다. `1~23시간`은 고유어 duration form으로 읽고, `24시간` 이상은 한자어 숫자 + `시간`으로 읽는다. `20시간`은 `스물 시간`이 아니라 `스무 시간`이다.
 
 ```text

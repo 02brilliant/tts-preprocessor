@@ -32,6 +32,50 @@ _KOREAN_TIME_RE = re.compile(
 
 TIME_PREFIXES = ("오전", "오후", "새벽", "아침", "정오", "밤", "저녁", "AM", "PM", "am", "pm")
 TIME_POSTPOSITIONS = ("에", "까지", "부터", "경", "쯤", "정각")
+KOREAN_TIME_SAFE_TAILS = tuple(
+    sorted(
+        (
+            "이었다",
+            "이라면",
+            "입니다",
+            "에는",
+            "에서",
+            "에도",
+            "이라고",
+            "인데",
+            "였다",
+            "이다",
+            "이면",
+            "면",
+            "라면",
+            "라고",
+            "인",
+            "으로",
+            "보다",
+            "처럼",
+            "부터",
+            "까지",
+            "경",
+            "쯤",
+            "정각",
+            "은",
+            "는",
+            "이",
+            "가",
+            "을",
+            "를",
+            "로",
+            "와",
+            "과",
+            "도",
+            "만",
+            "에",
+            "마다",
+        ),
+        key=len,
+        reverse=True,
+    )
+)
 TIME_TITLE_SUFFIXES = ("뉴스",)
 TIME_EVENT_KEYWORDS = (
     "출발",
@@ -887,8 +931,25 @@ def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
         return False
     if "\uac00" <= next_char <= "\ud7a3":
         next_text = raw_text[span.end :]
-        return next_text.startswith(TIME_POSTPOSITIONS) or next_text.startswith("입니다")
+        return _has_safe_korean_time_tail(next_text)
     return True
+
+
+def _has_safe_korean_time_tail(next_text: str) -> bool:
+    for tail in KOREAN_TIME_SAFE_TAILS:
+        if not next_text.startswith(tail):
+            continue
+        tail_end = len(tail)
+        if tail_end >= len(next_text):
+            return True
+        next_char = next_text[tail_end]
+        if next_char.isspace():
+            return True
+        if next_char in {".", ",", "!", "?", ";", ":", "。", "，", "！", "？"}:
+            return True
+        if next_char == "/" and is_sentence_final_slash_boundary(next_text, tail_end):
+            return True
+    return False
 
 
 def _starts_with_time_title_suffix(raw_text: str, index: int) -> bool:
@@ -990,6 +1051,7 @@ def _overlaps_any(span: SourceSpan, spans: list[SourceSpan]) -> bool:
 
 __all__ = [
     "DATE_CONTEXT_KEYWORDS",
+    "KOREAN_TIME_SAFE_TAILS",
     "SCORE_CONTEXT_KEYWORDS",
     "TIME_EVENT_KEYWORDS",
     "TIME_POSTPOSITIONS",
