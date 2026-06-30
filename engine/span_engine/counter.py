@@ -60,6 +60,7 @@ HYBRID_THRESHOLD_39_COUNTERS = frozenset(
         "종류",
         "항목",
         "사례",
+        "척",
     }
 )
 

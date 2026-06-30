@@ -76,6 +76,10 @@ def test_claim_order_documentation_snapshot() -> None:
         ("112명", "counter_noun"),
         ("119건", "counter_noun"),
         ("2항목", "counter_noun"),
+        ("1척", "counter_noun"),
+        ("29척", "counter_noun"),
+        ("39척", "counter_noun"),
+        ("40척", "counter_noun"),
     ],
 )
 def test_critical_owner_claim_trace_snapshot(
@@ -270,8 +274,16 @@ def test_ordinal_numeric_suffix_and_counter_collision_matrix(
         ("2항목", "두 항목"),
         ("40항목", "사십 항목"),
         ("101항목", "백일 항목"),
+        ("1척", "한 척"),
+        ("29척", "스물아홉 척"),
+        ("39척", "서른아홉 척"),
+        ("40척", "사십 척"),
+        ("100척", "백 척"),
         ("2항목abc", "2항목abc"),
+        ("1척abc", "1척abc"),
         ("A2항목", "A2항목"),
+        ("A1척", "A1척"),
+        ("model-1척", "model-1척"),
         ("긴급번호 112는", "긴급번호 일일이는"),
         ("화재가 나면 119에", "화재가 나면 일일구에"),
     ],
@@ -296,6 +308,14 @@ def test_public_number_ambiguity_and_counter_fallback_matrix(
     source: str, expected: str
 ) -> None:
     assert transform(source) == expected
+
+
+@pytest.mark.parametrize("source", ["1척abc", "A1척", "model-1척"])
+def test_ship_counter_unsafe_forms_do_not_claim_counter_owner(source: str) -> None:
+    output = transform_with_trace(source)
+
+    assert output.normalized_text == source
+    assert not any(claim.owner == "counter_noun" for claim in output.trace.claim_logs)
 
 
 @pytest.mark.parametrize(

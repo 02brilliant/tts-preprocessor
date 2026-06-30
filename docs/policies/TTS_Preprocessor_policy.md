@@ -4531,6 +4531,7 @@ Counter Policy Table:
 | `종류` | hybrid | 39 | `39종류 -> 서른아홉 종류` | 40부터 sino |
 | `항목` | hybrid | 39 | `39항목 -> 서른아홉 항목` | 40부터 sino |
 | `사례` | hybrid | 39 | `39사례 -> 서른아홉 사례` | 40부터 sino |
+| `척` | hybrid | 39 | `39척 -> 서른아홉 척` | 선박/배 등 수량 counter; 40부터 sino |
 | `층` | sino_only | - | `21층 -> 이십일 층` | native 금지 |
 | `호` | sino_only | - | `21호 -> 이십일 호` | native 금지 |
 | `동` | sino_only | - | `21동 -> 이십일 동` | native 금지 |
@@ -4573,7 +4574,7 @@ phase; they must not be internally rewritten by the broad number fallback.
 아래 단위는 hybrid counter로 처리한다. `1~39`는 고유어 관형형, `40` 이상은 한자어로 읽는다. `100` 이상은 기존 100+ Sino counter policy에 따라 전체 숫자를 한자어로 읽는다.
 
 ```text
-대, 석, 표, 매, 문항, 문제, 곡, 장면, 세트, 팩, 봉, 종류, 항목, 사례
+대, 석, 표, 매, 문항, 문제, 곡, 장면, 세트, 팩, 봉, 종류, 항목, 사례, 척
 ```
 
 이번 단위 추가는 counter reading만 확장한다. `제N+단위` ordinal explicit target은 확장하지 않는다. `쪽`, `부`는 이번 hybrid counter 추가 대상에서 제외한다.
@@ -4703,10 +4704,17 @@ phase; they must not be internally rewritten by the broad number fallback.
 39종류 -> 서른아홉 종류
 40종류 -> 사십 종류
 101종류 -> 백일 종류
+1척 -> 한 척
+29척 -> 스물아홉 척
+39척 -> 서른아홉 척
+40척 -> 사십 척
+100척 -> 백 척
 2항목abc -> 2항목abc
 2사례test -> 2사례test
 2종류A -> 2종류A
+1척abc -> 1척abc
 A2항목 -> A2항목
+A1척 -> A1척
 model-2대 -> model-2대
 21층 -> 이십일 층
 2개월 -> 이개월

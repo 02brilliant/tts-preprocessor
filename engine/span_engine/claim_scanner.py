@@ -128,6 +128,7 @@ _NUMBER_BLOCKING_KOREAN_SUFFIXES = (
     "종류",
     "항목",
     "사례",
+    "척",
 )
 
 _NUMBER_BLOCKING_NEXT_CHARS = (
