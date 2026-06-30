@@ -103,6 +103,17 @@ Clock-hour `N시` is handled by the time owner with an owner-local safe Korean t
 | managed dictionary numeric-code | exact current English managed dictionary entry followed by a short unsigned integer/valid decimal suffix, with optional ASCII `-` separator, e.g. `GPT4`, `Wi-Fi-6`, `version-1.5`; simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` remain excluded | no sign; ASCII `-` is a separator, not minus | yes, but decimal integer part must be 1-2 digits | no comma in current owner | no space or ASCII `-` separator | unregistered ASCII word + numeric preserves; plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024`, unsafe tails, and URL/path/email/JSON/backtick/square bracket/file-like contexts preserve or claim preserve to block partial fallback | registry-backed from current managed dictionary entries and reuses single-letter numeric-code reader for accepted short suffixes, e.g. `GPT-4 -> 지피티 포`, `version-1.5 -> 버전 일쩜오` |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
 
+Signed temperature/degree right-boundary policy is owner-local. The signed
+temperature/degree surfaces `+N°`, `-N°`, `+N℃`, `-N℃`, `+N℉`, `-N℉`,
+`+N°C`, `-N°C`, `+N°F`, and `-N°F` are claimed only when the right boundary is
+end-of-string, whitespace, punctuation, or Hangul-leading. Hangul-leading tails
+remain verbatim after the generated reading, e.g. `+25℃보다 -> 영상 이십오도보다`
+and `+3°테스트 -> 플러스 삼도테스트`. ASCII/code-like/slash continuations are
+preserve-first, e.g. `+25℃abc`, `+25℃v2`, `+25℃/min`, `+3°abc`, and `+3°/s`.
+이 규칙은 signed temperature/degree owner에만 적용하며 일반
+unit/counter/currency/percent 처리, broad numeric suffix fallback, 전역
+particle whitelist를 변경하지 않는다. 이 규칙은 조사 교정을 수행하지 않는다.
+
 Registered compound slash unit decimal coverage is implemented owner-locally.
 The reading templates are unchanged from the integer compound slash registry:
 `90km/h -> 시속 구십 킬로미터` and

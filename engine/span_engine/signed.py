@@ -246,7 +246,7 @@ def _scan_signed_candidates(
             index += 1
             continue
         tail = raw_text[span.end :]
-        if not _tail_is_allowed(tail):
+        if not _tail_is_allowed_for_owner(tail, owner):
             index += 1
             continue
         reading = parse_signed_candidate(
@@ -609,7 +609,7 @@ def _is_valid_signed_temperature_surface(
         return False
     if not _valid_boundaries(raw_text, span, "temperature"):
         return False
-    return _tail_is_allowed(raw_text[span.end :])
+    return _signed_temperature_degree_tail_is_allowed(raw_text[span.end :])
 
 
 def _is_valid_signed_degree_surface(raw_text: str, start: int, span: SourceSpan) -> bool:
@@ -619,7 +619,13 @@ def _is_valid_signed_degree_surface(raw_text: str, start: int, span: SourceSpan)
         return False
     if not _valid_boundaries(raw_text, span, "degree"):
         return False
-    return _tail_is_allowed(raw_text[span.end :])
+    return _signed_temperature_degree_tail_is_allowed(raw_text[span.end :])
+
+
+def _tail_is_allowed_for_owner(tail: str, owner: str) -> bool:
+    if owner in {"signed_temperature", "signed_degree"}:
+        return _signed_temperature_degree_tail_is_allowed(tail)
+    return _tail_is_allowed(tail)
 
 
 def _tail_is_allowed(tail: str) -> bool:
@@ -633,6 +639,22 @@ def _tail_is_allowed(tail: str) -> bool:
         if tail.startswith(allowed):
             return True
     return False
+
+
+def _signed_temperature_degree_tail_is_allowed(tail: str) -> bool:
+    if tail == "":
+        return True
+    if tail[0].isspace():
+        return True
+    if tail[0] in _TAIL_PUNCTUATION:
+        return True
+    if _is_hangul_syllable(tail[0]):
+        return True
+    return False
+
+
+def _is_hangul_syllable(ch: str) -> bool:
+    return "\uac00" <= ch <= "\ud7a3"
 
 
 def _tail_prefix(tail: str) -> str | None:

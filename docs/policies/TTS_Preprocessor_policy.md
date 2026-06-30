@@ -4936,6 +4936,10 @@ signed temperature / signed degree는 `math_numeric` 또는 `unit`에 흡수하�
 ```text
 -2.5℃
 +3℃
+-2.5°C
++3°C
+-2.5℉
++3°F
 -2.5º
 +3º
 -3°
@@ -4949,6 +4953,10 @@ signed temperature / signed degree는 `math_numeric` 또는 `unit`에 흡수하�
 - signed temperature / signed degree surface의 claim 대상은 sign부터 degree/temperature symbol까지의 core span이다. 앞에 붙은 한글 label은 generated reading으로 덮어쓰지 않고 ORIGINAL_KOREAN으로 보존한다.
 - signed temperature / signed degree는 문장 시작, 공백, 한글, 일반 문장부호 또는 일반 delimiter 뒤에서 claim할 수 있다.
 - signed temperature / signed degree는 ASCII 영문자, ASCII 숫자, code-like token body 바로 뒤에서는 claim하지 않는다. 이 경우 code/model/identifier 일부일 수 있으므로 preserve한다.
+- signed temperature / signed degree의 오른쪽 boundary는 owner-local 정책이다. `+N°`, `-N°`, `+N℃`, `-N℃`, `+N℉`, `-N℉`, `+N°C`, `-N°C`, `+N°F`, `-N°F` 뒤가 문자열 끝, 공백, 일반 문장부호, 또는 한글 완성형 음절로 시작하면 core span을 claim한다.
+- 한글로 시작하는 오른쪽 tail은 생성된 signed temperature / degree reading 뒤에 원문 그대로 보존한다. 이 규칙은 숫자+단위 전체에 `N시` safe-tail whitelist를 재사용하지 않으며 unit/counter/currency/percent 일반 처리도 바꾸지 않는다.
+- 오른쪽 tail이 ASCII letter/digit/underscore, slash compound, path/code-like continuation이면 preserve-first이다.
+- 이 규칙은 한국어 조사 교정을 새로 수행하지 않는다.
 - sign이 없으면 온도/각도 모두 `영상`, `영하`, `플러스`, `마이너스` prefix를 붙이지 않는다.
 - temperature 계열 `℃`, `ºC`, `°C`에 붙은 `-`는 `영하`로 읽는다.
 - temperature 계열 `℃`, `ºC`, `°C`에 붙은 `+`는 `영상`으로 읽는다.
@@ -4968,6 +4976,12 @@ signed temperature / signed degree는 `math_numeric` 또는 `unit`에 흡수하�
 온도-2.5℃ -> 온도영하 이쩜오도
 값은 -2.5℃다 -> 값은 영하 이쩜오도다
 +3℃ -> 영상 삼도
++25℃보다 높다 -> 영상 이십오도보다 높다
++25℃테스트 -> 영상 이십오도테스트
++25℃abc -> +25℃abc
++25℃/min -> +25℃/min
++3°보다 -> 플러스 삼도보다
++3°abc -> +3°abc
 -2.5º -> 영하 이쩜오도
 +3º -> 영상 삼도
 - 3° -> - 삼도

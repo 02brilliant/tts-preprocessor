@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engine.span_engine import transform
+from engine.span_engine import transform, transform_with_trace
 
 
 @pytest.mark.parametrize(
@@ -140,3 +140,94 @@ def test_phase35d_existing_signed_degree_and_bare_o_regression_guard(
     text: str, expected: str
 ) -> None:
     assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+25℃보다 높다", "영상 이십오도보다 높다"),
+        ("-10℃보다 낮다", "영하 십도보다 낮다"),
+        ("+25℃처럼 느껴진다", "영상 이십오도처럼 느껴진다"),
+        ("-10℃처럼 춥다", "영하 십도처럼 춥다"),
+        ("+3℃마다 기록한다", "영상 삼도마다 기록한다"),
+        ("+3℃라고 했다", "영상 삼도라고 했다"),
+        ("+3℃인데 괜찮다", "영상 삼도인데 괜찮다"),
+        ("+3℃라면 가능하다", "영상 삼도라면 가능하다"),
+        ("+25℃테스트", "영상 이십오도테스트"),
+        ("+25℃짜리", "영상 이십오도짜리"),
+        ("+3°보다", "플러스 삼도보다"),
+        ("+3°테스트", "플러스 삼도테스트"),
+    ],
+)
+def test_phase35d_signed_temperature_degree_allows_hangul_leading_tails(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "+25℃abc",
+        "-10℃abc",
+        "+25℃v2",
+        "+25℃/min",
+        "-10℃/min",
+        "+3°abc",
+        "+3°/s",
+        "A-2.5℃",
+    ],
+)
+def test_phase35d_signed_temperature_degree_preserves_code_like_tails(
+    text: str,
+) -> None:
+    assert transform(text) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3℃", "영상 삼도"),
+        ("-3℃", "영하 삼도"),
+        ("+3℃를", "영상 삼도를"),
+        ("+25℃였고", "영상 이십오도였고"),
+        ("-3℃였지만", "영하 삼도였지만"),
+    ],
+)
+def test_phase35d_signed_temperature_degree_baseline_safe_tails(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "owner"),
+    [
+        ("+25℃보다 높다", "signed_temperature"),
+        ("+25℃테스트", "signed_temperature"),
+    ],
+)
+def test_phase35d_signed_temperature_degree_hangul_tail_trace_owner(
+    text: str, owner: str
+) -> None:
+    output = transform_with_trace(text)
+
+    assert any(claim.owner == owner for claim in output.trace.claim_logs)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "+25℃abc",
+        "+25℃/min",
+    ],
+)
+def test_phase35d_signed_temperature_degree_code_like_tail_trace_preserves(
+    text: str,
+) -> None:
+    output = transform_with_trace(text)
+
+    assert output.normalized_text == text
+    assert not any(
+        claim.owner == "signed_temperature" for claim in output.trace.claim_logs
+    )
