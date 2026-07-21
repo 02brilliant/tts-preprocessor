@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
 
 
 GLOBAL_FORBIDDEN_SIGNATURE_CASES = (
@@ -15,7 +14,7 @@ GLOBAL_FORBIDDEN_SIGNATURE_CASES = (
     ("6402억", "육천사백이 억"),
     ("3~8cm", "삼~8cm"),
     ("1∼11월", "일∼십일월"),
-    ("12.3 비상계엄", "십이삼 비상계엄"),
+    ("12.3 비상계엄", "십이쩜삼 비상계엄"),
 )
 
 CONTEXTUAL_FORBIDDEN_SIGNATURE_CASES = (
@@ -24,7 +23,7 @@ CONTEXTUAL_FORBIDDEN_SIGNATURE_CASES = (
     ("112는 일반 문맥이다", "일일이"),
     ("119명은 대기한다", "일일구"),
     ("3~8cm", "삼에서 팔 cm"),
-    ("FTA은", "에프티에이는"),
+    ("FTA은", "에프티에이은"),
     ("AI이", "에이아이가"),
 )
 
@@ -46,10 +45,10 @@ def test_global_forbidden_output_signatures(text: str, forbidden: str):
 
 @pytest.mark.parametrize(("text", "forbidden"), CONTEXTUAL_FORBIDDEN_SIGNATURE_CASES)
 def test_contextual_forbidden_output_signatures(text: str, forbidden: str):
-    actual = transform_text(text)
+    actual = transform(text)
     assert forbidden not in actual, f"input={text!r} forbidden={forbidden!r} actual={actual!r}"
 
 
 @pytest.mark.parametrize("text", PURE_HANGUL_INVARIANCE_CASES)
 def test_pure_hangul_literals_remain_unchanged(text: str):
-    assert transform_text(text) == text
+    assert transform(text) == text

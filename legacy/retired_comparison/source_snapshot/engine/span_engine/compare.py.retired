@@ -1,0 +1,939 @@
+from __future__ import annotations
+
+import importlib
+import json
+import re
+from collections import Counter
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+from engine.span_engine.trace import build_span_debug
+
+COMPARE_CATEGORIES = frozenset(
+    {
+        "same",
+        "intended_v5_change",
+        "suspicious_diff",
+        "legacy_error_fixed",
+        "unsupported",
+    }
+)
+
+INTENDED_V5_CHANGE_INPUTS = frozenset(
+    {
+        "AI",
+        "FTA은",
+        "3~8cm",
+        "2025-01-03",
+        "12.12 사태",
+        "긴급번호 112는",
+        "123-456-7890",
+        "-2.5℃",
+        "ㄱㄴㄷ",
+        "3만",
+        "90km/h",
+        "60fps",
+        "종로3가",
+        "그리고 우리는 결과를 확인했다",
+        "21명",
+    }
+)
+
+
+@dataclass
+class CompareResult:
+    input_text: str
+    legacy_output: str | None
+    span_output: str | None
+    equal: bool
+    category: str
+    reason: str
+    evidence: dict[str, Any] = field(default_factory=dict)
+    span_debug: dict[str, Any] | None = None
+    legacy_error: str | None = None
+    span_error: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.input_text, str):
+            raise TypeError("input_text must be str")
+        if self.legacy_output is not None and not isinstance(self.legacy_output, str):
+            raise TypeError("legacy_output must be str or None")
+        if self.span_output is not None and not isinstance(self.span_output, str):
+            raise TypeError("span_output must be str or None")
+        if not isinstance(self.equal, bool):
+            raise TypeError("equal must be bool")
+        if self.category not in COMPARE_CATEGORIES:
+            raise ValueError(f"invalid compare category: {self.category!r}")
+        if not isinstance(self.reason, str):
+            raise TypeError("reason must be str")
+        if not isinstance(self.evidence, dict):
+            raise TypeError("evidence must be dict")
+        if self.span_debug is not None and not isinstance(self.span_debug, dict):
+            raise TypeError("span_debug must be dict or None")
+        if self.legacy_error is not None and not isinstance(self.legacy_error, str):
+            raise TypeError("legacy_error must be str or None")
+        if self.span_error is not None and not isinstance(self.span_error, str):
+            raise TypeError("span_error must be str or None")
+        if self.equal and self.category != "same":
+            raise ValueError("equal=True requires category='same'")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class CompareCorpusEntry:
+    id: str
+    text: str
+    tags: tuple[str, ...] = field(default_factory=tuple)
+    expected_category: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.id, str) or not self.id.strip():
+            raise ValueError("id must be a non-empty str")
+        if not isinstance(self.text, str):
+            raise TypeError("text must be str")
+        self.tags = tuple(self.tags)
+        if self.expected_category is not None and self.expected_category not in COMPARE_CATEGORIES:
+            raise ValueError(f"invalid expected_category: {self.expected_category!r}")
+        if not isinstance(self.metadata, dict):
+            raise TypeError("metadata must be dict")
+        self.metadata = dict(self.metadata)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "text": self.text,
+            "tags": list(self.tags),
+            "expected_category": self.expected_category,
+            "metadata": _json_safe(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CompareCorpusEntry":
+        return cls(
+            id=data["id"],
+            text=data["text"],
+            tags=tuple(data.get("tags", ())),
+            expected_category=data.get("expected_category"),
+            metadata=dict(data.get("metadata", {})),
+        )
+
+
+@dataclass
+class CompareCorpusReport:
+    entries: list[CompareCorpusEntry] = field(default_factory=list)
+    results: list[CompareResult] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.entries = [
+            entry if isinstance(entry, CompareCorpusEntry) else CompareCorpusEntry.from_dict(entry)
+            for entry in self.entries
+        ]
+        self.results = [
+            result if isinstance(result, CompareResult) else CompareResult(**result)
+            for result in self.results
+        ]
+        if not isinstance(self.summary, dict):
+            raise TypeError("summary must be dict")
+        if not isinstance(self.metadata, dict):
+            raise TypeError("metadata must be dict")
+        self.summary = dict(self.summary)
+        self.metadata = dict(self.metadata)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "entries": [entry.to_dict() for entry in self.entries],
+            "results": [result.to_dict() for result in self.results],
+            "summary": _json_safe(self.summary),
+            "metadata": _json_safe(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CompareCorpusReport":
+        return cls(
+            entries=[CompareCorpusEntry.from_dict(item) for item in data.get("entries", [])],
+            results=[CompareResult(**item) for item in data.get("results", [])],
+            summary=dict(data.get("summary", {})),
+            metadata=dict(data.get("metadata", {})),
+        )
+
+
+def classify_compare_result(
+    input_text: str,
+    legacy_output: str | None,
+    span_output: str | None,
+    span_debug: dict[str, Any] | None = None,
+    legacy_error: str | None = None,
+    span_error: str | None = None,
+) -> CompareResult:
+    if span_error:
+        return CompareResult(
+            input_text=input_text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="suspicious_diff",
+            reason="span_error",
+            evidence={"error_side": "span"},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    if legacy_error and span_output is not None:
+        return CompareResult(
+            input_text=input_text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="legacy_error_fixed",
+            reason="legacy_error",
+            evidence={"error_side": "legacy"},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    if legacy_output == span_output:
+        return CompareResult(
+            input_text=input_text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=True,
+            category="same",
+            reason="outputs_equal",
+            evidence={},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    intended_reason = _detect_intended_reason(
+        input_text=input_text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    )
+    if intended_reason is not None:
+        return CompareResult(
+            input_text=input_text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="intended_v5_change",
+            reason=intended_reason,
+            evidence={
+                "policy_case": input_text if input_text in INTENDED_V5_CHANGE_INPUTS else None,
+                "rule": intended_reason,
+            },
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    suspicious_reason = _detect_suspicious_reason(
+        input_text=input_text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+        span_debug=span_debug,
+    )
+    if suspicious_reason is not None:
+        return CompareResult(
+            input_text=input_text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="suspicious_diff",
+            reason=suspicious_reason,
+            evidence={"rule": suspicious_reason},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    return CompareResult(
+        input_text=input_text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+        equal=False,
+        category="unsupported",
+        reason="unclassified_diff",
+        evidence={},
+        span_debug=span_debug,
+        legacy_error=legacy_error,
+        span_error=span_error,
+    )
+
+
+def get_optional_legacy_transform() -> Any:
+    try:
+        module = importlib.import_module("engine.pipeline.core")
+    except Exception:
+        return None
+    return getattr(module, "normalize_text", None)
+
+
+def resolve_legacy_transform() -> Any:
+    return get_optional_legacy_transform()
+
+
+def build_default_compare_corpus() -> list[CompareCorpusEntry]:
+    return [
+        CompareCorpusEntry(
+            id="canonical-greet",
+            text="안녕하세요",
+            tags=("canonical",),
+            expected_category=None,
+            metadata={"kind": "baseline"},
+        ),
+        CompareCorpusEntry(
+            id="canonical-ai",
+            text="AI",
+            tags=("canonical", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "allowlisted"},
+        ),
+        CompareCorpusEntry(
+            id="canonical-fta",
+            text="FTA은",
+            tags=("canonical", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "allowlisted"},
+        ),
+        CompareCorpusEntry(
+            id="range-cm",
+            text="3~8cm",
+            tags=("range", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="date-hyphen",
+            text="2025-01-03",
+            tags=("date_time", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="compound-speed",
+            text="90km/h",
+            tags=("compound_unit", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="exact-fps",
+            text="60fps",
+            tags=("compound_unit", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="admin-jongno",
+            text="종로3가",
+            tags=("admin", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="bracket-unit",
+            text="[3kg]",
+            tags=("bracket", "preserve", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="url-speed",
+            text="http://x/90km/h",
+            tags=("url_path", "preserve"),
+            expected_category=None,
+            metadata={"kind": "protected"},
+        ),
+        CompareCorpusEntry(
+            id="suspicious-guard",
+            text="전문가 유지",
+            tags=("suspicious_guard", "preserve"),
+            expected_category=None,
+            metadata={"kind": "guard"},
+        ),
+        CompareCorpusEntry(
+            id="hyphen-phone",
+            text="123-456-7890",
+            tags=("hyphen_phone", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="emergency-112",
+            text="긴급번호 112는",
+            tags=("emergency", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="counter-21",
+            text="21명",
+            tags=("counter", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+        CompareCorpusEntry(
+            id="prosody-leading",
+            text="그리고 우리는 결과를 확인했다",
+            tags=("prosody", "intended_diff"),
+            expected_category="intended_v5_change",
+            metadata={"kind": "policy_example"},
+        ),
+    ]
+
+
+def run_default_compare_report(
+    legacy_transform: Any | None = None,
+    span_transform: Any | None = None,
+    include_debug: bool = False,
+    metadata: dict[str, Any] | None = None,
+) -> CompareCorpusReport:
+    corpus = build_default_compare_corpus()
+    legacy_callable = legacy_transform
+    if legacy_callable is None:
+        legacy_callable = resolve_legacy_transform()
+    if legacy_callable is None:
+        legacy_callable = lambda text: None
+    return run_compare_corpus(
+        corpus,
+        legacy_transform=legacy_callable,
+        span_transform=span_transform,
+        include_debug=include_debug,
+        metadata=metadata,
+    )
+
+
+def write_compare_jsonl(report: CompareCorpusReport, path: str | Path) -> Path:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(export_compare_jsonl(report), encoding="utf-8")
+    return target
+
+
+def write_compare_markdown(
+    report: CompareCorpusReport,
+    path: str | Path,
+    include_debug: bool = False,
+) -> Path:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        export_compare_markdown(report, include_debug=include_debug),
+        encoding="utf-8",
+    )
+    return target
+
+
+def run_compare_corpus(
+    entries: list[CompareCorpusEntry | dict[str, Any]],
+    legacy_transform: Any | None = None,
+    span_transform: Any | None = None,
+    include_debug: bool = False,
+    metadata: dict[str, Any] | None = None,
+) -> CompareCorpusReport:
+    normalized_entries = [_coerce_entry(entry) for entry in entries]
+    legacy_callable = legacy_transform
+    if legacy_callable is None:
+        legacy_callable = get_optional_legacy_transform()
+
+    if span_transform is None:
+        from engine.span_engine.transform import transform as default_span_transform
+
+        span_transform = default_span_transform
+
+    results: list[CompareResult] = []
+    for entry in normalized_entries:
+        legacy_output: str | None = None
+        span_output: str | None = None
+        legacy_error: str | None = None
+        span_error: str | None = None
+        span_debug: dict[str, Any] | None = None
+
+        if legacy_callable is not None:
+            try:
+                legacy_output = legacy_callable(entry.text)
+            except Exception as exc:  # pragma: no cover - exercised by tests
+                legacy_error = str(exc)
+
+        try:
+            span_output = span_transform(entry.text)
+        except Exception as exc:  # pragma: no cover - exercised by tests
+            span_error = str(exc)
+
+        if include_debug and span_error is None:
+            span_debug = build_span_debug(entry.text)
+
+        result = _build_compare_result(
+            entry=entry,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            legacy_error=legacy_error,
+            span_error=span_error,
+            span_debug=span_debug,
+        )
+        results.append(result)
+
+    report = CompareCorpusReport(
+        entries=normalized_entries,
+        results=results,
+        summary=build_compare_summary(results),
+        metadata=dict(metadata or {}),
+    )
+    return report
+
+
+def export_compare_jsonl(report: CompareCorpusReport) -> str:
+    if not report.results:
+        return ""
+    return "\n".join(
+        json.dumps(result.to_dict(), ensure_ascii=False)
+        for result in report.results
+    )
+
+
+def export_compare_markdown(report: CompareCorpusReport, include_debug: bool = False) -> str:
+    lines: list[str] = ["# Compare Report", ""]
+    lines.extend(["## Summary", ""])
+    lines.extend(_markdown_table(["category", "count"]))
+    for category in _summary_category_order():
+        lines.append(_markdown_table_row([category, str(report.summary.get(category, 0))]))
+    lines.append(
+        _markdown_table_row(
+            ["by_category", _markdown_escape(json.dumps(report.summary.get("by_category", {}), ensure_ascii=False, sort_keys=True))]
+        )
+    )
+    lines.append("")
+
+    suspicious_rows: list[list[str]] = []
+    intended_rows: list[list[str]] = []
+    all_rows: list[list[str]] = []
+    for entry, result in zip(report.entries, report.results):
+        row = [
+            entry.id,
+            entry.text,
+            result.legacy_output or "",
+            result.span_output or "",
+            result.category,
+            result.reason,
+        ]
+        all_rows.append(row)
+        if result.category == "suspicious_diff":
+            suspicious_rows.append(row)
+        elif result.category == "intended_v5_change":
+            intended_rows.append(row)
+
+    if suspicious_rows:
+        lines.extend(["## Suspicious Diffs", ""])
+        lines.extend(_markdown_table(["id", "input", "legacy", "span", "category", "reason"]))
+        for row in suspicious_rows:
+            lines.append(_markdown_table_row(row))
+        lines.append("")
+
+    if intended_rows:
+        lines.extend(["## Intended V5 Changes", ""])
+        lines.extend(_markdown_table(["id", "input", "legacy", "span", "category", "reason"]))
+        for row in intended_rows:
+            lines.append(_markdown_table_row(row))
+        lines.append("")
+
+    lines.extend(["## All Results", ""])
+    lines.extend(_markdown_table(["id", "input", "legacy", "span", "category", "reason"]))
+    for row in all_rows:
+        lines.append(_markdown_table_row(row))
+
+    if include_debug:
+        debug_rows = [result.span_debug for result in report.results if result.span_debug is not None]
+        if debug_rows:
+            lines.extend(["", "## Debug", ""])
+            for entry, result in zip(report.entries, report.results):
+                if result.span_debug is None:
+                    continue
+                lines.extend(
+                    [
+                        f"### {entry.id}",
+                        "",
+                        "```json",
+                        json.dumps(result.span_debug, ensure_ascii=False, sort_keys=True),
+                        "```",
+                        "",
+                    ]
+                )
+
+    return "\n".join(lines).rstrip()
+
+
+def build_compare_summary(results: list[CompareResult]) -> dict[str, Any]:
+    by_category = {category: 0 for category in _summary_category_order()}
+    counts = Counter(result.category for result in results)
+    for category in by_category:
+        by_category[category] = counts.get(category, 0)
+    return {
+        "total": len(results),
+        "same": by_category["same"],
+        "intended_v5_change": by_category["intended_v5_change"],
+        "suspicious_diff": by_category["suspicious_diff"],
+        "legacy_error_fixed": by_category["legacy_error_fixed"],
+        "unsupported": by_category["unsupported"],
+        "by_category": by_category,
+        "suspicious_count": by_category["suspicious_diff"],
+        "intended_count": by_category["intended_v5_change"],
+    }
+
+
+def _build_compare_result(
+    entry: CompareCorpusEntry,
+    legacy_output: str | None,
+    span_output: str | None,
+    legacy_error: str | None,
+    span_error: str | None,
+    span_debug: dict[str, Any] | None,
+) -> CompareResult:
+    if legacy_error and span_error:
+        return CompareResult(
+            input_text=entry.text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="unsupported",
+            reason="both_errors",
+            evidence={"entry_id": entry.id, "expected_category": entry.expected_category},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    if span_error:
+        return CompareResult(
+            input_text=entry.text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="suspicious_diff",
+            reason="span_error",
+            evidence={"entry_id": entry.id, "expected_category": entry.expected_category, "error_side": "span"},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    if legacy_error and span_output is not None:
+        return CompareResult(
+            input_text=entry.text,
+            legacy_output=legacy_output,
+            span_output=span_output,
+            equal=False,
+            category="legacy_error_fixed",
+            reason="legacy_error",
+            evidence={"entry_id": entry.id, "expected_category": entry.expected_category, "error_side": "legacy"},
+            span_debug=span_debug,
+            legacy_error=legacy_error,
+            span_error=span_error,
+        )
+
+    result = classify_compare_result(
+        input_text=entry.text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+        span_debug=span_debug,
+        legacy_error=legacy_error,
+        span_error=span_error,
+    )
+    result = _apply_expected_category_precedence(
+        result=result,
+        entry=entry,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    )
+    result.evidence = dict(result.evidence)
+    result.evidence.setdefault("entry_id", entry.id)
+    result.evidence.setdefault("expected_category", entry.expected_category)
+    if entry.expected_category is not None and entry.expected_category != result.category:
+        result.evidence["expected_category_mismatch"] = True
+    return result
+
+
+def _coerce_entry(entry: CompareCorpusEntry | dict[str, Any]) -> CompareCorpusEntry:
+    if isinstance(entry, CompareCorpusEntry):
+        return entry
+    return CompareCorpusEntry.from_dict(entry)
+
+
+def _apply_expected_category_precedence(
+    result: CompareResult,
+    entry: CompareCorpusEntry,
+    legacy_output: str | None,
+    span_output: str | None,
+) -> CompareResult:
+    if entry.expected_category != "intended_v5_change":
+        return result
+    if result.category != "suspicious_diff":
+        return result
+    if span_output is None or result.span_error:
+        return result
+    if "intended_diff" not in entry.tags:
+        return result
+
+    intended_reason = _detect_entry_expected_intended_reason(
+        entry=entry,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    )
+    if intended_reason is None:
+        return result
+
+    evidence = dict(result.evidence)
+    evidence.update(
+        {
+            "rule": intended_reason,
+            "expected_category_override": True,
+        }
+    )
+    if entry.id:
+        evidence.setdefault("policy_case", entry.id)
+    return CompareResult(
+        input_text=result.input_text,
+        legacy_output=result.legacy_output,
+        span_output=result.span_output,
+        equal=False,
+        category="intended_v5_change",
+        reason=intended_reason,
+        evidence=evidence,
+        span_debug=result.span_debug,
+        legacy_error=result.legacy_error,
+        span_error=result.span_error,
+    )
+
+
+def _detect_intended_reason(
+    input_text: str,
+    legacy_output: str | None,
+    span_output: str | None,
+) -> str | None:
+    if _is_exact_square_bracket_unwrap(
+        input_text=input_text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    ):
+        return "square_bracket_final_unwrap"
+
+    if input_text in INTENDED_V5_CHANGE_INPUTS:
+        return "policy_allowlist"
+
+    if _is_legacy_bracket_internal_normalization_v5_protected_unwrap(
+        input_text=input_text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    ):
+        return "legacy_bracket_internal_normalization_v5_protected_unwrap"
+
+    if _is_supported_counter_reading(
+        input_text=input_text,
+        span_output=span_output,
+    ):
+        return "counter_native_reading"
+
+    return None
+
+
+def _detect_entry_expected_intended_reason(
+    entry: CompareCorpusEntry,
+    legacy_output: str | None,
+    span_output: str | None,
+) -> str | None:
+    if _is_exact_square_bracket_unwrap(
+        input_text=entry.text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    ):
+        return "square_bracket_final_unwrap"
+    if _is_legacy_bracket_internal_normalization_v5_protected_unwrap(
+        input_text=entry.text,
+        legacy_output=legacy_output,
+        span_output=span_output,
+    ):
+        return "legacy_bracket_internal_normalization_v5_protected_unwrap"
+    if "counter" in entry.tags and _is_supported_counter_reading(entry.text, span_output):
+        return "counter_native_reading"
+    if entry.text in INTENDED_V5_CHANGE_INPUTS:
+        return "policy_allowlist"
+    return None
+
+
+def _detect_suspicious_reason(
+    input_text: str,
+    legacy_output: str | None,
+    span_output: str | None,
+    span_debug: dict[str, Any] | None,
+) -> str | None:
+    if span_debug is not None:
+        trace = span_debug.get("trace") or {}
+        validation_logs = trace.get("validation_logs") or []
+        if any(not log.get("passed", True) for log in validation_logs):
+            return "shadow_validation_failed"
+
+    if legacy_output is None or span_output is None:
+        return None
+
+    if legacy_output == span_output:
+        return None
+
+    if "[" in input_text or "(" in input_text:
+        return "bracket_protection"
+
+    if "http://" in input_text or "https://" in input_text or "/" in input_text:
+        return "url_or_path_internal_change"
+
+    if _has_literal_loss(legacy_output, span_output):
+        return "changed_original_korean"
+
+    if _shared_hangul(input_text, legacy_output, span_output):
+        return "changed_original_korean"
+
+    return None
+
+
+def _is_exact_square_bracket_unwrap(
+    input_text: str,
+    legacy_output: str | None,
+    span_output: str | None,
+) -> bool:
+    if legacy_output is None or span_output is None:
+        return False
+    if not input_text.startswith("[") or not input_text.endswith("]"):
+        return False
+    inner = input_text[1:-1]
+    return legacy_output == input_text and span_output == inner
+
+
+def _is_legacy_bracket_internal_normalization_v5_protected_unwrap(
+    input_text: str,
+    legacy_output: str | None,
+    span_output: str | None,
+) -> bool:
+    if legacy_output is None or span_output is None:
+        return False
+    if not input_text.startswith("[") or not input_text.endswith("]"):
+        return False
+    inner = input_text[1:-1]
+    if not inner:
+        return False
+    if span_output != inner:
+        return False
+    if legacy_output in {input_text, span_output}:
+        return False
+    if not any(ch.isdigit() for ch in inner):
+        return False
+    return any(_is_hangul(ch) for ch in legacy_output)
+
+
+def _is_supported_counter_reading(input_text: str, span_output: str | None) -> bool:
+    if span_output is None:
+        return False
+    if not re.fullmatch(r"\d+명", input_text):
+        return False
+    if not span_output.endswith(" 명"):
+        return False
+    number_part = span_output[:-2]
+    if not number_part:
+        return False
+    return all(_is_hangul(ch) for ch in number_part)
+
+
+def _has_literal_loss(legacy_output: str, span_output: str) -> bool:
+    legacy_korean = "".join(ch for ch in legacy_output if _is_hangul(ch))
+    span_korean = "".join(ch for ch in span_output if _is_hangul(ch))
+    return bool(legacy_korean) and len(span_korean) < len(legacy_korean)
+
+
+def _shared_hangul(input_text: str, legacy_output: str, span_output: str) -> bool:
+    input_korean = {ch for ch in input_text if _is_hangul(ch)}
+    if not input_korean:
+        return False
+    span_korean = {ch for ch in span_output if _is_hangul(ch)}
+    legacy_korean = {ch for ch in legacy_output if _is_hangul(ch)}
+    return bool(input_korean & span_korean) or bool(input_korean & legacy_korean)
+
+
+def _is_hangul(ch: str) -> bool:
+    code = ord(ch)
+    return (
+        0xAC00 <= code <= 0xD7A3
+        or 0x3130 <= code <= 0x318F
+        or 0x1100 <= code <= 0x11FF
+    )
+
+
+def _summary_category_order() -> tuple[str, ...]:
+    return (
+        "same",
+        "intended_v5_change",
+        "suspicious_diff",
+        "legacy_error_fixed",
+        "unsupported",
+    )
+
+
+def _markdown_table(headers: list[str]) -> list[str]:
+    return [
+        _markdown_table_row(headers),
+        _markdown_table_row(["---" for _ in headers]),
+    ]
+
+
+def _markdown_table_row(values: list[str]) -> str:
+    return "| " + " | ".join(_markdown_escape(value) for value in values) + " |"
+
+
+def _markdown_escape(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    return text.replace("|", "\\|").replace("\n", "<br>")
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, CompareResult):
+        return value.to_dict()
+    if isinstance(value, CompareCorpusEntry):
+        return value.to_dict()
+    if isinstance(value, CompareCorpusReport):
+        return value.to_dict()
+    return value
+
+
+__all__ = [
+    "COMPARE_CATEGORIES",
+    "INTENDED_V5_CHANGE_INPUTS",
+    "CompareCorpusEntry",
+    "CompareCorpusReport",
+    "CompareResult",
+    "build_compare_summary",
+    "build_default_compare_corpus",
+    "build_span_debug",
+    "classify_compare_result",
+    "export_compare_jsonl",
+    "export_compare_markdown",
+    "get_optional_legacy_transform",
+    "resolve_legacy_transform",
+    "run_default_compare_report",
+    "run_compare_corpus",
+    "write_compare_jsonl",
+    "write_compare_markdown",
+]

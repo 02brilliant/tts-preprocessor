@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform as canonical_transform
 from engine.span_engine import transform, transform_with_trace
 
 
 def prod(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return canonical_transform(text)
 
 
 def test_k_pop_fixed_dictionary_inside_lexical_chain() -> None:
@@ -88,7 +88,7 @@ def test_decimal_and_middle_dot_numeric_list_fallbacks() -> None:
 
     assert (
         transform(text)
-        == "삼쩜일사, 십이쩜영삼, 영쩜일이오, 칠 이오, 십 오, 12 · 3, 12. 3, 12 .3, 일 이 삼, 일이삼 사오육"
+        == "삼쩜일사, 십이쩜영삼, 영쩜일이오, 칠 이오, 십 오, 십이 · 삼, 12. 3, 12 .3, 일 이 삼, 일이삼 사오육"
     )
 
 
@@ -231,7 +231,10 @@ def test_code_context_valid_date_preserve_but_invalid_date_fallbacks() -> None:
 def test_spaced_hyphen_numeric_multiblock_with_korean_suffix_full_consumes() -> None:
     text = "공백 포함 표기 010 - 1234 - 5678도 함께 적는다."
 
-    assert transform(text) == "공백 포함 표기 공일공 천이백삼십사 오천육백칠십팔도 함께 적는다."
+    assert (
+        transform(text)
+        == "공백 포함 표기 공일공 - 천이백삼십사 - 오천육백칠십팔도 함께 적는다."
+    )
     assert "010 - 1234 - 오천육백칠십팔도" not in transform(text)
 
 

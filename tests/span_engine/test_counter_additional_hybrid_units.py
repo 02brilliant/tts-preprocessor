@@ -6,7 +6,6 @@ from engine.span_engine import transform
 
 
 NEW_HYBRID_COUNTERS = [
-    "대",
     "석",
     "표",
     "매",
@@ -45,10 +44,10 @@ def test_additional_hybrid_counters(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("2대", "두 대"),
-        ("39대", "서른아홉 대"),
-        ("40대", "사십 대"),
-        ("101대", "백일 대"),
+        ("2대", "2대"),
+        ("39대", "39대"),
+        ("40대", "40대"),
+        ("101대", "101대"),
         ("2항목", "두 항목"),
         ("39항목", "서른아홉 항목"),
         ("40항목", "사십 항목"),

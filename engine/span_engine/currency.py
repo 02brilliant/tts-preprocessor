@@ -7,6 +7,11 @@ from engine.span_engine.amount_reading import read_decimal_amount_text
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    apply_sign_profile,
+    parse_signed_numeric_core,
+)
 
 CURRENCY_SYMBOL_READINGS: dict[str, str] = {
     "$": "달러",
@@ -561,6 +566,7 @@ def _candidate(
             "amount": amount,
             "currency": currency_name,
             "reading": _reading(amount, currency_name),
+            **_signed_contract_metadata(amount),
         },
     )
 
@@ -593,6 +599,7 @@ def _korean_suffix_candidate(
             "amount": amount,
             "currency": currency_name,
             "reading": reading,
+            **_signed_contract_metadata(amount),
         },
     )
 
@@ -601,35 +608,53 @@ def _reading(amount: str, currency_name: str) -> str:
     return f"{_amount_reading(amount, currency_name)} {currency_name}"
 
 
+def _signed_contract_metadata(amount: str) -> dict[str, object]:
+    policy = SIGNED_OWNER_POLICIES["currency"]
+    core = parse_signed_numeric_core(
+        amount,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
+        return {}
+    return {
+        "sign_profile": policy.sign_profile.value,
+        "numeric_form": core.numeric_form,
+        "sign_surface": core.sign_surface,
+    }
+
+
 def _amount_reading(amount: str, currency_name: str) -> str:
-    sign = _amount_sign(amount)
-    unsigned = _unsigned_amount(amount)
-    if unsigned is None:
+    policy = SIGNED_OWNER_POLICIES["currency"]
+    core = parse_signed_numeric_core(
+        amount,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
         raise ValueError("invalid currency amount")
     if currency_name == "원":
-        reading = _krw_amount_reading(unsigned)
+        reading = _krw_amount_reading(core.number.raw)
     else:
         reading = read_decimal_amount_text(
-            unsigned,
+            core.number.raw,
             overflow_message="currency amount must be below 100000000",
         )
-    if sign == "+":
-        return "플러스 " + reading
-    if sign == "-":
-        return "마이너스 " + reading
-    return reading
+    signed_reading = apply_sign_profile(
+        reading,
+        core.sign_kind,
+        sign_profile=policy.sign_profile,
+    )
+    if signed_reading is None:
+        raise ValueError("currency owner rejects numeric sign")
+    return signed_reading
 
 
 def _korean_suffix_amount_reading(amount: str, currency_name: str) -> str:
-    if amount.startswith("+") and currency_name == "원" and "," in amount and "." in amount:
-        from engine.span_engine.range import (
-            parse_numeric_delimited_number,
-            render_numeric_delimited_number,
-        )
-
-        parsed = parse_numeric_delimited_number(amount)
-        if parsed is not None:
-            return render_numeric_delimited_number(parsed)
     return _amount_reading(amount, currency_name)
 
 
@@ -643,20 +668,6 @@ def _krw_amount_reading(amount: str) -> str:
         return integer_reading
     fractional = read_decimal_fraction_digits(fractional_part)
     return f"{integer_reading}쩜{fractional}"
-
-
-def _digit_reading(digit: str) -> str:
-    if digit == "0":
-        return "영"
-    return number_to_korean_under_10000(int(digit))
-
-
-def _amount_sign(amount: str) -> str | None:
-    if amount.startswith("+"):
-        return "+"
-    if amount.startswith("-"):
-        return "-"
-    return None
 
 
 def _unsigned_amount(amount: str) -> str | None:

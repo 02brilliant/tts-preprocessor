@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform
 from engine.span_engine.transform import transform as source_transform
 
 
 def prod(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return transform(text)
 
 
 ORDINARY_DECIMAL_TARGET_CASES = [

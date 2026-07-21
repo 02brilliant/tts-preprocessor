@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform
 
 
 def production_source_transform(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return transform(text)
 
 
 @pytest.mark.parametrize(
@@ -53,7 +53,7 @@ def test_common_standalone_numeric_current_matrix(text: str, expected: str):
         ("-.5", "-.5"),
         ("1.", "일."),
         ("+1.", "+1."),
-        ("3..140", "삼..백사십"),
+        ("3..140", "3..140"),
         ("1,0000", "1,0000"),
     ],
 )

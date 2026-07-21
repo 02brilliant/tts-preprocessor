@@ -4,6 +4,7 @@ from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_spaced_integer_value
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.large_unit import parse_mixed_integer_core_at
+from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
 NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살"})
@@ -13,7 +14,7 @@ _NATIVE_TIME_COUNTERS = frozenset({"시간"})
 NATIVE_COUNTERS = NATIVE_ONLY_1_TO_99_COUNTERS | _NATIVE_TIME_COUNTERS
 
 HYBRID_COUNTER_THRESHOLD = 39
-LEGACY_HYBRID_COUNTER_THRESHOLD = 30
+DEFAULT_HYBRID_COUNTER_THRESHOLD = 30
 
 HYBRID_THRESHOLD_39_COUNTERS = frozenset(
     {
@@ -196,7 +197,7 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
         threshold = (
             HYBRID_COUNTER_THRESHOLD
             if counter in HYBRID_THRESHOLD_39_COUNTERS
-            else LEGACY_HYBRID_COUNTER_THRESHOLD
+            else DEFAULT_HYBRID_COUNTER_THRESHOLD
         )
         reading = (
             native_number_under_100(value)
@@ -263,6 +264,12 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 raw_text, counter_end
             ):
                 break
+            reason = "counter_policy_gate"
+            if counter == "대" and not has_space_before_counter:
+                decision = evaluate_numeric_dae_counter_context(raw_text, full_span)
+                if decision.action != "DEFER_TO_COUNTER":
+                    break
+                reason = decision.reason
             candidates.append(
                 SurfaceCandidate(
                     core_span=number_span,
@@ -270,7 +277,7 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
                     owner="counter_noun",
                     surface_type="COUNTER_SURFACE",
                     suffix_spans=[counter_span],
-                    reason="counter_policy_gate",
+                    reason=reason,
                     metadata={
                         "raw_number": raw_number,
                         "counter": counter,
@@ -439,7 +446,7 @@ __all__ = [
     "HYBRID_THRESHOLD_39_COUNTERS",
     "HYBRID_COUNTERS",
     "HYBRID_COUNTER_THRESHOLD",
-    "LEGACY_HYBRID_COUNTER_THRESHOLD",
+    "DEFAULT_HYBRID_COUNTER_THRESHOLD",
     "NATIVE_COUNTERS",
     "NATIVE_ONLY_1_TO_99_COUNTERS",
     "PUBLIC_NUMBER_AMBIGUOUS_NUMBERS",

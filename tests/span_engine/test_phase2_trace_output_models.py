@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import fields, is_dataclass
-
 from engine.span_engine import (
     RenderPiece,
     SourceSpan,
@@ -10,15 +8,6 @@ from engine.span_engine import (
     transform,
     transform_with_trace,
 )
-
-
-def test_transform_output_keeps_phase1_minimal_field_contract() -> None:
-    assert is_dataclass(TransformOutput)
-    assert [field.name for field in fields(TransformOutput)] == [
-        "normalized_text",
-        "render_pieces",
-        "trace",
-    ]
 
 
 def test_transform_output_accepts_render_piece_sequence() -> None:

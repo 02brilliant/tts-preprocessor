@@ -1,9 +1,9 @@
 import pytest
 
 from engine.main import transform
-from engine.prosody.comma import insert_commas
 from engine.prosody.paragraph import split_paragraphs
 from tests._policy_case import TextCase, assert_exact
+from tests._span_prosody import apply_span_prosody
 
 
 NO_COMMA_CASES = [
@@ -86,9 +86,10 @@ COMMA_REQUIRED_CASES = [
     TextCase(
         case_id="prosody-comma-connector-hanpyeon",
         text="한편 마지막 설명은 다른 주제로 전환된다",
-        expected="한편, 마지막 설명은 다른 주제로 전환된다",
-        rule="prosody / connector comma",
-        reason="한편 is listed as a sentence-initial connector and should receive a comma.",
+        expected="한편 마지막 설명은 다른 주제로 전환된다",
+        rule="prosody / canonical context-gated 한편",
+        reason="한편 is a paragraph transition and context-gated mid-sentence marker, not an unconditional leading-comma connector.",
+        classification="canonical",
     ),
 ]
 
@@ -129,13 +130,13 @@ FULL_PIPELINE_PROTECTION_CASES = [
 def test_prosody_no_comma_preservation_matrix():
     # Policy-first no-comma preservation across protected phrases and numeric-heavy sentences.
     for case in NO_COMMA_CASES:
-        assert_exact(insert_commas(case.text), case)
+        assert_exact(apply_span_prosody(case.text), case)
 
 
 def test_prosody_required_comma_matrix():
-    # The policy only wants commas where the signal is strong; these are the clearest required cases.
+    # Registered leading connectors receive commas; context-gated 한편 remains unchanged at sentence start.
     for case in COMMA_REQUIRED_CASES:
-        assert_exact(insert_commas(case.text), case)
+        assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize(

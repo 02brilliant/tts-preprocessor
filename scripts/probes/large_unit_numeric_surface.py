@@ -180,7 +180,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--binary",
         type=Path,
-        help="Optional PyInstaller binary path to validate with --rollout-mode span_default.",
+        help="Optional PyInstaller binary path to validate with the production command.",
     )
     parser.add_argument(
         "--api",

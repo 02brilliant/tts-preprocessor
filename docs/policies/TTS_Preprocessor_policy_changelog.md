@@ -2,12 +2,39 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/policies/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
-- Clarified malformed numeric follow-up taxonomy in the numeric matrix: the
-  immediate cleanup target is only standalone leading-zero malformed decimals
-  (`01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, `-001.5`); segmented malformed
-  numeric reading remains a separate future design track; file-like,
-  version-like, and code-like protection gaps remain a separate prerequisite
-  safety track.
+- Audited signed numeric routing before refactor. Standalone +N/-N was owned by signed_number with reason signed_number_surface; unit, currency, percent-point, large-unit, fraction, colon/range/score, temperature/degree, and phone each carried owner-local sign handling. The existing range NumericDelimitedNumber parser was the closest common core, while signed.py capped its integer reader at 9,999. That cap left -12,345 unclaimed and allowed -1,000,000.0 to lose only its sign through internal decimal fallback.
+- Added the shared SignedNumericCore/NumericCore parser, SignKind and SignProfile, and centralized SignedOwnerPolicy metadata. The parser reuses canonical integer/comma validation and exact fractional digit reading; DEFAULT maps to 플러스/마이너스, TEMPERATURE maps to 영상/영하, and UNSIGNED_ONLY/OWNER_CUSTOM prevent semantic broadening. Range keeps a thin compatibility wrapper and its existing public raw sign surface.
+- Connected the common validation/profile renderer to standalone signed number, simple/special unit, currency, percent-point, large-unit, minus-only slash fraction, numeric-delimited range/colon paths, and Korean 대 score-pair operands. Structure detection, owner reasons, spacing, templates, operand restrictions, and phone digit-by-digit rendering remain owner-local. Signed compound slash units and all counters were not enabled.
+- Restored full signed comma coverage: -12,345 now full-claims as signed_number and reads 마이너스 만이천삼백사십오; -1,000,000.0 now full-claims and reads 마이너스 백만쩜영. Fractional trailing zero remains source-exact 영.
+- Added atomic invalid_signed_numeric_preserve before generic decimal/number fallback with surface INVALID_OR_UNSUPPORTED_SIGNED_NUMERIC_PRESERVE_SURFACE and reason invalid_or_unsupported_signed_numeric_surface_preserve. Repeated/conflicting signs, signed leading zero, empty integer/fraction, invalid comma grouping, unsupported signed counters, and unsupported signed suffixes no longer permit partial numeric reentry. Existing structured invalid and protected/code-like owners retain priority.
+- Kept temperature/angle semantics unchanged: Celsius/Fahrenheit and temperature-like bare º use 영상/영하, Fahrenheit retains 화씨 + sign + number + 도, and angle ° uses 플러스/마이너스. Minus aliases remain owner-local rather than globally normalized.
+- Kept colon/score/range/fraction/phone output and owner routing unchanged, including tilde endpoint signs, minus-only fraction support, international-phone digit-by-digit reading, and unsupported hyphen/en-dash signed range preservation.
+- Kept counter policy closed: +3대, -3대, 차량 증감 +3대, +2명, and -3개 preserve atomically. Existing unsigned contextual 대 and ambiguous_numeric_dae_preserve behavior remains unchanged.
+- Added parser trace metadata for signed-aware candidates where applicable: sign_profile, numeric_form, and original sign_surface, while keeping existing owner/reason/span and RenderPiece provenance contracts.
+
+- Audited bare numeric `대`: integer `N대` was previously shape-claimed by `counter_noun` with `counter_policy_gate`, decimal `N.N대` by `decimal_registered_suffix`, and neither path consulted a left quantity noun. `N대M` and `제N대` were already separate `korean_da_score_pair` and prefixed `numeric_suffix` owners. No central `대` target-noun registry existed.
+- Added centralized `REGISTERED_DAE_COUNTER_NOUNS` metadata with the exact minimal inventory `차량, 장비, 버스, 서버, 카메라`. Attached integer/decimal `대` delegates to the existing counter renderer only for an immediately preceding registered noun or the narrow adjacent `registered noun + N대 + N대{tail}` continuation. No scanner-local noun set, particle bridge, wide context window, verb allowlist, or semantic inference was added.
+- Added atomic `ambiguous_numeric_dae_preserve` / `AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE` with reason `no_existing_owner_and_no_explicit_counter_context`. Bare, particle/ending-tailed, semantic-ambiguity, and bare decimal `대` surfaces preserve source-exact and block generic number, decimal, registered suffix, and `korean_numeric_chain` reentry.
+- Kept protected/code-like precedence, all existing `N대M` supported forms/operand/rendering behavior, `제N대` owner/reason/spacing, other counters, and malformed owner preserves. Canonical examples now include `3대 -> 3대`, `20대가 -> 20대가`, `장비 1.5대 -> 장비 일쩜오 대`, and `1.5대 -> 1.5대`.
+- Aligned two-block dotted routing after policy/code audit: the former `short_dotted_year_month_preserve` was shape-only (`4-digit.1-or-2-digit`) and used neither a year/month range check nor Korean left/right context. It is retired; valid bare two-block dotted surfaces now use `decimal`, including `12.12`, `7443.28`, `2025.01`, and `2025.13`.
+- Kept the established preserve boundaries for `05.03` and leading-zero dotted forms, and made empty-left/duplicate-dot forms (`.5`, `3..140`, `25..50`) explicit atomic `malformed_dotted_numeric_preserve` claims so generic number fallback cannot partially rewrite them. Sentence-final `N.` remains number plus punctuation; owner-attached empty-right forms preserve through their structured owner. Protected URL/path/email/file/version/code-like surfaces and all three-or-more-block dotted date/code routing remain unchanged. Event keyword success still owns event readings before decimal fallback.
+- Added structured compact large-unit final decimals under `large_unit_atomic` with reason `large_unit_structured_decimal_surface`, full-consume/no-partial-fallback guards, compact rendering, fractional zero as `영`, and source provenance split between generated Arabic readings and original Korean large units/tails.
+- Added `korean_numeric_chain` after specific/administrative owners and before generic number fallback. It reads integer cores inside narrowly eligible Hangul-only tokens without registering arbitrary Hangul suffix semantics or inserting spaces. ASCII/code-like and partial-residue tokens, Korean numeric-unit structures, registered suffix/counter blocks, and ordinary digit+grammar tails remain on their existing owners/preserve paths.
+- Canonical regression sentence now covers `다우존스30`, ordinary dotted decimals, `5만1839.26`, `2만5508.07`, `5극3특`, `5극 3특`, and the atomic-preserve bare `3대` owner.
+
+- Promoted four explicit span-default outputs to canonical policy: preserve the
+  full leading-zero counter surface (`01명`) and leading-zero suffix clock-hour
+  surface (`09시`), attach an immediate approximate `여` to a compact
+  large-unit reading (`1만3천여 명 -> 일만삼천여 명`), and read both sides of
+  a spaced middle-dot independently while preserving its boundary
+  (`123 · 456 -> 백이십삼 · 사백오십육`).
+- Reconciled stale `2~5시` summary examples with the existing clock-hour range
+  rule and span output: `두 시에서 다섯 시`.
+- Clarified malformed numeric follow-up taxonomy in the numeric matrix. The
+  leading-zero decimal family now preserves without partial numeric reentry;
+  signed variants additionally use the unified invalid-signed atomic preserve.
+  Segmented malformed numeric reading and file/version/code protection remain
+  separate design tracks.
 - Hardened news attached-surface policy notes for valid decimal/comma decimal
   plus original `로`/`으로`, managed `KTX-이음` acronym-Hangul hyphen compounds,
   and the narrow `N시뉴스` broadcast title pattern without broad fallback,
@@ -30,11 +57,11 @@
   and protected-context reentry remain prohibited.
 - Split managed dictionary inventory into
   `docs/policies/TTS_Preprocessor_managed_dictionary.md`, added
-  current/current_with_condition/pending/conflict/future/legacy-only labels, and
+  current/current_with_condition/pending/conflict/future/historical-only labels, and
   recorded that this pass changes documentation only, not production code.
 - Connected the managed dictionary `current` inventory to span production by
   adding the missing `GUI` and `Wi-Fi` fixed entries, without promoting pending,
-  conflict, future, or legacy-only dictionary candidates.
+  conflict, future, or historical-only dictionary candidates.
 - Canonicalized managed dictionary inventory into the dedicated managed
   dictionary policy, removed duplicate fixed lexical inventory tables from the
   main policy, resolved `DOCX` to `디오씨엑스`, and promoted the user-approved
@@ -66,7 +93,7 @@
   investigation without changing transform semantics.
 - Documented current decimal renderer/helper paths for standalone, signed,
   unit/percent, currency, temperature, large-unit, range, colon/multi-colon,
-  compound unit, legacy, and digit-sequence owner routes.
+  compound unit, historical, and digit-sequence owner routes.
 - Added production-source audit and non-strict xfail target coverage for
   ordinary decimal fractional zero canonicalization, including protected,
   invalid/malformed, leading-zero, and complex sentence cases.
@@ -94,7 +121,7 @@
 - Added `TTS_Preprocessor_numeric_matrix.md` to audit standalone numeric, owner-attached numeric, invalid partial fallback, trailing-zero, protected-context, time-like, and hyphen exception behavior without changing transform semantics.
 - Added common protected span handling for JSON-like string values so currency, unit, temperature, range, colon, hyphen, and large-unit owners do not rewrite them.
 - Clarified that JSON-like protection is not a broad normal-prose quote protection policy.
-- Clarified the official production source entrypoint as `engine.main.transform_with_rollout(text, mode="span_default", include_debug=False)`.
+- Superseded the former rollout entrypoint; the official production source entrypoint is now `engine.main.transform(text)`.
 - Documented binary/API runtime routing through `bin/build_binary_entrypoint.py` and the packaged PyInstaller binary rather than deployed source imports.
 - Clarified that `check_server.sh` is a health/sanity check and semantic regression coverage belongs in source/main/binary/API probes and parity tests.
 - Expanded large-unit numeric input coverage for comma integer and signed decimal surfaces.
@@ -108,7 +135,7 @@
 - Added Hangul-tail spacing and English-tail literal retention behavior for large-unit numeric surfaces.
 - Clarified large-unit English-tail behavior: valid numeric-large-unit cores are read and following English tails are kept literally without inserted spacing.
 - Preserved code-like English-prefix large-unit surfaces.
-- Added API/runtime path coverage for standalone large-unit numeric cores and reused the large-unit scanner in the legacy pipeline to block partial fallback.
+- Added API/runtime path coverage for standalone large-unit numeric cores and reused the large-unit scanner in the historical pipeline to block partial fallback.
 - Blocked invalid large-unit partial fallback.
 - Preserved standalone number, unit/percent/currency, temperature, range, colon, hyphen, phone, and protected surface behavior.
 - Added registry-based currency form equivalence for registered code/symbol/suffix forms.
@@ -514,9 +541,9 @@ Immediate event keyword, supported date-like range, boundary, and spacing condit
 
 Spaced hyphen numeric multi-block is not telephone-number inference. It reads each numeric block independently.
 
-- `010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔`
-- `001 - 23 - 456 -> 공공일 이십삼 사백오십육`
-- `0.5 - 1.2 - 3 -> 영쩜오 일쩜이 삼`
+- `010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔`
+- `001 - 23 - 456 -> 공공일 - 이십삼 - 사백오십육`
+- `0.5 - 1.2 - 3 -> 영쩜오 - 일쩜이 - 삼`
 
 Mixed alnum code separator fallback applies within the policy-defined scope after dictionary/fixed lexical claims fail:
 
@@ -575,3 +602,120 @@ Canonical tests must cover:
 - `K-POP` dictionary priority vs generic code separator
 - Arabic `10월` date month reading
 - decimal unit/suffix and KRW large-unit currency expansion
+
+## 15. Policy Alignment Batch 1
+
+- Promoted the current exact standalone time readings to canonical policy:
+  `0:00 -> 영시`, `24:00 -> 이십사시`.
+- Changed only the declared spaced-hyphen multi-block output by retaining its
+  exact source separator: `1 - 2 - 3 -> 일 - 이 - 삼`.
+- Added registry-backed caret power for numeric-prefix ASCII-letter units:
+  `^2 -> 제곱<단위>`, `^3 -> 세제곱<단위>`.
+- Caret power requires no gap between unit and exponent, and the exponent must
+  end the input or be followed by whitespace/Hangul. Numeric/ASCII-letter tails
+  remain on the pre-existing processing path.
+- Narrowed Hangul internal-exception recovery from whole sentence preservation
+  to source-segment recovery: only the final failed segment is preserved.
+- Whole-input original preservation remains limited to no-Hangul global bypass
+  and whole-input absolute-preserve input.
+
+Allowed output diffs:
+
+- `1 - 2 - 3: 일 이 삼 -> 일 - 이 - 삼`
+- `1 - 2 - 3 수치: 일 이 삼 수치 -> 일 - 이 - 삼 수치`
+- `010 - 1234 - 5678: 공일공 천이백삼십사 오천육백칠십팔 -> 공일공 - 천이백삼십사 - 오천육백칠십팔`
+- `001 - 23 - 456: 공공일 이십삼 사백오십육 -> 공공일 - 이십삼 - 사백오십육`
+- `0.5 - 1.2 - 3: 영쩜오 일쩜이 삼 -> 영쩜오 - 일쩜이 - 삼`
+- `2025 - 01 - 03: 이천이십오 공일 공삼 -> 이천이십오 - 공일 - 공삼`
+- `공백 포함 표기 010 - 1234 - 5678도 함께 적는다.: 공백 포함 표기 공일공 천이백삼십사 오천육백칠십팔도 함께 적는다. -> 공백 포함 표기 공일공 - 천이백삼십사 - 오천육백칠십팔도 함께 적는다.`
+- `7m^3: 칠 미터^삼 -> 칠 세제곱미터`
+
+## 16. Policy Alignment Batch 2
+
+- Promoted 14 leading-zero and owner-override audit rows to current span canonical behavior.
+- Standalone `01`, `003`, `007`, and `0001` preserve source bytes; Digit Mode is not a standalone fallback.
+- Identifier numeric payloads preserve, while a registered acronym and independent date owner may still transform.
+- Leading-zero counter surfaces preserve instead of selecting native/hybrid counter reading.
+- Unit and currency owners full-claim invalid leading-zero amounts as preserve and block partial numeric fallback.
+- Suffix-clock `09시` and `07시 05분` use `TIME_PRESERVE_SURFACE` and retain their original bytes and spacing.
+- Registered date marker and phone owners remain narrow exceptions to the preserve matrix.
+- No runtime implementation or normal output changed in this batch.
+- The 14 resolved rows moved from the deferred historical audit into owning policy tests and the Batch 2 stable fixture.
+
+Allowed output diffs: none.
+
+## 17. Policy Alignment Batch 3
+
+- Promoted 16 time, colon, suffix-clock, and phonetic audit rows to current span canonical behavior.
+- Canonical suffix-clock `N시` output retains generated spacing before the original `시`, including afternoon/night context and attached Korean particles.
+- Successful `HH:MM` time claims omit an exact zero-minute component; valid `24:MM` remains strong time.
+- A one-digit minute is not HH:MM. Valid non-time-like two-block colon forms use the semantic-pair owner and `대` rendering.
+- Bare and explicit ratio/score examples such as `16:9`, `한국 vs 일본 3:2`, and `화면 비율 16:9` use the same semantic-pair rendering.
+- `H:MM:SS` and `HH:MM:SS` timecode-like surfaces preserve atomically in standalone and ordinary Korean sentence contexts.
+- Phonetic processing does not remove suffix-clock owner spacing.
+- No runtime implementation or normal output changed in this batch.
+- The 16 resolved rows moved from the deferred historical audit into owning policy and trace tests and the Batch 3 stable fixture.
+
+Allowed output diffs: none.
+
+## 18. Policy Alignment Batch 4
+
+- Resolved eight middle-dot, leading-zero, and dotted-event audit rows.
+- A short first block of a contiguous middle-dot surface uses numeric value reading; later blocks retain digit-sequence reading with `영` for zero.
+- Leading-zero suffix-clock and invalid unit surfaces preserve without leaking a partial middle-dot reading.
+- Strong one-digit-right dotted events such as `12.3 비상계엄` use EVENT_SURFACE.
+- Event and decimal surfaces in the same sentence are claimed independently.
+- Spaced middle-dot operands normalize independently while the exact separator and spaces remain source-preserved.
+- One exact runtime output transition fixes the asymmetric right-gap boundary.
+
+Allowed output diff:
+
+- `12· 3: 12· 삼 -> 십이· 삼`
+
+## 19. Policy Alignment Batch 5
+
+- Promoted five protected-bracket, signed-currency, decimal-precision, and embedded-code audit rows to current span canonical behavior.
+- Square-bracket interiors are absolute preserve and block currency reentry; only the bracket delimiters are removed at presentation.
+- Registered currency markers accept signed decimal-aware numeric amounts, including `$-10`.
+- Ordinary decimal fractional digits have no system-level length limit and every zero remains explicit.
+- `A112` is an atomic single-letter alnum code, not an emergency-number or partial general-number surface.
+- Bracket and later compound-unit claims remain independent in one sentence.
+- No runtime implementation or normal output changed in this batch.
+- `tests/fixtures/batch5_allowed_output_diffs.json` records five stable decisions and zero allowed diffs.
+
+Allowed output diffs: none.
+
+## 20. Policy Alignment Batch 6
+
+- Promoted six large-number, ordinal, approximate-marker, and counter audit rows to current span canonical behavior.
+- Ordinary number width ends at `경`; unsupported `해`-width no-Hangul input preserves exactly and Hangul input recovery remains segment-local.
+- Prefixed ordinals generate canonical spacing after `제`, and compact `여` remains attached to the generated number reading.
+- Valid comma decimals use compact ordinary integer rendering; emergency and counter claims remain independent and counter spacing is retained.
+- No runtime implementation or normal output changed in this batch.
+- `tests/fixtures/batch6_allowed_output_diffs.json` records six stable decisions and zero allowed diffs.
+
+Allowed output diffs: none.
+
+## 21. Policy Alignment Batch 7
+
+- Promoted five conservative prosody and typed-surface interaction rows to current span canonical behavior.
+- Long topic length plus a frame phrase does not license a broad production comma.
+- Sentence-initial `한편` is context-gated and is not an unconditional leading-comma connector.
+- Valid two-clause `-지만` boundaries use `prosody_extra` and emit source-mapped `GENERATED_PUNCT` without reopening numeric or lexical claims.
+- No runtime implementation or normal output changed in this batch.
+- `tests/fixtures/batch7_allowed_output_diffs.json` records five stable decisions and zero allowed diffs.
+
+Allowed output diffs: none.
+
+## 22. Policy Alignment Batch 8
+
+- Promoted six restricted hyphen range, lexical middle-dot/K-prefix, and Unicode shared-month range rows to current span canonical behavior.
+- `12-15장` belongs to the registered restricted range owner; generic and unsafe two-block hyphens remain preserve.
+- Lexical middle dots remain source-exact while safe adjacent acronym/dictionary claims render independently.
+- K-Hangul lexical owners and the K-POP dictionary entry retain precedence over generic separator fallback.
+- `~`, `～`, `∼`, and `〜` share the owner-local month range rule and apply `월` reading to both operands.
+- No runtime implementation or normal output changed in this batch.
+- `tests/fixtures/batch8_allowed_output_diffs.json` records six stable decisions and zero allowed diffs.
+- The deferred historical policy audit is now an exact empty JSON array.
+
+Allowed output diffs: none.

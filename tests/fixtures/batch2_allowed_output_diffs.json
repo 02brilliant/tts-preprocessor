@@ -1,0 +1,91 @@
+{
+  "batch_id": "policy-alignment-batch-2",
+  "description": "Batch 2 leading-zero and owner-override contract. All audited rows promote the current span output without a runtime output transition.",
+  "stable_decisions": [
+    {
+      "decision_id": "digit-mode-leading-zero-003",
+      "input": "003",
+      "expected": "003",
+      "owner_contract": "standalone leading-zero numeric surface preserves source bytes"
+    },
+    {
+      "decision_id": "digit-mode-leading-zero-007",
+      "input": "007",
+      "expected": "007",
+      "owner_contract": "standalone leading-zero numeric surface preserves source bytes"
+    },
+    {
+      "decision_id": "digit-mode-leading-zero-01",
+      "input": "01",
+      "expected": "01",
+      "owner_contract": "standalone leading-zero numeric surface preserves source bytes"
+    },
+    {
+      "decision_id": "interaction-identifier-digit-mode-plus-date",
+      "input": "ID: 00123 기록은 2025.01.03에 갱신한다",
+      "expected": "아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
+      "owner_contract": "registered acronym and dotted date transform independently while identifier numeric payload preserves"
+    },
+    {
+      "decision_id": "interaction-leading-zero-bare-date-unit-counter",
+      "input": "007 01월 03kg 01명",
+      "expected": "007 일월 03kg 01명",
+      "owner_contract": "date month overrides leading zero; standalone, invalid unit amount, and counter surfaces preserve"
+    },
+    {
+      "decision_id": "interaction-leading-zero-bare-time-override",
+      "input": "01 09시 07시 05분",
+      "expected": "01 09시 07시 05분",
+      "owner_contract": "standalone and suffix-clock leading-zero surfaces preserve"
+    },
+    {
+      "decision_id": "interaction-phone-digit-mode-plus-counter-override",
+      "input": "010-1234-5678 01명",
+      "expected": "공일공 일이삼사 오육칠팔 01명",
+      "owner_contract": "phone blocks transform independently while leading-zero counter preserves"
+    },
+    {
+      "decision_id": "mixed-identifier-leading-zero-digit-mode",
+      "input": "ID: 00123",
+      "expected": "아이디: 00123",
+      "owner_contract": "registered acronym transforms while identifier numeric payload preserves"
+    },
+    {
+      "decision_id": "override-currency-beats-leading-zero",
+      "input": "₩01,000",
+      "expected": "₩01,000",
+      "owner_contract": "currency owner full-claims invalid leading-zero amount as preserve"
+    },
+    {
+      "decision_id": "override-time-hour-minute-beats-leading-zero",
+      "input": "07시 05분",
+      "expected": "07시 05분",
+      "owner_contract": "suffix-clock owner preserves leading-zero hour-minute surface"
+    },
+    {
+      "decision_id": "override-unit-beats-leading-zero",
+      "input": "03kg",
+      "expected": "03kg",
+      "owner_contract": "unit owner full-claims invalid leading-zero amount as preserve"
+    },
+    {
+      "decision_id": "regression-leading-zero-counter-override",
+      "input": "01명",
+      "expected": "01명",
+      "owner_contract": "counter owner does not reinterpret a leading-zero amount"
+    },
+    {
+      "decision_id": "regression-leading-zero-digit-mode",
+      "input": "0001",
+      "expected": "0001",
+      "owner_contract": "standalone leading-zero numeric surface preserves source bytes"
+    },
+    {
+      "decision_id": "regression-leading-zero-time-override",
+      "input": "09시",
+      "expected": "09시",
+      "owner_contract": "suffix-clock owner preserves a leading-zero hour surface"
+    }
+  ],
+  "allowed_diffs": []
+}

@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_decimal_fraction_digits
-from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.sign_aliases import (
-    MINUS_SIGN_ALIASES,
     SIGNED_NUMERIC_SIGN_ALIASES,
-    is_minus_sign_alias,
     is_signed_numeric_sign,
     strip_signed_numeric_sign,
+)
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    SignProfile,
+    parse_sign_surface,
+    parse_signed_numeric_core,
+    render_signed_numeric,
 )
 from engine.span_engine.units import starts_with_supported_unit
 
@@ -45,7 +48,6 @@ _TAIL_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，"
 _CELSIUS_UNITS = frozenset({"℃", "ºC", "°C", "º C", "° C"})
 _FAHRENHEIT_UNITS = frozenset({"℉", "ºF", "°F", "º F", "° F"})
 _SIGN_CHARS = SIGNED_NUMERIC_SIGN_ALIASES
-_MINUS_CHARS = MINUS_SIGN_ALIASES
 # Both ASCII degree ° and ordinal indicator º are treated as bare degree.
 _BARE_DEGREE_UNITS = frozenset({"°", "º"})
 _SIGNED_TEMPERATURE_UNITS = tuple(
@@ -56,36 +58,10 @@ _SIGNED_TEMPERATURE_UNITS = tuple(
 def parse_signed_numeric(raw_number: str) -> str | None:
     if not isinstance(raw_number, str):
         raise TypeError("raw_number must be str")
-    raw_number = raw_number.strip()
-    if not raw_number:
+    core = parse_signed_numeric_core(raw_number.strip())
+    if core is None:
         return None
-    if "." not in raw_number:
-        clean_number = raw_number.replace(",", "")
-        if not _is_ascii_digits(clean_number):
-            return None
-        if len(clean_number) > 1 and clean_number.startswith("0"):
-            return None
-        value = int(clean_number)
-        if value > 9999:
-            return None
-        return number_to_korean_under_10000(value)
-    
-    integer_part, fractional_part = raw_number.split(".", 1)
-    clean_integer = integer_part.replace(",", "")
-    if (
-        not clean_integer
-        or not fractional_part
-        or not _is_ascii_digits(clean_integer)
-        or not _is_ascii_digits(fractional_part)
-    ):
-        return None
-    if len(clean_integer) > 1 and clean_integer.startswith("0"):
-        return None
-    value = int(clean_integer)
-    if value > 9999:
-        return None
-    fractional_reading = _fractional_reading(fractional_part)
-    return f"{number_to_korean_under_10000(value)}쩜{fractional_reading}"
+    return render_signed_numeric(core, sign_profile=SignProfile.DEFAULT)
 
 
 def signed_temperature_reading(
@@ -95,64 +71,51 @@ def signed_temperature_reading(
     *,
     suppress_unit_label: bool = False,
 ) -> str | None:
-    number_reading = _parse_temperature_numeric(numeric)
-    if number_reading is None:
+    policy = SIGNED_OWNER_POLICIES["signed_temperature"]
+    numeric = numeric.strip()
+    core = parse_signed_numeric_core(
+        sign + numeric,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        require_sign=True,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
         return None
-    if sign == "+":
-        reading = f"영상 {number_reading}도"
-    elif is_minus_sign_alias(sign):
-        reading = f"영하 {number_reading}도"
-    else:
-        return None
-    if unit in _FAHRENHEIT_UNITS and not suppress_unit_label:
-        return f"화씨 {reading}"
-    if unit in _FAHRENHEIT_UNITS:
-        return reading
-    if unit in _CELSIUS_UNITS:
-        return reading
-    return None
-
-
-def _parse_temperature_numeric(raw_number: str) -> str | None:
-    raw_number = raw_number.strip()
-    reading = parse_signed_numeric(raw_number)
+    reading = render_signed_numeric(
+        core,
+        sign_profile=policy.sign_profile,
+    )
     if reading is None:
         return None
-    integer_part, dot, fractional_part = raw_number.replace(",", "").partition(".")
-    if not dot or integer_part == "0":
+    reading = f"{reading}도"
+    if unit in _FAHRENHEIT_UNITS and not suppress_unit_label:
+        return f"화씨 {reading}"
+    if unit in _FAHRENHEIT_UNITS or unit in _CELSIUS_UNITS:
         return reading
-    integer_reading = number_to_korean_under_10000(int(integer_part))
-    fractional = read_decimal_fraction_digits(fractional_part)
-    return f"{integer_reading}쩜{fractional}"
-
-
-def signed_degree_reading(sign: str, numeric: str, unit: str = "\u00b0") -> str | None:
-    """Return reading for a signed bare-degree token.
-
-    ° (DEGREE SIGN, ASCII): keeps the pre-existing
-    '플러스 N도' / '마이너스 N도' reading so
-    that tests like '+3° -> 플러스 삼도' continue to pass.
-
-    º (MASCULINE ORDINAL INDICATOR, shared with ºC/ºF in this
-    codebase): follows the signed-Celsius convention of '영하/영상 N도',
-    consistent with '-2.5ºC -> 영하 이쩜오도'.
-    """
-    number_reading = parse_signed_numeric(numeric)
-    if number_reading is None:
-        return None
-    # º (U+00BA) – ordinal indicator, follows Celsius 영하/영상 convention.
-    if unit == "\u00ba":
-        if sign == "+":
-            return f"영상 {number_reading}도"
-        if is_minus_sign_alias(sign):
-            return f"영하 {number_reading}도"
-        return None
-    # ° (U+00B0) – classic degree sign, keeps existing 플러스/마이너스 reading.
-    if sign == "+":
-        return f"플러스 {number_reading}도"
-    if is_minus_sign_alias(sign):
-        return f"마이너스 {number_reading}도"
     return None
+
+
+def signed_degree_reading(sign: str, numeric: str, unit: str = "°") -> str | None:
+    """Return the existing angle or temperature-like bare-degree reading."""
+    policy = SIGNED_OWNER_POLICIES["signed_degree"]
+    numeric = numeric.strip()
+    core = parse_signed_numeric_core(
+        sign + numeric,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        require_sign=True,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
+        return None
+    profile = SignProfile.TEMPERATURE if unit == "º" else SignProfile.DEFAULT
+    reading = render_signed_numeric(core, sign_profile=profile)
+    if reading is None:
+        return None
+    return f"{reading}도"
 
 
 def scan_signed_temperature_candidates(
@@ -190,6 +153,111 @@ def scan_signed_number_candidates(
     return _scan_signed_candidates(raw_text, excluded_ranges, "", "signed_number")
 
 
+def scan_invalid_signed_numeric_preserve_candidates(
+    raw_text: str,
+    excluded_ranges: list[BracketRange] | None = None,
+) -> list[SurfaceCandidate]:
+    """Atomically preserve malformed or unsupported direct-sign tokens.
+
+    This scanner is intentionally registered after all supported structured
+    signed owners and before generic decimal/number fallback.
+    """
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if excluded_ranges is None:
+        excluded_ranges = []
+
+    from engine.span_engine.phone import is_international_phone
+
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if raw_text[index] not in _SIGN_CHARS:
+            index += 1
+            continue
+        if _is_blocked_start(raw_text, index, "signed_number"):
+            index += 1
+            continue
+        if index + 1 >= len(raw_text) or raw_text[index + 1].isspace():
+            index += 1
+            continue
+        phone_end = _consume_international_phone_prefix(raw_text, index)
+        if is_international_phone(raw_text[index:phone_end]):
+            index = phone_end
+            continue
+        end = _consume_signed_looking_token(raw_text, index)
+        if end <= index + 1:
+            index += 1
+            continue
+        span = SourceSpan(index, end)
+        if _span_overlaps_excluded_range(span, excluded_ranges):
+            index = end
+            continue
+        raw = raw_text[index:end]
+        if not any(_is_ascii_digit(char) for char in raw):
+            index += 1
+            continue
+        if is_international_phone(raw):
+            index = end
+            continue
+        if parse_signed_numeric_core(raw, require_sign=True) is not None:
+            index = end
+            continue
+        sign_surface = raw[0]
+        sign_kind = parse_sign_surface(sign_surface)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="INVALID_OR_UNSUPPORTED_SIGNED_NUMERIC_PRESERVE_SURFACE",
+                reason="invalid_or_unsupported_signed_numeric_surface_preserve",
+                metadata={
+                    "sign_profile": SignProfile.DEFAULT.value,
+                    "sign_surface": sign_surface,
+                    "sign_kind": sign_kind.value if sign_kind is not None else None,
+                    "preserve_reason": "full_consume_or_owner_support_failed",
+                },
+            )
+        )
+        index = end
+    return candidates
+
+
+def _consume_international_phone_prefix(raw_text: str, start: int) -> int:
+    index = start + 1
+    while index < len(raw_text) and (
+        _is_ascii_digit(raw_text[index]) or raw_text[index] == "-"
+    ):
+        index += 1
+    return index
+
+
+def _consume_signed_looking_token(raw_text: str, start: int) -> int:
+    index = start + 1
+    hard_stops = frozenset(
+        {'!', '?', ';', ':', '…', '。', '，', '！', '？', '(', ')', '[', ']', '{', '}', '"', "'", chr(96)}
+    )
+    while index < len(raw_text):
+        char = raw_text[index]
+        if char.isspace() or char in hard_stops:
+            break
+        if char == "," and (
+            index + 1 >= len(raw_text) or not _is_ascii_digit(raw_text[index + 1])
+        ):
+            break
+        if char == ".":
+            next_char = raw_text[index + 1] if index + 1 < len(raw_text) else None
+            if next_char is not None and not (
+                _is_ascii_digit(next_char)
+                or (next_char.isascii() and next_char.isalpha())
+                or _is_hangul_syllable(next_char)
+            ):
+                break
+        index += 1
+    return index
+
+
 def parse_signed_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
     raw = raw_text[candidate.core_span.start : candidate.core_span.end]
     parsed = _parse_signed_surface(raw)
@@ -208,13 +276,18 @@ def parse_signed_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | 
     if unit in _BARE_DEGREE_UNITS:
         return signed_degree_reading(sign, numeric, unit)
     if unit == "":
-        number_reading = parse_signed_numeric(numeric)
-        if number_reading is None:
+        policy = SIGNED_OWNER_POLICIES["signed_number"]
+        core = parse_signed_numeric_core(
+            sign + numeric,
+            allow_plus=policy.accepts_plus,
+            allow_minus=policy.accepts_minus,
+            minus_aliases=policy.minus_aliases,
+            require_sign=True,
+            numeric_forms=policy.numeric_forms,
+        )
+        if core is None:
             return None
-        if sign == "+":
-            return f"플러스 {number_reading}"
-        if sign in _MINUS_CHARS:
-            return f"마이너스 {number_reading}"
+        return render_signed_numeric(core, sign_profile=policy.sign_profile)
     return None
 
 
@@ -276,11 +349,49 @@ def _scan_signed_candidates(
                 owner=owner,
                 surface_type=surface_type,
                 reason=f"{owner}_surface",
-                metadata={"reading": reading, "tail": _tail_prefix(tail)},
+                metadata=_signed_candidate_metadata(
+                    raw_text[span.start : span.end],
+                    reading,
+                    _tail_prefix(tail),
+                    owner,
+                ),
             )
         )
         index = span.end
     return candidates
+
+
+def _signed_candidate_metadata(
+    raw: str,
+    reading: str,
+    tail: str | None,
+    owner: str,
+) -> dict[str, object]:
+    parsed = _parse_signed_surface(raw)
+    if parsed is None:
+        return {"reading": reading, "tail": tail}
+    sign, numeric, unit = parsed
+    policy = SIGNED_OWNER_POLICIES[owner]
+    core = parse_signed_numeric_core(
+        sign + numeric,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        require_sign=True,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
+        return {"reading": reading, "tail": tail}
+    profile = policy.sign_profile
+    if owner == "signed_degree":
+        profile = SignProfile.TEMPERATURE if unit == "º" else SignProfile.DEFAULT
+    return {
+        "reading": reading,
+        "tail": tail,
+        "sign_profile": profile.value,
+        "numeric_form": core.numeric_form,
+        "sign_surface": core.sign_surface,
+    }
 
 
 def _scan_invalid_signed_temperature_preserve_candidates(
@@ -525,10 +636,6 @@ def _consume_digits(raw_text: str, start: int) -> int:
     return index
 
 
-def _fractional_reading(fractional_part: str) -> str:
-    return read_decimal_fraction_digits(fractional_part)
-
-
 def _is_ascii_digit(char: str) -> bool:
     return char.isascii() and char.isdigit()
 
@@ -676,6 +783,7 @@ def _span_overlaps_excluded_range(
 __all__ = [
     "parse_signed_candidate",
     "parse_signed_numeric",
+    "scan_invalid_signed_numeric_preserve_candidates",
     "scan_signed_degree_candidates",
     "scan_signed_number_candidates",
     "scan_signed_temperature_candidates",

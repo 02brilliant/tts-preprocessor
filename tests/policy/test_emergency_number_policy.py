@@ -1,7 +1,6 @@
 import pytest
 
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -93,16 +92,16 @@ DISALLOWED_SUFFIX_CASES = [
     TextCase(
         case_id="emergency-disallowed-myeong",
         text="112명 참석",
-        expected="백십이명 참석",
+        expected="백십이 명 참석",
         rule="emergency number / disallowed-suffix",
-        reason="명 is not an allowed emergency tail, so this must normalize as a general number plus suffix.",
+        reason="명 blocks the emergency reading but remains a registered counter owner with canonical spacing.",
     ),
     TextCase(
         case_id="emergency-disallowed-geon",
         text="오늘 119건이 접수됐다",
-        expected="오늘 백십구건이 접수됐다",
+        expected="오늘 백십구 건이 접수됐다",
         rule="emergency number / disallowed-suffix",
-        reason="건 is not an allowed emergency tail, so 119 must fall back to the general numeric reading.",
+        reason="건 blocks the emergency reading but remains a registered counter owner with canonical spacing.",
     ),
     TextCase(
         case_id="emergency-disallowed-beon",
@@ -130,11 +129,12 @@ DISALLOWED_SUFFIX_CASES = [
 
 EMBEDDED_NEGATIVE_CASES = [
     TextCase(
-        case_id="emergency-embedded-a112",
+        case_id="canonical-single-letter-alnum-code-a112",
         text="A112",
-        expected="A112",
-        rule="emergency number / embedded-token-negative",
-        reason="An embedded alphanumeric token does not satisfy the independent token boundary condition.",
+        expected="에이 백십이",
+        rule="single-letter alnum code / emergency exclusion",
+        reason="The entire A112 surface belongs to the single-letter alnum code owner, so emergency and partial general-number fallbacks do not run.",
+        classification="override",
     ),
     TextCase(
         case_id="emergency-embedded-2112",
@@ -181,31 +181,31 @@ PROSODY_INTERACTION_CASES = [
 @pytest.mark.parametrize("case", GENERAL_NUMBER_CASES, ids=lambda case: case.case_id)
 def test_emergency_plain_general_number_cases(case: TextCase):
     # Bare 112/119 are general numbers unless emergency context is explicitly present.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", POSITIVE_CONTEXT_CASES, ids=lambda case: case.case_id)
 def test_emergency_context_positive_cases(case: TextCase):
     # Emergency readings require explicit emergency context plus valid token boundary and allowed tail.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", ALLOWED_PARTICLE_CASES, ids=lambda case: case.case_id)
 def test_emergency_allowed_particle_tail_cases(case: TextCase):
     # Allowed particles are part of the documented emergency-number tail whitelist.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", DISALLOWED_SUFFIX_CASES, ids=lambda case: case.case_id)
 def test_emergency_disallowed_suffix_cases(case: TextCase):
     # Disallowed suffixes must not use the emergency reading and should fall back conservatively.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", EMBEDDED_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_emergency_embedded_token_negative_cases(case: TextCase):
     # Embedded tokens must not be reinterpreted as emergency numbers.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", PROSODY_INTERACTION_CASES, ids=lambda case: case.case_id)

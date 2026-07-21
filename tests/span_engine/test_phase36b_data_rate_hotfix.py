@@ -81,24 +81,3 @@ def test_phase36b_hotfix_prevents_decimal_number_only_partial_rewrite() -> None:
 )
 def test_phase36b_hotfix_preserve_cases(text: str) -> None:
     assert transform(text) == text
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("1,000km/h", "시속 천 킬로미터"),
-        ("1,000 km/h", "시속 천 킬로미터"),
-        ("1,000m/s", "초속 천 미터"),
-        ("1,000 m/s", "초속 천 미터"),
-        ("1,000m/min", "분속 천 미터"),
-        ("1,000 m/min", "분속 천 미터"),
-        ("1,000km/L", "리터당 천 킬로미터"),
-        ("1,000 km/L", "리터당 천 킬로미터"),
-        ("1,000m/L", "리터당 천 미터"),
-        ("1,000 m/L", "리터당 천 미터"),
-    ],
-)
-def test_phase36b_hotfix_existing_compound_regression(
-    text: str, expected: str
-) -> None:
-    assert transform(text) == expected

@@ -1,6 +1,6 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as transform_text
 
 
 @pytest.mark.parametrize(
@@ -13,8 +13,8 @@ from engine.pipeline.transform_engine import transform_text
         ("29명", "스물아홉 명"),
         ("30명", "서른 명"),
         ("30권", "서른 권"),
-        ("31명", "삼십일 명"),
-        ("31권", "삼십일 권"),
+        ("31명", "서른한 명"),
+        ("31권", "서른한 권"),
         ("사과 21개는 남았다", "사과 스물한 개는 남았다"),
         ("책 30권을 정리했다", "책 서른 권을 정리했다"),
     ],
@@ -48,8 +48,8 @@ def test_hybrid_counter_negative_and_regression_cases(text: str, expected: str):
         ("¥100", "백 엔"),
         ("£100", "백 파운드"),
         ("10억 원", "십억 원"),
-        ("1.5조 원", "일조 오천억 원"),
-        ("₩100.5", "₩100.5"),
+        ("1.5조 원", "일쩜오 조 원"),
+        ("₩100.5", "백쩜오 원"),
         ("300USDabc", "300USDabc"),
         ("EURA 300", "EURA 300"),
         ("300KRWa", "300KRWa"),
@@ -68,7 +68,7 @@ def test_currency_policy_cases(text: str, expected: str):
         ("60Hz", "육십 헤르츠"),
         ("2.4GHz", "이쩜사 기가헤르츠"),
         ("45㎡", "사십오 제곱미터"),
-        ("220V", "이백이십 볼트"),
+        ("220V", "220V"),
         ("m/L", "m/L"),
         ("15.2km/La", "15.2km/La"),
         ("3km/speed", "3km/speed"),

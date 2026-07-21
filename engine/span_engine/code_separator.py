@@ -48,7 +48,7 @@ def scan_spaced_hyphen_numeric_candidates(raw_text: str) -> list[SurfaceCandidat
                 owner="spaced_hyphen_numeric_blocks",
                 surface_type="SPACED_HYPHEN_NUMERIC_BLOCK_SURFACE",
                 reason="spaced_hyphen_numeric_multiblock",
-                metadata={"blocks": blocks, "reading": " ".join(readings)},  # type: ignore[arg-type]
+                metadata={"blocks": blocks, "reading": " - ".join(readings)},  # type: ignore[arg-type]
             )
         )
     return candidates

@@ -1,8 +1,8 @@
 import pytest
 
 from engine.main import transform
-from engine.prosody.comma import insert_commas
 from tests._policy_case import TextCase, assert_exact
+from tests._span_prosody import apply_span_prosody
 
 
 PROTECTED_SURFACE_NO_COMMA_CASES = [
@@ -85,7 +85,7 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-lexical-middle-dot-korean",
         text="그리고 AI·반도체 전략을 논의한다",
-        expected="그리고, 에이아이 반도체 전략을 논의한다",
+        expected="그리고, 에이아이·반도체 전략을 논의한다",
         rule="prosody / leading connector + lexical middle dot",
         reason="Prosody may add only the leading connector comma while preserving the lexical middle-dot protected output.",
         classification="prosody",
@@ -93,7 +93,7 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-lexical-middle-dot-acronym",
         text="그리고 ISO·IEC 표준을 검토한다",
-        expected="그리고, 아이에스오 아이이씨 표준을 검토한다",
+        expected="그리고, 아이에스오·아이이씨 표준을 검토한다",
         rule="prosody / leading connector + lexical middle dot",
         reason="Prosody may add only the leading connector comma while preserving the lexical middle-dot protected output.",
         classification="prosody",
@@ -101,7 +101,7 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-lexical-middle-dot-dictionary",
         text="그리고 KOSPI·AI 지표를 본다",
-        expected="그리고, 코스피 에이아이 지표를 본다",
+        expected="그리고, 코스피·에이아이 지표를 본다",
         rule="prosody / leading connector + lexical middle dot",
         reason="Prosody may add only the leading connector comma while preserving the lexical middle-dot protected output.",
         classification="prosody",
@@ -109,17 +109,17 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-single-letter-hyphen-primary",
         text="그리고 K-푸드와 K-뷰티를 육성한다",
-        expected="그리고, 케이-푸드와 케이-뷰티를 육성한다",
+        expected="그리고, 케이푸드와 케이뷰티를 육성한다",
         rule="prosody / leading connector + single-letter hyphen lexical compound",
-        reason="Prosody may add only the leading connector comma while preserving protected single-letter hyphen lexical outputs.",
+        reason="Prosody may add only the leading connector comma while preserving managed K-Hangul lexical outputs.",
         classification="prosody",
     ),
     TextCase(
         case_id="full-pipeline-protected-single-letter-hyphen-generalized",
         text="그리고 B-플랜과 C-레벨을 점검한다",
-        expected="그리고, 비-플랜과 씨-레벨을 점검한다",
+        expected="그리고, B-플랜과 C-레벨을 점검한다",
         rule="prosody / leading connector + single-letter hyphen lexical compound",
-        reason="Prosody may add only the leading connector comma while preserving generalized protected single-letter hyphen lexical outputs.",
+        reason="Prosody may add only the leading connector comma while preserving unsupported generalized letter-Hangul surfaces.",
         classification="prosody",
     ),
     TextCase(
@@ -159,7 +159,7 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
 
 @pytest.mark.parametrize("case", PROTECTED_SURFACE_NO_COMMA_CASES, ids=lambda case: case.case_id)
 def test_prosody_direct_protected_surface_no_comma(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", FULL_PIPELINE_PROTECTED_SURFACE_CASES, ids=lambda case: case.case_id)

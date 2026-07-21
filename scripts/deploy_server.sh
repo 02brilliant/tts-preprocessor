@@ -69,6 +69,7 @@ rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/scripts/" "$SSH_TARGET:$REMOTE_SCRIPT
 echo "[deploy] Syncing remote build sources -> $REMOTE_BUILD_SRC_DIR/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/bin/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
+rsync -avz "$ROOT_DIR/tts_preprocessor.spec" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
 
 echo "[deploy] Syncing semantic build probes -> $REMOTE_BUILD_SRC_PROBES_DIR/"
 rsync "${RSYNC_COMMON_ARGS[@]}" \
@@ -80,7 +81,7 @@ rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_README_TEMPLATE_PATH"
 
-echo "[deploy] Removing legacy source directories from remote app..."
+echo "[deploy] Removing source directories from remote app..."
 ssh "$SSH_TARGET" "
   rm -rf \
     $REMOTE_APP_DIR/engine \

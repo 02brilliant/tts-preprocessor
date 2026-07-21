@@ -1,0 +1,58 @@
+{
+  "batch_id": "policy-alignment-batch-4",
+  "description": "Batch 4 middle-dot, leading-zero, and dotted-event contract. One exact spaced-middle-dot boundary transition is allowed; the other audited outputs are stable.",
+  "stable_decisions": [
+    {
+      "decision_id": "interaction-middle-dot-and-leading-zero-blocks",
+      "input": "01·09와 0001",
+      "expected": "일 영구와 0001",
+      "owner_contract": "contiguous middle-dot first block uses numeric reading, later blocks use digit-sequence reading, and standalone leading-zero remains independent preserve"
+    },
+    {
+      "decision_id": "interaction-middle-dot-time-tail-guard",
+      "input": "01·09시와 09시",
+      "expected": "01·09시와 09시",
+      "owner_contract": "leading-zero suffix-clock preserve blocks partial middle-dot and standalone hour rewrites"
+    },
+    {
+      "decision_id": "interaction-middle-dot-unit-tail-guard",
+      "input": "12·003kg와 03kg",
+      "expected": "12·003kg와 03kg",
+      "owner_contract": "invalid leading-zero unit amounts preserve and prevent partial middle-dot rewrites"
+    },
+    {
+      "decision_id": "middle-dot-leading-zero-first-block",
+      "input": "01·09",
+      "expected": "일 영구",
+      "owner_contract": "a short first middle-dot block uses numeric value reading while the following block remains digit-sequence reading"
+    },
+    {
+      "decision_id": "middle-dot-leading-zero-second-block",
+      "input": "12·003",
+      "expected": "십이 영영삼",
+      "owner_contract": "a later middle-dot block retains every digit using canonical 영 for zero"
+    },
+    {
+      "decision_id": "preserve-one-digit-right-dotted-event",
+      "input": "12.3 비상계엄",
+      "expected": "십이삼 비상계엄",
+      "owner_contract": "a strong immediate event keyword licenses a one-digit-right dotted EVENT_SURFACE"
+    },
+    {
+      "decision_id": "scenario-event-plus-ambiguous-decimal",
+      "input": "12.12 사태와 12.12 수치를 함께 적었다",
+      "expected": "십이십이 사태와 십이쩜일이 수치를 함께 적었다",
+      "owner_contract": "event and decimal owners claim their independent dotted surfaces without sentence-wide preservation"
+    }
+  ],
+  "allowed_diffs": [
+    {
+      "decision_id": "adversarial-spaced-middle-dot-right",
+      "status": "applied",
+      "input": "12· 3",
+      "before": "12· 삼",
+      "after": "십이· 삼",
+      "scope": "exact asymmetric spaced-middle-dot boundary; normalize both numeric operands while preserving the source middle dot and right-side space"
+    }
+  ]
+}

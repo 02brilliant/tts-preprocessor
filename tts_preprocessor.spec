@@ -1,19 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
+import os
+from pathlib import Path
 
-hiddenimports = []
-hiddenimports += collect_submodules('engine')
 
+ROOT_DIR = Path(SPECPATH).resolve()
+RUNTIME_HOOK = ROOT_DIR / "pyinstaller_runtime_hooks" / "enum_strenum_compat.py"
+RUNTIME_HOOKS = [str(RUNTIME_HOOK)] if RUNTIME_HOOK.exists() else []
+EXECUTABLE_NAME = os.environ.get(
+    "TTS_PREPROCESSOR_EXECUTABLE_NAME",
+    "tts_preprocessor",
+)
 
 a = Analysis(
-    ['/home/brilliant/tts-preprocessor/bin/build_binary_entrypoint.py'],
-    pathex=['/home/brilliant/tts-preprocessor'],
+    [str(ROOT_DIR / "bin" / "build_binary_entrypoint.py")],
+    pathex=[str(ROOT_DIR)],
     binaries=[],
-    datas=[('/home/brilliant/tts-preprocessor/engine/data', 'engine/data')],
-    hiddenimports=hiddenimports,
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=RUNTIME_HOOKS,
     excludes=[],
     noarchive=False,
     optimize=0,
@@ -26,7 +32,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='tts_preprocessor',
+    name=EXECUTABLE_NAME,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform, transform_debug
 
 
 def _transform(src: str) -> str:
-    result = transform_with_rollout(src, mode="span_default", include_debug=False)
+    result = transform(src)
     return getattr(result, "normalized_text", result)
 
 
 def _claim_owners(src: str) -> list[str]:
-    result = transform_with_rollout(src, mode="span_default", include_debug=True)
-    trace = (result.get("span_debug") or {}).get("trace") or {}
+    result = transform_debug(src)
+    trace = (result.get("debug") or {}).get("trace") or {}
     return [claim.get("owner") for claim in trace.get("claim_logs") or []]
 
 
@@ -29,7 +29,7 @@ def _claim_owners(src: str) -> list[str]:
         ),
         (
             "장비는 평균 2.5개였고 차량은 가구당 1.5대였습니다.",
-            "장비는 평균 이쩜오 개였고 차량은 가구당 일쩜오 대였습니다.",
+            "장비는 평균 이쩜오 개였고 차량은 가구당 1.5대였습니다.",
         ),
         (
             "책은 평균 3.2권이었고 표본은 4.7장으로 기록됐습니다.",
@@ -54,7 +54,7 @@ def test_decimal_registered_counters(src: str, expected: str) -> None:
     [
         (
             "참가자는 3명이고 차량은 4대이며 장비는 5개입니다.",
-            "참가자는 세 명이고 차량은 네 대이며 장비는 다섯 개입니다.",
+            "참가자는 세 명이고 차량은 4대이며 장비는 다섯 개입니다.",
         ),
         ("책은 3권이고 종이는 4장입니다.", "책은 세 권이고 종이는 네 장입니다."),
         (
@@ -155,7 +155,7 @@ def test_decimal_registered_numeric_suffixes_are_spaced(
     [
         ("4.3명으로", "사쩜삼 명으로"),
         ("2.5개였고", "이쩜오 개였고"),
-        ("1.5대로", "일쩜오 대로"),
+        ("1.5대로", "1.5대로"),
         ("3.5일간", "삼쩜오 일간"),
     ],
 )

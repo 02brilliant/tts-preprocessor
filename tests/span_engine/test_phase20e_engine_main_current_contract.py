@@ -9,7 +9,7 @@ def test_phase20e_engine_main_transform_exists_and_returns_string() -> None:
     assert isinstance(engine.main.transform("안녕하세요"), str)
 
 
-def test_phase20e_engine_api_interface_wraps_engine_main_transform() -> None:
+def test_phase20e_engine_api_interface_wraps_canonical_facade() -> None:
     from engine.api_interface import normalize_text
     from engine.main import transform
 

@@ -29,7 +29,7 @@ def test_one_digit_right_block_event_now_normalizes(text: str, expected: str) ->
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("12.12", "12.12"),
+        ("12.12", "십이쩜일이"),
         ("4.19", "사쩜일구"),
         ("6.25", "육쩜이오"),
         ("3.1", "삼쩜일"),
@@ -37,7 +37,7 @@ def test_one_digit_right_block_event_now_normalizes(text: str, expected: str) ->
         ("12.12 그 사태", "십이쩜일이 그 사태"),
         ("12.12은 사태였다", "십이쩜일이는 사태였다"),
         ("2025.01.03", "이천이십오년 일월 삼일"),
-        ("2025.01", "2025.01"),
+        ("2025.01", "이천이십오쩜영일"),
         ("1.234", "일쩜이삼사"),
         ("3.14", "삼쩜일사"),
         ("1.2.3", "1.2.3"),  # Multiple dots not handled by decimal

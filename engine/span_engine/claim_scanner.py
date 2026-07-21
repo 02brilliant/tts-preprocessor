@@ -30,7 +30,10 @@ from engine.span_engine.code_separator import (
     scan_two_block_hyphen_code_candidates,
 )
 from engine.span_engine.date_time import scan_date_candidates, scan_time_candidates
-from engine.span_engine.decimal import scan_decimal_candidates
+from engine.span_engine.decimal import (
+    scan_decimal_candidates,
+    scan_malformed_dotted_preserve_candidates,
+)
 from engine.span_engine.decimal_registered_suffix import (
     scan_decimal_registered_suffix_candidates,
 )
@@ -45,6 +48,9 @@ from engine.span_engine.event import scan_event_candidates
 from engine.span_engine.fraction import scan_fraction_candidates
 from engine.span_engine.middle_dot import scan_middle_dot_candidates
 from engine.span_engine.multiplier import scan_multiplier_candidates
+from engine.span_engine.numeric_dae import (
+    scan_ambiguous_numeric_dae_preserve_candidates,
+)
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
 from engine.span_engine.ph import scan_ph_candidates
 from engine.span_engine.percent_point import scan_percent_point_candidates
@@ -53,6 +59,7 @@ from engine.span_engine.separator import scan_spaced_separator_preserve_candidat
 from engine.span_engine.hyphen import scan_hyphen_digit_candidates
 from engine.span_engine.jamo import scan_jamo_candidates
 from engine.span_engine.korean_da_score_pair import scan_korean_da_score_pair_candidates
+from engine.span_engine.korean_numeric_chain import scan_korean_numeric_chain_candidates
 from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
@@ -75,11 +82,14 @@ from engine.span_engine.range import (
     scan_range_candidates,
 )
 from engine.span_engine.signed import (
+    scan_invalid_signed_numeric_preserve_candidates,
     scan_signed_degree_candidates,
     scan_signed_temperature_candidates,
     scan_signed_number_candidates,
 )
+from engine.span_engine.span_guards import span_overlaps_excluded_ranges
 from engine.span_engine.units import (
+    scan_caret_power_unit_candidates,
     scan_simple_unit_candidates,
     scan_special_unit_candidates,
     scan_unit_contamination_preserve_candidates,
@@ -222,6 +232,9 @@ CLAIM_ORDER_DOC = (
     "simple_unit",
     "decimal_registered_suffix",
     "numeric_suffix",
+    "contextual_numeric_dae",
+    "ambiguous_numeric_dae_preserve",
+    "invalid_signed_numeric_preserve",
     "decimal",
     "middle_dot_numeric",
     "public_number",
@@ -230,6 +243,7 @@ CLAIM_ORDER_DOC = (
     "hyphen_digit_blocks",
     "jamo",
     "administrative_suffix",
+    "korean_numeric_chain",
     "number",
 )
 
@@ -250,6 +264,31 @@ def claim_surfaces(
         excluded_ranges = []
 
     candidates: list[SurfaceCandidate] = []
+    korean_chain_candidates = scan_korean_numeric_chain_candidates(raw_text)
+    unsafe_korean_chain_candidates = [
+        candidate for candidate in korean_chain_candidates if candidate.owner == "preserve"
+    ]
+    safe_korean_chain_candidates = [
+        candidate
+        for candidate in korean_chain_candidates
+        if candidate.owner == "korean_numeric_chain"
+    ]
+    counter_candidates = scan_counter_candidates(raw_text)
+    contextual_dae_counter_candidates = [
+        candidate
+        for candidate in counter_candidates
+        if candidate.metadata.get("counter") == "대"
+        and candidate.reason
+        in {
+            "dae_counter_registered_noun_direct_context",
+            "dae_counter_registered_noun_adjacent_continuation",
+        }
+    ]
+    remaining_counter_candidates = [
+        candidate
+        for candidate in counter_candidates
+        if candidate not in contextual_dae_counter_candidates
+    ]
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
@@ -288,20 +327,36 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_ph_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_slash_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_caret_power_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_simple_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_ambiguous_numeric_dae_preserve_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_invalid_signed_numeric_preserve_candidates(
+                raw_text,
+                excluded_ranges,
+            ),
+            registry,
+            excluded_ranges,
+        )
+    )
 
     candidates.extend(_claim_scanned_candidates(scan_decimal_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_malformed_dotted_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_middle_dot_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
 
     candidates.extend(_claim_scanned_candidates(scan_public_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_counter_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(remaining_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_phone_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_hyphen_digit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(unsafe_korean_chain_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_jamo_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_administrative_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(safe_korean_chain_candidates, registry, excluded_ranges))
 
     candidates.extend(_claim_numbers(raw_text, registry, excluded_ranges))
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
@@ -317,7 +372,7 @@ def _claim_dictionary(
     for token in tokens:
         if not isinstance(token, SpanToken):
             raise TypeError("tokens must contain SpanToken")
-        if token.kind != "PLAIN" or _span_overlaps_excluded_range(token.span, excluded_ranges):
+        if token.kind != "PLAIN" or span_overlaps_excluded_ranges(token.span, excluded_ranges):
             continue
         for surface in sorted(DICTIONARY_READINGS, key=len, reverse=True):
             start = token.raw.find(surface)
@@ -327,7 +382,7 @@ def _claim_dictionary(
                 if (
                     _safe_fixed_dictionary_boundary(token.raw, start, end)
                     and _safe_numeric_dictionary_boundary(raw_text, span, surface)
-                    and not _span_overlaps_excluded_range(span, excluded_ranges)
+                    and not span_overlaps_excluded_ranges(span, excluded_ranges)
                     and registry.can_claim(span, "dictionary")
                 ):
                     candidate = SurfaceCandidate(
@@ -363,7 +418,7 @@ def _claim_acronym_fallback(
                 or not _safe_acronym_fallback_boundary(
                     token.raw, match.start(), match.end()
                 )
-                or _span_overlaps_excluded_range(span, excluded_ranges)
+                or span_overlaps_excluded_ranges(span, excluded_ranges)
                 or not registry.can_claim(span, "acronym_fallback")
             ):
                 continue
@@ -388,7 +443,7 @@ def _claim_numbers(
     for match in _ASCII_INTEGER_RE.finditer(raw_text):
         raw = match.group(0)
         span = SourceSpan(match.start(), match.end())
-        if _span_overlaps_excluded_range(span, excluded_ranges):
+        if span_overlaps_excluded_ranges(span, excluded_ranges):
             continue
         if not _is_supported_number(raw_text, span, raw):
             continue
@@ -413,7 +468,7 @@ def _claim_scanned_candidates(
 ) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
     for candidate in scanned_candidates:
-        if _span_overlaps_excluded_range(candidate.core_span, excluded_ranges):
+        if span_overlaps_excluded_ranges(candidate.core_span, excluded_ranges):
             continue
         if not registry.can_claim(candidate.core_span, candidate.owner):
             continue
@@ -429,7 +484,7 @@ def _claim_large_unit_candidates(
 ) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
     for candidate in scan_large_unit_candidates(raw_text):
-        if _span_overlaps_excluded_range(
+        if span_overlaps_excluded_ranges(
             candidate.core_span, excluded_ranges
         ) and not _large_unit_span_allowed_by_trailing_incomplete_bracket(
             candidate.core_span, excluded_ranges
@@ -461,7 +516,12 @@ def _claim_candidate(
         ClaimedRange(
             span=candidate.core_span,
             owner=candidate.owner,
-            claim_type="preserve" if candidate.owner == "preserve" else "surface",
+            claim_type=(
+                "preserve"
+                if candidate.owner == "preserve"
+                or candidate.metadata.get("claim_type") == "preserve"
+                else "surface"
+            ),
             surface_type=candidate.surface_type,
             reason=candidate.reason,
         )
@@ -533,6 +593,24 @@ def _safe_acronym_fallback_boundary(token_raw: str, start: int, end: int) -> boo
     return True
 
 
+def _has_spaced_owned_number_tail(next_char: str, next_non_space: str) -> bool:
+    if not next_char.isspace():
+        return False
+    return (
+        next_non_space[:1] in (RANGE_LIKE_DELIMITERS | {"∼"})
+        or starts_with_supported_unit(next_non_space)
+        or starts_with_supported_compound_exact_unit(next_non_space)
+    )
+
+
+def _has_supported_unit_slash_tail(raw_text: str, start: int) -> bool:
+    unit_prefix_length = supported_unit_prefix_length(raw_text[start:])
+    if unit_prefix_length is None:
+        return False
+    unit_suffix = raw_text[start + unit_prefix_length :].lstrip()
+    return unit_suffix.startswith("/")
+
+
 def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
     if normalize_integer_text(raw) is None:
         return False
@@ -591,20 +669,13 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
     
     if _is_compatibility_jamo(next_char):
         return False
-    if next_char.isspace() and next_non_space[:1] in (RANGE_LIKE_DELIMITERS | {"∼"}):
-        return False
-    if next_char.isspace() and starts_with_supported_unit(next_non_space):
-        return False
-    if next_char.isspace() and starts_with_supported_compound_exact_unit(next_non_space):
+    if _has_spaced_owned_number_tail(next_char, next_non_space):
         return False
     if is_unsafe_admin_like_number_tail(raw_text, span.end):
         return False
     
-    unit_prefix_length = supported_unit_prefix_length(raw_text[span.end :])
-    if unit_prefix_length is not None:
-        unit_suffix = raw_text[span.end + unit_prefix_length :].lstrip()
-        if unit_suffix.startswith("/"):
-            return False
+    if _has_supported_unit_slash_tail(raw_text, span.end):
+        return False
             
     if next_char.isascii() and next_char.isalnum():
         return False
@@ -622,8 +693,11 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
             # This is 12. followed by non-digit. Allowed.
             pass
         elif next_char == "·":
-            # 12· followed by non-digit. Blocked.
-            return False
+            # A right-side ASCII gap makes this a spaced middle-dot boundary.
+            # Read the left operand only when a complete safe numeric operand
+            # follows; attached middle-dot forms remain owned atomically.
+            if re.match(r"·[ ]+[0-9]+(?![A-Za-z0-9])", raw_text[span.end:]) is None:
+                return False
 
     if "\uac00" <= next_char <= "\ud7a3":
         if "," in raw and raw_text[span.end :].startswith("가"):
@@ -760,15 +834,6 @@ def _is_url_or_path_context(raw_text: str, span: SourceSpan) -> bool:
             if last_slash < len(raw_text) - 1 and not raw_text[last_slash + 1].isspace():
                  return True
     return False
-
-
-def _span_overlaps_excluded_range(
-    span: SourceSpan, excluded_ranges: list[BracketRange]
-) -> bool:
-    return any(
-        span.start < bracket_range.span.end and bracket_range.span.start < span.end
-        for bracket_range in excluded_ranges
-    )
 
 
 def _is_compatibility_jamo(ch: str) -> bool:

@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
-from engine.prosody.comma import insert_commas
+from engine.span_engine.transform import transform_with_trace
+from tests._span_prosody import apply_span_prosody
 
 
 @pytest.mark.parametrize(
@@ -16,15 +16,22 @@ from engine.prosody.comma import insert_commas
     ],
 )
 def test_prosody_preserves_existing_punctuation(text: str, expected: str):
-    assert insert_commas(text) == expected
+    assert apply_span_prosody(text) == expected
 
 
 def test_prosody_comma_is_insert_only_against_normalized_output():
-    normalized = transform_text("그리고 우리는 13:05에 출발한다")
-    prosody = insert_commas(normalized)
-    assert normalized == "그리고 우리는 십삼시 오분에 출발한다"
-    assert prosody == "그리고, 우리는 십삼시 오분에 출발한다"
-    assert prosody.replace(",", "") == normalized
+    output = transform_with_trace("그리고 우리는 13:05에 출발한다")
+    assert output.normalized_text == "그리고, 우리는 십삼시 오분에 출발한다"
+    generated_commas = [
+        piece
+        for piece in output.render_pieces
+        if piece.provenance == "GENERATED_PUNCT" and piece.text == ","
+    ]
+    assert len(generated_commas) == 1
+    assert any(
+        log.action == "insert_generated_punct"
+        for log in output.trace.prosody_logs
+    )
 
 
 def test_full_pipeline_prosody_keeps_protected_numeric_phrase_intact():

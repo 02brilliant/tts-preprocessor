@@ -5,9 +5,13 @@ from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.sign_aliases import (
     SIGNED_NUMERIC_SIGN_ALIASES,
-    is_minus_sign_alias,
     is_signed_numeric_sign,
     strip_signed_numeric_sign,
+)
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    apply_sign_profile,
+    parse_signed_numeric_core,
 )
 
 SIMPLE_UNIT_READINGS: dict[str, str] = {
@@ -39,6 +43,19 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "%": "퍼센트",
     "％": "퍼센트",
     "﹪": "퍼센트",
+}
+
+CARET_POWER_UNIT_READINGS: dict[str, str] = {
+    **{
+        f"{unit}^2": f"제곱{reading}"
+        for unit, reading in SIMPLE_UNIT_READINGS.items()
+        if unit.isascii() and unit.isalpha()
+    },
+    **{
+        f"{unit}^3": f"세제곱{reading}"
+        for unit, reading in SIMPLE_UNIT_READINGS.items()
+        if unit.isascii() and unit.isalpha()
+    },
 }
 
 SPECIAL_UNIT_READINGS: dict[str, str] = {
@@ -91,6 +108,7 @@ RANGE_COMPATIBLE_UNIT_READINGS: dict[str, str] = {
 
 _SIMPLE_UNITS_BY_LENGTH = sorted(SIMPLE_UNIT_READINGS, key=len, reverse=True)
 _SPECIAL_UNITS_BY_LENGTH = sorted(SPECIAL_UNIT_READINGS, key=len, reverse=True)
+_CARET_POWER_UNITS_BY_LENGTH = sorted(CARET_POWER_UNIT_READINGS, key=len, reverse=True)
 _RANGE_COMPATIBLE_UNITS_BY_LENGTH = sorted(
     RANGE_COMPATIBLE_UNIT_READINGS, key=len, reverse=True
 )
@@ -247,6 +265,16 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
 _SPACED_AMOUNT_UNIT_SURFACES = frozenset({"Hz", "hz"})
 
 
+def scan_caret_power_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    return _scan_unit_candidates(
+        raw_text,
+        CARET_POWER_UNIT_READINGS,
+        _CARET_POWER_UNITS_BY_LENGTH,
+        "caret_power_unit",
+        "CARET_POWER_UNIT_SURFACE",
+    )
+
+
 def scan_simple_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return _scan_unit_candidates(raw_text, SIMPLE_UNIT_READINGS, _SIMPLE_UNITS_BY_LENGTH, "simple_unit", "SIMPLE_UNIT_SURFACE")
 
@@ -300,7 +328,7 @@ def scan_unit_contamination_preserve_candidates(raw_text: str) -> list[SurfaceCa
 
 
 def parse_unit_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
-    if candidate.owner not in {"simple_unit", "special_unit"}:
+    if candidate.owner not in {"caret_power_unit", "simple_unit", "special_unit"}:
         return None
     reading = candidate.metadata.get("reading")
     if isinstance(reading, str):
@@ -364,10 +392,12 @@ def _scan_unit_candidates(
             unit_name = inventory[unit]
             if not raw_text.startswith(unit, unit_start):
                 continue
-            if has_decimal_amount and unit not in _DECIMAL_AMOUNT_UNIT_SURFACES:
+            if has_decimal_amount and not _unit_allows_decimal_amount(unit, owner):
                 continue
             span = SourceSpan(amount_start, unit_start + len(unit))
             if not _valid_amount_and_boundary(raw_text, span, amount):
+                continue
+            if owner == "caret_power_unit" and not _valid_caret_power_boundary(raw_text, span.end):
                 continue
             candidates.append(
                 SurfaceCandidate(
@@ -381,6 +411,7 @@ def _scan_unit_candidates(
                         "unit": unit,
                         "unit_reading": unit_name,
                         "reading": _reading(amount, unit_name),
+                        **_signed_contract_metadata(amount, owner),
                     },
                 )
             )
@@ -391,6 +422,7 @@ def _scan_unit_candidates(
 
 def _parse_surface(raw: str) -> tuple[str, str, str] | None:
     for inventory, ordered_units in (
+        (CARET_POWER_UNIT_READINGS, _CARET_POWER_UNITS_BY_LENGTH),
         (SIMPLE_UNIT_READINGS, _SIMPLE_UNITS_BY_LENGTH),
         (SPECIAL_UNIT_READINGS, _SPECIAL_UNITS_BY_LENGTH),
     ):
@@ -416,15 +448,44 @@ def _reading(amount: str, unit_name: str) -> str:
 
 
 def _amount_reading(amount: str) -> str:
-    sign = _amount_sign(amount)
-    unsigned = _unsigned_amount(amount)
-    if unsigned is None:
+    policy = SIGNED_OWNER_POLICIES["simple_unit"]
+    core = parse_signed_numeric_core(
+        amount,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
         raise ValueError("invalid signed unit amount")
-    if sign == "+":
-        return "플러스 " + _plus_decimal_amount_reading(unsigned)
-    if sign is not None and is_minus_sign_alias(sign):
-        return "마이너스 " + _plus_decimal_amount_reading(unsigned)
-    return _plus_decimal_amount_reading(unsigned)
+    reading = _plus_decimal_amount_reading(core.number.raw)
+    signed_reading = apply_sign_profile(
+        reading,
+        core.sign_kind,
+        sign_profile=policy.sign_profile,
+    )
+    if signed_reading is None:
+        raise ValueError("unit owner rejects numeric sign")
+    return signed_reading
+
+
+def _signed_contract_metadata(amount: str, owner: str) -> dict[str, object]:
+    policy_key = "special_unit" if owner == "special_unit" else "simple_unit"
+    policy = SIGNED_OWNER_POLICIES[policy_key]
+    core = parse_signed_numeric_core(
+        amount,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
+        return {}
+    return {
+        "sign_profile": policy.sign_profile.value,
+        "numeric_form": core.numeric_form,
+        "sign_surface": core.sign_surface,
+    }
 
 
 def _plus_decimal_amount_reading(amount: str) -> str:
@@ -437,11 +498,6 @@ def _plus_decimal_amount_reading(amount: str) -> str:
         return integer_reading
     fractional = read_decimal_fraction_digits(fractional_part)
     return f"{integer_reading}쩜{fractional}"
-
-
-def _amount_sign(amount: str) -> str | None:
-    sign, _ = strip_signed_numeric_sign(amount)
-    return sign
 
 
 def _unsigned_amount(amount: str) -> str | None:
@@ -637,15 +693,17 @@ def _supported_unit_at(raw_text: str, start: int) -> str | None:
 
 
 def _is_valid_signed_decimal_amount(amount: str) -> bool:
-    unsigned = _unsigned_amount(amount)
-    if unsigned is None:
+    policy = SIGNED_OWNER_POLICIES["simple_unit"]
+    core = parse_signed_numeric_core(
+        amount,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
         return False
-    integer_part, dot, fractional_part = unsigned.partition(".")
-    if not _is_valid_integer_amount(integer_part):
-        return False
-    if not dot:
-        return True
-    return _is_ascii_digits(fractional_part)
+    return _is_valid_integer_amount(core.integer_raw)
 
 
 def _is_valid_integer_amount(integer_part: str) -> bool:
@@ -760,14 +818,28 @@ def _valid_amount_and_boundary(raw_text: str, span: SourceSpan, amount: str) -> 
         return not (next_next is not None and next_next.isdigit())
     return True
 
+def _unit_allows_decimal_amount(unit: str, owner: str) -> bool:
+    if owner == "caret_power_unit":
+        return unit[:-2] in _DECIMAL_AMOUNT_UNIT_SURFACES
+    return unit in _DECIMAL_AMOUNT_UNIT_SURFACES
+
+
+def _valid_caret_power_boundary(raw_text: str, end: int) -> bool:
+    if end == len(raw_text):
+        return True
+    next_char = raw_text[end]
+    return next_char.isspace() or "\uac00" <= next_char <= "\ud7a3"
+
 
 __all__ = [
+    "CARET_POWER_UNIT_READINGS",
     "RANGE_COMPATIBLE_UNIT_READINGS",
     "SIMPLE_UNIT_READINGS",
     "SPECIAL_UNIT_READINGS",
     "parse_unit_candidate",
     "range_compatible_unit_reading",
     "range_compatible_units_by_length",
+    "scan_caret_power_unit_candidates",
     "scan_simple_unit_candidates",
     "scan_special_unit_candidates",
     "scan_unit_contamination_preserve_candidates",

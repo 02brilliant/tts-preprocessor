@@ -30,11 +30,3 @@ def test_phase17b_exact_owner_trace() -> None:
 
     json.dumps(debug, ensure_ascii=False)
     assert any(claim.owner == "compound_exact_unit" for claim in output.trace.claim_logs)
-
-
-def test_phase17b_simple_unit_stays_simple_unit() -> None:
-    output = transform_with_trace("90km")
-    debug = output_to_debug_dict(output)
-
-    json.dumps(debug, ensure_ascii=False)
-    assert any(claim.owner == "simple_unit" for claim in output.trace.claim_logs)

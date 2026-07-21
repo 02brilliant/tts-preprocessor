@@ -1,0 +1,43 @@
+{
+  "batch_id": "policy-alignment-batch-8",
+  "description": "Batch 8 restricted hyphen range, lexical middle-dot and K-prefix ownership, and Unicode shared-month range contract. All audited rows promote current span output without a runtime transition.",
+  "stable_decisions": [
+    {
+      "decision_id": "adversarial-protected-two-block-hyphen",
+      "input": "12-15장",
+      "expected": "십이에서 십오 장",
+      "owner_contract": "an attached or one-space registered 장 suffix licenses the restricted hyphen range owner; bare two-block hyphens remain preserve"
+    },
+    {
+      "decision_id": "typed-surface-e2e-acronym-large-unit-range",
+      "input": "FTA 요건만 충족하면 AI·디지털 교육 전략은 6402억 달러 규모로 1∼11월 동안 유지된다",
+      "expected": "에프티에이 요건만 충족하면 에이아이·디지털 교육 전략은 육천사백이억 달러 규모로 일월에서 십일월 동안 유지된다",
+      "owner_contract": "acronym, lexical delimiter preservation, large-unit, and shared-month range decisions remain independent in one sentence"
+    },
+    {
+      "decision_id": "typed-surface-e2e-lexical-non-rewrite-hyphen",
+      "input": "민관 전문가가 있는 조직은 K-푸드·K-뷰티·K-POP 전략을 함께 검토한다",
+      "expected": "민관 전문가가 있는 조직은 케이푸드·케이뷰티·케이팝 전략을 함께 검토한다",
+      "owner_contract": "K-Hangul lexical owners remove their internal hyphen while the K-POP dictionary entry outranks generic separator fallback and middle dots remain original"
+    },
+    {
+      "decision_id": "typed-surface-partial-ai-middle-dot-sentence",
+      "input": "AI·디지털 교육",
+      "expected": "에이아이·디지털 교육",
+      "owner_contract": "the acronym claim normalizes AI while the original lexical middle dot and Hangul continuation remain byte-exact"
+    },
+    {
+      "decision_id": "typed-surface-partial-hyphen-sequence",
+      "input": "K-푸드·K-뷰티·K-POP",
+      "expected": "케이푸드·케이뷰티·케이팝",
+      "owner_contract": "each lexical token is independently owned and the two original middle-dot delimiters remain unchanged"
+    },
+    {
+      "decision_id": "typed-surface-partial-unicode-tilde-month",
+      "input": "1∼11월",
+      "expected": "일월에서 십일월",
+      "owner_contract": "the range owner recognizes the Unicode tilde alias and applies the shared 월 suffix reading to both operands"
+    }
+  ],
+  "allowed_diffs": []
+}

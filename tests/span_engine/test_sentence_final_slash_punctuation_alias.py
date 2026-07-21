@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform, transform_debug
 from engine.span_engine.models import SourceSpan
 from engine.span_engine.transform import transform_with_trace
 
 
 def production_transform(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return transform(text)
 
 
 @pytest.mark.parametrize(
@@ -79,10 +79,8 @@ def test_sentence_final_slash_alias_uses_generated_punct_source_span() -> None:
 
 
 def test_sentence_final_slash_alias_debug_trace_records_reason() -> None:
-    output = transform_with_rollout(
-        "안녕하세요//", mode="span_default", include_debug=True
-    )
-    render_logs = output["span_debug"]["trace"]["render_logs"]
+    output = transform_debug("안녕하세요//")
+    render_logs = output["debug"]["trace"]["render_logs"]
 
     assert any(
         log["event"] == "sentence_final_slash_alias_applied"

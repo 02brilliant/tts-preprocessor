@@ -1,7 +1,7 @@
 import pytest
 
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -39,44 +39,44 @@ NORMALIZATION_INTERACTION_CASES = [
         classification="middle_dot",
     ),
     TextCase(
-        case_id="interaction-leading-zero-bare-date-unit-counter",
+        case_id="interaction-leading-zero-preserve-date-unit-counter",
         text="007 01월 03kg 01명",
-        expected="공공칠 일월 삼 킬로그램 한 명",
-        rule="digit mode + overrides / interaction",
-        reason="A bare leading-zero token uses Digit Mode, while date, unit, and counter contexts override it in the same sequence.",
-        classification="override",
+        expected="007 일월 03kg 01명",
+        rule="leading-zero preserve + date owner / interaction",
+        reason="The date month owner transforms 01월 while the bare, invalid unit-amount, and counter surfaces preserve independently.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="interaction-leading-zero-bare-time-override",
+        case_id="interaction-leading-zero-standalone-and-time-preserve",
         text="01 09시 07시 05분",
-        expected="공일 아홉시 일곱시 오분",
-        rule="digit mode + time override / interaction",
-        reason="Bare leading-zero tokens use Digit Mode, but explicit time expressions keep time readings.",
-        classification="override",
+        expected="01 09시 07시 05분",
+        rule="leading-zero standalone + suffix clock preserve / interaction",
+        reason="Bare and suffix-clock leading-zero surfaces preserve their source bytes and spacing.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="interaction-identifier-digit-mode-plus-date",
+        case_id="interaction-identifier-payload-preserve-plus-date",
         text="ID: 00123 기록은 2025.01.03에 갱신한다",
-        expected="아이디 공공일이삼 기록은 이천이십오년 일월 삼일에 갱신한다",
-        rule="identifier + date / interaction",
-        reason="Identifier Digit Mode and dotted date parsing must both apply exactly without leaking punctuation or number-mode conflicts.",
-        classification="digit_mode",
+        expected="아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
+        rule="identifier payload preserve + date / interaction",
+        reason="The acronym and dotted date owners transform independently while the colon and leading-zero identifier payload preserve.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="interaction-phone-digit-mode-plus-counter-override",
+        case_id="interaction-phone-reading-plus-leading-zero-counter-preserve",
         text="010-1234-5678 01명",
-        expected="공일공 일이삼사 오육칠팔 한 명",
-        rule="phone + counter override / interaction",
-        reason="Phone-style digit blocks and counter-noun overrides must normalize independently inside one input.",
-        classification="digit_mode",
+        expected="공일공 일이삼사 오육칠팔 01명",
+        rule="phone owner + leading-zero counter preserve / interaction",
+        reason="The phone owner reads its hyphen blocks while the adjacent leading-zero counter surface preserves independently.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="interaction-middle-dot-and-leading-zero-blocks",
+        case_id="canonical-middle-dot-leading-zero-and-standalone-preserve",
         text="01·09와 0001",
-        expected="공일 공구와 공공공일",
-        rule="middle dot + digit mode / interaction",
-        reason="Structured middle-dot blocks and bare leading-zero tokens both rely on Digit Mode but must preserve their different surface structures.",
-        classification="digit_mode",
+        expected="일 영구와 0001",
+        rule="middle dot block reading + standalone leading-zero preserve",
+        reason="The short first block uses numeric value reading, the later block reads every digit with 영 for zero, and the independent standalone leading-zero token preserves.",
+        classification="middle_dot",
     ),
     TextCase(
         case_id="interaction-middle-dot-with-date-and-decimal",
@@ -87,20 +87,20 @@ NORMALIZATION_INTERACTION_CASES = [
         classification="conflict",
     ),
     TextCase(
-        case_id="interaction-middle-dot-time-tail-guard",
+        case_id="canonical-middle-dot-leading-zero-time-preserve",
         text="01·09시와 09시",
-        expected="01·09시와 아홉시",
-        rule="mixed guard + time override / interaction",
-        reason="An attached time suffix on a middle-dot token must not trigger partial parsing, while a valid time token still normalizes.",
-        classification="conflict",
+        expected="01·09시와 09시",
+        rule="middle dot guard + leading-zero suffix-clock preserve",
+        reason="Both leading-zero suffix-clock numeric groups use TIME_PRESERVE_SURFACE and no middle-dot reading leaks from the mixed token.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="interaction-middle-dot-unit-tail-guard",
+        case_id="canonical-middle-dot-leading-zero-unit-preserve",
         text="12·003kg와 03kg",
-        expected="12·003kg와 삼 킬로그램",
-        rule="mixed guard + unit override / interaction",
-        reason="An attached unit suffix on a middle-dot token must not partially normalize, while a valid unit token still normalizes.",
-        classification="conflict",
+        expected="12·003kg와 03kg",
+        rule="middle dot guard + invalid leading-zero unit preserve",
+        reason="The unit contamination preserve owner blocks both invalid leading-zero unit amounts and prevents a partial middle-dot reading.",
+        classification="preserve",
     ),
 ]
 
@@ -109,17 +109,17 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-middle-dot-counter",
         text="그리고 7·25 자료는 01명에게 배포한다",
-        expected="그리고, 칠 이오 자료는 한 명에게 배포한다",
+        expected="그리고, 칠 이오 자료는 01명에게 배포한다",
         rule="connector + middle dot + counter / full pipeline",
-        reason="Prosody may add only the connector comma while structured middle-dot reading and counter override remain intact.",
+        reason="Prosody may add only the connector comma while structured middle-dot reading and leading-zero counter preservation remain intact.",
         classification="override",
     ),
     TextCase(
         case_id="full-pipeline-connector-identifier-date",
         text="그리고 ID: 00123 기록은 2025.01.03에 갱신한다",
-        expected="그리고, 아이디 공공일이삼 기록은 이천이십오년 일월 삼일에 갱신한다",
+        expected="그리고, 아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
         rule="connector + identifier + date / full pipeline",
-        reason="Prosody must not break the identifier Digit Mode result or the dotted date reading.",
+        reason="Prosody must preserve the identifier-like payload while retaining the dotted date reading.",
         classification="digit_mode",
     ),
     TextCase(
@@ -141,9 +141,9 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-phone-currency-time",
         text="그리고 연락처는 010-1234-5678이고 비용은 ₩01,000이며 시작은 09시다",
-        expected="그리고, 연락처는 공일공 일이삼사 오육칠팔이고 비용은 천 원이며 시작은 아홉시다",
+        expected="그리고, 연락처는 공일공 일이삼사 오육칠팔이고 비용은 ₩01,000이며 시작은 09시다",
         rule="connector + phone + currency + time / full pipeline",
-        reason="Digit-mode phone blocks, currency override, and time override must survive the full pipeline together.",
+        reason="Phone digit blocks normalize while leading-zero currency and suffix clock-hour surfaces remain preserved.",
         classification="override",
     ),
     TextCase(
@@ -159,7 +159,7 @@ FULL_PIPELINE_INTERACTION_CASES = [
 
 @pytest.mark.parametrize("case", NORMALIZATION_INTERACTION_CASES, ids=lambda case: case.case_id)
 def test_middle_dot_and_number_mode_normalization_interactions(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", FULL_PIPELINE_INTERACTION_CASES, ids=lambda case: case.case_id)

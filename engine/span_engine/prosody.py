@@ -5,6 +5,13 @@ from dataclasses import dataclass, field
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import RenderPiece, TraceLogEntry
 from engine.span_engine.protected import protected_literal_spans
+from engine.span_engine.prosody_support import (
+    find_piece_index_for_insertion as _find_piece_index_for_insertion,
+    merge_ranges as _merge_ranges,
+    next_non_space_index as _next_non_space_index,
+    previous_visible_index as _previous_visible_index,
+    previous_whitespace_run_start as _previous_whitespace_run_start,
+)
 
 LEADING_CONNECTORS = ("그리고", "그러나", "하지만", "그런데", "따라서")
 MID_SENTENCE_DISCOURSE_MARKERS = (
@@ -209,21 +216,6 @@ def _build_safety_context(
     )
 
 
-def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    normalized = sorted((start, end) for start, end in ranges if start < end)
-    if not normalized:
-        return []
-
-    merged = [normalized[0]]
-    for start, end in normalized[1:]:
-        prev_start, prev_end = merged[-1]
-        if start <= prev_end:
-            merged[-1] = (prev_start, max(prev_end, end))
-            continue
-        merged.append((start, end))
-    return merged
-
-
 def _dedupe_insertion_specs(specs: list[_InsertionSpec]) -> list[_InsertionSpec]:
     deduped: list[_InsertionSpec] = []
     seen: set[int] = set()
@@ -387,20 +379,6 @@ def _is_marker_at_space_boundary(
     )
 
 
-def _previous_visible_index(raw_text: str, start: int) -> int | None:
-    index = start - 1
-    while index >= 0 and raw_text[index].isspace():
-        index -= 1
-    return index if index >= 0 else None
-
-
-def _previous_whitespace_run_start(raw_text: str, end: int) -> int:
-    index = end
-    while index > 0 and raw_text[index - 1].isspace():
-        index -= 1
-    return index
-
-
 def _left_clause_is_sufficient(left_clause: str) -> bool:
     visible = "".join(char for char in left_clause if not char.isspace())
     if len(visible) < 8:
@@ -444,31 +422,11 @@ def _is_sentence_start_or_after_boundary(raw_text: str, start: int) -> bool:
     return prefix[-1] in _SENTENCE_BOUNDARIES
 
 
-def _next_non_space_index(raw_text: str, start: int) -> int | None:
-    index = start
-    while index < len(raw_text) and raw_text[index].isspace():
-        index += 1
-    if index >= len(raw_text):
-        return None
-    return index
-
-
 def _sentence_has_url_path_or_code_like_context(raw_text: str, connector_start: int) -> bool:
     sentence_end = connector_start
     while sentence_end < len(raw_text) and raw_text[sentence_end] not in _SENTENCE_BOUNDARIES:
         sentence_end += 1
     return has_url_path_or_code_like_context(raw_text[connector_start:sentence_end])
-
-
-def _find_piece_index_for_insertion(
-    pieces: list[RenderPiece], insert_at: int
-) -> int | None:
-    for index, piece in enumerate(pieces):
-        if piece.source_span is None:
-            continue
-        if piece.source_span.start <= insert_at < piece.source_span.end:
-            return index
-    return None
 
 
 __all__ = [

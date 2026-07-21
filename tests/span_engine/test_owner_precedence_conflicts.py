@@ -37,7 +37,7 @@ def test_event_wins_over_decimal_and_middle_dot_when_event_context_matches():
     text = (
         "사건 검증입니다. 12.3 비상계엄, 12·3 비상계엄, 12.12 사태, "
         "5·18 민주화 운동은 사건 owner가 처리해야 합니다. "
-        "13.3 비상계엄, 12.32 사태, 12.3수치는 사건 조건을 벗어나고 12 · 3은 보존합니다. "
+        "13.3 비상계엄, 12.32 사태, 12.3수치는 사건 조건을 벗어나고 12 · 3은 독립 숫자로 읽습니다. "
         "동시에 pH 7.4도 처리해야 합니다."
     )
     assert_precedence_case(
@@ -49,9 +49,10 @@ def test_event_wins_over_decimal_and_middle_dot_when_event_context_matches():
             "십삼쩜삼 비상계엄",
             "십이쩜삼이 사태",
             "십이쩜삼수치",
+            "십이 · 삼",
             "피에이치 칠쩜사",
         ],
-        expected_preserved=["12 · 3"],
+        expected_preserved=[],
     )
 
 

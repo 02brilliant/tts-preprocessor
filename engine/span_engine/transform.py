@@ -27,6 +27,7 @@ from engine.span_engine.language_gate import (
 from engine.span_engine.models import (
     RenderPiece,
     SourceSpan,
+    Surface,
     TraceLogEntry,
     TransformOutput,
     ValidationLog,
@@ -58,12 +59,8 @@ def transform(text: str) -> str:
     checked_text = _ensure_str(text)
     try:
         return transform_with_trace(checked_text).normalized_text
-    except Exception:
-        if has_hangul_syllable(checked_text):
-            return _transform_hangul_with_segment_fallback(
-                checked_text, RuntimeError("public_transform_exception")
-            ).normalized_text
-        return checked_text
+    except Exception as exc:
+        return recover_transform_output(checked_text, exc).normalized_text
 
 
 def transform_with_trace(text: str) -> TransformOutput:
@@ -71,11 +68,19 @@ def transform_with_trace(text: str) -> TransformOutput:
     try:
         output = _transform_with_language_gate_trace(checked_text)
     except Exception as exc:
-        if has_hangul_syllable(checked_text):
-            output = _transform_hangul_with_segment_fallback(checked_text, exc)
-        else:
-            raise
+        output = recover_transform_output(checked_text, exc)
     return _apply_paragraph_split_to_output(output)
+
+
+def recover_transform_output(text: str, exc: Exception) -> TransformOutput:
+    checked_text = _ensure_str(text)
+    if has_hangul_syllable(checked_text):
+        return _transform_hangul_with_segment_fallback(checked_text, exc)
+    return _whole_input_preserve_output(
+        checked_text,
+        exc,
+        reason="global_no_hangul_bypass",
+    )
 
 
 def _apply_paragraph_split_to_output(output: TransformOutput) -> TransformOutput:
@@ -94,11 +99,12 @@ def contains_hangul_syllable(text: str) -> bool:
 
 
 def may_whole_input_preserve(text: str, reason: str) -> bool:
+    if reason == "whole_input_absolute_preserve":
+        return True
     if contains_hangul_syllable(text):
         return False
     return reason in {
         "global_no_hangul_bypass",
-        "whole_input_absolute_preserve",
         "non_korean_prose_global_bypass",
         "code_like_global_bypass",
     }
@@ -264,58 +270,172 @@ def _try_core_trace_for_whole_input(
     return None
 
 
-def _transform_hangul_with_segment_fallback(text: str, exc: Exception) -> TransformOutput:
+def _whole_input_preserve_output(
+    text: str,
+    exc: Exception,
+    *,
+    reason: str,
+) -> TransformOutput:
     from engine.span_engine.models import TransformTrace
 
-    transformed: list[str] = []
-    segment_failures: list[dict[str, Any]] = []
-    for start, end in _fallback_segments(text):
-        segment = text[start:end]
-        if not segment:
-            continue
-        if not has_hangul_syllable(segment):
-            transformed.append(segment)
-            continue
-        try:
-            transformed.append(_transform_core_with_trace(segment).normalized_text)
-        except Exception as segment_exc:
-            segment_failures.append(
-                {
-                    "start": start,
-                    "end": end,
-                    "error_type": type(segment_exc).__name__,
-                    "error_message": str(segment_exc),
-                }
-            )
-            transformed.append(segment)
-    normalized_text = "".join(transformed)
+    if not may_whole_input_preserve(text, reason):
+        raise exc
     trace = TransformTrace()
     trace.fallback_logs.append(
         TraceLogEntry(
             stage="fallback",
-            event="blocked_whole_input_fallback_for_hangul_input",
+            event="whole_input_preserve_allowed",
             span=_span(0, len(text)),
             raw=text,
-            decision="blocked",
-            reason="hangul_input_whole_fallback_prohibited",
-            action="segment_fallback",
+            decision="preserve",
+            reason=reason,
+            action="preserve_original",
             metadata={
-                "status": "segment_fallback",
-                "fallback_stage": "transform_with_trace",
+                "status": "whole_input_preserve",
                 "fallback_reason": type(exc).__name__,
-                "fallback_span": (0, len(text)),
-                "fallback_raw": text,
-                "whole_input_fallback_attempted": True,
-                "whole_input_fallback_allowed": False,
-                "blocked_whole_input_fallback_for_hangul_input": True,
-                "segment_failures": segment_failures,
+                "error_message": str(exc),
             },
         )
     )
     return TransformOutput(
-        normalized_text=normalized_text,
-        render_pieces=[_preserve_render_piece(normalized_text, 0, len(text))],
+        normalized_text=text,
+        render_pieces=[_preserve_render_piece(text, 0, len(text))],
         trace=trace,
+    )
+
+
+def _preserved_failed_segment(
+    text: str, start: int, end: int, exc: Exception
+) -> tuple[str, list[RenderPiece], dict[str, Any]]:
+    segment_text = text[start:end]
+    return (
+        segment_text,
+        [_preserve_render_piece(segment_text, start, end)],
+        {
+            "start": start,
+            "end": end,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        },
+    )
+
+
+def _segment_fallback_trace_log(
+    text: str,
+    exc: Exception,
+    segment_failures: list[dict[str, Any]],
+    segment_recoveries: list[dict[str, Any]],
+) -> TraceLogEntry:
+    return TraceLogEntry(
+        stage="fallback",
+        event="blocked_whole_input_fallback_for_hangul_input",
+        span=_span(0, len(text)),
+        raw=text,
+        decision="blocked",
+        reason="hangul_input_whole_fallback_prohibited",
+        action="segment_fallback",
+        metadata={
+            "status": "segment_fallback",
+            "fallback_stage": "transform_with_trace",
+            "fallback_reason": type(exc).__name__,
+            "fallback_error_message": str(exc),
+            "fallback_span": (0, len(text)),
+            "fallback_raw": text,
+            "whole_input_fallback_attempted": True,
+            "whole_input_fallback_allowed": False,
+            "blocked_whole_input_fallback_for_hangul_input": True,
+            "segment_failures": segment_failures,
+            "segment_recoveries": segment_recoveries,
+        },
+    )
+
+
+def _transform_hangul_with_segment_fallback(text: str, exc: Exception) -> TransformOutput:
+    from engine.span_engine.models import TransformTrace
+
+    transformed: list[str] = []
+    render_pieces: list[RenderPiece] = []
+    segment_failures: list[dict[str, Any]] = []
+    segment_recoveries: list[dict[str, Any]] = []
+
+    for start, end in _fallback_segments(text):
+        try:
+            segment_text, segment_pieces = _transform_fallback_segment(
+                text, start, end
+            )
+        except Exception:
+            for sub_start, sub_end in _fallback_subsegments(text, start, end):
+                try:
+                    segment_text, segment_pieces = _transform_fallback_segment(
+                        text, sub_start, sub_end
+                    )
+                    status = (
+                        "preserved_boundary"
+                        if text[sub_start:sub_end].isspace()
+                        else "recovered"
+                    )
+                    segment_recoveries.append(
+                        {"start": sub_start, "end": sub_end, "status": status}
+                    )
+                except Exception as segment_exc:
+                    segment_text, segment_pieces, failure = (
+                        _preserved_failed_segment(
+                            text, sub_start, sub_end, segment_exc
+                        )
+                    )
+                    segment_failures.append(failure)
+                transformed.append(segment_text)
+                render_pieces.extend(segment_pieces)
+            continue
+
+        transformed.append(segment_text)
+        render_pieces.extend(segment_pieces)
+        segment_recoveries.append(
+            {"start": start, "end": end, "status": "recovered"}
+        )
+
+    normalized_text = "".join(transformed)
+    trace = TransformTrace()
+    trace.fallback_logs.append(
+        _segment_fallback_trace_log(
+            text, exc, segment_failures, segment_recoveries
+        )
+    )
+    return TransformOutput(
+        normalized_text=normalized_text,
+        render_pieces=render_pieces,
+        trace=trace,
+    )
+
+
+def _transform_fallback_segment(
+    text: str, start: int, end: int
+) -> tuple[str, list[RenderPiece]]:
+    segment = text[start:end]
+    if not segment:
+        return "", []
+    if segment.isspace():
+        return segment, [_preserve_render_piece(segment, start, end)]
+    output = _transform_core_with_trace(segment)
+    return (
+        output.normalized_text,
+        [_offset_render_piece(piece, start) for piece in output.render_pieces],
+    )
+
+
+def _offset_render_piece(piece: RenderPiece, offset: int) -> RenderPiece:
+    source_span = piece.source_span
+    if source_span is not None:
+        source_span = SourceSpan(
+            source_span.start + offset,
+            source_span.end + offset,
+        )
+    return RenderPiece(
+        text=piece.text,
+        provenance=piece.provenance,
+        source_span=source_span,
+        owner=piece.owner,
+        metadata=dict(piece.metadata),
     )
 
 
@@ -328,9 +448,16 @@ def _fallback_segments(text: str) -> list[tuple[int, int]]:
         start = end
     if start < len(text):
         boundaries.append((start, len(text)))
-    if not boundaries:
-        return [(0, 0)]
-    return boundaries
+    return boundaries or [(0, len(text))]
+
+
+def _fallback_subsegments(
+    text: str, start: int, end: int
+) -> list[tuple[int, int]]:
+    return [
+        (start + match.start(), start + match.end())
+        for match in re.finditer(r"\s+|\S+", text[start:end])
+    ]
 
 
 def _span(start: int, end: int):
@@ -346,6 +473,45 @@ def _preserve_render_piece(text: str, start: int, end: int):
         text=text,
         provenance="ORIGINAL_BOUNDARY",
         source_span=SourceSpan(start, end),
+    )
+
+
+def _render_piece_trace_log(piece: RenderPiece) -> TraceLogEntry:
+    return TraceLogEntry(
+        stage="render",
+        event="render_piece_created",
+        span=piece.source_span,
+        raw=piece.text,
+        owner=piece.owner,
+        provenance=piece.provenance,
+        decision=(
+            "render_generated"
+            if piece.provenance.startswith("GENERATED_")
+            else "render_original"
+        ),
+        reason="phase7_surface_render",
+    )
+
+
+def _parser_trace_log(surface: Surface) -> TraceLogEntry:
+    return TraceLogEntry(
+        stage="parser",
+        event="surface_parsed",
+        span=surface.span,
+        raw=surface.raw,
+        owner=surface.owner,
+        surface_type=surface.surface_type,
+        decision="success",
+        reason="phase7_owner_parse",
+        action="create_surface",
+        metadata={
+            "reading": surface.reading,
+            **{
+                key: surface.metadata[key]
+                for key in ("sign_profile", "numeric_form", "sign_surface")
+                if key in surface.metadata
+            },
+        },
     )
 
 
@@ -415,21 +581,7 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     trace.prosody_logs.extend(prosody_result.logs)
     trace.prosody_logs.extend(extra_prosody_result.logs)
     trace.bracket_filter_logs.extend(bracket_filter.logs)
-    trace.parser_logs.extend(
-        TraceLogEntry(
-            stage="parser",
-            event="surface_parsed",
-            span=surface.span,
-            raw=surface.raw,
-            owner=surface.owner,
-            surface_type=surface.surface_type,
-            decision="success",
-            reason="phase7_owner_parse",
-            action="create_surface",
-            metadata={"reading": surface.reading},
-        )
-        for surface in surfaces
-    )
+    trace.parser_logs.extend(_parser_trace_log(surface) for surface in surfaces)
     trace.source_map_logs.append(
         TraceLogEntry(
             stage="source_map",
@@ -504,23 +656,7 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
         )
     )
     trace.render_logs.extend(slash_alias_logs)
-    trace.render_logs.extend(
-        TraceLogEntry(
-            stage="render",
-            event="render_piece_created",
-            span=piece.source_span,
-            raw=piece.text,
-            owner=piece.owner,
-            provenance=piece.provenance,
-            decision=(
-                "render_generated"
-                if piece.provenance.startswith("GENERATED_")
-                else "render_original"
-            ),
-            reason="phase7_surface_render",
-        )
-        for piece in pieces
-    )
+    trace.render_logs.extend(_render_piece_trace_log(piece) for piece in pieces)
     trace.validation_logs.append(
         ValidationLog(
             kind="SHADOW_VALIDATION",

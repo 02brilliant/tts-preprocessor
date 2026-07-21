@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -20,7 +20,7 @@ from api.binary_runtime import (
     BinaryRuntimeError,
     resolve_binary_path,
     run_transform_binary,
-    run_transform_binary_with_rollout,
+    run_transform_binary_debug,
 )
 
 app = FastAPI()
@@ -35,8 +35,17 @@ app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")
 
 class TransformRequest(BaseModel):
     text: str
-    rollout_mode: str | None = None
     include_debug: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_removed_rollout_field(cls, value):
+        if isinstance(value, dict) and "rollout_mode" in value:
+            raise ValueError(
+                "rollout_mode is no longer supported by the production API"
+            )
+        return value
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,18 +55,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ✅ root는 web으로 보내기
 @app.get("/")
 def root():
     return RedirectResponse("/web/")
 
+
 @app.post("/api/transform")
 def transform_api(req: TransformRequest) -> dict:
-    payload = {"text": req.text}
-    if getattr(req, "rollout_mode", None) is not None:
-        payload["rollout_mode"] = req.rollout_mode
-        if bool(getattr(req, "include_debug", False)):
-            payload["include_debug"] = True
+    payload = {"text": req.text, "include_debug": req.include_debug}
 
     try:
         result = transform_request_payload(payload)
@@ -85,20 +92,24 @@ def transform_request_payload(payload: dict) -> dict:
         raise TypeError("payload must be dict")
     if "text" not in payload:
         raise KeyError("text")
+    if "rollout_mode" in payload:
+        raise ValueError(
+            "rollout_mode is not supported by the production API; "
+            "use engine.main.transform or engine.main.transform_debug"
+        )
 
     text = payload["text"]
     if not isinstance(text, str):
         raise TypeError("text must be a string")
 
-    if "rollout_mode" not in payload:
-        return {"normalized_text": run_transform_binary(text)}
+    include_debug = payload.get("include_debug", False)
+    if not isinstance(include_debug, bool):
+        raise TypeError("include_debug must be bool")
 
-    rollout_mode = payload["rollout_mode"]
-    include_debug = bool(payload.get("include_debug", False))
-    result = run_transform_binary_with_rollout(text, rollout_mode=rollout_mode, include_debug=include_debug)
-    if isinstance(result, dict):
+    if include_debug:
+        result = run_transform_binary_debug(text)
         return result if "normalized_text" in result else {"normalized_text": result}
-    return {"normalized_text": result}
+    return {"normalized_text": run_transform_binary(text)}
 
 
 def main() -> None:

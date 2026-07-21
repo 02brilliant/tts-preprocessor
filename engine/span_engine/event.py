@@ -78,23 +78,6 @@ def scan_event_candidates(
             continue
         gate = evaluate_event_gate(raw_text, span, match.group(1), match.group(2), match.group(3))
         if gate["decision"] != "pass":
-            if _is_bare_twelve_twelve_preserve_context(
-                raw_text,
-                span,
-                match.group(1),
-                match.group(2),
-                match.group(3),
-            ):
-                candidates.append(
-                    SurfaceCandidate(
-                        core_span=span,
-                        full_span=span,
-                        owner="preserve",
-                        surface_type="BARE_DOTTED_EVENT_PRESERVE_SURFACE",
-                        reason="bare_12_12_event_gate_fail_preserve",
-                    )
-                )
-                continue
             if gate.get("reason") == "one_digit_right_block":
                 candidates.append(
                     SurfaceCandidate(
@@ -242,15 +225,6 @@ def _is_supported_event_date(left: str, right: str) -> bool:
     left_value = int(left)
     right_value = int(right)
     return 1 <= left_value <= 12 and 1 <= right_value <= 31
-
-
-def _is_bare_twelve_twelve_preserve_context(
-    raw_text: str, span: SourceSpan, left: str, separator: str, right: str
-) -> bool:
-    if (left, separator, right) != ("12", ".", "12"):
-        return False
-    next_char = raw_text[span.end] if span.end < len(raw_text) else None
-    return next_char is None or next_char in {"(", "가"}
 
 
 def _has_leading_zero(raw: str) -> bool:

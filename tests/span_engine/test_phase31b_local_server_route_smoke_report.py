@@ -31,7 +31,8 @@ def test_phase31b_api_server_route_contract_still_binary_backed() -> None:
     assert all(not name.startswith("engine") for name in imports)
     assert post_routes == ["/api/transform"]
     assert "run_transform_binary" in server_text
-    assert "run_transform_binary_with_rollout" in server_text
+    assert "run_transform_binary_debug" in server_text
+    assert "run_transform_binary_with_rollout" not in server_text
 
 
 def test_phase31b_start_server_uses_packaged_binary() -> None:

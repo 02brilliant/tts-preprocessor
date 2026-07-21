@@ -1,8 +1,7 @@
 import pytest
 
 from engine.main import transform
-from engine.prosody.comma import insert_commas
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -52,11 +51,11 @@ REGRESSION_CASES = [
     ),
     # Known failure pattern: time readings were inconsistent between independent and HH:MM forms.
     TextCase(
-        case_id="regression-independent-time-afternoon",
+        case_id="regression-suffix-clock-afternoon-spacing",
         text="오후 2시 출발",
-        expected="오후 두시 출발",
-        rule="regression / independent time",
-        reason="An independent H시 form with 오후 must always normalize as time using the native hour reading.",
+        expected="오후 두 시 출발",
+        rule="regression / suffix-clock generated spacing",
+        reason="An 오후 H시 form uses the native hour reading and retains canonical generated spacing before the original 시 marker.",
         classification="override",
     ),
     TextCase(
@@ -101,12 +100,12 @@ REGRESSION_CASES = [
         classification="middle_dot",
     ),
     TextCase(
-        case_id="regression-leading-zero-digit-mode",
+        case_id="regression-leading-zero-standalone-preserve",
         text="0001",
-        expected="공공공일",
-        rule="regression / digit mode",
-        reason="A bare leading-zero token must use Digit Mode instead of Number Mode.",
-        classification="digit_mode",
+        expected="0001",
+        rule="regression / leading-zero preserve",
+        reason="A bare leading-zero integer preserves instead of selecting Digit Mode or Number Mode.",
+        classification="preserve",
     ),
     TextCase(
         case_id="regression-leading-zero-date-override",
@@ -117,20 +116,20 @@ REGRESSION_CASES = [
         classification="override",
     ),
     TextCase(
-        case_id="regression-leading-zero-time-override",
+        case_id="regression-leading-zero-time-preserve",
         text="09시",
-        expected="아홉시",
-        rule="regression / override",
-        reason="A time token must override the leading-zero Digit Mode trigger.",
-        classification="override",
+        expected="09시",
+        rule="regression / suffix clock preserve",
+        reason="A suffix-clock token with a two-digit leading-zero hour preserves exactly.",
+        classification="preserve",
     ),
     TextCase(
-        case_id="regression-leading-zero-counter-override",
+        case_id="regression-leading-zero-counter-preserve",
         text="01명",
-        expected="한 명",
-        rule="regression / override",
-        reason="A counter-noun token must override the leading-zero Digit Mode trigger.",
-        classification="override",
+        expected="01명",
+        rule="regression / leading-zero counter preserve",
+        reason="A counter-noun token with a multi-digit leading-zero amount preserves exactly.",
+        classification="preserve",
     ),
     # Known failure pattern: partial matches were leaking through instead of fully skipping.
     TextCase(
@@ -189,11 +188,5 @@ REGRESSION_CASES = [
 
 @pytest.mark.parametrize("case", REGRESSION_CASES, ids=lambda case: case.case_id)
 def test_known_policy_regressions(case: TextCase):
-    # Route each regression through the layer that previously failed in production or earlier outputs.
-    if "comma explosion" in case.rule:
-        actual = insert_commas(case.text)
-    elif "connector" in case.text or "자료를 검토한다" in case.text or "긴급번호 112는" in case.text and case.text.startswith("그리고"):
-        actual = transform(case.text)
-    else:
-        actual = transform_text(case.text)
-    assert_exact(actual, case)
+    # Every regression now exercises the single production facade.
+    assert_exact(transform(case.text), case)

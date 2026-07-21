@@ -15,8 +15,6 @@ from engine.span_engine import transform
         "2025/01",
         "2025-01-03abc",
         "2025-01-03kg",
-        "2025.01",
-        "12.12",
         "2025-01-03~2025-01-05",
     ],
 )
@@ -25,7 +23,7 @@ def test_unsupported_dates_preserve(text: str) -> None:
 
 
 def test_spaced_hyphen_date_like_numeric_blocks_use_policy_v102() -> None:
-    assert transform("2025 - 01 - 03") == "이천이십오 공일 공삼"
+    assert transform("2025 - 01 - 03") == "이천이십오 - 공일 - 공삼"
 
 
 @pytest.mark.parametrize(

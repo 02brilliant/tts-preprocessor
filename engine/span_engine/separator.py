@@ -5,7 +5,7 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 
-_SPACED_SEPARATOR_RE = re.compile(r"(?<![A-Za-z0-9])\d+(?:\s+[·.]\s*|\s*[.]\s+)\d+(?![A-Za-z0-9])")
+_SPACED_SEPARATOR_RE = re.compile(r"(?<![A-Za-z0-9])[0-9]+(?:[ ]+[.][ ]*|[ ]*[.][ ]+)[0-9]+(?![A-Za-z0-9])")
 
 
 def scan_spaced_separator_preserve_candidates(

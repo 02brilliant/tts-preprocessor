@@ -1,0 +1,37 @@
+{
+  "batch_id": "policy-alignment-batch-5",
+  "description": "Batch 5 protected bracket, signed currency, decimal precision, and embedded single-letter code contract. All audited rows promote current span output without a runtime transition.",
+  "stable_decisions": [
+    {
+      "decision_id": "bracket-keep-square-content-before-currency-rules",
+      "input": "가격은 [₩1200]입니다",
+      "expected": "가격은 ₩1200입니다",
+      "owner_contract": "square-bracket protection blocks currency owner reentry while presentation removes the bracket delimiters"
+    },
+    {
+      "decision_id": "currency-negative-form-not-supported",
+      "input": "$-10",
+      "expected": "마이너스 십 달러",
+      "owner_contract": "currency symbol prefix accepts a signed decimal-aware numeric amount"
+    },
+    {
+      "decision_id": "decimal-fraction-over-limit-skips",
+      "input": "12.0300405",
+      "expected": "십이쩜영삼영영사영오",
+      "owner_contract": "ordinary decimal owner has no fractional digit length limit and retains every zero digit"
+    },
+    {
+      "decision_id": "emergency-embedded-a112",
+      "input": "A112",
+      "expected": "에이 백십이",
+      "owner_contract": "single uppercase letter plus unsigned integer is an atomic single-letter alnum code, not an emergency token"
+    },
+    {
+      "decision_id": "scenario-square-bracket-currency-plus-compound-unit",
+      "input": "가격은 [€1,234.56]이고 연비는 15.2km/L다",
+      "expected": "가격은 €1,234.56이고 연비는 리터당 십오쩜이 킬로미터다",
+      "owner_contract": "bracket-protected currency preserves while the later compound unit claims and renders independently"
+    }
+  ],
+  "allowed_diffs": []
+}

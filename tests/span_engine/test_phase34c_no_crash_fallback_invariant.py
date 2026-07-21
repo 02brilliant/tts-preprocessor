@@ -67,7 +67,7 @@ def test_phase34c_weird_inputs_do_not_raise(text: str) -> None:
         assert output
 
 
-def test_phase34c_public_transform_falls_back_to_original_text(monkeypatch) -> None:
+def test_phase34c_public_transform_recovers_hangul_input_by_segment(monkeypatch) -> None:
     transform_module = importlib.import_module("engine.span_engine.transform")
 
     def fail_transform_with_trace(_: str):
@@ -79,10 +79,10 @@ def test_phase34c_public_transform_falls_back_to_original_text(monkeypatch) -> N
         fail_transform_with_trace,
     )
 
-    assert transform_module.transform("fallback 대상") == "fallback 대상"
+    assert transform_module.transform("45m² fallback 대상") == "사십오 제곱미터 fallback 대상"
 
 
-def test_phase34c_debug_path_records_fallback_metadata(monkeypatch) -> None:
+def test_phase34c_debug_path_records_segment_fallback_metadata(monkeypatch) -> None:
     adapter = importlib.import_module("engine.span_engine.production_adapter")
 
     def fail_transform_with_trace(_: str):
@@ -94,53 +94,82 @@ def test_phase34c_debug_path_records_fallback_metadata(monkeypatch) -> None:
         fail_transform_with_trace,
     )
 
-    result = adapter.transform_for_production("debug fallback", debug=True)
+    result = adapter.transform_for_production("45m² debug 대상", debug=True)
 
     assert result["ok"] is True
-    assert result["normalized_text"] == "debug fallback"
-    assert result["fallback"] == "preserve_original"
+    assert result["normalized_text"] == "사십오 제곱미터 debug 대상"
+    assert result["fallback"] == "segment_preserve"
     assert result["error_type"] == "RuntimeError"
     assert result["error_stage"] == "transform"
-    assert result["debug"]["fallback"] == "preserve_original"
+    assert result["debug"]["fallback"] == "segment_preserve"
 
 
-def test_phase34c_engine_main_span_default_error_result_falls_back(monkeypatch) -> None:
+def test_phase34c_engine_main_mode_less_error_result_recovers_segments(monkeypatch) -> None:
     adapter = importlib.import_module("engine.span_engine.production_adapter")
     engine_main = importlib.import_module("engine.main")
 
-    def fake_run_rollout_transform(
-        text: str,
-        *,
-        mode: str,
-        legacy_transform=None,
-        include_debug: bool = False,
-    ):
-        return {
-            "ok": False,
-            "mode": "span_default",
-            "input_text": text,
-            "normalized_text": None,
-            "production_output": None,
-            "span_output": None,
-            "compare": None,
-            "error": "simulated internal parser failure",
-        }
+    def fail_transform(_: str) -> str:
+        raise RuntimeError("simulated internal parser failure")
 
-    monkeypatch.setattr(adapter, "run_rollout_transform", fake_run_rollout_transform)
+    monkeypatch.setattr(adapter, "transform", fail_transform)
 
-    assert engine_main.transform_with_rollout("engine fallback", mode="span_default") == "engine fallback"
-    debug_result = engine_main.transform_with_rollout(
-        "engine fallback",
-        mode="span_default",
-        include_debug=True,
+    assert engine_main.transform("45m² engine 대상") == "사십오 제곱미터 engine 대상"
+
+def test_phase34c_internal_failure_preserves_only_failed_source_segment(
+    monkeypatch,
+) -> None:
+    transform_module = importlib.import_module("engine.span_engine.transform")
+    original_core = transform_module._transform_core_with_trace
+
+    def fail_selected_segment(text: str):
+        if "FAIL구간" in text:
+            raise RuntimeError("selected segment failure")
+        return original_core(text)
+
+    monkeypatch.setattr(
+        transform_module,
+        "_transform_core_with_trace",
+        fail_selected_segment,
     )
-    assert debug_result["normalized_text"] == "engine fallback"
-    assert debug_result["fallback"] == "preserve_original"
-    assert debug_result["error_stage"] == "transform"
+
+    text = "45m² 정상 FAIL구간 60Hz 자료"
+    output = transform_module.transform_with_trace(text)
+
+    assert output.normalized_text == "사십오 제곱미터 정상 FAIL구간 육십 헤르츠 자료"
+    fallback_log = output.trace.fallback_logs[0]
+    failures = fallback_log.metadata["segment_failures"]
+    failed_start = text.index("FAIL구간")
+    assert failures == [
+        {
+            "start": failed_start,
+            "end": failed_start + len("FAIL구간"),
+            "error_type": "RuntimeError",
+            "error_message": "selected segment failure",
+        }
+    ]
+    assert any(
+        piece.text == "FAIL구간"
+        and piece.provenance == "ORIGINAL_BOUNDARY"
+        and piece.source_span.start == failed_start
+        and piece.source_span.end == failed_start + len("FAIL구간")
+        for piece in output.render_pieces
+    )
+    assert any(
+        piece.text == "육십 헤르츠"
+        and piece.owner == "simple_unit"
+        for piece in output.render_pieces
+    )
 
 
-def test_phase34c_invalid_rollout_mode_remains_operational_error() -> None:
-    engine_main = importlib.import_module("engine.main")
+def test_phase34c_whole_input_preserve_policy_is_explicit() -> None:
+    transform_module = importlib.import_module("engine.span_engine.transform")
 
-    with pytest.raises(ValueError):
-        engine_main.transform_with_rollout("AI", mode="invalid")
+    assert transform_module.may_whole_input_preserve(
+        "ASCII only", "global_no_hangul_bypass"
+    )
+    assert transform_module.may_whole_input_preserve(
+        "전체보존", "whole_input_absolute_preserve"
+    )
+    assert not transform_module.may_whole_input_preserve(
+        "한글 포함", "global_no_hangul_bypass"
+    )

@@ -46,7 +46,7 @@ def test_parenthesized_phase14_claims_are_elided_without_claim(text: str, expect
     [
         ("112(긴급)에 신고", "백십이에 신고", "일일이에 신고"),
         ("119(화재)에 연락", "백십구에 연락", "일일구에 연락"),
-        ("12.12(사태)", "12.12", "십이십이"),
+        ("12.12(사태)", "십이쩜일이", "십이십이"),
     ],
 )
 def test_parenthesis_internal_context_does_not_leak(

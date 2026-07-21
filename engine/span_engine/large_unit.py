@@ -5,14 +5,20 @@ from dataclasses import dataclass
 from engine.span_engine.models import RenderPiece
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.signed import parse_signed_numeric
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    render_signed_numeric,
+    parse_signed_numeric_core,
+)
 
 LARGE_UNIT_ATOMIC_INVENTORY = frozenset({"만", "억", "조", "경"})
 _AMBIGUOUS_SUFFIX_PREFIXES = ("개",)
 _PREV_BLOCKERS = frozenset("+-.,~:/_")
 _NEXT_BLOCKERS = frozenset("+-.,~:/_")
 _SAFE_RIGHT_PUNCTUATION = frozenset(",.!?)]};:")
-_SIGN_READINGS = {"+": "플러스", "-": "마이너스"}
+_LARGE_UNIT_SIGNS = frozenset({"+", "-"})
 _SMALL_UNITS = {"천": 1000, "백": 100, "십": 10}
 _SMALL_UNIT_ORDER = {"천": 3, "백": 2, "십": 1}
 _LARGE_UNIT_ORDER = {"만": 1, "억": 2, "조": 3, "경": 4}
@@ -54,6 +60,10 @@ class _LargeUnitParse:
     has_decimal: bool
     reason: str
     reading_includes_suffix: bool = False
+    render_parts: tuple[tuple[SourceSpan, str, str], ...] = ()
+    sign_profile: str | None = None
+    numeric_form: str | None = None
+    sign_surface: str | None = None
 
 
 def is_large_unit(ch: str) -> bool:
@@ -71,7 +81,7 @@ def scan_large_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
     index = 0
     while index < len(raw_text):
         if not (
-            raw_text[index] in _SIGN_READINGS
+            raw_text[index] in _LARGE_UNIT_SIGNS
             or _is_ascii_digit(raw_text[index])
             or raw_text[index] in _SMALL_UNITS
         ):
@@ -95,6 +105,17 @@ def scan_large_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 continue
             tail = raw_text[parsed.core_span.end :]
             unit_char = raw_text[parsed.suffix_span.start]
+            if _has_disallowed_structured_decimal_tail(parsed, tail):
+                preserve = _large_unit_like_preserve_candidate(raw_text, index)
+                if preserve is not None:
+                    key = (preserve.core_span.start, preserve.core_span.end)
+                    if key not in preserved_spans:
+                        preserved_spans.add(key)
+                        candidates.append(preserve)
+                        index = preserve.core_span.end
+                        continue
+                index += 1
+                continue
             if _is_registered_counter_collision(unit_char, tail):
                 index += 1
                 continue
@@ -132,6 +153,28 @@ def large_unit_render_pieces(
 ) -> list[RenderPiece] | None:
     if candidate.owner != "large_unit_atomic":
         return None
+    render_parts = candidate.metadata.get("render_parts")
+    if isinstance(render_parts, tuple) and render_parts:
+        pieces: list[RenderPiece] = []
+        for part in render_parts:
+            if (
+                not isinstance(part, tuple)
+                or len(part) != 3
+                or not isinstance(part[0], SourceSpan)
+                or not isinstance(part[1], str)
+                or not isinstance(part[2], str)
+            ):
+                return None
+            pieces.append(
+                RenderPiece(
+                    text=part[1],
+                    provenance=part[2],
+                    source_span=part[0],
+                    owner=candidate.owner,
+                    metadata={"surface_type": candidate.surface_type},
+                )
+            )
+        return pieces
     reading = candidate.metadata.get("reading")
     numeric_span = candidate.metadata.get("numeric_span")
     suffix_span = candidate.metadata.get("suffix_span")
@@ -223,6 +266,16 @@ def _surface_candidate(parsed: _LargeUnitParse, tail: str) -> SurfaceCandidate:
             "numeric_span": parsed.numeric_span,
             "suffix_span": parsed.suffix_span,
             "insert_tail_space": insert_tail_space,
+            "render_parts": parsed.render_parts,
+            **(
+                {
+                    "sign_profile": parsed.sign_profile,
+                    "numeric_form": parsed.numeric_form,
+                    "sign_surface": parsed.sign_surface,
+                }
+                if parsed.sign_profile is not None
+                else {}
+            ),
         },
     )
 
@@ -273,7 +326,7 @@ def _parse_structured_integer_large_unit_at(
 ) -> _LargeUnitParse | None:
     if start >= len(raw_text):
         return None
-    if raw_text[start] in _SIGN_READINGS:
+    if raw_text[start] in _LARGE_UNIT_SIGNS:
         return None
     if not (_is_ascii_digit(raw_text[start]) or raw_text[start] in _SMALL_UNITS):
         return None
@@ -281,6 +334,7 @@ def _parse_structured_integer_large_unit_at(
     index = start
     previous_large_order = len(_LARGE_UNIT_ORDER) + 1
     readings: list[str] = []
+    render_parts: list[tuple[SourceSpan, str, str]] = []
     large_group_saw_small_units: list[bool] = []
     saw_large_unit = False
     last_large_unit_span: SourceSpan | None = None
@@ -291,7 +345,44 @@ def _parse_structured_integer_large_unit_at(
             break
         next_index = group.end
         if next_index < len(raw_text) and raw_text[next_index] == ".":
-            return None
+            if not saw_large_unit or last_large_unit_span is None:
+                return None
+            fraction_start = next_index + 1
+            fraction_end = _consume_digits(raw_text, fraction_start)
+            if fraction_end == fraction_start:
+                return None
+            if fraction_end < len(raw_text):
+                next_char = raw_text[fraction_end]
+                if (
+                    next_char in _SMALL_UNITS
+                    or is_large_unit(next_char)
+                    or (
+                        next_char == "."
+                        and fraction_end + 1 < len(raw_text)
+                        and _is_ascii_digit(raw_text[fraction_end + 1])
+                    )
+                ):
+                    return None
+            decimal_reading = (
+                f"{group.reading}쩜"
+                f"{read_decimal_fraction_digits(raw_text[fraction_start:fraction_end])}"
+            )
+            readings.append(decimal_reading)
+            render_parts.extend(
+                _structured_group_render_parts(
+                    raw_text, index, next_index, decimal_end=fraction_end
+                )
+            )
+            return _LargeUnitParse(
+                core_span=SourceSpan(start, fraction_end),
+                numeric_span=SourceSpan(start, fraction_end),
+                suffix_span=last_large_unit_span,
+                reading="".join(readings),
+                has_decimal=True,
+                reason="large_unit_structured_decimal_surface",
+                reading_includes_suffix=True,
+                render_parts=tuple(render_parts),
+            )
 
         if next_index < len(raw_text) and is_large_unit(raw_text[next_index]):
             large_unit = raw_text[next_index]
@@ -301,6 +392,16 @@ def _parse_structured_integer_large_unit_at(
             if _is_sparse_thousand_group_before_large(group):
                 return None
             readings.append(f"{group.reading}{large_unit}")
+            render_parts.extend(
+                _structured_group_render_parts(raw_text, index, next_index)
+            )
+            render_parts.append(
+                (
+                    SourceSpan(next_index, next_index + 1),
+                    large_unit,
+                    "ORIGINAL_KOREAN",
+                )
+            )
             large_group_saw_small_units.append(group.saw_small_unit)
             saw_large_unit = True
             last_large_unit_span = SourceSpan(next_index, next_index + 1)
@@ -400,6 +501,40 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
     )
 
 
+def _structured_group_render_parts(
+    raw_text: str, start: int, end: int, *, decimal_end: int | None = None
+) -> tuple[tuple[SourceSpan, str, str], ...]:
+    parts: list[tuple[SourceSpan, str, str]] = []
+    index = start
+    while index < end:
+        if raw_text[index] in _SMALL_UNITS:
+            parts.append(
+                (
+                    SourceSpan(index, index + 1),
+                    raw_text[index],
+                    "ORIGINAL_KOREAN",
+                )
+            )
+            index += 1
+            continue
+        number_end = _consume_comma_integer(raw_text, index)
+        if number_end == index:
+            return ()
+        reading_end = number_end
+        number_text = raw_text[index:number_end]
+        if decimal_end is not None and number_end == end:
+            reading_end = decimal_end
+            number_text = raw_text[index:decimal_end]
+        reading = parse_signed_numeric(number_text)
+        if reading is None:
+            return ()
+        parts.append(
+            (SourceSpan(index, reading_end), reading, "GENERATED_READING")
+        )
+        index = reading_end
+    return tuple(parts)
+
+
 def _is_sparse_thousand_group_before_large(group: _SmallGroupParse) -> bool:
     return (
         group.saw_thousand
@@ -412,7 +547,7 @@ def _is_sparse_thousand_group_before_large(group: _SmallGroupParse) -> bool:
 def _parse_numeric_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse | None:
     index = start
     sign = ""
-    if index < len(raw_text) and raw_text[index] in _SIGN_READINGS:
+    if index < len(raw_text) and raw_text[index] in _LARGE_UNIT_SIGNS:
         sign = raw_text[index]
         index += 1
 
@@ -432,13 +567,22 @@ def _parse_numeric_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse |
     if numeric_end >= len(raw_text) or not is_large_unit(raw_text[numeric_end]):
         return None
     numeric_text = raw_text[numeric_start:numeric_end]
-    unsigned_reading = parse_signed_numeric(numeric_text)
-    if unsigned_reading is None:
+    policy = SIGNED_OWNER_POLICIES["large_unit_atomic"]
+    core = parse_signed_numeric_core(
+        sign + numeric_text,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
         return None
-    if sign:
-        reading = f"{_SIGN_READINGS[sign]} {unsigned_reading}"
-    else:
-        reading = unsigned_reading
+    reading = render_signed_numeric(
+        core,
+        sign_profile=policy.sign_profile,
+    )
+    if reading is None:
+        return None
     return _LargeUnitParse(
         core_span=SourceSpan(start, numeric_end + 1),
         numeric_span=SourceSpan(start, numeric_end),
@@ -446,6 +590,9 @@ def _parse_numeric_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse |
         reading=reading,
         has_decimal=has_decimal,
         reason="large_unit_numeric_surface",
+        sign_profile=policy.sign_profile.value,
+        numeric_form=core.numeric_form,
+        sign_surface=core.sign_surface,
     )
 
 
@@ -568,6 +715,8 @@ def _valid_large_unit_token(raw_text: str, start: int, end: int) -> bool:
     ):
         return False
     tail = raw_text[parsed.core_span.end : end]
+    if _has_disallowed_structured_decimal_tail(parsed, tail):
+        return False
     if _is_registered_counter_collision(raw_text[parsed.suffix_span.start], tail):
         return True
     if _is_disallowed_ascii_tail(tail) or tail.startswith(_AMBIGUOUS_SUFFIX_PREFIXES):
@@ -702,7 +851,20 @@ def _needs_hangul_tail_spacing(tail: str) -> bool:
     first = tail[0]
     if not ("\uac00" <= first <= "\ud7a3"):
         return False
+    if tail.startswith("여 ") or tail.startswith("여명"):
+        return False
     return not tail.startswith(_ATTACHED_HANGUL_TAILS)
+
+
+def _has_disallowed_structured_decimal_tail(
+    parsed: _LargeUnitParse, tail: str
+) -> bool:
+    return (
+        parsed.reason == "large_unit_structured_decimal_surface"
+        and bool(tail)
+        and tail[0].isascii()
+        and tail[0].isalnum()
+    )
 
 
 def _is_registered_counter_collision(unit_char: str, tail: str) -> bool:

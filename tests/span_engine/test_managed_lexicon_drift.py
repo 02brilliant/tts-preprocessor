@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform
 from engine.span_engine import transform_with_trace
 from engine.span_engine.lexicon import DICTIONARY_READINGS
 
@@ -12,7 +12,7 @@ MANAGED_DICTIONARY_POLICY = Path("docs/policies/TTS_Preprocessor_managed_diction
 
 
 def production_transform(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return transform(text)
 
 
 def _managed_dictionary_current_entries() -> dict[str, str]:

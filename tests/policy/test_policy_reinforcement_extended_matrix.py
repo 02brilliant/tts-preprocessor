@@ -1,16 +1,16 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
-ACRONYM_PARTICLE_PRESERVATION_CASES = [
+ACRONYM_PARTICLE_CASES = [
     TextCase(
-        case_id="acronym-particle-preserve-fta-topic",
+        case_id="acronym-particle-correct-fta-topic",
         text="FTA은",
-        expected="에프티에이은",
-        rule="policy / acronym protected output + particle preservation",
-        reason="Acronym normalization may change the Latin stem, but the input Hangul particle must stay exactly as written.",
+        expected="에프티에이는",
+        rule="policy / safe post-surface particle exception",
+        reason="A registered acronym reading may select the grammatically valid topic particle after surface normalization.",
         classification="post_processing",
     ),
     TextCase(
@@ -22,19 +22,19 @@ ACRONYM_PARTICLE_PRESERVATION_CASES = [
         classification="post_processing",
     ),
     TextCase(
-        case_id="acronym-particle-preserve-fta-euro",
+        case_id="acronym-particle-correct-fta-euro",
         text="FTA으로",
-        expected="에프티에이으로",
-        rule="policy / acronym protected output + particle preservation",
-        reason="The input particle must be preserved verbatim instead of being batchim-adjusted.",
+        expected="에프티에이로",
+        rule="policy / safe post-surface particle exception",
+        reason="A registered acronym ending without batchim selects 로 after surface normalization.",
         classification="post_processing",
     ),
     TextCase(
-        case_id="acronym-particle-preserve-ai-topic",
+        case_id="acronym-particle-correct-ai-topic",
         text="AI은",
-        expected="에이아이은",
-        rule="policy / acronym protected output + particle preservation",
-        reason="Particle preservation applies equally to dictionary-backed acronym readings.",
+        expected="에이아이는",
+        rule="policy / safe post-surface particle exception",
+        reason="A dictionary-backed acronym reading may select the grammatically valid topic particle.",
         classification="post_processing",
     ),
     TextCase(
@@ -46,11 +46,11 @@ ACRONYM_PARTICLE_PRESERVATION_CASES = [
         classification="post_processing",
     ),
     TextCase(
-        case_id="acronym-particle-preserve-ai-euro",
+        case_id="acronym-particle-correct-ai-euro",
         text="AI으로",
-        expected="에이아이으로",
-        rule="policy / acronym protected output + particle preservation",
-        reason="The trailing Hangul particle remains immutable metadata.",
+        expected="에이아이로",
+        rule="policy / safe post-surface particle exception",
+        reason="A dictionary-backed acronym ending without batchim selects 로 after surface normalization.",
         classification="post_processing",
     ),
     TextCase(
@@ -70,19 +70,19 @@ ACRONYM_PARTICLE_PRESERVATION_CASES = [
         classification="post_processing",
     ),
     TextCase(
-        case_id="acronym-particle-preserve-mfn-topic",
+        case_id="acronym-particle-correct-mfn-topic",
         text="MFN는",
-        expected="엠에프엔는",
-        rule="policy / acronym protected output + particle preservation",
-        reason="Incorrect input particles are preserved rather than corrected.",
+        expected="엠에프엔은",
+        rule="policy / safe post-surface particle exception",
+        reason="A registered acronym ending with batchim selects 은 after surface normalization.",
         classification="post_processing",
     ),
     TextCase(
-        case_id="acronym-particle-preserve-mfn-object",
+        case_id="acronym-particle-correct-mfn-object",
         text="MFN를",
-        expected="엠에프엔를",
-        rule="policy / acronym protected output + particle preservation",
-        reason="The output must preserve the original particle instead of selecting a corrected pair.",
+        expected="엠에프엔을",
+        rule="policy / safe post-surface particle exception",
+        reason="A registered acronym ending with batchim selects 을 after surface normalization.",
         classification="post_processing",
     ),
 ]
@@ -144,41 +144,41 @@ LEXICAL_MIDDLE_DOT_EXTENDED_CASES = [
     TextCase(
         case_id="lexical-middle-dot-ai-ml",
         text="AI·ML",
-        expected="에이아이 엠엘",
+        expected="에이아이·ML",
         rule="policy / lexical middle dot boundary matrix",
-        reason="An acronym-on-both-sides lexical middle-dot compound must stay on the lexical route rather than a numeric route.",
+        reason="The source middle dot is invariant, while only registered lexical tokens are normalized.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="lexical-middle-dot-ml-ai",
         text="ML·AI",
-        expected="엠엘 에이아이",
+        expected="ML·에이아이",
         rule="policy / lexical middle dot boundary matrix",
-        reason="Lexical middle-dot compounds must be order-stable across acronym pairs.",
+        reason="The source middle dot is invariant, and an unregistered left token remains unchanged.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="lexical-middle-dot-iso-ai",
         text="ISO·AI",
-        expected="아이에스오 에이아이",
+        expected="아이에스오·에이아이",
         rule="policy / lexical middle dot boundary matrix",
-        reason="Dictionary and acronym readings must coexist under the lexical middle-dot route.",
+        reason="Registered readings may normalize on both sides without deleting the source middle dot.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="lexical-middle-dot-ai-kospi",
         text="AI·KOSPI",
-        expected="에이아이 코스피",
+        expected="에이아이·코스피",
         rule="policy / lexical middle dot boundary matrix",
-        reason="Acronym plus dictionary-listed lexical reading must remain a protected lexical middle-dot output.",
+        reason="Registered lexical readings normalize while the source middle dot remains byte-exact.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="lexical-middle-dot-kospi-iec",
         text="KOSPI·IEC",
-        expected="코스피 아이이씨",
+        expected="코스피·아이이씨",
         rule="policy / lexical middle dot boundary matrix",
-        reason="Dictionary-listed lexical reading plus acronym must remain a protected lexical middle-dot output.",
+        reason="Dictionary readings coexist without replacing the source middle dot with whitespace.",
         classification="protected_surface",
     ),
 ]
@@ -188,33 +188,33 @@ SINGLE_LETTER_HYPHEN_EXTENDED_CASES = [
     TextCase(
         case_id="single-letter-hyphen-z-generation",
         text="Z-세대",
-        expected="지-세대",
-        rule="policy / single-letter hyphen generalized cases",
-        reason="Single-letter hyphen lexical compounds must generalize beyond the original K- examples.",
+        expected="Z-세대",
+        rule="policy / unregistered single-letter hyphen preserve",
+        reason="An unregistered single-letter Hangul compound stays unchanged as an absolute-preserve token.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="single-letter-hyphen-d-day",
         text="D-데이",
-        expected="디-데이",
-        rule="policy / single-letter hyphen generalized cases",
-        reason="Single-letter hyphen lexical compounds must preserve the hyphen and lexical tail for additional safe cases.",
+        expected="D-데이",
+        rule="policy / unregistered single-letter hyphen preserve",
+        reason="An unregistered single-letter Hangul compound stays unchanged as an absolute-preserve token.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="single-letter-hyphen-a-match-topic",
         text="A-매치는",
-        expected="에이-매치는",
-        rule="policy / single-letter hyphen generalized cases",
-        reason="The protected hyphen compound must survive normal following particle attachment.",
+        expected="A-매치는",
+        rule="policy / unregistered single-letter hyphen preserve",
+        reason="The whole unregistered compound, including its Hangul particle, remains unchanged.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="single-letter-hyphen-c-level-object",
         text="C-레벨을",
-        expected="씨-레벨을",
-        rule="policy / single-letter hyphen generalized cases",
-        reason="The protected hyphen compound must survive normal following particle attachment.",
+        expected="C-레벨을",
+        rule="policy / unregistered single-letter hyphen preserve",
+        reason="The whole unregistered compound, including its Hangul particle, remains unchanged.",
         classification="protected_surface",
     ),
 ]
@@ -240,25 +240,25 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-ascii",
         text="1~3명",
-        expected="일에서 세 명",
+        expected="일에서 삼 명",
         rule="policy / unicode tilde range extended",
-        reason="Shared-suffix range normalization must remain compatible with counter-noun readings.",
+        reason="Range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",
     ),
     TextCase(
         case_id="unicode-tilde-counter-math",
         text="1∼3명",
-        expected="일에서 세 명",
+        expected="일에서 삼 명",
         rule="policy / unicode tilde range extended",
-        reason="Unicode tilde normalization must remain compatible with counter-noun readings.",
+        reason="Unicode range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",
     ),
     TextCase(
         case_id="unicode-tilde-counter-fullwidth",
         text="1～3명",
-        expected="일에서 세 명",
+        expected="일에서 삼 명",
         rule="policy / unicode tilde range extended",
-        reason="Fullwidth tilde normalization must remain compatible with counter-noun readings.",
+        reason="Fullwidth range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",
     ),
 ]
@@ -358,7 +358,7 @@ POST_PROCESSING_RESTRICTION_CASES = [
         text="유로을",
         expected="유로을",
         rule="policy / post-processing restriction",
-        reason="Hangul-only input must bypass legacy post-processing instead of receiving a hardcoded particle rewrite.",
+        reason="Hangul-only input must bypass historical post-processing instead of receiving a hardcoded particle rewrite.",
         classification="post_processing",
     ),
     TextCase(
@@ -366,7 +366,7 @@ POST_PROCESSING_RESTRICTION_CASES = [
         text="엔로",
         expected="엔로",
         rule="policy / post-processing restriction",
-        reason="Hangul-only input must bypass legacy particle correction.",
+        reason="Hangul-only input must bypass historical particle correction.",
         classification="post_processing",
     ),
     TextCase(
@@ -388,41 +388,41 @@ POST_PROCESSING_RESTRICTION_CASES = [
 ]
 
 
-@pytest.mark.parametrize("case", ACRONYM_PARTICLE_PRESERVATION_CASES, ids=lambda case: case.case_id)
-def test_acronym_protected_output_preserves_input_particles(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+@pytest.mark.parametrize("case", ACRONYM_PARTICLE_CASES, ids=lambda case: case.case_id)
+def test_acronym_protected_output_particle_policy(case: TextCase):
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", ACRONYM_OUTPUT_INTERACTION_CASES, ids=lambda case: case.case_id)
 def test_acronym_protected_output_extended_interactions(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", LEXICAL_MIDDLE_DOT_EXTENDED_CASES, ids=lambda case: case.case_id)
 def test_lexical_middle_dot_extended_boundary_matrix(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", SINGLE_LETTER_HYPHEN_EXTENDED_CASES, ids=lambda case: case.case_id)
 def test_single_letter_hyphen_extended_generalization(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", UNICODE_TILDE_EXTENDED_CASES, ids=lambda case: case.case_id)
 def test_unicode_tilde_extended_range_matrix(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", LARGE_UNIT_ATOMIC_PARSE_EXTENDED_CASES, ids=lambda case: case.case_id)
 def test_large_unit_atomic_parse_extended_matrix(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", SIGNED_DEGREE_EXTENDED_CASES, ids=lambda case: case.case_id)
 def test_signed_degree_extended_matrix(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", POST_PROCESSING_RESTRICTION_CASES, ids=lambda case: case.case_id)
 def test_post_processing_restriction_matrix(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)

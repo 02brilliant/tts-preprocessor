@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform, transform_debug
 
 
 def _normalize(src: str) -> str:
-    return transform_with_rollout(src, mode="span_default", include_debug=False)
+    return transform(src)
 
 
 def _claim_owners(src: str) -> list[str]:
-    result = transform_with_rollout(src, mode="span_default", include_debug=True)
-    claim_logs = result["span_debug"]["trace"]["claim_logs"]
+    result = transform_debug(src)
+    claim_logs = result["debug"]["trace"]["claim_logs"]
     return [claim["owner"] for claim in claim_logs]
 
 

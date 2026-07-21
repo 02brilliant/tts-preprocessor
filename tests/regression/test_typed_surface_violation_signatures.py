@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as transform_text
 
 
 VIOLATION_SIGNATURE_PATTERNS = [

@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+import importlib
+import json
+
+
+def test_phase20c_run_shadow_compare_debug_json_contract() -> None:
+    adapter = importlib.import_module("engine.legacy_compare")
+    run_shadow_compare = getattr(adapter, "run_shadow_compare")
+
+    result = run_shadow_compare(
+        "90km/h",
+        legacy_transform=lambda text: text,
+        include_debug=True,
+    )
+
+    assert result["shadow"] is True
+    assert "span_debug" in result or "debug" in result
+    json.dumps(result, ensure_ascii=False)
+
+
+def test_phase20c_build_shadow_compare_payload_debug_json_contract() -> None:
+    adapter = importlib.import_module("engine.legacy_compare")
+    build_shadow_compare_payload = getattr(adapter, "build_shadow_compare_payload")
+
+    result = build_shadow_compare_payload(
+        {"text": "90km/h"},
+        legacy_transform=lambda text: text,
+        include_debug=True,
+    )
+
+    assert result["ok"] is True
+    assert result["mode"] == "span_shadow_compare"
+    assert "compare" in result
+    assert "span_debug" in result["compare"] or "debug" in result["compare"]
+    json.dumps(result, ensure_ascii=False)
+

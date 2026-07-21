@@ -6,6 +6,12 @@ from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_fraction_text, read_number_text
 from engine.span_engine.sign_aliases import MINUS_SIGN_ALIASES, PLUS_SIGN
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    apply_sign_profile,
+    parse_sign_surface,
+    parse_signed_numeric_core,
+)
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
@@ -36,14 +42,38 @@ def scan_percent_point_candidates(
         if not _valid_boundary(raw_text, span):
             continue
         number = match.group("number")
+        sign_surface = match.group("sign")
+        policy = SIGNED_OWNER_POLICIES["percent_point"]
         reading = _read_amount(number)
+        numeric_form = "FRACTION" if any(slash in number for slash in _SLASH_ALIASES) else None
+        sign_kind = parse_sign_surface(
+            sign_surface,
+            minus_aliases=policy.minus_aliases,
+        )
+        if numeric_form is None:
+            core = parse_signed_numeric_core(
+                sign_surface + number,
+                allow_plus=policy.accepts_plus,
+                allow_minus=policy.accepts_minus,
+                minus_aliases=policy.minus_aliases,
+                numeric_forms=policy.numeric_forms,
+            )
+            if core is None:
+                reading = None
+            else:
+                numeric_form = core.numeric_form
+                sign_kind = core.sign_kind
         if reading is None:
             candidates.append(_preserve_candidate(span, "percent_point_number_invalid_preserve"))
             continue
-        if match.group("sign") == PLUS_SIGN:
-            reading = f"플러스 {reading}"
-        elif match.group("sign"):
-            reading = f"마이너스 {reading}"
+        reading = apply_sign_profile(
+            reading,
+            sign_kind,
+            sign_profile=policy.sign_profile,
+        )
+        if reading is None:
+            candidates.append(_preserve_candidate(span, "percent_point_sign_invalid_preserve"))
+            continue
         candidates.append(
             SurfaceCandidate(
                 core_span=span,
@@ -51,7 +81,13 @@ def scan_percent_point_candidates(
                 owner="percent_point",
                 surface_type="PERCENT_POINT_SURFACE",
                 reason="percent_point_full_consume_gate",
-                metadata={"number": number, "reading": f"{reading} 퍼센트포인트"},
+                metadata={
+                    "number": number,
+                    "reading": f"{reading} 퍼센트포인트",
+                    "sign_profile": policy.sign_profile.value,
+                    "sign_surface": sign_surface or None,
+                    "numeric_form": numeric_form,
+                },
             )
         )
     return candidates

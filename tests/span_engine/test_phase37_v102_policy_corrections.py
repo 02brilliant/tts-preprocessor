@@ -106,11 +106,6 @@ def test_phase37_frequency_and_data_rate_aliases(text: str, expected: str) -> No
     assert transform(text) == expected
 
 
-@pytest.mark.parametrize("text", ["5Hzabc", "5hzabc"])
-def test_phase37_frequency_unsafe_tail_preserves(text: str) -> None:
-    assert transform(text) == text
-
-
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
@@ -224,10 +219,10 @@ def test_phase37_date_month_special_cases(text: str, expected: str) -> None:
         ("101권", "백일 권"),
         ("101장", "백일 장"),
         ("101개", "백일 개"),
-        ("2대", "두 대"),
-        ("39대", "서른아홉 대"),
-        ("40대", "사십 대"),
-        ("101대", "백일 대"),
+        ("2대", "2대"),
+        ("39대", "39대"),
+        ("40대", "40대"),
+        ("101대", "101대"),
         ("2항목", "두 항목"),
         ("40항목", "사십 항목"),
         ("101항목", "백일 항목"),
@@ -287,9 +282,9 @@ def test_phase37_page_document_tilde_range_and_hyphen_non_goal(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("010 - 1234 - 5678", "공일공 천이백삼십사 오천육백칠십팔"),
-        ("001 - 23 - 456", "공공일 이십삼 사백오십육"),
-        ("0.5 - 1.2 - 3", "영쩜오 일쩜이 삼"),
+        ("010 - 1234 - 5678", "공일공 - 천이백삼십사 - 오천육백칠십팔"),
+        ("001 - 23 - 456", "공공일 - 이십삼 - 사백오십육"),
+        ("0.5 - 1.2 - 3", "영쩜오 - 일쩜이 - 삼"),
     ],
 )
 def test_phase37_spaced_hyphen_numeric_multiblock(

@@ -1,0 +1,82 @@
+{
+  "batch_id": "policy-alignment-batch-1",
+  "description": "Batch 1 output contract. Stable decisions must never drift; pending allowed diffs switch from before to after only with the matching policy/code/test change.",
+  "stable_decisions": [
+    {
+      "decision_id": "standalone-time-zero",
+      "input": "0:00",
+      "expected": "영시"
+    },
+    {
+      "decision_id": "standalone-time-day-boundary",
+      "input": "24:00",
+      "expected": "이십사시"
+    }
+  ],
+  "allowed_diffs": [
+    {
+      "decision_id": "spaced-hyphen-separator-preservation",
+      "status": "applied",
+      "input": "1 - 2 - 3",
+      "before": "일 이 삼",
+      "after": "일 - 이 - 삼",
+      "scope": "exact confirmed conflict; preserve the source separator while normalizing each numeric operand"
+    },
+    {
+      "decision_id": "spaced-hyphen-korean-tail",
+      "status": "applied",
+      "input": "1 - 2 - 3 수치",
+      "before": "일 이 삼 수치",
+      "after": "일 - 이 - 삼 수치",
+      "scope": "exact Korean-tail boundary regression for the separator-preserving spaced-hyphen owner"
+    },
+    {
+      "decision_id": "spaced-hyphen-phone-shaped",
+      "status": "applied",
+      "input": "010 - 1234 - 5678",
+      "before": "공일공 천이백삼십사 오천육백칠십팔",
+      "after": "공일공 - 천이백삼십사 - 오천육백칠십팔",
+      "scope": "exact existing phone-shaped spaced-hyphen regression; preserve source separators"
+    },
+    {
+      "decision_id": "spaced-hyphen-leading-zero-blocks",
+      "status": "applied",
+      "input": "001 - 23 - 456",
+      "before": "공공일 이십삼 사백오십육",
+      "after": "공공일 - 이십삼 - 사백오십육",
+      "scope": "exact existing leading-zero spaced-hyphen regression; preserve source separators"
+    },
+    {
+      "decision_id": "spaced-hyphen-decimal-blocks",
+      "status": "applied",
+      "input": "0.5 - 1.2 - 3",
+      "before": "영쩜오 일쩜이 삼",
+      "after": "영쩜오 - 일쩜이 - 삼",
+      "scope": "exact existing decimal spaced-hyphen regression; preserve source separators"
+    },
+    {
+      "decision_id": "spaced-hyphen-date-shaped",
+      "status": "applied",
+      "input": "2025 - 01 - 03",
+      "before": "이천이십오 공일 공삼",
+      "after": "이천이십오 - 공일 - 공삼",
+      "scope": "exact existing date-shaped spaced-hyphen regression; spaces exclude the compact date owner"
+    },
+    {
+      "decision_id": "spaced-hyphen-attached-korean-sentence",
+      "status": "applied",
+      "input": "공백 포함 표기 010 - 1234 - 5678도 함께 적는다.",
+      "before": "공백 포함 표기 공일공 천이백삼십사 오천육백칠십팔도 함께 적는다.",
+      "after": "공백 포함 표기 공일공 - 천이백삼십사 - 오천육백칠십팔도 함께 적는다.",
+      "scope": "exact existing attached-Hangul sentence regression; preserve both spaced hyphen separators"
+    },
+    {
+      "decision_id": "caret-cubic-meter",
+      "status": "applied",
+      "input": "7m^3",
+      "before": "칠 미터^삼",
+      "after": "칠 세제곱미터",
+      "scope": "representative confirmed conflict for a registered English unit immediately followed by ^3"
+    }
+  ]
+}

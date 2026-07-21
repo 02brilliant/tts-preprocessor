@@ -46,13 +46,9 @@ def run_source_transform(text: str) -> str:
 
 
 def run_production_source_transform(text: str) -> str:
-    from engine.main import transform_with_rollout
+    from engine.main import transform
 
-    return transform_with_rollout(
-        text,
-        mode="span_default",
-        include_debug=False,
-    )
+    return transform(text)
 
 
 def run_binary_transform(binary_path: str | Path, text: str, timeout: int = 20) -> str:
@@ -64,12 +60,7 @@ def run_binary_transform(binary_path: str | Path, text: str, timeout: int = 20) 
 
     try:
         result = subprocess.run(
-            [
-                str(resolved_path),
-                "--rollout-mode",
-                "span_default",
-                f"--text={text}",
-            ],
+            [str(resolved_path), f"--text={text}"],
             capture_output=True,
             text=True,
             check=False,

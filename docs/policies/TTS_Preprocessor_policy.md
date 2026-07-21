@@ -314,7 +314,7 @@ two-block N-M / N:M numeric-delimited candidate -> specific owner first, broad n
 12.32 사태 -> 십이쩜삼이 사태
 12·3수치 -> 십이 삼수치
 2025-13-03 -> 이공이오 일삼 공삼
-010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔
+010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔
 0.8초 -> 영쩜팔 초
 제15권 -> 제 십오권
 ```
@@ -430,6 +430,7 @@ formats must not partially rewrite internal numeric fragments.
 2.000 -> 이쩜영영영
 1,000.5 -> 천쩜오
 1,000,000.000 -> 백만쩜영영영
+12.0300405 -> 십이쩜영삼영영사영오
 -1.250 -> 마이너스 일쩜이오영
 -0.0 -> 마이너스 영쩜영
 +1.250 -> 플러스 일쩜이오영
@@ -483,6 +484,88 @@ email+tag@example.com -> email+tag@example.com
 https://example.com?q=+1 -> https://example.com?q=+1
 /path/+1/log -> /path/+1/log
 ```
+
+### Unified Signed Numeric Canonical
+
+Signed-aware owners share one validation and rendering contract. A supported
+sign must be attached directly to a complete numeric core; whitespace between
+the sign and number is not permitted. The common numeric forms are integer,
+comma integer, decimal, and comma decimal. Comma grouping is validation-only,
+the decimal separator is read as '쩜', and fractional digits are read from the
+source one by one so trailing zero is retained as '영'. The implementation must
+not convert the source through float.
+
+The common core records the raw sign surface, semantic PLUS/MINUS, validated
+integer digits, exact fractional digits, comma presence, and numeric form. The
+default sign profile maps PLUS to '플러스' and MINUS to '마이너스'; the
+temperature profile maps PLUS to '영상' and MINUS to '영하'. UNSIGNED_ONLY and
+owner-custom profiles record owners whose semantics must not be inferred by the
+common default renderer. Each owner declares plus/minus acceptance, its
+owner-local minus aliases, accepted numeric forms, attachment rule, sign
+profile, and full-consume requirement. Equivalent owner-local metadata may be
+used, but duplicate owner-specific numeric regex/reading semantics are not the
+canonical contract.
+
+The following existing signed-aware paths use the common core or its thin
+compatibility wrapper without changing their structural assembly: standalone
+signed number, simple/special unit, currency, percent-point, large-unit,
+minus-only slash fraction, colon/multi-colon/score operands, tilde range
+endpoints, signed temperature, and signed angle degree. International phone
+keeps its owner-custom digit-by-digit reader. Compound slash units and counters
+remain unsigned unless their own policy explicitly says otherwise; this change
+does not add signed counter semantics.
+
+Temperature remains the explicit semantic exception and must full-claim before
+general unit/number fallback. Celsius/Fahrenheit plus and minus use 영상/영하;
+Fahrenheit assembles '화씨 + sign reading + numeric reading + 도'. Bare º keeps
+the existing temperature-like profile, while angle ° keeps the default
+플러스/마이너스 profile.
+
+Minus aliases are owner-local and are never globally replaced. The currently
+centralized default/unit/temperature/degree/percent-point inventory retains the
+existing -, −, －, –, —, ‒, ‑ full-claim aliases; currency, large-unit,
+colon/score, and tilde-range numeric operands retain ASCII - only; slash
+fraction retains -, −, －; plus remains ASCII + only. A dash used as a range
+connector, sentence dash, code operator, or unsupported owner sign is not
+promoted to minus.
+
+Invalid or unsupported direct-sign tokens are atomically preserved after all
+supported structured signed owners and before generic decimal/number fallback.
+The preserve surface is
+INVALID_OR_UNSUPPORTED_SIGNED_NUMERIC_PRESERVE_SURFACE with reason
+invalid_or_unsupported_signed_numeric_surface_preserve. It covers repeated or
+conflicting sign, leading-zero malformed core, empty integer/fraction, invalid
+comma grouping, unsupported signed suffix/counter, and full-consume failure.
+Protected/code-like/math/URL/path/email/JSON/backtick spans still win first.
+Generic numeric owners must not re-enter the preserved span.
+
+~~~text
++1 -> 플러스 일
+-12,345 -> 마이너스 만이천삼백사십오
++1,000.50 -> 플러스 천쩜오영
+-1,000,000.0 -> 마이너스 백만쩜영
++1.5kg -> 플러스 일쩜오 킬로그램
+-2.5%p -> 마이너스 이쩜오 퍼센트포인트
++1,000원 -> 플러스 천 원
++25℃ -> 영상 이십오도
+-77°F -> 화씨 영하 칠십칠도
++30° -> 플러스 삼십도
+
++01 -> +01
++1. -> +1.
+++1 -> ++1
++1,00 -> +1,00
++3대 -> +3대
+-3대 -> -3대
++10km/h -> +10km/h
+~~~
+
+Signed 대, 차량 증감 +3대, and other unsupported signed counters are not
+delegated to the native counter reader or general signed-number prefix fallback.
+The existing unsigned ambiguous_numeric_dae_preserve policy remains unchanged:
+'차량 3대 -> 차량 세 대', bare '3대 -> 3대'. Hyphen/en-dash signed ranges
+remain outside the tilde-range policy, and colon/score/range/phone owners retain
+their existing structure, spacing, operand, and template rules.
 
 Unit and percent suffix spacing consistency:
 
@@ -733,6 +816,22 @@ gate는 `오전/오후/AM/PM` prefix, `에/부터/까지/쯤/경` 후행 표지,
 surface에 좁게 인접한 schedule/time keyword(`회의`, `일정`, `시작`, `종료`,
 `마감`, `출발`, `도착`, `예약`)다. `24:09`는 time-like/time 대상이고,
 `25:30`은 explicit time context가 없으면 basic time-like가 아니다.
+Exact standalone boundary decisions override older broad preserve wording:
+
+```text
+0:00 -> 영시
+24:00 -> 이십사시
+```
+
+Successful time claims omit an exact zero-minute component. `24:MM` remains a
+strong valid time for `MM=00..59`; a one-digit minute is not an HH:MM shape and
+may route to the broad semantic-pair owner.
+
+```text
+회의는 00:00에 시작한다 -> 회의는 영시에 시작한다
+회의는 24:01에 끝난다 -> 회의는 이십사시 일분에 끝난다
+회의는 7:5에 시작한다 -> 회의는 칠 대 오에 시작한다
+```
 
 Same-sentence comma-separated `H:MM` / `HH:MM` lists may share context only via
 the time owner's explicit time-list context gate. The gate requires nearby
@@ -789,6 +888,14 @@ followed by `로`, `으로`, or `의` and then an approved keyword or verb. Thes
 keywords are no longer the only claim path because broad non-time-like N:M also
 uses the same `대` rendering. The particles `에`, `부터`, `까지`, `쯤`, and
 `경` are not semantic-pair gates because they are time-like gates.
+
+This broad path includes valid bare non-time-like pairs such as
+`16:9 -> 십육 대 구`. Score/ratio context uses the same owner and rendering:
+
+```text
+한국 vs 일본 3:2 -> 한국 vs 일본 삼 대 이
+화면 비율 16:9 -> 화면 비율 십육 대 구
+```
 
 ```text
 1:2 비율 -> 일 대 이 비율
@@ -998,6 +1105,11 @@ decimal-aware numeric blocks, it is rendered as `read(A) + " 대 " + read(B) +
 요한복음 1:2:3 -> 요한복음 1:2:3
 ```
 
+
+The H:MM:SS-like preserve decision is atomic in standalone and ordinary Korean
+sentence contexts. For example `13:05:09 -> 13:05:09` and
+`기록은 3:05:09이다 -> 기록은 3:05:09이다`; owner failure must not expose inner
+numeric blocks to partial time or semantic-pair conversion.
 Four-to-eight-block colon numeric surfaces are not treated as time/duration/media
 candidates by this owner. If every block is a valid signed decimal-aware numeric
 block, the rendered block readings are joined with `대` without a keyword gate.
@@ -1153,7 +1265,7 @@ unsafe tail은 preserve한다.
 1∼11월 -> 일월에서 십일월
 1～11월 -> 일월에서 십일월
 1〜11월 -> 일월에서 십일월
-2~5시 -> 이시에서 오시
+2~5시 -> 두 시에서 다섯 시
 10~30분 -> 십분에서 삼십분
 ```
 
@@ -2910,6 +3022,9 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 
 아래 순서대로 claim을 시도한다. 이 표는 실제 `claim_scanner.py`의 scanner 호출 순서와 맞춘 implementation order다. 문서용 snapshot은 `claim_scanner.CLAIM_ORDER_DOC`를 따른다.
 
+For example, `가격은 [₩1200]입니다 -> 가격은 ₩1200입니다`: presentation removes
+the bracket delimiters, but the protected interior is not re-entered by the
+currency owner.
 `square bracket protection`은 Surface Claim Phase 진입 전에 bracket owner로 excluded range를 만든다. URL/path/email/file-like protected literal은 claim phase 안에서 `preserve` owner와 `PROTECTED_LITERAL_SURFACE`로 선점된다.
 
 | 우선순위 | Claim 대상 | 대표 예 | owner |
@@ -2935,7 +3050,7 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 18 | multi-colon numeric | `1:2:3` | `multi_colon_numeric` |
 | 19 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
 | 20 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
-| 21 | spaced separator preserve | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | `preserve` |
+| 21 | spaced numeric separator boundary | `12 .3`, `12. 3`, `12 · 3`, `1 / 3` | spaced period/slash: `preserve`; spaced middle-dot: independent number reading |
 | 22 | spaced hyphen numeric blocks | `1 - 2 - 3` | `spaced_hyphen_numeric_blocks` |
 | 23 | numeric delimited hyphen range | `1-2kg` | `numeric_delimited_hyphen_range` |
 | 24 | range with unit / shared suffix range | `3~8cm`, `1∼11월` | `range`, `range_with_unit` |
@@ -2954,6 +3069,9 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 37 | simple unit | `50kg`, `3km` | `simple_unit` |
 | 38 | decimal registered suffix | `1.5차`, `4.5주` | `decimal_registered_suffix` |
 | 39 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
+| 39a | explicit contextual numeric `대` | `차량 3대`, `차량 2대 1대를` | `counter_noun` |
+| 39b | ambiguous attached numeric `대` atomic preserve | `3대`, `20대가`, `1.5대` | `ambiguous_numeric_dae_preserve` |
+| 39c | invalid/unsupported direct-sign atomic preserve | `+01`, `++1`, `+3대` | `invalid_signed_numeric_preserve` |
 | 40 | decimal fallback | `12.3`, `7.25` | `decimal` |
 | 41 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
 | 42 | public number | `국민콜 110에`, `1339는` | `public_number` |
@@ -2962,7 +3080,8 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 | 45 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
 | 46 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
 | 47 | administrative suffix | `종로3가`, `역삼동 12번지` | `administrative_suffix` |
-| 48 | general number | `123`, `2025` | `number` |
+| 48 | Korean numeric chain | `다우존스30`, `5극3특`, `한1글` | `korean_numeric_chain` |
+| 49 | general number | `123`, `2025` | `number` |
 
 주의:
 
@@ -2970,6 +3089,8 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 - 최종 render 순서나 prosody 순서가 아니다.
 - 앞선 owner가 claim한 `reentry_allowed=False` span은 뒤 owner가 재진입할 수 없다.
 - `K-푸드` 계열은 lexical compound가 아니라 `k_hangul_lexical` owner가 처리한다.
+- `A112` is full-consumed by `single_letter_alnum_code` and renders `에이 백십이`;
+  emergency and general-number fallback do not split its numeric suffix.
 - `single_letter_alnum_code`는 `B-2.5`, `K-1.5` 같은 single-letter numeric-code 후보를 two-block hyphen code보다 먼저 full-consume한다. 이 owner에서 ASCII `-`는 separator이며 minus sign으로 읽지 않는다.
 - `managed_acronym_numeric_code`는 current English managed dictionary exact entry 뒤의 no-separator 또는 ASCII `-` short numeric-code suffix만 full-consume한다. 이 owner는 broad acronym+number fallback이 아니며, unregistered ASCII word + numeric surfaces and fallback-covered acronyms outside the managed dictionary preserve.
 - `event`는 decimal/middle-dot numeric fallback보다 먼저 claim해야 한다.
@@ -3533,6 +3654,10 @@ Weak event keywords:
 - event/date 조건을 만족하지 못하면 numeric fallback을 적용한다.
 - hyphen-linked event (`12.3-비상계엄`)도 event candidate로 보며, hyphen은 ORIGINAL_BOUNDARY로 보존한다.
 - fixed dictionary event surface가 있으면 dictionary가 먼저 이긴다.
+- event claim은 같은 문장의 다른 dotted surface까지 확장되지 않는다. 각
+  surface는 독립적으로 event gate 또는 decimal fallback을 선택한다.
+
+`12.12 사태와 12.12 수치를 함께 적었다 -> 십이십이 사태와 십이쩜일이 수치를 함께 적었다`
 
 Strong keyword는 immediate adjacency만 충족하면 event gate를 통과할 수 있다.
 
@@ -3593,7 +3718,7 @@ fallback examples:
 원칙:
 * exact date format 우선
 * 지원 date-like full format은 `YYYY-MM-DD`, `YYYY/MM/DD`, `YYYY.MM.DD` 세 가지다.
-* year-month short dotted form은 별도 정책 없으면 preserve한다.
+* 정확히 두 숫자 block인 bare `숫자.숫자`는 ordinary decimal이 기본 owner다. `4자리.1~2자리` shape만으로 year-month를 추정하거나 preserve하지 않는다. 현재 short dotted year-month에 적용되는 한국어 문맥 gate는 없으며, 그러한 gate가 별도 canonical 정책으로 정의되기 전에는 date owner가 두 block surface를 선점하지 않는다.
 * `4-2-2` date-like pattern은 구분자가 `-`, `/`, `.` 중 하나이고 동일 구분자가 공백 없이 반복될 때 `date_time.date` owner가 우선 claim한다.
 * calendar-valid이면 날짜로 읽는다.
 * calendar-invalid이면 기본 preserve가 아니라, 아래 조건을 모두 만족할 때 `CODE_SEPARATOR_BLOCK_SURFACE` fallback을 허용한다.
@@ -3635,7 +3760,7 @@ docs/2025/01/02/report.md -> preserve
 2025-01-32 -> 이공이오 공일 삼이
 2025/02/30 -> 이공이오 공이 삼공
 2025.02.30 -> 이공이오쩜 공이쩜 삼공
-2025.01 -> preserve
+2025.01 -> 이천이십오쩜영일
 ```
 
 Version/log/model/code context는 calendar-valid 여부와 무관하게 full date-like token을 preserve한다.
@@ -3829,6 +3954,8 @@ Currency inventory:
 
 ```text
 €1,234.56 -> 천이백삼십사쩜오육 유로
+$-10 -> 마이너스 십 달러
+-$10 -> 마이너스 십 달러
 ₩1200 -> 천이백 원
 1,000원 / KRW1000 / ₩1,000 / 1,000KRW -> 천 원
 1,000.50원 / KRW1,000.50 / ₩1,000.50 / 1,000.50KRW -> 천쩜오영 원
@@ -4089,8 +4216,11 @@ This applies even when the corresponding integer counter uses native Korean.
 5개 -> 다섯 개
 2.5개 -> 이쩜오 개
 
-4대 -> 네 대
-1.5대 -> 일쩜오 대
+차량 4대 -> 차량 네 대
+장비 1.5대 -> 장비 일쩜오 대
+
+bare 4대 -> 4대
+bare 1.5대 -> 1.5대
 ```
 
 Malformed decimal forms, arbitrary Hangul suffixes, protected spans, and
@@ -4246,6 +4376,7 @@ Clock hour range에서 `시`는 clock hour reading을 양쪽에 적용한다. `1
 
 ```text
 2~3시 -> 두 시에서 세 시
+2~5시 -> 두 시에서 다섯 시
 10~12시 -> 열 시에서 열두 시
 13~15시 -> 십삼 시에서 십오 시
 20~22시 -> 이십 시에서 이십이 시
@@ -4353,7 +4484,7 @@ Hyphen Code Separator Routing Table:
 | `1-2` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `1-2` |
 | `12-15` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `12-15` |
 | `123-456` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `123-456` |
-| `1 - 2 - 3` | no code separator owner | spaced numeric hyphen multi-block, 다음 owner로 위임 | code separator owner 미적용 | `일 - 이 - 삼` 또는 일반 규칙 결과 |
+| `1 - 2 - 3` | `spaced_hyphen_numeric_blocks` | exact `공백-하이픈-공백` 3+ numeric blocks | two-block, attached, differently spaced forms 제외 | `일 - 이 - 삼` |
 
 
 ### 9.12 Emergency Claim
@@ -4547,6 +4678,32 @@ Counter Policy Table:
 | `학기` | sino_only | - | `2학기 -> 이학기` | native 금지 |
 | `회` | sino_only | - | `제62회 -> 제 육십이회` | numeric prefixed noun과 연동 |
 
+Leading-zero counter는 일반 counter owner가 숫자 의미로 재해석하지 않고 전체 surface를 보존한다.
+날짜의 `월`/`일` 및 별도로 명시된 minute/second owner만 leading-zero override를 가질 수 있다.
+
+```text
+01명 -> 01명
+01명에게 -> 01명에게
+```
+
+Batch 2 leading-zero canonical owner matrix:
+
+```text
+01 / 003 / 007 / 0001 -> source preserve
+ID: 00123 -> 아이디: 00123
+03kg -> 03kg
+₩01,000 -> ₩01,000
+09시 -> 09시
+07시 05분 -> 07시 05분
+010-1234-5678 01명 -> 공일공 일이삼사 오육칠팔 01명
+```
+
+Unit와 currency owner는 invalid leading-zero amount의 full surface를 preserve
+claim하여 내부 numeric fallback을 차단한다. Suffix-clock owner는
+`TIME_PRESERVE_SURFACE`로 leading-zero numeric group을 보존한다. Identifier에서는
+등록 acronym만 독립적으로 변환할 수 있고 colon과 leading-zero payload는 보존한다.
+날짜 `월`/`일`과 phone block은 이 preserve matrix의 좁은 등록 예외다.
+
 Counter 100+ Sino policy:
 
 - Counter number reading applies native/hybrid/sino behavior only for `1~99`.
@@ -4567,6 +4724,14 @@ phase; they must not be internally rewritten by the broad number fallback.
 6천400명 -> 육천사백 명
 6천400 -> 6천400
 6천400명abc -> 6천400명abc
+```
+
+Compact large-unit 숫자 core 바로 뒤에 approximate marker `여`가 붙으면, 숫자 reading과 `여` 사이에 생성 공백을 넣지 않는다.
+뒤의 counter 공백은 입력 surface를 그대로 유지한다.
+
+```text
+1만3천여 명 -> 일만삼천여 명
+1만3천여명 -> 일만삼천여명
 ```
 
 숫자+counter에서 `1~99`는 기존 counter별 고유어/native, hybrid threshold 39, 한자어 정책을 따른다. 하지만 `100` 이상은 counter 종류와 관계없이 숫자 전체를 한자어로 읽는다. `100` 이상에서는 마지막 두 자리만 고유어로 읽는 tail-native 방식을 사용하지 않는다.
@@ -4843,7 +5008,10 @@ general number 이전
 
 원칙:
 
-- 각 block은 digit-sequence reading으로 읽는다.
+- 첫 block이 한두 자리면 leading zero를 값으로 해석한 일반 숫자 reading을
+  사용하고, 세 자리 이상이면 digit-sequence reading을 사용한다.
+- 두 번째 이후 block은 길이와 leading zero에 관계없이 digit-sequence
+  reading을 사용하며 `0`은 `영`으로 읽는다.
 - block 사이에 공백을 둔다.
 - middle dot 자체는 GENERATED_READING으로 출력하지 않는다.
 
@@ -4852,6 +5020,8 @@ general number 이전
 12·3 -> 십이 삼
 7·25 -> 칠 이오
 10·5 -> 십 오
+01·09 -> 일 영구
+12·003 -> 십이 영영삼
 1·2·3 -> 일 이 삼
 123·456 -> 일이삼 사오육
 
@@ -4862,28 +5032,34 @@ general number 이전
 
 ### 9.18 Spaced Separator Handling
 
-숫자와 separator 사이에 공백이 있는 경우 event/date/decimal/middle-dot full consume을 적용하지 않는다. 그러나 이것은 항상 Absolute Preserve를 의미하지 않는다. 공백 separator surface는 다음 후보 owner 또는 일반 fallback으로 넘길 수 있으며, 최종적으로 어떤 owner도 처리하지 못할 때만 Terminal Fallback Preserve로 원문 출력한다.
+숫자와 separator 사이에 공백이 있는 경우 event/date/decimal/middle-dot full consume을 적용하지 않는다.
+separator 종류에 따라 canonical fallback을 구분한다.
 
 원칙:
 
-- 두 블럭 spaced separator는 separator와 공백을 원문 그대로 유지하고 각 token을 독립 fallback으로 평가한다.
+- spaced period numeric surface는 부분 숫자 변환을 막기 위해 전체 surface를 보존한다.
+- spaced middle-dot numeric surface는 middle-dot과 입력 공백을 원문 그대로 유지하고 양쪽 숫자를 각각 독립된 일반 숫자로 읽는다.
 - 세 블럭 이상 spaced hyphen numeric block은 `9.24.6`의 spaced hyphen numeric multi-block 정책을 우선 적용한다.
 - URL/path/email/code-like 내부의 spaced separator는 Absolute Preserve이다.
 
 예:
 
 ```text
-12 .3 -> 십이 .삼
-12. 3 -> 십이. 삼
+12 .3 -> 12 .3
+12. 3 -> 12. 3
+12 . 3 -> 12 . 3
 12 · 3 -> 십이 · 삼
+12· 3 -> 십이· 삼
+12 ·3 -> 십이 ·삼
 12 · 3 수치 -> 십이 · 삼 수치
-010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔
+010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔
 ```
 
 금지:
 
 ```text
 12 . 3 -> 십이쩜삼
+12 · 3 -> 12 · 3
 1 / 3 -> 삼분의 일
 ```
 
@@ -5074,6 +5250,24 @@ canonical:
 3.5만 -> 삼만 오천  # 금지: 원 currency noun 없는 bare form은 semantic expansion 대상 아님
 ```
 
+#### Structured compact large-unit decimal
+
+`5만1839.26`, `2만5508.07`처럼 하나 이상의 명시 한글 큰단위 뒤 마지막 작은 숫자 group에만 소수가 붙는 형태는 하나의 `large_unit_atomic` surface다. 정수 group과 큰단위 순서가 기존 structured parser 규칙을 만족하고 소수부가 한 자리 이상의 ASCII digit일 때만 허용한다.
+
+- 전체 surface를 full-consume하며 reason은 `large_unit_structured_decimal_surface`다.
+- 소수부는 ordinary decimal digit policy를 재사용하므로 `0`은 `영`이다.
+- 입력에 없는 큰단위 group 공백이나 의미 확장을 생성하지 않는다.
+- Arabic numeric block과 소수 reading은 `GENERATED_READING`, 원문의 `만/억/조/경` 및 뒤따르는 조사·한글 tail은 `ORIGINAL_KOREAN`이다.
+- invalid comma, leading zero, 빈 소수부, 추가 dot, 소수 뒤 추가 단위, ASCII/code-like tail은 전체 preserve하며 내부 decimal/number owner의 부분 fallback을 금지한다.
+- 선행 큰단위가 없는 `3.5만`은 기존 decimal-large-unit lexical 정책을 유지하고, `3.5천`이나 `5만1839.26억`으로 범위를 넓히지 않는다.
+
+```text
+5만1839.26 -> 오만천팔백삼십구쩜이육
+5만1839.26에 -> 오만천팔백삼십구쩜이육에
+2만5508.07 -> 이만오천오백팔쩜영칠
+3.5만 -> 삼쩜오 만
+```
+
 ### 9.23.1 Mixed Large Unit Counter / Currency Surface
 
 대상:
@@ -5241,9 +5435,9 @@ A-B-C
 
 ```text
 3.14 -> 삼쩜일사
-12 . 3 -> 십이 . 삼
-12. 3 -> 십이. 삼
-12 .3 -> 십이 .삼
+12 . 3 -> 12 . 3
+12. 3 -> 12. 3
+12 .3 -> 12 .3
 1/3 -> 삼분의 일
 4/7 -> 칠분의 사
 1 / 3 -> 일 / 삼
@@ -5436,7 +5630,7 @@ x-2.5℉ -> 엑스 화씨 이쩜오도
 canonical output:
 
 ```text
-12 . 3 -> 십이 . 삼
+12 . 3 -> 12 . 3
 1 / 3 -> 일 / 삼
 12 - 34 -> 십이 - 삼십사
 A - B -> 에이 - 비
@@ -5461,20 +5655,21 @@ A - 3 -> A - 삼
 원칙:
 
 - 블럭 수는 3개 이상이어야 한다.
-- separator는 `-`, `−`, `－` 중 owner-local 허용 범위만 사용한다.
-- separator 좌우 ASCII space는 허용한다.
+- Batch 1 owner는 exact ASCII ` - ` separator만 claim하며 다른 spacing/alias로 범위를 넓히지 않는다.
+- claim한 separator와 좌우 ASCII space는 원문 그대로 출력한다.
 - block이 `0`으로 시작하는 pure digit이면 code digit reading으로 읽는다.
 - 그 외 pure digit block은 일반 숫자 reading으로 읽는다.
 - decimal block은 decimal reading을 따른다.
-- separator는 출력하지 않고 블럭 사이를 공백으로 렌더링한다.
+- numeric block만 변환하고 separator는 삭제하거나 일반 공백으로 치환하지 않는다.
 - unsafe tail, alphabetic contamination, URL/path/email/code-like context는 Absolute Preserve 또는 Terminal Fallback Preserve로 처리한다.
 
 canonical output:
 
 ```text
-010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔
-001 - 23 - 456 -> 공공일 이십삼 사백오십육
-0.5 - 1.2 - 3 -> 영쩜오 일쩜이 삼
+1 - 2 - 3 -> 일 - 이 - 삼
+010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔
+001 - 23 - 456 -> 공공일 - 이십삼 - 사백오십육
+0.5 - 1.2 - 3 -> 영쩜오 - 일쩜이 - 삼
 ```
 
 Terminal Fallback Preserve examples:
@@ -5595,6 +5790,7 @@ Gate는 parser 내부 조건문이 아니라 registry에서 관리한다.
 - `event_keyword_gate`
 - `emergency_context_tail_gate`
 - `counter_policy_gate`
+- `explicit_dae_counter_context`
 - `hyphen_routing_gate`
 - `currency_safe_tail_gate`
 - `unit_safe_boundary_gate`
@@ -6380,9 +6576,9 @@ spans, code-like spans, and owner-claimed render surfaces. Candidates are then
 selected under a conservative sentence-level comma budget to avoid
 over-insertion.
 
-This layer must not route span-default through the legacy string-based
-`engine.prosody.comma` implementation. Legacy comma rules may be used only as
-reference examples for span-safe reimplementation.
+This layer is implemented only by the current span prosody modules. It must
+not route through a second normalization pipeline or reuse an alternate comma
+implementation.
 
 Initial supported leading time-frame patterns are narrow: `오늘 아침`, `오늘 오전`,
 `오늘 오후`, `오늘 저녁`, `내일 아침`, `내일 오전`, `내일 오후`, `내일 저녁`,
@@ -6419,7 +6615,7 @@ The initial extra-layer budget is sentence-local:
 - selected comma positions must be at least 18 visible/source characters apart
 
 Candidate priority is leading time-frame, then subordinate marker, then serial
-list. The short-sentence threshold is lower than the legacy reference examples
+list. The short-sentence threshold is lower than earlier policy examples
 because the span-default extra layer is constrained to the narrow patterns above
 and must cover short production utterances such as `오늘 아침 우리는 출발했습니다.`
 
@@ -6507,7 +6703,7 @@ Paragraph Split Threshold Table:
 - date/time owner는 general number보다 우선한다.
 - unit/currency owner는 generic number owner보다 우선한다.
 - range owner는 내부 number partial consume보다 우선한다.
-- counter owner는 bare number owner보다 우선한다.
+- counter owner는 bare number owner보다 우선한다. 단, source-attached `N대`는 등록 명사 직접 문맥 또는 제한된 인접 continuation이 있을 때만 counter owner에 위임하고, 그 밖에는 atomic preserve가 우선한다.
 - final tilde range는 broad number fallback 이후 authority를 갖지만, claim은 미리 등록되어 partial consume을 막는다.
 - 동일 priority 충돌은 preserve한다.
 
@@ -6524,10 +6720,22 @@ Paragraph Split Threshold Table:
   - fallback guard를 모두 통과한 경우에만
   - `CODE_SEPARATOR_BLOCK_SURFACE` fallback을 허용한다.
 - final tilde range fallback은 range claim이 없는 임의 문자열에 적용하면 안 된다.
-- typed surface가 생성된 segment는 legacy helper 대상이 아니다.
+- typed surface가 생성된 segment는 추가 후처리 helper 대상이 아니다.
 - event owner 실패 dotted numeric은 decimal owner fallback으로 넘길 수 있다.
 - event owner 실패 middle-dot numeric은 middle-dot numeric block fallback으로 넘길 수 있다.
 - generic numeric+Korean suffix surface는 한글 suffix를 rewrite하지 않고 숫자 core만 변환하는 후보 owner로 평가할 수 있다.
+- 등록 suffix 의미 부여와 Korean-eligible token 내부 일반 숫자 core 읽기는 서로 다른 처리다. 완성형 한글과 하나 이상의 유효한 ASCII 정수 block만으로 이루어진 token은 specific owner가 선점하지 않은 경우 `korean_numeric_chain`이 token 전체를 claim하고 각 숫자 block만 한자어 숫자로 읽는다.
+- `korean_numeric_chain`은 한글 literal을 rewrite하거나 자동 공백을 만들지 않는다. ASCII 영문자, compatibility jamo, `_`, `/`, URL/path/email/JSON/shell/identifier-like 구조, invalid comma/decimal 또는 부분 residue가 생기는 token은 제외한다.
+- 기존 structured 숫자 표현과의 충돌을 피하기 위해 `십/백/천/만/억/조/경`이 포함된 token 및 registered numeric suffix/counter block은 chain 자격에서 제외한다. 숫자로 시작하고 숫자 block이 하나뿐인 경우에는 `5극`, `3특`처럼 단일 비등록 완성형 한글 literal이 붙은 경우만 chain으로 처리한다. `123입니다` 같은 일반 숫자+문법 tail은 기존 `number` owner와 literal 보존 경계를 유지한다.
+- registered counter/date/unit/currency/numeric-suffix/administrative owner와 `ambiguous_numeric_dae_preserve`가 항상 우선한다. 따라서 명시 문맥의 `차량 3대 -> 차량 세 대`, bare `3대 -> 3대`, `제15권 -> 제 십오권`, `종로3가 -> 종로삼가`의 owner 경계를 유지한다.
+
+```text
+다우존스30 -> 다우존스삼십
+5극3특 -> 오극삼특
+5극 3특 -> 오극 삼특
+한1글 -> 한일글
+A1한2 -> A1한2
+```
 
 ### 16.4 대표 충돌 시나리오
 
@@ -6930,8 +7138,8 @@ canonical output:
 canonical output:
 
 ```text
-12 .3 -> 십이 .삼
-12. 3 -> 십이. 삼
+12 .3 -> 12 .3
+12. 3 -> 12. 3
 12 · 3 -> 십이 · 삼
 12 · 3 수치 -> 십이 · 삼 수치
 ```
@@ -7029,7 +7237,7 @@ canonical output:
 허용되는 원문 보존 예:
 
 ```text
-12 .3 -> 십이 .삼
+12 .3 -> 12 .3
 12 · 3 -> 십이 · 삼
 ```
 
@@ -7739,7 +7947,7 @@ ID 2025.13.03 -> ID 2025.13.03
 A - B -> 에이 - 비
 A - 3 -> 에이 - 삼
 1 - 2 - 3 -> 일 - 이 - 삼
-12 . 3 -> 십이 . 삼
+12 . 3 -> 12 . 3
 1 / 3 -> 일 / 삼
 ```
 
@@ -8113,29 +8321,29 @@ engine/
 
 ### 25.1 기존 파일과의 대응
 
-| 문서 규칙 | 구현 기준 파일 / 함수 |
+위 구조는 새 구현을 위한 권장 구조이며 현행 파일 트리 그 자체가 아니다. 현행
+production 구현과 문서 규칙의 대응은 다음과 같다.
+
+| 문서 규칙 | 현행 구현 기준 파일 / 함수 |
 |---|---|
-| 전체 실행 순서 | `engine.main.transform` |
-| normalization orchestration | `engine.pipeline.transform_engine.normalize_text` |
-| source span | `engine.core.spans.SourceSpan` |
-| tokenization | `engine.pipeline.tokenizer` |
-| shadow buffer | `engine.core.shadow` |
-| render piece | `engine.core.render_piece` |
-| typed surface contract | `engine.surfaces.models.Surface` |
-| claim registry | `engine.surfaces.claim_registry.SurfaceClaimRegistry` |
-| gate registry | `engine.gates.registry.GateRegistry` |
-| structured parse | `engine.pipeline.parse_phase` |
-| restricted helper | `engine.pipeline.helper_phase` |
-| render | `engine.pipeline.render_phase` |
-| shadow validation | `engine.pipeline.validation_phase` |
-| prosody comma | `engine.prosody.comma.insert_commas` |
+| production source facade | `engine.main.transform` |
+| production orchestration | `engine.span_engine.production_adapter.transform_for_production` → `engine.span_engine.transform.transform_with_trace` |
+| source span / render piece / typed surface | `engine.span_engine.models` |
+| tokenization | `engine.span_engine.tokenizer.tokenize_immutable_spans` |
+| shadow buffer | `engine.span_engine.shadow.build_shadow_buffer` |
+| claim registry | `engine.span_engine.claim_registry.SurfaceClaimRegistry` |
+| claim scan / owner precedence | `engine.span_engine.claim_scanner.claim_surfaces` |
+| structured parse | `engine.span_engine.parser.parse_candidates` |
+| render | `engine.span_engine.render` |
+| shadow validation | `engine.span_engine.validation.validate_shadow` |
+| production prosody comma | `engine.span_engine.prosody` and `engine.span_engine.prosody_extra` |
 | paragraph split | `engine.prosody.paragraph.split_paragraphs` |
-| runtime contract | `api/server.py -> api.binary_runtime.run_transform_binary` |
+| runtime contract | `api/server.py` → `api.binary_runtime.run_transform_binary` |
 
 Deployment/runtime entrypoint policy is maintained in
 `docs/policies/TTS_Preprocessor_deployment_policy.md`. The official
 production source entrypoint is
-`engine.main.transform_with_rollout(text, mode="span_default", include_debug=False)`.
+`engine.main.transform(text)`.
 
 For the detailed numeric valid/invalid matrix, owner-attached numeric behavior,
 partial fallback audit, malformed numeric follow-up taxonomy, and trailing-zero
@@ -8221,7 +8429,7 @@ Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 규칙
 
 ## 27.2 Codex Implementation Guardrails
 
-Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 Guardrails는 기존 본문 예시나 레거시 테스트보다 우선한다.
+Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 Guardrails는 기존 본문 예시나 과거 테스트보다 우선한다.
 
 1. 기존 API 호환을 유지한다.
    - `transform(text: str) -> str`
@@ -8286,7 +8494,7 @@ Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 Guardr
 
 14. dictionary expansion entry는 반드시 safety class와 claim_policy를 가진다. 단위/통화/파일크기/복합단위는 대부분 숫자 prefix 또는 context gate를 요구하며, dictionary 항목은 smoke, condition, collision, shadow test에 포함한다.
 
-## 28. 본문과 레거시 정책의 관계
+## 28. 본문과 과거 정책의 관계
 
 이 문서는 기존 통합 정책을 폐기하는 문서가 아니라, 기존 정책의 안전 원칙을 object/span 기반 아키텍처로 재구성한 실행 명세서다.
 
@@ -8311,7 +8519,7 @@ Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 Guardr
 - 문자열 태그 기반 설명
 - deprecated fallback
 
-이런 항목은 별도 legacy 문서에 보존할 수 있다. 단, 구현 기준은 본 문서가 우선한다.
+이런 항목은 별도 역사 기록에 보존할 수 있다. 단, 구현 기준은 본 문서가 우선한다.
 
 ## 29. 최종 한 문장 정의
 
@@ -8363,11 +8571,32 @@ surface_type=CODE_SEPARATOR_BLOCK_SURFACE
    - `.` (Dot) -> `dotted_decimal_numeric` (`쩜` 읽기)
    - `·` (Middle-dot) -> `middle_dot_numeric_block` (공백 읽기)
 
+Two-block dotted routing은 다음과 같다.
+
+- 유효한 bare `숫자.숫자`는 `decimal` owner가 full-claim한다.
+- `4자리.1~2자리` 모양만으로 year-month preserve/date owner를 선택하지 않는다. 현재 구현과 canonical 정책에는 short dotted year-month를 판정하는 한국어 좌우 문맥 gate가 없다.
+- event keyword gate가 통과하면 기존 `event` owner가 우선하고, 실패하면 ordinary decimal로 fallback한다.
+- `05.03`과 같은 기존 leading-zero ambiguous surface, malformed dot/comma, URL/path/email/file/version/code-like token 및 protected span은 기존 preserve owner 경계를 유지한다.
+- 이 변경은 정확히 두 숫자 block에 한정한다. `2025.01.03`, calendar-invalid full date-like fallback, unsupported dotted chain 및 code/protected routing은 변경하지 않는다.
+
+Canonical examples:
+
+```text
+12.12 -> 십이쩜일이
+307.16 -> 삼백칠쩜일육
+7443.28 -> 칠천사백사십삼쩜이팔
+2025.01 -> 이천이십오쩜영일
+2025.13 -> 이천이십오쩜일삼
+05.03 -> 05.03
+12.12 사태 -> 십이십이 사태
+```
+
 #### 30.1.2 Spaced Separator 처리
 
-숫자와 기호 사이에 공백이 있는 경우(`12 . 3`), 이를 단일 numeric block으로 full consume하지 않는다. 기호와 공백은 보존(`ORIGINAL_BOUNDARY`, `ORIGINAL_SPACE`)하고 숫자만 각각 normalize한다.
+숫자와 기호 사이에 공백이 있는 경우 이를 event/decimal/middle-dot 단일 numeric block으로 full consume하지 않는다.
+spaced period는 부분 변환을 막아 전체 surface를 보존하고, spaced middle-dot은 기호와 공백을 보존(`ORIGINAL_BOUNDARY`, `ORIGINAL_SPACE`)하면서 양쪽 숫자를 각각 normalize한다.
 
-- `12 . 3` -> `십이 . 삼`
+- `12 . 3` -> `12 . 3`
 - `12 · 3` -> `십이 · 삼`
 
 #### 30.1.3 Korean Lexical Tail
@@ -9682,7 +9911,7 @@ Boundary / unsafe tail:
    - 한글 `유월`, `십월`은 보존
 3. date/time shared suffix range expansion
    - `1~11월 -> 일월에서 십일월`
-   - `2~5시 -> 이시에서 오시`
+   - `2~5시 -> 두 시에서 다섯 시`
 4. Korean page/document tilde range
    - `5~7쪽 -> 오에서 칠쪽`
    - approved hyphen form `12-15장 -> 십이에서 십오 장`
@@ -9690,7 +9919,7 @@ Boundary / unsafe tail:
    - `3.5만 원 -> 삼쩜오 만 원`
    - `1.2억 원 -> 일쩜이 억 원`
 6. spaced hyphen numeric multi-block
-   - `010 - 1234 - 5678 -> 공일공 천이백삼십사 오천육백칠십팔`
+   - `010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔`
 7. frequency case aliases
    - `Hz/hz`, `kHz/khz`, `MHz/mhz`, `GHz/Ghz/ghz`는 numeric prefix가 있을 때 같은 family로 처리한다.
 8. bitrate / byte-rate 표기 분리
@@ -9750,6 +9979,89 @@ ASCII/Hangul identifier에 붙은 `N대M`, URL/path/email/JSON/backtick/fenced-c
 square-bracket protected interior, 또는 unsafe alphabetic tail은
 `korean_da_score_pair`가 claim하지 않는다.
 
+#### Ambiguous standalone numeric `대`
+
+기존 상위 owner가 claim하지 않은 source-attached `숫자+대` surface는
+표면형만으로 counter, 연령대, 주요 항목 수, 세대, 순번 또는 한자어 의미를
+추론하지 않는다. 기본값은 읽기가 아니라 원문 보존이다.
+
+우선순위는 protected/code-like owner, `korean_da_score_pair` 관계형
+`N대M`, prefixed ordinal `제N대`, 명시적 contextual `N대` counter,
+`ambiguous_numeric_dae_preserve`, generic decimal/number fallback 순이다.
+관계형 owner가 지원하는 `N대M`, `N대 M`, `N 대 M`의 operand validation,
+source spacing, rendering 및 fallback은 변경하지 않는다. `제N대`도 기존
+`numeric_suffix` owner와 `prefixed_ordinal_numeric_suffix` reason을
+유지한다.
+
+`대` 수량 문맥을 허가하는 중앙 registry는
+`REGISTERED_DAE_COUNTER_NOUNS`이며 현재 최소 canonical inventory는 정확히
+다음과 같다.
+
+```text
+차량, 장비, 버스, 서버, 카메라
+```
+
+Attached `N대`가 바로 앞의 정확한 등록 명사와 `등록 명사 + ASCII space +
+N대` 구조를 형성한 경우에만 기존 `counter_noun` parser/renderer에
+위임한다. 조사나 문장부호를 건너뛰지 않고, 넓은 좌측 window, 동사
+allowlist, scanner-local keyword set 또는 임의의 일반 명사 추론을 사용하지
+않는다. 따라서 `차량 3대`는 contextual counter지만 `차량은 3대`와
+`가족 3대`는 이 최소 규칙에서 preserve다.
+
+동일 수량열 continuation은 정확히 `등록 명사 + N대 + ASCII space +
+N대{조사·어미}`로 인접한 경우에만 허용한다. 쉼표, 절 경계, 다른 명사,
+동사 또는 먼 문맥을 넘어 상속하지 않는다.
+
+```text
+차량 3대 -> 차량 세 대
+장비 5대 -> 장비 다섯 대
+버스 10대 -> 버스 열 대
+서버 20대 -> 서버 스무 대
+카메라 40대 -> 카메라 사십 대
+차량 2대 1대를 점검했다 -> 차량 두 대 한 대를 점검했다
+차량 2대, 가족 1대가 모였다 -> 차량 두 대, 가족 1대가 모였다
+```
+
+소수도 같은 gate를 사용한다. 명시 문맥의 `장비 1.5대`만 기존
+`decimal_registered_suffix` reading `장비 일쩜오 대`를 사용한다.
+Bare `1.5대` 및 `1.5대가`는 전체를 preserve하며 내부 decimal owner가
+재진입하지 않는다. Malformed decimal/counter surface는 기존의 더 구체적인
+preserve 정책을 유지한다.
+
+상위 owner와 명시 counter gate가 모두 실패하면
+`ambiguous_numeric_dae_preserve`가
+`AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE`를 claim한다. Canonical reason은
+`no_existing_owner_and_no_explicit_counter_context`이고 claim type은
+`preserve`다. Shadow Validation을 위해 attached 조사·어미가 같은 Hangul
+token에 있으면 source-exact preserve span에 함께 포함할 수 있다. 숫자
+부분은 `ORIGINAL_BOUNDARY`, `대`와 attached Hangul tail은
+`ORIGINAL_KOREAN` provenance를 유지한다. 이 absolute preserve claim
+내부에는 generic number, decimal, registered suffix 또는
+`korean_numeric_chain`이 재진입할 수 없다.
+
+```text
+3대 -> 3대
+10대 -> 10대
+20대가 -> 20대가
+40대를 -> 40대를
+5대 과제 -> 5대 과제
+20대 남성 -> 20대 남성
+가족 3대 -> 가족 3대
+가업을 3대째 이어 왔다 -> 가업을 3대째 이어 왔다
+1.5대 -> 1.5대
+```
+
+본 단계에서는 `5대 과제`, `20대 남성`, `가족 3대`의 의미를
+판별하는 semantic owner, 동사 기반 counter 추론, 확률/점수 기반 문맥 판정,
+제 없는 순번 또는 세대/연령대 사전을 추가하지 않는다. 숫자와 `대` 사이에
+공백이 있는 기존 standalone counter surface는 이번 source-attached `N대`
+규칙의 직접 대상이 아니며 기존 counter 동작을 유지한다.
+
+Contextual gate 실패는
+`explicit_dae_counter_context_missing`인 Owner Fallback Candidate 의미이고,
+상위 관계형/순번 owner를 차단하지 않는다. 최종 owner 평가까지 실패했을 때만
+`ambiguous_numeric_dae_preserve`가 atomic preserve를 등록한다.
+
 #### Preserve taxonomy / owner fallback clarification
 
 `preserve` 용어는 `Absolute Preserve`, `Owner Fallback Candidate`, `Terminal Fallback Preserve`로 분리한다. 이 구분은 owner 평가 순서에 직접 영향을 준다.
@@ -9765,7 +10077,7 @@ square-bracket protected interior, 또는 unsafe alphabetic tail은
 12·3수치 -> event 실패 -> middle-dot fallback -> 십이 삼수치
 2025-13-03 -> date 실패 -> guarded code separator fallback -> 이공이오 일삼 공삼
 제15권 -> numeric suffix owner -> 제 십오권
-010 - 1234 - 5678 -> spaced hyphen numeric multi-block -> 공일공 천이백삼십사 오천육백칠십팔
+010 - 1234 - 5678 -> spaced hyphen numeric multi-block -> 공일공 - 천이백삼십사 - 오천육백칠십팔
 ```
 
 금지:
@@ -9975,7 +10287,7 @@ alphabetic contamination이면 preserve
 주의:
 
 ```text
-bare 12.12 -> preserve
+bare 12.12 -> 십이쩜일이  # event gate 실패 후 ordinary decimal
 bare 5·18 -> 오 일팔  # Phase 28G-B: middle-dot numeric block fallback
 ```
 
@@ -10243,10 +10555,32 @@ Clock hour `N시`는 시각이다. `1~12시`는 고유어 hour form으로 읽고
 23시 59분 -> 이십삼 시 오십구분
 ```
 
+Leading-zero suffix clock-hour surface는 숫자 의미로 재해석하지 않고 시간 표현 전체를 보존한다.
+이 보존은 `시` suffix 형식에만 적용하며 colon time owner에는 적용하지 않는다.
+
+```text
+09시 -> 09시
+09시다 -> 09시다
+07시 05분 -> 07시 05분
+09:30 -> 구시 삼십분
+```
+
 Clock-hour `N시` may be followed by a safe attached Korean tail. The original tail is preserved verbatim; the preprocessor does not correct Korean particles or endings.
 Safe tails include `은/는/이/가/을/를/로/으로/와/과/도/만/부터/까지/에/에는/에서/에도/보다/처럼/마다`
 and `이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`.
 Lexical/code-like continuations such as `시리즈`, `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain preserve-first.
+
+
+The space shown above is canonical ownership, not optional phonetic smoothing:
+the time owner generates the hour reading with a trailing space and retains the
+source `시` marker. Afternoon/night context and a safe attached Korean particle
+do not remove it.
+
+```text
+오후 2시 본회의 -> 오후 두 시 본회의
+오늘 밤 11시부터 -> 오늘 밤 열한 시부터
+13시에는 문을 닫는다 -> 십삼 시에는 문을 닫는다
+```
 
 Duration `N시간`은 지속 시간이다. `1~23시간`은 고유어 duration form으로 읽고, `24시간` 이상은 한자어 숫자 + `시간`으로 읽는다. `20시간`은 `스물 시간`이 아니라 `스무 시간`이다.
 
@@ -10289,6 +10623,7 @@ Duration `N시간`은 지속 시간이다. `1~23시간`은 고유어 duration fo
 
 ```text
 $25.99 -> 이십오쩜구구 달러
+$-10 -> 마이너스 십 달러
 €1,234 -> 천이백삼십사 유로
 1,234.56 EUR -> 천이백삼십사쩜오육 유로
 300 USD -> 삼백 달러
@@ -10310,6 +10645,22 @@ EURA 300 -> EURA 300
 120 Hz -> 백이십 헤르츠
 3.2GHz -> 삼쩜이 기가헤르츠
 5Hzabc -> 5Hzabc
+등록된 ASCII-letter 단위 바로 뒤에 `^2` 또는 `^3`이 붙으면 같은 단위
+registry를 재사용하는 caret-power owner가 전체 surface를 claim한다. 각각
+`제곱<단위>`, `세제곱<단위>`로 읽는다.
+
+- 숫자 prefix가 반드시 있어야 한다.
+- 숫자와 단위 사이 spacing은 해당 base unit의 기존 정책을 유지한다.
+- 단위와 `^2`/`^3` 사이는 붙어 있어야 한다.
+- 지수 뒤는 end-of-input, whitespace, Hangul-leading일 때만 power reading을 허용한다.
+- 지수 뒤 숫자/ASCII letter 및 그 밖의 boundary는 caret-power owner가 claim하지 않고 기존 처리 경로를 유지한다.
+- 등록되지 않은 단위를 새로 허용하지 않는다.
+
+```text
+7m^2 -> 칠 제곱미터
+7m^3 -> 칠 세제곱미터
+7m^3한글 -> 칠 세제곱미터한글
+```
 Hz -> Hz
 ```
 
@@ -10326,12 +10677,15 @@ pH7.4test -> pH7.4test
 pH -> pH
 ```
 
-### 37.6 Spaced separator preserve
+### 37.6 Spaced separator policy
 
-공백이 포함된 dotted/middle-dot numeric separator는 event/decimal owner가 아니다. 양쪽 숫자 중 한쪽만 변환하지 말고 full preserve한다.
+공백이 포함된 numeric separator는 event/decimal owner가 아니다.
+spaced period는 부분 변환을 막기 위해 전체 surface를 보존한다.
+spaced middle-dot은 원본 기호와 공백을 유지하면서 양쪽 숫자를 각각 독립된 일반 숫자로 읽는다.
 
 ```text
-12 · 3 -> 12 · 3
+12 · 3 -> 십이 · 삼
+123 · 456 -> 백이십삼 · 사백오십육
 12. 3 -> 12. 3
 12 .3 -> 12 .3
 ```
@@ -10524,13 +10878,14 @@ Slash fraction owner는 date/slash date, path/code-like token, compound slash un
 Phase 34C는 valid text input으로 인해 내부 parser, owner, renderer, validation 단계에서 exception이 발생하더라도 public transform, CLI, API 실행 경로 전체가 crash하지 않는 것을 runtime invariant로 둔다.
 
 1. Valid text input으로 인해 내부 parser/owner/renderer exception이 발생하더라도 전체 transform은 crash하지 않는다.
-2. 내부 exception 발생 시 no-Hangul global bypass 또는 전체 입력 absolute preserve block에서는 `normalized_text`를 original input text로 fallback preserve할 수 있다. 한글 포함 입력에서는 실패 span/segment fallback으로 좁힌다.
-3. debug/error metadata가 가능한 경로에서는 error class/message와 fallback marker를 기록한다.
-4. CLI plain output 경로에서는 stdout에 original text를 반환하고, error는 stderr 또는 debug metadata로만 노출한다.
-5. API 경로에서는 valid JSON request와 string `text` field가 있으면 `normalized_text`를 포함한 JSON을 반환한다.
-6. invalid rollout mode, invalid CLI option, invalid JSON, missing binary, OS/process failure는 operational error로 처리할 수 있다.
-7. fallback은 correctness를 가장한 변환이 아니라 preserve safety이다.
-8. fallback은 broad rewrite가 아니며, 정상 기능 출력 변경을 목적으로 하지 않는다.
+2. no-Hangul global bypass 또는 입력 전체가 absolute-preserve surface인 경우에만 whole-input original preserve를 허용한다.
+3. 한글 포함 입력에서는 먼저 문장 source span을 재시도하고, 실패한 문장만 whitespace-bounded source segment로 좁혀 재시도한다.
+4. 최종 실패 segment만 원문과 source span을 보존하며 같은 입력의 성공 segment는 정상 reading을 유지한다.
+5. debug/error metadata에는 error class/message, 실패 segment span, segment fallback marker를 기록한다.
+6. CLI/API의 한글 포함 입력은 복구된 segment output을 반환하며, 내부 한 구간 실패를 이유로 original whole input을 반환하지 않는다.
+7. removed rollout_mode field, invalid CLI option, invalid JSON, missing binary, OS/process failure는 operational error로 처리할 수 있다.
+8. fallback은 correctness를 가장한 변환이 아니라 preserve safety이며 broad rewrite가 아니다.
+9. 정상 owner/gate 출력 변경을 목적으로 사용하지 않는다.
 
 이 invariant는 owner/gate 정책을 약화하지 않는다. 개별 owner는 계속 full consume 또는 preserve 원칙을 지키며, no-crash fallback은 마지막 방어선으로만 동작한다.
 
@@ -10603,16 +10958,18 @@ Excluded owner families:
 - date and time-like reading
 - standalone leading-zero malformed decimal preserve cleanup
 - file-like/version-like/code-like protection gaps
-- malformed numeric segmented reading design
-- invalid numeric preserve policy
+- malformed dotted numeric atomic preserve (`.5`, `3..140`, `25..50`); sentence-final `N.` remains number + punctuation
+- invalid comma/other numeric preserve policy
 - JSON-like/path/URL/backtick protected contexts
 
-Malformed numeric follow-up work is split into three separate tracks in
-`docs/policies/TTS_Preprocessor_numeric_matrix.md` section 5.1. The immediate
-cleanup target is only standalone leading-zero malformed decimals such as
-`01.5`, `+01.5`, `-01.5`, `001.5`, `+001.5`, and `-001.5`. Segmented readings
-such as `3..140`, `25..50`, `2,34`, and `3백..4십만` are a separate future
-design track. File-like and code-like tokens such as `file-25..50.txt`,
+Malformed dotted surfaces with an empty left side or duplicate dot now
+preserve atomically before generic number fallback: `.5`, `3..140`, and
+`25..50`. A final `N.` remains an ordinary number followed by sentence
+punctuation, while owner-attached empty-right forms preserve through their
+structured owner. Leading-zero malformed decimals remain preserved by their
+existing owner.
+Invalid comma forms such as `2,34` and mixed-unit malformed forms such as
+`3백..4십만` remain separate preserve/design boundaries. File-like and code-like tokens such as `file-25..50.txt`,
 `v25..50`, and `SKU25..50` remain a separate prerequisite safety track and are
 not solved by leading-zero cleanup. `version-1.5` is handled by the managed
 dictionary numeric-code owner.
@@ -10631,3 +10988,96 @@ Runtime coverage is provided by
 `scripts/probes/decimal_fractional_zero.py`, which validates source and
 production_source by default and supports optional `--binary` and `--api`
 runners through the shared probe runtime matrix helper.
+
+## 42. Policy Alignment Batch 6: large-number, ordinal, approximate, and counter boundaries
+
+Ordinary Arabic number reading supports 4-digit groups through `경`. A value
+requiring a `해` group is outside the supported ordinary number width. A
+standalone no-Hangul input such as `100000000000000000000` therefore preserves
+its exact bytes; inside a Hangul input only that failed segment preserves and
+independent supported owners continue.
+
+Prefixed ordinal surfaces are full-claimed by `numeric_suffix` and render a
+generated space after the original `제`: `제5차 -> 제 오차`,
+`제62회 -> 제 육십이회`, and `제 15권 -> 제 십오권`. Invalid or unsafe
+ordinal-like tokens preserve atomically rather than leaking an internal number
+rewrite.
+
+An attached approximate marker remains attached to its numeric reading. The
+large-unit owner consumes the compact mixed core, so
+`1만3천여 명 -> 일만삼천여 명`; an ordinary numeric block similarly gives
+`60여 명 -> 육십여 명`. The source spacing before the following counter is not
+rewritten by the approximate marker rule.
+
+Valid comma decimals use the ordinary decimal owner atomically. Its integer
+component uses the compact ordinary integer reading, while standalone integer
+large-number presentation may use the documented grouped spacing. Thus
+`1,234,567,890,123.456` renders
+`일조이천삼백사십오억육천칠백팔십구만백이십삼쩜사오육`.
+
+Emergency digit reading is owner-local. In a sentence containing both
+`긴급번호 112` and `112명`, the first surface belongs to `emergency`; the second
+belongs independently to `counter_noun` and renders `백십이 명` with the
+counter owner's generated spacing.
+
+## 43. Policy Alignment Batch 7: conservative prosody insertion
+
+Prosody is insert-only and may add punctuation only through a registered
+production rule with source-mapped provenance. Topic length and a following
+frame phrase alone do not license a comma. Therefore
+`연구팀 운영 계획은 이번 분기부터 전면 조정된다` and
+`대외 협력 운영 방안은 이후 단계에서 다시 검토된다` preserve their topic
+boundaries without generated punctuation.
+
+Sentence-initial `한편` is not an unconditional leading connector comma rule.
+It remains available to the separate long-paragraph transition policy and to
+context-gated discourse handling, but `한편 마지막 설명은 ...` does not become
+`한편, 마지막 설명은 ...` merely because the token starts a sentence.
+Registered leading connectors such as `하지만` keep their existing rule.
+
+The production `prosody_extra` subordinate rule may insert one comma after a
+valid `-지만` clause when both left and right sides contain sufficient clause
+material, the marker is followed by whitespace, the sentence comma budget
+allows insertion, and the boundary is outside protected/owner surfaces. The
+comma is a `GENERATED_PUNCT` piece owned by `prosody_extra`, has no source span,
+and records `subordinate_jiman` plus the source insertion position in trace.
+Numeric and lexical owners render first and remain atomic across this step.
+
+```text
+시장은 크게 흔들렸지만 전략은 계속 유지됐다
+-> 시장은 크게 흔들렸지만, 전략은 계속 유지됐다
+흔들렸지만 전략은 유지됐다
+-> 흔들렸지만 전략은 유지됐다
+하지만 전략은 유지됐다
+-> 하지만, 전략은 유지됐다
+한편 전략은 유지됐다
+-> 한편 전략은 유지됐다
+```
+
+## 44. Policy Alignment Batch 8: typed lexical, hyphen range, and shared suffix
+
+Hyphen is not a broad range delimiter, but a valid `N-M` surface followed by
+the registered document suffix `장` is a restricted range. Attached and
+one-ASCII-space suffix forms render `12-15장` / `12-15 장` as
+`십이에서 십오 장`. Bare, signed, leading-zero, unsafe ASCII-tail, and
+protected/code-like variants do not enter this owner and preserve atomically.
+
+Lexical middle dots are source delimiters and are never broadly deleted or
+replaced by spaces. Registered acronym/dictionary claims on either side render
+independently while `·` remains an original boundary. Thus
+`AI·디지털 -> 에이아이·디지털` and
+`ISO·IEC -> 아이에스오·아이이씨`. Unregistered continuation text remains
+original; a lexical full-surface claim is not required to normalize a safe
+independent acronym claim. Protected containers still block all reentry.
+
+`K-한글` lexical owners consume the internal hyphen and generate `케이` before
+the original Hangul literal. The fixed `K-POP` dictionary entry outranks generic
+separator fallback. In `K-푸드·K-뷰티·K-POP`, each token is claimed
+independently and the two source middle dots remain unchanged, yielding
+`케이푸드·케이뷰티·케이팝`. Unsafe tails such as `K-푸드-v2` preserve the
+full token.
+
+The range owner recognizes `~`, `～`, `∼`, and `〜` only within its owner-local
+alias inventory. A shared Korean month suffix applies to both operands:
+`1∼11월 -> 일월에서 십일월`. Unsafe ASCII tails and URL/path/JSON/backtick or
+square-bracket protected interiors do not leak a partial range conversion.

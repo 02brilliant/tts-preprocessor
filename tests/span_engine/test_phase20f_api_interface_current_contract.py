@@ -10,7 +10,7 @@ def test_phase20f_api_interface_normalize_text_exists_and_returns_string() -> No
     assert output
 
 
-def test_phase20f_api_interface_current_default_matches_engine_main_transform() -> None:
+def test_phase20f_api_interface_current_default_matches_canonical_facade() -> None:
     from engine.api_interface import normalize_text
     from engine.main import transform
 

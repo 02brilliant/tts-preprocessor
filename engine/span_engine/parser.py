@@ -25,6 +25,7 @@ from engine.span_engine.fraction import parse_fraction_candidate
 from engine.span_engine.hyphen import hyphen_digit_reading
 from engine.span_engine.jamo import parse_jamo_candidate
 from engine.span_engine.korean_da_score_pair import parse_korean_da_score_pair_candidate
+from engine.span_engine.korean_numeric_chain import parse_korean_numeric_chain_candidate
 from engine.span_engine.large_unit import (
     large_unit_render_pieces,
     parse_large_unit_candidate,
@@ -47,6 +48,9 @@ from engine.span_engine.multiplier import (
     parse_multiplier_candidate,
 )
 from engine.span_engine.numeric_reading import read_spaced_integer_text
+from engine.span_engine.numeric_dae import (
+    parse_ambiguous_numeric_dae_preserve_candidate,
+)
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ph import parse_ph_candidate
 from engine.span_engine.percent_point import parse_percent_point_candidate
@@ -55,6 +59,21 @@ from engine.span_engine.phone import phone_reading
 from engine.span_engine.range import parse_range_candidate
 from engine.span_engine.signed import parse_signed_candidate
 from engine.span_engine.units import parse_unit_candidate
+
+
+_SIGNED_CONTRACT_METADATA_KEYS = (
+    "sign_profile",
+    "numeric_form",
+    "sign_surface",
+)
+
+
+def _surface_metadata(candidate: SurfaceCandidate) -> dict[str, object]:
+    metadata: dict[str, object] = {"reason": candidate.reason}
+    for key in _SIGNED_CONTRACT_METADATA_KEYS:
+        if key in candidate.metadata:
+            metadata[key] = candidate.metadata[key]
+    return metadata
 
 
 def parse_candidates(raw_text: str, candidates: list[SurfaceCandidate]) -> list[Surface]:
@@ -135,7 +154,7 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = hyphen_digit_reading(raw)
     elif candidate.owner == "spaced_hyphen_numeric_blocks":
         reading = parse_spaced_hyphen_numeric_candidate(raw_text, candidate)
-    elif candidate.owner in {"simple_unit", "special_unit"}:
+    elif candidate.owner in {"caret_power_unit", "simple_unit", "special_unit"}:
         reading = parse_unit_candidate(raw_text, candidate)
     elif candidate.owner == "numeric_suffix":
         reading = parse_numeric_suffix_candidate(raw_text, candidate)
@@ -158,8 +177,12 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         return _make_large_unit_surface(raw_text, candidate, raw)
     elif candidate.owner == "administrative_suffix":
         reading = parse_administrative_suffix_candidate(raw_text, candidate)
+    elif candidate.owner == "korean_numeric_chain":
+        return parse_korean_numeric_chain_candidate(raw_text, candidate)
     elif candidate.owner == "korean_da_score_pair":
         return parse_korean_da_score_pair_candidate(raw_text, candidate)
+    elif candidate.owner == "ambiguous_numeric_dae_preserve":
+        return parse_ambiguous_numeric_dae_preserve_candidate(raw_text, candidate)
 
     if reading is None:
         return None
@@ -169,7 +192,26 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         raw=raw,
         span=candidate.core_span,
         reading=reading,
-        metadata={"reason": candidate.reason},
+        metadata=_surface_metadata(candidate),
+    )
+
+
+def _make_core_render_surface(
+    candidate: SurfaceCandidate,
+    raw: str,
+    reading: str,
+    render_pieces: list[RenderPiece],
+    *,
+    default_surface_type: str,
+) -> Surface:
+    return Surface(
+        surface_type=candidate.surface_type or default_surface_type,
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=render_pieces,
+        metadata=_surface_metadata(candidate),
     )
 
 
@@ -180,29 +222,28 @@ def _make_k_hangul_lexical_surface(
     if reading is None:
         return None
     hangul_start = candidate.core_span.start + 2
-    return Surface(
-        surface_type=candidate.surface_type or "K_HANGUL_LEXICAL_SURFACE",
-        owner=candidate.owner,
-        raw=raw,
-        span=candidate.core_span,
-        reading=reading,
-        render_pieces=[
-            RenderPiece(
-                text="케이",
-                provenance="GENERATED_READING",
-                source_span=SourceSpan(candidate.core_span.start, hangul_start),
-                owner=candidate.owner,
-                metadata={"surface_type": candidate.surface_type},
-            ),
-            RenderPiece(
-                text=raw_text[hangul_start : candidate.core_span.end],
-                provenance="ORIGINAL_KOREAN",
-                source_span=SourceSpan(hangul_start, candidate.core_span.end),
-                owner=candidate.owner,
-                metadata={"surface_type": candidate.surface_type},
-            ),
-        ],
-        metadata={"reason": candidate.reason},
+    render_pieces = [
+        RenderPiece(
+            text="케이",
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(candidate.core_span.start, hangul_start),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=raw_text[hangul_start : candidate.core_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=SourceSpan(hangul_start, candidate.core_span.end),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+    return _make_core_render_surface(
+        candidate,
+        raw,
+        reading,
+        render_pieces,
+        default_surface_type="K_HANGUL_LEXICAL_SURFACE",
     )
 
 
@@ -213,14 +254,12 @@ def _make_acronym_hangul_hyphen_surface(
     if pieces is None:
         return None
     reading = "".join(piece.text for piece in pieces)
-    return Surface(
-        surface_type=candidate.surface_type or "ACRONYM_HANGUL_HYPHEN_LEXICAL_SURFACE",
-        owner=candidate.owner,
-        raw=raw,
-        span=candidate.core_span,
-        reading=reading,
-        render_pieces=pieces,
-        metadata={"reason": candidate.reason},
+    return _make_core_render_surface(
+        candidate,
+        raw,
+        reading,
+        pieces,
+        default_surface_type="ACRONYM_HANGUL_HYPHEN_LEXICAL_SURFACE",
     )
 
 
@@ -231,14 +270,12 @@ def _make_large_unit_surface(
     if reading is None:
         return None
     render_pieces = large_unit_render_pieces(raw_text, candidate)
-    return Surface(
-        surface_type=candidate.surface_type or "LARGE_UNIT_ATOMIC_SURFACE",
-        owner=candidate.owner,
-        raw=raw,
-        span=candidate.core_span,
-        reading=reading,
-        render_pieces=render_pieces,
-        metadata={"reason": candidate.reason},
+    return _make_core_render_surface(
+        candidate,
+        raw,
+        reading,
+        render_pieces,
+        default_surface_type="LARGE_UNIT_ATOMIC_SURFACE",
     )
 
 
@@ -258,7 +295,7 @@ def _make_multiplier_surface(
         span=candidate.full_span,
         reading=reading,
         render_pieces=render_pieces,
-        metadata={"reason": candidate.reason},
+        metadata=_surface_metadata(candidate),
     )
 
 

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 
 
-def test_phase20f_future_binary_rollout_helper_span_default_contract() -> None:
+def test_phase20f_binary_runtime_is_mode_less() -> None:
     binary_runtime = importlib.import_module("api.binary_runtime")
-    run_transform_binary_with_rollout = getattr(binary_runtime, "run_transform_binary_with_rollout")
 
-    result = run_transform_binary_with_rollout(
-        "90km/h",
-        rollout_mode="span_default",
-    )
-
-    assert result == "시속 구십 킬로미터"
+    assert not hasattr(binary_runtime, "run_transform_binary_with_rollout")
+    assert "rollout_mode" not in inspect.signature(
+        binary_runtime.run_transform_binary
+    ).parameters
+    assert "rollout_mode" not in inspect.signature(
+        binary_runtime.run_transform_binary_debug
+    ).parameters

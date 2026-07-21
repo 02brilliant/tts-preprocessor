@@ -11,7 +11,7 @@ from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
-_SHORT_DOTTED_YEAR_MONTH_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
+_SHORT_DOTTED_CODE_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
 _KOREAN_YMD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월\s+(\d{1,2})일")
 _KOREAN_YM_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월")
 _KOREAN_MD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월\s+(\d{1,2})일")
@@ -235,9 +235,11 @@ def scan_date_candidates(
         )
         consumed_spans.append(span)
 
-    for match in _SHORT_DOTTED_YEAR_MONTH_RE.finditer(raw_text):
+    for match in _SHORT_DOTTED_CODE_RE.finditer(raw_text):
         span = SourceSpan(match.start(), match.end())
         if _overlaps_any(span, consumed_spans):
+            continue
+        if not _has_explicit_code_context(raw_text, span):
             continue
         candidates.append(
             SurfaceCandidate(
@@ -245,7 +247,7 @@ def scan_date_candidates(
                 full_span=span,
                 owner="preserve",
                 surface_type="DATE_PRESERVE_SURFACE",
-                reason="short_dotted_year_month_preserve",
+                reason="short_dotted_code_context_preserve",
             )
         )
         consumed_spans.append(span)
@@ -764,7 +766,13 @@ def _korean_month_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | N
 def _korean_time_candidates(
     raw_text: str, match: re.Match[str]
 ) -> list[SurfaceCandidate]:
-    hour = int(match.group(1))
+    hour_text = match.group(1)
+    if len(hour_text) == 2 and hour_text.startswith("0"):
+        return _preserve_numeric_groups(
+            match, "leading_zero_clock_hour_suffix_preserve"
+        )
+
+    hour = int(hour_text)
     minute = int(match.group(2)) if match.group(2) is not None else None
     second = int(match.group(3)) if match.group(3) is not None else None
     span = SourceSpan(match.start(), match.end())
@@ -1010,10 +1018,6 @@ def _time_prefix(prev_text: str) -> str | None:
         if compact.endswith(prefix):
             return prefix
     return None
-
-
-def _has_time_prefix(prev_text: str) -> bool:
-    return _time_prefix(prev_text) is not None
 
 
 def _media_duration_context(raw_text: str, span: SourceSpan) -> bool:

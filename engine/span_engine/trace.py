@@ -139,6 +139,13 @@ def output_to_debug_dict(output: TransformOutput) -> dict[str, Any]:
     }
 
 
+def build_span_debug(text: str) -> dict[str, Any]:
+    """Build structured debug output using only the canonical span engine."""
+    from engine.span_engine.transform import transform_with_trace
+
+    return output_to_debug_dict(transform_with_trace(text))
+
+
 def _serialize_log_list(logs: list[Any]) -> list[Any]:
     if not isinstance(logs, list):
         raise TypeError("trace log fields must be lists")

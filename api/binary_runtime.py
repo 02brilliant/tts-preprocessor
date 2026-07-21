@@ -11,15 +11,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_BINARY_NAME = "tts_preprocessor"
 # API production runtime resolves and executes this packaged binary instead of
 # importing engine.* source modules from the deployed server filesystem.
-SOURCE_ROLLOUT_FALLBACK_ENV = "TTS_PREPROCESSOR_ALLOW_SOURCE_ROLLOUT_FALLBACK"
-SOURCE_ROLLOUT_FALLBACK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
-SUPPORTED_ROLLOUT_MODES = frozenset(
-    {
-        "legacy_default",
-        "span_shadow_compare",
-        "span_default",
-    }
-)
+SOURCE_DEBUG_FALLBACK_ENV = "TTS_PREPROCESSOR_ALLOW_SOURCE_DEBUG_FALLBACK"
+SOURCE_DEBUG_FALLBACK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
 class BinaryRuntimeError(RuntimeError):
@@ -34,7 +27,6 @@ def _iter_binary_candidates() -> list[Path]:
         candidates.append(Path(env_path).expanduser())
 
     candidates.append(ROOT_DIR / "dist" / DEFAULT_BINARY_NAME)
-
     candidates.append(ROOT_DIR / "packages" / "tts-preprocessor" / "bin" / DEFAULT_BINARY_NAME)
 
     return candidates
@@ -51,7 +43,7 @@ def resolve_binary_path() -> Path:
 
 
 def run_transform_binary(text: str, *, binary_path: Path | None = None) -> str:
-    """Run the packaged production binary with its default span_default contract."""
+    """Run the packaged production binary through its single span contract."""
     if not isinstance(text, str):
         raise TypeError("text must be a string")
 
@@ -59,64 +51,39 @@ def run_transform_binary(text: str, *, binary_path: Path | None = None) -> str:
     return _run_binary_command([str(runtime_binary)], text=text)
 
 
-def run_transform_binary_with_rollout(
+def run_transform_binary_debug(
     text: str,
     *,
-    rollout_mode: str | None = None,
-    include_debug: bool = False,
     binary_path: Path | None = None,
-):
-    """Run the packaged binary with an explicit rollout mode for smoke/debug probes."""
-    if rollout_mode is None and not include_debug:
-        return run_transform_binary(text, binary_path=binary_path)
-
-    if rollout_mode is None:
-        rollout_mode = "span_default"
-
-    normalized_mode = _normalize_rollout_mode(rollout_mode)
+) -> dict:
+    """Run the packaged production binary and return span debug JSON."""
+    if not isinstance(text, str):
+        raise TypeError("text must be a string")
 
     runtime_binary = binary_path or resolve_binary_path()
-    command = [str(runtime_binary), "--rollout-mode", normalized_mode]
-    if include_debug:
-        command.append("--include-debug")
+    command = [str(runtime_binary), "--include-debug"]
 
     try:
         raw_output = _run_binary_command(command, text=text)
     except BinaryRuntimeError as exc:
-        if _should_fallback_to_source(exc):
-            if not _allow_source_rollout_fallback():
-                raise BinaryRuntimeError(
-                    "packaged runtime binary does not support rollout/debug arguments; "
-                    "source rollout fallback is disabled by default for production runtime; "
-                    "rebuild or update the packaged binary. "
-                    f"Original binary error: {exc}"
-                ) from exc
-            return _run_source_rollout_fallback(
-                text,
-                rollout_mode=normalized_mode,
-                include_debug=include_debug,
-            )
-        raise
-
-    if not include_debug:
-        return raw_output
+        if not _should_fallback_to_source_debug(exc):
+            raise
+        if not _allow_source_debug_fallback():
+            raise BinaryRuntimeError(
+                "packaged runtime binary does not support debug output; "
+                "source debug fallback is disabled by default for production runtime; "
+                "rebuild or update the packaged binary. "
+                f"Original binary error: {exc}"
+            ) from exc
+        return _run_source_debug_fallback(text)
 
     try:
         payload = json.loads(raw_output)
     except json.JSONDecodeError as exc:
-        raise ValueError("binary returned invalid rollout debug JSON") from exc
+        raise ValueError("binary returned invalid debug JSON") from exc
     if not isinstance(payload, dict):
-        raise ValueError("binary returned non-object rollout debug payload")
+        raise ValueError("binary returned non-object debug payload")
     return payload
-
-
-def _normalize_rollout_mode(mode: str) -> str:
-    if not isinstance(mode, str):
-        raise TypeError("rollout_mode must be str")
-    normalized = mode.strip().lower()
-    if normalized not in SUPPORTED_ROLLOUT_MODES:
-        raise ValueError(f"invalid rollout mode: {mode!r}")
-    return normalized
 
 
 def _run_binary_command(command: list[str], *, text: str) -> str:
@@ -138,28 +105,17 @@ def _run_binary_command(command: list[str], *, text: str) -> str:
     return normalized
 
 
-def _should_fallback_to_source(exc: BinaryRuntimeError) -> bool:
-    message = str(exc)
-    return "unrecognized arguments: --rollout-mode" in message or "unrecognized arguments: --include-debug" in message
+def _should_fallback_to_source_debug(exc: BinaryRuntimeError) -> bool:
+    return "unrecognized arguments: --include-debug" in str(exc)
 
 
-def _allow_source_rollout_fallback() -> bool:
-    value = os.getenv(SOURCE_ROLLOUT_FALLBACK_ENV, "")
-    return value.strip().lower() in SOURCE_ROLLOUT_FALLBACK_TRUE_VALUES
+def _allow_source_debug_fallback() -> bool:
+    value = os.getenv(SOURCE_DEBUG_FALLBACK_ENV, "")
+    return value.strip().lower() in SOURCE_DEBUG_FALLBACK_TRUE_VALUES
 
 
-def _run_source_rollout_fallback(
-    text: str,
-    *,
-    rollout_mode: str,
-    include_debug: bool,
-):
+def _run_source_debug_fallback(text: str) -> dict:
     # Local/dev compatibility escape hatch only. Production default must use
     # the packaged binary and fail old binaries instead of importing sources.
     engine_main = importlib.import_module("engine.main")
-
-    return engine_main.transform_with_rollout(
-        text,
-        mode=rollout_mode,
-        include_debug=include_debug,
-    )
+    return engine_main.transform_debug(text)

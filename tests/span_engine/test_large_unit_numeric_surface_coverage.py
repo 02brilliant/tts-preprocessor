@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from engine.api_interface import normalize_text, normalize_text_with_rollout
-from engine.main import transform_with_rollout
-from engine.pipeline.transform_engine import transform_text
+from engine.api_interface import normalize_text
+from engine.main import transform as facade_transform
 from engine.span_engine import transform as source_transform
 from engine.span_engine.production_adapter import transform_for_production
 
@@ -13,14 +12,8 @@ def assert_source_and_production(text: str, expected: str) -> None:
     runners = (
         source_transform,
         transform_for_production,
-        transform_text,
         normalize_text,
-        lambda value: transform_with_rollout(
-            value,
-            mode="span_default",
-            include_debug=False,
-        ),
-        lambda value: normalize_text_with_rollout(value, mode="span_default"),
+        facade_transform,
     )
     for runner in runners:
         assert runner(text) == expected
@@ -205,11 +198,7 @@ def test_large_unit_integrated_comma_list_main_rollout() -> None:
         "이천팔백이십팔억 테스트, 이천팔백이십팔억abc"
     )
 
-    assert transform_with_rollout(
-        text,
-        mode="span_default",
-        include_debug=False,
-    ) == expected
+    assert facade_transform(text) == expected
     assert_source_and_production(text, expected)
 
 
@@ -298,4 +287,4 @@ def test_large_unit_protected_path_url_backtick_preserve(text: str) -> None:
 def test_large_unit_non_target_regression(text: str, expected: str) -> None:
     assert source_transform(text) == expected
     assert transform_for_production(text) == expected
-    assert normalize_text_with_rollout(text, mode="span_default") == expected
+    assert normalize_text(text) == expected

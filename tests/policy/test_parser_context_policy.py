@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as transform_text
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -40,11 +40,11 @@ PARSER_CONTEXT_CASES = (
         classification="parser",
     ),
     TextCase(
-        case_id="parser-context-event-preserve-in-korean-sentence",
+        case_id="parser-context-event-reading-in-korean-sentence",
         text="12.3 비상계엄은 유지한다",
-        expected="12.3 비상계엄은 유지한다",
-        rule="parser context / dotted event preserve",
-        reason="event gate가 fail이면 한글 문장 안에서도 dotted form을 preserve 해야 한다.",
+        expected="십이삼 비상계엄은 유지한다",
+        rule="parser context / dotted event",
+        reason="event keyword context가 있으면 dotted event owner가 숫자 surface를 읽고 한글 문맥은 보존한다.",
         classification="parser",
     ),
 )

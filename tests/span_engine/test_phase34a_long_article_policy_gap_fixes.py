@@ -177,9 +177,16 @@ def test_phase34a_ph_suffix_position_current_policy_retained() -> None:
     assert transform("7.4 pH") == "칠쩜사 pH"
 
 
-@pytest.mark.parametrize("text", ["12 · 3", "12. 3", "12 .3"])
-def test_phase34a_spaced_separator_preserve(text: str) -> None:
-    assert transform(text) == text
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("12 · 3", "십이 · 삼"),
+        ("12. 3", "12. 3"),
+        ("12 .3", "12 .3"),
+    ],
+)
+def test_phase34a_spaced_separator_policy(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

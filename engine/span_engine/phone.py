@@ -3,7 +3,6 @@ from __future__ import annotations
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.hyphen import (
     digit_block_reading,
-    is_hyphen_digit_candidate,
     scan_hyphen_digit_candidates,
 )
 from engine.span_engine.models import SourceSpan, SurfaceCandidate

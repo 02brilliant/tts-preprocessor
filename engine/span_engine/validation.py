@@ -30,6 +30,30 @@ def _span_key(piece: RenderPiece) -> tuple[int, int] | None:
     return (piece.source_span.start, piece.source_span.end)
 
 
+def _index_pieces_by_span_and_provenance(
+    pieces: list[RenderPiece],
+) -> dict[tuple[int, int, str], list[RenderPiece]]:
+    by_key: dict[tuple[int, int, str], list[RenderPiece]] = defaultdict(list)
+    for piece in pieces:
+        span_key = _span_key(piece)
+        if span_key is None:
+            continue
+        by_key[(span_key[0], span_key[1], piece.provenance)].append(piece)
+    return by_key
+
+
+def _validate_consumed_spans(name: str, spans: object) -> None:
+    if not isinstance(spans, set):
+        raise TypeError(f"{name} must be set or None")
+    for span in spans:
+        if (
+            not isinstance(span, tuple)
+            or len(span) != 2
+            or not all(isinstance(value, int) for value in span)
+        ):
+            raise TypeError(f"{name} must contain (int, int) tuples")
+
+
 def validate_shadow(
     pieces: list[RenderPiece],
     shadow: list[ShadowUnit],
@@ -44,24 +68,8 @@ def validate_shadow(
         consumed_particle_spans = set()
     if consumed_shadow_spans is None:
         consumed_shadow_spans = set()
-    if not isinstance(consumed_particle_spans, set):
-        raise TypeError("consumed_particle_spans must be set or None")
-    for span in consumed_particle_spans:
-        if (
-            not isinstance(span, tuple)
-            or len(span) != 2
-            or not all(isinstance(value, int) for value in span)
-        ):
-            raise TypeError("consumed_particle_spans must contain (int, int) tuples")
-    if not isinstance(consumed_shadow_spans, set):
-        raise TypeError("consumed_shadow_spans must be set or None")
-    for span in consumed_shadow_spans:
-        if (
-            not isinstance(span, tuple)
-            or len(span) != 2
-            or not all(isinstance(value, int) for value in span)
-        ):
-            raise TypeError("consumed_shadow_spans must contain (int, int) tuples")
+    _validate_consumed_spans("consumed_particle_spans", consumed_particle_spans)
+    _validate_consumed_spans("consumed_shadow_spans", consumed_shadow_spans)
     for piece in pieces:
         if not isinstance(piece, RenderPiece):
             raise TypeError("pieces must contain RenderPiece")
@@ -69,12 +77,7 @@ def validate_shadow(
         if not isinstance(unit, ShadowUnit):
             raise TypeError("shadow must contain ShadowUnit")
 
-    by_key: dict[tuple[int, int, str], list[RenderPiece]] = defaultdict(list)
-    for piece in pieces:
-        span_key = _span_key(piece)
-        if span_key is None:
-            continue
-        by_key[(span_key[0], span_key[1], piece.provenance)].append(piece)
+    by_key = _index_pieces_by_span_and_provenance(pieces)
 
     logs: list[ValidationLog] = []
     duplicate_keys = {

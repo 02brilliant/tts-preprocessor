@@ -32,17 +32,17 @@ The production API must call the packaged PyInstaller binary via `TTS_PREPROCESS
 
 The production API must not serve transform output by importing `engine.*` source modules from the server filesystem.
 
-If an old or incompatible packaged binary does not support `--rollout-mode` or
-`--include-debug`, production runtime must fail as an operational error instead
-of falling back to source imports. `TTS_PREPROCESSOR_ALLOW_SOURCE_ROLLOUT_FALLBACK`
-is a local/development escape hatch only and must not be enabled in production.
+If an old or incompatible packaged binary does not support `--include-debug`,
+production debug runtime must fail as an operational error instead of falling
+back to source imports. `TTS_PREPROCESSOR_ALLOW_SOURCE_DEBUG_FALLBACK` is a
+local/development escape hatch only and must not be enabled in production.
 
 ## Official transform entrypoints
 
 The official production source entrypoint is:
 
 ```text
-engine.main.transform_with_rollout(text, mode="span_default", include_debug=False)
+engine.main.transform(text)
 ```
 
 This is the source-tree path used to validate production-equivalent output before
@@ -52,7 +52,7 @@ The binary runtime entrypoint is:
 
 ```text
 bin/build_binary_entrypoint.py
--> engine.main.transform_with_rollout(mode="span_default")
+-> engine.main.transform(text)
 ```
 
 The API production runtime is:
@@ -63,18 +63,17 @@ api.server
 -> TTS_PREPROCESSOR_BINARY
 -> packaged PyInstaller binary
 -> bin/build_binary_entrypoint.py
--> engine.main.transform_with_rollout(mode="span_default")
+-> engine.main.transform(text)
 ```
 
 `engine.span_engine.transform.transform` is the source transform for span-engine
 owner/parser/render development checks. It is not, by itself, the final
 production API/binary contract.
 
-`engine.pipeline.transform_engine.transform_text`,
-`engine.api_interface.normalize_text`, and `engine.span_engine.production_adapter`
-remain compatibility/helper paths. They may be useful in source tests, but
-production parity must be judged against the official source entrypoint and the
-packaged binary/API runtime.
+`engine.api_interface.normalize_text` and
+`engine.span_engine.production_adapter` remain integration/internal helper
+paths. Production parity is judged against `engine.main.transform`, the packaged binary, and the
+API runtime.
 
 ## Validation rule
 

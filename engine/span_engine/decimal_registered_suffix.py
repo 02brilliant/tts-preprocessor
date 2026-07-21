@@ -7,6 +7,7 @@ from engine.span_engine.counter import SUPPORTED_COUNTERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_text
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
+from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
     span_overlaps_excluded_ranges,
@@ -111,13 +112,21 @@ def _candidate_at_suffix(
                 ),
                 "decimal_registered_suffix_unsafe_tail_preserve",
             )
+        reason = "decimal_registered_suffix_gate"
+        if suffix == "대":
+            decision = evaluate_numeric_dae_counter_context(
+                raw_text, SourceSpan(decimal_span.start, suffix_end)
+            )
+            if decision.action != "DEFER_TO_COUNTER":
+                return None
+            reason = decision.reason
         return SurfaceCandidate(
             core_span=decimal_span,
             full_span=SourceSpan(decimal_span.start, suffix_end),
             owner="decimal_registered_suffix",
             surface_type="DECIMAL_REGISTERED_SUFFIX_SURFACE",
             suffix_spans=[SourceSpan(suffix_start, suffix_end)],
-            reason="decimal_registered_suffix_gate",
+            reason=reason,
             metadata={
                 "number": raw_text[decimal_span.start : decimal_span.end],
                 "suffix": suffix,

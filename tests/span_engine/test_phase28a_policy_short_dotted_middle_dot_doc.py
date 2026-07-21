@@ -17,7 +17,8 @@ def test_phase28a_policy_document_content():
         "12.3-비상계엄 -> 십이삼-비상계엄",
         "12·3 -> 십이 삼",
         "12·3수치 -> 십이 삼수치",
-        "12 . 3 -> 십이 . 삼",
+        "12 . 3 -> 12 . 3",
+        "12 · 3 -> 십이 · 삼",
         "[12.3] -> 12.3",
     ]
     for phrase in required_phrases:

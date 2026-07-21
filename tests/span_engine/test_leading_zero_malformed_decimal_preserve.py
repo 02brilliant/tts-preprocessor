@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform
 
 
 def normalize(src: str) -> str:
-    return transform_with_rollout(src, mode="span_default", include_debug=False)
+    return transform(src)
 
 
 @pytest.mark.parametrize(
@@ -47,8 +47,8 @@ def test_valid_zero_decimal_behavior_unchanged(src: str, expected: str) -> None:
     ("src", "expected"),
     [
         ("1.", "일."),
-        ("3..140", "삼..백사십"),
-        ("25..50", "이십오..오십"),
+        ("3..140", "3..140"),
+        ("25..50", "25..50"),
         ("2,34", "2,34"),
         ("2,,345", "2,,345"),
         ("2,34억", "2,34억"),

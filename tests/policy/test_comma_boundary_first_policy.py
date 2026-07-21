@@ -1,10 +1,9 @@
 import pytest
 
-import engine.prosody.comma as comma_module
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
-from engine.prosody.comma import insert_commas
+from engine.span_engine.transform import transform_with_trace
 from tests._policy_case import TextCase, assert_exact
+from tests._span_prosody import apply_span_prosody
 
 
 SENTENCE_LOCAL_CASES = [
@@ -232,20 +231,22 @@ TOPIC_NEGATIVE_CASES = [
 ]
 
 
-LONG_TOPIC_POSITIVE_CASES = [
+LONG_TOPIC_CONSERVATIVE_CASES = [
     TextCase(
         case_id="long-topic-explicit-shift-quarter",
         text="연구팀 운영 계획은 이번 분기부터 전면 조정된다",
-        expected="연구팀 운영 계획은, 이번 분기부터 전면 조정된다",
-        rule="prosody / long topic with explicit shift",
-        reason="A long topic followed by an explicit frame shift may receive one comma.",
+        expected="연구팀 운영 계획은 이번 분기부터 전면 조정된다",
+        rule="prosody / canonical conservative topic boundary",
+        reason="Length and a following frame phrase do not license an unregistered production topic comma.",
+        classification="canonical",
     ),
     TextCase(
         case_id="long-topic-explicit-shift-stage",
         text="대외 협력 운영 방안은 이후 단계에서 다시 검토된다",
-        expected="대외 협력 운영 방안은, 이후 단계에서 다시 검토된다",
-        rule="prosody / long topic with explicit shift",
-        reason="A long topic chunk plus an explicit shift frame is the narrow positive topic case.",
+        expected="대외 협력 운영 방안은 이후 단계에서 다시 검토된다",
+        rule="prosody / canonical conservative topic boundary",
+        reason="Production prosody preserves the topic boundary because no registered insertion rule claims it.",
+        classification="canonical",
     ),
 ]
 
@@ -480,69 +481,65 @@ NON_DESTRUCTIVE_RAW_INPUTS = [
 
 @pytest.mark.parametrize("case", SENTENCE_LOCAL_CASES, ids=lambda case: case.case_id)
 def test_sentence_local_budget_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
-def test_no_second_pass_cross_sentence_tokenization(monkeypatch: pytest.MonkeyPatch):
+def test_multi_sentence_prosody_is_recorded_only_as_generated_punctuation():
     source = "주최 측은 일정을 발표했다. 세계 4위 선수는 오늘 출전한다"
-    original_tokenize = comma_module.tokenize
-
-    def guarded_tokenize(text: str):
-        assert text != source, "insert_commas must not retokenize the full multi-sentence surface after sentence-local processing"
-        return original_tokenize(text)
-
-    monkeypatch.setattr(comma_module, "tokenize", guarded_tokenize)
-    assert insert_commas(source) == source
+    output = transform_with_trace(source)
+    assert output.normalized_text == transform(source)
+    assert output.trace is not None
+    assert not output.trace.prosody_logs
 
 
 @pytest.mark.parametrize("case", LEADING_CONNECTOR_POSITIVE_CASES, ids=lambda case: case.case_id)
 def test_leading_connector_positive_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", LEADING_TIME_FRAME_CASES, ids=lambda case: case.case_id)
 def test_leading_time_frame_positive_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", LEADING_TIME_FRAME_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_leading_time_frame_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", SUBORDINATE_CLAUSE_POSITIVE_CASES, ids=lambda case: case.case_id)
 def test_subordinate_clause_positive_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", SUBORDINATE_CLAUSE_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_subordinate_clause_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", SERIAL_PARALLEL_POSITIVE_CASES, ids=lambda case: case.case_id)
 def test_serial_parallel_positive_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", SERIAL_PARALLEL_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_serial_parallel_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", TOPIC_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_topic_basic_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
-@pytest.mark.parametrize("case", LONG_TOPIC_POSITIVE_CASES, ids=lambda case: case.case_id)
-def test_long_topic_explicit_shift_positive_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+@pytest.mark.parametrize("case", LONG_TOPIC_CONSERVATIVE_CASES, ids=lambda case: case.case_id)
+def test_long_topic_unregistered_shift_preservation_cases(case: TextCase):
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", BINARY_PHRASE_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_binary_phrase_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", NUMERIC_DENSITY_CASES, ids=lambda case: case.case_id)
@@ -557,12 +554,12 @@ def test_protected_span_cases(case: TextCase):
 
 @pytest.mark.parametrize("case", DIRECT_PROTECTED_SURFACE_CASES, ids=lambda case: case.case_id)
 def test_direct_protected_surface_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", EXISTING_PUNCTUATION_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_existing_punctuation_negative_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("case", PHONETIC_BOUNDARY_NEGATIVE_CASES, ids=lambda case: case.case_id)
@@ -582,11 +579,22 @@ def test_middle_dot_negative_cases(case: TextCase):
 
 @pytest.mark.parametrize("case", BOUNDARY_COORDINATE_CASES, ids=lambda case: case.case_id)
 def test_boundary_coordinate_cases(case: TextCase):
-    assert_exact(insert_commas(case.text), case)
+    assert_exact(apply_span_prosody(case.text), case)
 
 
 @pytest.mark.parametrize("raw_text", NON_DESTRUCTIVE_RAW_INPUTS)
 def test_prosody_remains_non_destructive_for_normalization_and_phonetic(raw_text: str):
-    normalized = transform_text(raw_text)
-    prosody = insert_commas(normalized)
-    assert prosody.replace(",", "") == normalized
+    output = transform_with_trace(raw_text)
+    assert output.trace is not None
+    generated_commas = [
+        piece
+        for piece in output.render_pieces
+        if piece.provenance == "GENERATED_PUNCT" and piece.text == ","
+    ]
+    comma_logs = [
+        log
+        for log in output.trace.prosody_logs
+        if log.action == "insert_generated_punct"
+    ]
+    assert len(generated_commas) == len(comma_logs)
+    assert output.normalized_text == transform(raw_text)

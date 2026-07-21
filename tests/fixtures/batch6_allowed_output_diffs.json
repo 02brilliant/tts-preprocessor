@@ -1,0 +1,43 @@
+{
+  "batch_id": "policy-alignment-batch-6",
+  "description": "Batch 6 large-number width and spacing, prefixed ordinal, approximate marker, and emergency/counter precedence contract. All audited rows promote current span output without a runtime transition.",
+  "stable_decisions": [
+    {
+      "decision_id": "leading-one-100000000000000000000",
+      "input": "100000000000000000000",
+      "expected": "100000000000000000000",
+      "owner_contract": "ordinary numeric reading supports large groups through 경; a 21-digit 해-width value is unsupported and the no-Hangul input preserves exactly"
+    },
+    {
+      "decision_id": "mixed-sentence-forum-ordinal-and-yeo",
+      "input": "서울신라호텔에서 열린 '2025 제5차 포럼'에는 전문가 60여 명이 모였습니다.",
+      "expected": "서울신라호텔에서 열린 '이천이십오 제 오차 포럼'에는 전문가 육십여 명이 모였습니다.",
+      "owner_contract": "prefixed ordinal owns 제5차 and generates canonical spacing after 제 while the independent number before 여 retains its attached approximate marker"
+    },
+    {
+      "decision_id": "mixed-sentence-large-yeo",
+      "input": "내년 1만3천여 명을 대상으로 교육합니다.",
+      "expected": "내년 일만삼천여 명을 대상으로 교육합니다.",
+      "owner_contract": "large_unit_atomic fully consumes the compact mixed core and preserves the immediately attached approximate 여"
+    },
+    {
+      "decision_id": "mixed-sentence-ordinal-and-acronym-tail",
+      "input": "제62회 무역의 날 기념식에선 SK하이닉스가 참여했습니다.",
+      "expected": "제 육십이회 무역의 날 기념식에선 에스케이하이닉스가 참여했습니다.",
+      "owner_contract": "prefixed ordinal and acronym fallback claims remain independent and render their canonical readings"
+    },
+    {
+      "decision_id": "scaling-large-comma-decimal",
+      "input": "1,234,567,890,123.456",
+      "expected": "일조이천삼백사십오억육천칠백팔십구만백이십삼쩜사오육",
+      "owner_contract": "ordinary decimal owner validates commas atomically and uses the compact integer reader before exact fractional digits"
+    },
+    {
+      "decision_id": "scenario-emergency-and-general-number-same-sentence",
+      "input": "긴급번호 112는 경찰 신고 번호이고 112명은 회의실에 있다",
+      "expected": "긴급번호 일일이는 경찰 신고 번호이고 백십이 명은 회의실에 있다",
+      "owner_contract": "emergency owns the contextual digit surface while counter_noun independently owns 112명 and generates its canonical counter space"
+    }
+  ],
+  "allowed_diffs": []
+}

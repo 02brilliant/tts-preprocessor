@@ -5,7 +5,7 @@ import re
 import pytest
 
 from engine.main import transform
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -21,10 +21,10 @@ SENTENCE_CASES = [
     TextCase(
         case_id="mixed-sentence-forum-ordinal-and-yeo",
         text="서울신라호텔에서 열린 '2025 제5차 포럼'에는 전문가 60여 명이 모였습니다.",
-        expected="서울신라호텔에서 열린 '이천이십오 제오차 포럼'에는 전문가 육십여 명이 모였습니다.",
-        rule="mixed token / sentence regression",
-        reason="Ordinal and 여-marked mixed numeric tokens must normalize in the same sentence without partial residue.",
-        classification="regression",
+        expected="서울신라호텔에서 열린 '이천이십오 제 오차 포럼'에는 전문가 육십여 명이 모였습니다.",
+        rule="mixed token / canonical ordinal and approximate marker",
+        reason="The prefixed ordinal generates a space after 제 while the independent 여-marked number preserves its attachment.",
+        classification="canonical",
     ),
     TextCase(
         case_id="mixed-sentence-large-counter",
@@ -37,18 +37,18 @@ SENTENCE_CASES = [
     TextCase(
         case_id="mixed-sentence-ordinal-and-acronym-tail",
         text="제62회 무역의 날 기념식에선 SK하이닉스가 참여했습니다.",
-        expected="제육십이회 무역의 날 기념식에선 에스케이하이닉스가 참여했습니다.",
-        rule="mixed token / sentence regression",
-        reason="Ordinal and acronym+lexical suffix tokens must both normalize before generic fallback.",
-        classification="regression",
+        expected="제 육십이회 무역의 날 기념식에선 에스케이하이닉스가 참여했습니다.",
+        rule="mixed token / canonical ordinal and acronym owners",
+        reason="The prefixed ordinal and acronym claims render independently; the ordinal owner generates canonical spacing after 제.",
+        classification="canonical",
     ),
     TextCase(
         case_id="mixed-sentence-large-yeo",
         text="내년 1만3천여 명을 대상으로 교육합니다.",
-        expected="내년 만 삼천여 명을 대상으로 교육합니다.",
-        rule="mixed token / sentence regression",
-        reason="Compact large-number mixed tokens with 여 must normalize in sentence context.",
-        classification="regression",
+        expected="내년 일만삼천여 명을 대상으로 교육합니다.",
+        rule="mixed token / canonical compact large-unit approximate",
+        reason="The large-unit owner consumes the compact core as 일만삼천 and retains the attached approximate marker 여.",
+        classification="canonical",
     ),
     TextCase(
         case_id="mixed-sentence-one-versus-one",
@@ -73,7 +73,7 @@ FULL_PIPELINE_CASES = [
     TextCase(
         case_id="mixed-full-pipeline-news-style",
         text="그리고 MFN율을 유지하면서 제62회 행사와 SK하이닉스 발표, 1만3천여 명 대상 교육, 3에서 8cm 적설 전망을 함께 설명했습니다.",
-        expected="그리고 엠에프엔율을 유지하면서 제육십이회 행사와 에스케이하이닉스 발표, 만 삼천여 명 대상 교육, 삼에서 팔 센티미터 적설 전망을 함께 설명했습니다.",
+        expected="그리고, 엠에프엔율을 유지하면서 제 육십이회 행사와 에스케이하이닉스 발표, 일만삼천여 명 대상 교육, 삼에서 팔 센티미터 적설 전망을 함께 설명했습니다.",
         rule="mixed token / full pipeline regression",
         reason="Mixed-token typed surfaces must survive normalization and prosody together in one sentence.",
         classification="regression",
@@ -98,7 +98,7 @@ FORBIDDEN_RESIDUE_PATTERNS = [
 
 @pytest.mark.parametrize("case", SENTENCE_CASES, ids=lambda case: case.case_id)
 def test_mixed_token_sentence_regressions(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
 
 
 @pytest.mark.parametrize("case", FULL_PIPELINE_CASES, ids=lambda case: case.case_id)
@@ -108,6 +108,6 @@ def test_mixed_token_full_pipeline_regressions(case: TextCase):
 
 @pytest.mark.parametrize("case", SENTENCE_CASES, ids=lambda case: case.case_id)
 def test_mixed_token_sentence_outputs_do_not_leave_raw_or_partial_residue(case: TextCase):
-    actual = transform_text(case.text)
+    actual = transform(case.text)
     for pattern in FORBIDDEN_RESIDUE_PATTERNS:
         assert re.search(pattern, actual) is None, f"input={case.text!r} pattern={pattern!r} actual={actual!r}"

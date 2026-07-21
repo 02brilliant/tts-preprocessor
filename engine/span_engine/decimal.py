@@ -22,6 +22,9 @@ from engine.span_engine.span_guards import (
 )
 
 _DECIMAL_RE = re.compile(r"(\d{1,3}(?:,\d{3})+|\d+)\.(\d+)")
+_MALFORMED_DOTTED_RE = re.compile(
+    r"(?<![A-Za-z0-9.])(?:\.[0-9]+|[0-9]+\.{2,}[0-9.]*)(?![A-Za-z0-9.])"
+)
 _SAFE_DECIMAL_ATTACHED_PARTICLES = ("으로", "로")
 
 def scan_decimal_candidates(
@@ -51,7 +54,7 @@ def scan_decimal_candidates(
         prev_char = raw_text[span.start - 1] if span.start > 0 else None
         next_char = raw_text[span.end] if span.end < len(raw_text) else None
         
-        # Block numeric-delimited decimal fragments without suppressing legacy
+        # Block numeric-delimited decimal fragments without suppressing the current
         # decimal fallback before ordinary Korean hyphenated text.
         prev_is_numeric_delimiter = False
         numeric_range_delimiters = RANGE_LIKE_DELIMITERS | TILDE_LIKE_DELIMITERS
@@ -130,6 +133,33 @@ def scan_decimal_candidates(
                 surface_type="DECIMAL_SURFACE",
                 reason="decimal_match",
                 metadata={"reading": reading},
+            )
+        )
+    return candidates
+
+
+def scan_malformed_dotted_preserve_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if excluded_ranges is None:
+        excluded_ranges = []
+
+    candidates: list[SurfaceCandidate] = []
+    for match in _MALFORMED_DOTTED_RE.finditer(raw_text):
+        span = SourceSpan(match.start(), match.end())
+        if span_overlaps_excluded_ranges(span, excluded_ranges):
+            continue
+        if is_decimal_like_url_or_path_context(raw_text, span):
+            continue
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="MALFORMED_DOTTED_NUMERIC_PRESERVE_SURFACE",
+                reason="malformed_dotted_numeric_preserve",
             )
         )
     return candidates
@@ -256,4 +286,8 @@ def parse_decimal_candidate(raw_text: str, candidate: SurfaceCandidate) -> str |
     reading = candidate.metadata.get("reading")
     return reading if isinstance(reading, str) else None
 
-__all__ = ["scan_decimal_candidates", "parse_decimal_candidate"]
+__all__ = [
+    "parse_decimal_candidate",
+    "scan_decimal_candidates",
+    "scan_malformed_dotted_preserve_candidates",
+]

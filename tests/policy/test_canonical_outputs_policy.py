@@ -26,7 +26,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-emergency-vs-general-number",
         text="긴급번호 112는 경찰 신고 번호이고 112명은 회의실에 있다",
-        expected="긴급번호 일일이는 경찰 신고 번호이고 백십이명은 회의실에 있다",
+        expected="긴급번호 일일이는 경찰 신고 번호이고 백십이 명은 회의실에 있다",
         rule="canonical / emergency vs number split",
         reason="같은 숫자라도 emergency context와 일반 숫자 owner가 분리되어야 한다.",
         classification="canonical",
@@ -48,11 +48,11 @@ CANONICAL_OUTPUT_CASES = (
         classification="canonical",
     ),
     TextCase(
-        case_id="canonical-counter-sino-threshold",
+        case_id="canonical-counter-hybrid-upper-bound",
         text="31명",
-        expected="삼십일 명",
-        rule="canonical / counter threshold",
-        reason="threshold 초과 counter는 sino reading으로 유지되어야 한다.",
+        expected="서른한 명",
+        rule="canonical / counter hybrid upper bound",
+        reason="명 counter는 1~39에서 native/hybrid reading을 사용한다.",
         classification="canonical",
     ),
     TextCase(
@@ -66,9 +66,9 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-shared-suffix-range",
         text="1∼11월",
-        expected="일에서 십일월",
+        expected="일월에서 십일월",
         rule="canonical / shared suffix range",
-        reason="shared-suffix range는 final_range canonical output을 따라야 한다.",
+        reason="date shared-suffix range는 양쪽 숫자에 월 reading을 적용한다.",
         classification="canonical",
     ),
     TextCase(
@@ -82,9 +82,9 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-single-letter-hyphen",
         text="K-푸드",
-        expected="케이-푸드",
+        expected="케이푸드",
         rule="canonical / single-letter hyphen lexical surface",
-        reason="single-letter hyphen lexical compound는 pre-rule 보호 후 그대로 렌더링되어야 한다.",
+        reason="관리되는 K-Hangul lexical compound는 K를 읽고 원본 하이픈을 제거한다.",
         classification="canonical",
     ),
     TextCase(

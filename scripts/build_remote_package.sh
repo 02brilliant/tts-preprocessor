@@ -59,7 +59,7 @@ fi
 
 "$BUILD_ENV_DIR/bin/pip" install --quiet --upgrade pip pyinstaller
 
-rm -rf "$BUILD_SRC_DIR/dist" "$BUILD_SRC_DIR/build" "$BUILD_SRC_DIR/tts_preprocessor.spec"
+rm -rf "$BUILD_SRC_DIR/dist" "$BUILD_SRC_DIR/build"
 mkdir -p "$RUNTIME_HOOK_DIR"
 cat > "$STR_ENUM_RUNTIME_HOOK" <<'PY'
 import enum
@@ -80,13 +80,8 @@ PY
   cd "$BUILD_SRC_DIR"
   "$PYINSTALLER_BIN" \
     --clean \
-    --onefile \
-    --name tts_preprocessor \
-    --paths "$BUILD_SRC_DIR" \
-    --collect-submodules engine \
-    --add-data "$BUILD_SRC_DIR/engine/data:engine/data" \
-    --runtime-hook "$STR_ENUM_RUNTIME_HOOK" \
-    bin/build_binary_entrypoint.py
+    --noconfirm \
+    tts_preprocessor.spec
 )
 
 if [[ ! -f "$BUILD_SRC_DIR/dist/tts_preprocessor" ]]; then

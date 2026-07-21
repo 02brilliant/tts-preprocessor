@@ -9,7 +9,7 @@ general English-to-Korean transcription layer.
 This document is the canonical inventory and status ledger for dictionary-based
 fixed lexical correction. It records which surfaces are current production
 requirements, which surfaces are conditional, and which surfaces remain pending,
-future-only, or legacy-only.
+future-only, or historical-only.
 
 This document by itself does not change production code. Any `current` entry
 missing from `span_default` is a production drift item.
@@ -28,7 +28,7 @@ owner, protection, validation, and runtime rules.
 The official production source path remains:
 
 ```text
-engine.main.transform_with_rollout(text, mode="span_default", include_debug=False)
+engine.main.transform(text)
 ```
 
 ## 3. Managed Dictionary vs General Fallback
@@ -78,10 +78,10 @@ A no-Hangul input may enter the core transform only when the entire input is com
 |---|---|
 | `current` | Canonical fixed dictionary entry that `span_default` production must apply. |
 | `current_with_condition` | Canonical behavior, but only under a whitelist, context, gate, suffix, or full-claim condition. |
-| `pending_policy_decision` | Mentioned in policy or legacy code, but current production status is not decided. |
-| `conflict` | Reading or ownership conflicts exist inside policy, between policy and span, or between legacy and span. |
+| `pending_policy_decision` | Mentioned in policy or historical code, but current production status is not decided. |
+| `conflict` | Reading or ownership conflicts exist inside policy, between policy and span, or between historical and span. |
 | `future_candidate` | Candidate for future support; not a current production contract. |
-| `legacy_only_or_deprecated` | Present in legacy data or historical policy, but not current `span_default` target behavior. |
+| `historical_only_or_deprecated` | Present in historical data or historical policy, but not current `span_default` target behavior. |
 
 ## 6. Current Managed Dictionary Entries
 
@@ -274,11 +274,11 @@ changes their status.
 
 | Surface or family | Reading candidate | Status | Reason |
 |---|---|---|---|
-| `SNP500` | 에스엔피 오백 | legacy_only_or_deprecated | Legacy alias exists, but current finance suffix policy is based on `S&P`. |
+| `SNP500` | 에스엔피 오백 | historical_only_or_deprecated | Historical alias exists, but current finance suffix policy is based on `S&P`. |
 | file-extension family not listed as current | policy table readings | future_candidate | Requires file/path context design before implementation. |
-| event fixed phrases from legacy dictionary | event readings | pending_policy_decision | Event owner/gate behavior is separate from managed dictionary inventory. |
-| broad legacy inline dictionary leftovers | legacy readings | legacy_only_or_deprecated | Legacy `base_dictionary.py` is not the canonical span inventory. |
-| `AI`, `CPU`, `USB` | uppercase acronym fallback readings | legacy_only_or_deprecated | Removed from current managed dictionary because uppercase acronym fallback provides the same standalone and particle output, while broad acronym+number fallback remains forbidden (`AI3`, `CPU900`, `USB300` preserve). |
+| event fixed phrases from historical dictionary | event readings | pending_policy_decision | Event owner/gate behavior is separate from managed dictionary inventory. |
+| broad historical inline dictionary leftovers | historical readings | historical_only_or_deprecated | Historical dictionary snapshots are not the canonical span inventory. |
+| `AI`, `CPU`, `USB` | uppercase acronym fallback readings | historical_only_or_deprecated | Removed from current managed dictionary because uppercase acronym fallback provides the same standalone and particle output, while broad acronym+number fallback remains forbidden (`AI3`, `CPU900`, `USB300` preserve). |
 
 ## 9. Implementation Contract
 
@@ -286,7 +286,7 @@ Implementation must keep these boundaries:
 
 - `engine/span_engine/lexicon.py` or an equivalent span-owned registry must be
   the production source for current managed dictionary entries.
-- Legacy `engine/dictionary/base_dictionary.py` is not sufficient production
+- Historical dictionary snapshots are not sufficient production
   coverage for `span_default`.
 - Current managed dictionary entries must claim before uppercase acronym
   fallback.
@@ -294,7 +294,7 @@ Implementation must keep these boundaries:
   broad fallback.
 - Protected spans must block managed dictionary reentry.
 - New current entries require smoke, collision, and protected-context coverage.
-- Pending, future, and legacy-only rows must not be silently promoted to
+- Pending, future, and historical-only rows must not be silently promoted to
   current by implementation.
 
 ## 10. Test Contract
@@ -302,7 +302,7 @@ Implementation must keep these boundaries:
 For every `current` entry:
 
 - assert the expected `normalized_text` through
-  `engine.main.transform_with_rollout(..., mode="span_default", include_debug=False)`;
+  `engine.main.transform(...)`;
 - assert dictionary-owner provenance where the entry is implemented by the
   dictionary owner;
 - assert safe boundary behavior with adjacent Hangul particles and punctuation;
@@ -335,5 +335,5 @@ Recommended migration order:
    candidates or event fixed phrases.
 4. Keep broad acronym fallback unchanged unless a separate policy explicitly
    changes it.
-5. Treat legacy-only dictionary rows as audit input, not as automatic migration
+5. Treat historical-only dictionary rows as audit input, not as automatic migration
    requirements.

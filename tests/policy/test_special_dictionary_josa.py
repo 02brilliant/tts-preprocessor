@@ -1,6 +1,6 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as transform_text
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -36,7 +36,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="special-emergency-suffixed-number-is-general-number",
         text="112명",
-        expected="백십이명",
+        expected="백십이 명",
         rule="emergency number / disallowed suffix",
         reason="명 is not an allowed emergency tail, so policy requires general-number fallback.",
     ),
@@ -55,16 +55,16 @@ SPECIAL_AND_DICTIONARY_CASES = [
         reason="A degree-marked angle is an explicitly supported special format.",
     ),
     TextCase(
-        case_id="special-d-number-protected",
+        case_id="special-d-number-code-reading",
         text="D-14",
-        expected="D-14",
-        rule="protection layer / D-number",
-        reason="D-number surfaces are protected before the rule engine and must survive unchanged.",
+        expected="디 십사",
+        rule="single-letter alnum code / D-number",
+        reason="A safe single-letter numeric code is full-consumed and rendered through the code owner.",
     ),
     TextCase(
         case_id="special-snp-reading",
         text="S&P 500",
-        expected="에스엔피 오백",
+        expected="에스앤피 오백",
         rule="special format / S&P dynamic mapping",
         reason="S&P plus a number is a documented special mapping and not generic acronym fallback.",
     ),
@@ -113,13 +113,13 @@ SPECIAL_AND_DICTIONARY_CASES = [
 ]
 
 
-PARTICLE_PRESERVATION_CASES = [
+PARTICLE_ATTACHMENT_CASES = [
     TextCase(
-        case_id="particle-preservation-acronym-topic",
+        case_id="particle-safe-correction-acronym-topic",
         text="FTA은",
-        expected="에프티에이은",
-        rule="particle preservation / acronym",
-        reason="The acronym may normalize, but the input particle must stay exactly as written.",
+        expected="에프티에이는",
+        rule="safe post-surface particle correction / acronym",
+        reason="The generated vowel-final acronym reading allows the documented 은/는 correction.",
     ),
     TextCase(
         case_id="particle-preservation-acronym-subject",
@@ -129,11 +129,11 @@ PARTICLE_PRESERVATION_CASES = [
         reason="Particle preservation forbids subject-particle correction after acronym normalization.",
     ),
     TextCase(
-        case_id="particle-preservation-acronym-euro",
+        case_id="particle-safe-correction-acronym-topic-batchim",
         text="MFN는",
-        expected="엠에프엔는",
-        rule="particle preservation / acronym",
-        reason="Trailing particles are preserved metadata, not correction targets.",
+        expected="엠에프엔은",
+        rule="safe post-surface particle correction / acronym",
+        reason="The generated batchim-final acronym reading allows the documented 은/는 correction.",
     ),
     TextCase(
         case_id="particle-preservation-hangul-yuro",
@@ -171,6 +171,6 @@ def test_special_dictionary_policy(case: TextCase):
     assert_exact(transform_text(case.text), case)
 
 
-@pytest.mark.parametrize("case", PARTICLE_PRESERVATION_CASES, ids=lambda case: case.case_id)
-def test_particle_preservation_policy(case: TextCase):
+@pytest.mark.parametrize("case", PARTICLE_ATTACHMENT_CASES, ids=lambda case: case.case_id)
+def test_particle_attachment_policy(case: TextCase):
     assert_exact(transform_text(case.text), case)

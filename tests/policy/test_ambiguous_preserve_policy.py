@@ -2,26 +2,26 @@ from __future__ import annotations
 
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
-AMBIGUOUS_PRESERVE_CASES = (
+AMBIGUOUS_POLICY_CASES = (
     TextCase(
-        case_id="preserve-bare-dotted-short-form",
+        case_id="decimal-bare-dotted-short-form",
         text="12.12",
-        expected="12.12",
-        rule="preserve / bare dotted short form",
-        reason="bare dotted short form은 ambiguous preserve 대상이다.",
-        classification="preserve",
+        expected="십이쩜일이",
+        rule="decimal / bare two-block dotted form",
+        reason="event gate가 실패한 유효 bare two-block dotted surface는 ordinary decimal이다.",
+        classification="override",
     ),
     TextCase(
-        case_id="preserve-short-year-month-dotted-form",
+        case_id="decimal-shape-only-year-month-form",
         text="2025.01",
-        expected="2025.01",
-        rule="preserve / short dotted year-month",
-        reason="short year-month dotted form은 ambiguous preserve 대상이다.",
-        classification="preserve",
+        expected="이천이십오쩜영일",
+        rule="decimal / no shape-only year-month inference",
+        reason="4자리.2자리 shape만으로 date preserve owner가 선점하지 않는다.",
+        classification="override",
     ),
     TextCase(
         case_id="preserve-unsupported-dotted-chain",
@@ -32,12 +32,12 @@ AMBIGUOUS_PRESERVE_CASES = (
         classification="preserve",
     ),
     TextCase(
-        case_id="preserve-one-digit-right-dotted-event",
+        case_id="canonical-one-digit-right-strong-dotted-event",
         text="12.3 비상계엄",
-        expected="12.3 비상계엄",
-        rule="preserve / dotted event collapse forbidden",
-        reason="one-digit right block dotted-event collapse는 금지다.",
-        classification="preserve",
+        expected="십이삼 비상계엄",
+        rule="event / strong immediate keyword",
+        reason="A one-digit right block is valid for EVENT_SURFACE when the immediate strong 비상계엄 keyword passes the event gate.",
+        classification="override",
     ),
     TextCase(
         case_id="preserve-ph-trailing-contamination",
@@ -88,14 +88,6 @@ AMBIGUOUS_PRESERVE_CASES = (
         classification="preserve",
     ),
     TextCase(
-        case_id="preserve-spaced-hyphen-multiblock",
-        text="1 - 2 - 3",
-        expected="1 - 2 - 3",
-        rule="preserve / spaced hyphen multiblock",
-        reason="spaced numeric hyphen multi-block은 preserve 해야 한다.",
-        classification="preserve",
-    ),
-    TextCase(
         case_id="preserve-mixed-case-acronym",
         text="OpenAI",
         expected="OpenAI",
@@ -122,6 +114,6 @@ AMBIGUOUS_PRESERVE_CASES = (
 )
 
 
-@pytest.mark.parametrize("case", AMBIGUOUS_PRESERVE_CASES, ids=lambda case: case.case_id)
-def test_policy_ambiguous_preserve_cases(case: TextCase):
-    assert_exact(transform_text(case.text), case)
+@pytest.mark.parametrize("case", AMBIGUOUS_POLICY_CASES, ids=lambda case: case.case_id)
+def test_policy_ambiguous_routing_cases(case: TextCase):
+    assert_exact(transform(case.text), case)

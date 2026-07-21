@@ -1,6 +1,6 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as transform_text
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -16,9 +16,9 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-lexical-middle-dot-ai-semiconductor",
         text="AI·반도체",
-        expected="에이아이 반도체",
+        expected="에이아이·반도체",
         rule="regression / lexical middle dot compound",
-        reason="A lexical middle-dot compound must read both lexical sides and drop the separator into a protected space boundary.",
+        reason="The managed lexical side is read while the original middle-dot boundary remains protected.",
         classification="protected_surface",
     ),
     TextCase(
@@ -40,7 +40,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-unicode-tilde-shared-suffix-month",
         text="1∼11월",
-        expected="일에서 십일월",
+        expected="일월에서 십일월",
         rule="regression / unicode tilde range",
         reason="Unicode tilde range separators must normalize to the shared-suffix range route.",
         classification="range",
@@ -56,25 +56,25 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-single-letter-hyphen-k-food",
         text="K-푸드",
-        expected="케이-푸드",
+        expected="케이푸드",
         rule="regression / single-letter hyphen lexical compound",
-        reason="A single-letter hyphen lexical compound must only read the leading letter and preserve the lexical tail.",
+        reason="The K-Hangul owner reads K, consumes the lexical hyphen, and preserves the Korean tail.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="regression-single-letter-hyphen-k-beauty",
         text="K-뷰티",
-        expected="케이-뷰티",
+        expected="케이뷰티",
         rule="regression / single-letter hyphen lexical compound",
-        reason="Single-letter hyphen lexical compounds must be protected from post-processing rewrites.",
+        reason="The compact K-Hangul owner output must be protected from post-processing rewrites.",
         classification="protected_surface",
     ),
     TextCase(
         case_id="regression-single-letter-hyphen-k-pop",
         text="K-POP",
-        expected="케이-POP",
+        expected="케이팝",
         rule="regression / single-letter hyphen lexical compound",
-        reason="The lexical tail of a single-letter hyphen compound stays intact unless policy explicitly defines an additional readout.",
+        reason="The managed K-POP dictionary route owns and renders the complete token.",
         classification="protected_surface",
     ),
     TextCase(

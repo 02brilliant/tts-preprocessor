@@ -33,8 +33,36 @@ def test_hyphen_preserve_cases(text: str) -> None:
     assert transform(text) == text
 
 
-def test_spaced_hyphen_numeric_multiblock_policy_v102() -> None:
-    assert transform("1 - 2 - 3") == "일 이 삼"
+def test_spaced_hyphen_numeric_multiblock_preserves_separator() -> None:
+    assert transform("1 - 2 - 3") == "일 - 이 - 삼"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1 - 2 - 3 수치", "일 - 이 - 삼 수치"),
+        ("0.5 - 1.2 - 3", "영쩜오 - 일쩜이 - 삼"),
+    ],
+)
+def test_spaced_hyphen_numeric_multiblock_positive_boundaries(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1 - 2",
+        "1  -  2  -  3",
+        "1 -2-3",
+        "1- 2-3",
+    ],
+
+)
+def test_spaced_hyphen_numeric_multiblock_does_not_broaden(text: str) -> None:
+    assert transform(text) == text
+
 
 
 @pytest.mark.parametrize(

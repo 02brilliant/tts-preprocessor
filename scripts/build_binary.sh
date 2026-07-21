@@ -25,23 +25,18 @@ source "$VENV_DIR/bin/activate"
 
 cd "$ROOT_DIR"
 rm -rf "$DIST_DIR" "$BUILD_DIR"
-rm -f "$SPEC_FILE"
 
 pyinstaller \
   --clean \
-  --onefile \
-  --name tts_preprocessor \
-  --paths "$ROOT_DIR" \
-  --collect-submodules engine \
-  --add-data "$ROOT_DIR/engine/data:engine/data" \
-  "$SOURCE_ENTRYPOINT"
+  --noconfirm \
+  "$SPEC_FILE"
 if [[ ! -f "$DIST_DIR/tts_preprocessor" ]]; then
   echo "Binary build failed: $DIST_DIR/tts_preprocessor not found" >&2
   exit 1
 fi
 
 echo "[build-binary] Running dist binary smoke..."
-SMOKE_ACTUAL="$("$DIST_DIR/tts_preprocessor" --rollout-mode span_default --text "$SMOKE_TEXT")"
+SMOKE_ACTUAL="$("$DIST_DIR/tts_preprocessor" --text "$SMOKE_TEXT")"
 if [[ "$SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
   echo "[build-binary][ERROR] dist binary smoke failed" >&2
   echo "input: $SMOKE_TEXT" >&2

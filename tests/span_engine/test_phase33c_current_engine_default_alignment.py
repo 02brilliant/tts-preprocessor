@@ -17,17 +17,17 @@ def _load_entrypoint_module():
     return module
 
 
-def test_phase33c_binary_entrypoint_default_is_current_engine(monkeypatch) -> None:
+def test_phase33c_binary_entrypoint_default_is_mode_less(monkeypatch) -> None:
     module = _load_entrypoint_module()
-
     monkeypatch.setattr(sys, "argv", ["tts_preprocessor", "--text", "12.3 비상계엄"])
 
     args = module.parse_args()
 
-    assert getattr(args, "rollout_mode") == "span_default"
+    assert args.text == "12.3 비상계엄"
+    assert not hasattr(args, "rollout_mode")
 
 
-def test_phase33c_api_default_path_uses_binary_runtime_without_rollout(monkeypatch) -> None:
+def test_phase33c_api_default_path_uses_mode_less_binary_runtime(monkeypatch) -> None:
     import api.server as server
 
     expected = {
@@ -42,11 +42,7 @@ def test_phase33c_api_default_path_uses_binary_runtime_without_rollout(monkeypat
         seen.append(text)
         return expected[text]
 
-    def fail_if_rollout_used(*args, **kwargs):  # type: ignore[no-untyped-def]
-        raise AssertionError("default API path must not use rollout compatibility")
-
     monkeypatch.setattr(server, "run_transform_binary", fake_run_transform_binary)
-    monkeypatch.setattr(server, "run_transform_binary_with_rollout", fail_if_rollout_used)
 
     for input_text, output_text in expected.items():
         assert server.transform_request_payload({"text": input_text}) == {
@@ -67,14 +63,16 @@ def test_phase33c_api_server_does_not_import_engine_source_directly() -> None:
 def test_phase33c_start_server_allows_binary_override_without_breaking_packaged_default() -> None:
     text = Path("scripts/start_server.sh").read_text(encoding="utf-8")
 
-    assert 'if [[ -n "${TTS_PREPROCESSOR_BINARY:-}" ]]' in text
-    assert 'LATEST_BINARY="$TTS_PREPROCESSOR_BINARY"' in text
+    assert "TTS_PREPROCESSOR_BINARY:-" in text
+    assert "LATEST_BINARY=" in text
     assert "packages/tts-preprocessor/bin/tts_preprocessor" in text
-    assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in text
+    assert "TTS_PREPROCESSOR_BINARY=" in text
 
 
-def test_phase33c_invalid_rollout_mode_still_rejected() -> None:
-    from api.binary_runtime import run_transform_binary_with_rollout
+def test_phase33c_removed_rollout_payload_is_rejected() -> None:
+    import api.server as server
 
-    with pytest.raises(ValueError):
-        run_transform_binary_with_rollout("AI", rollout_mode="invalid")
+    with pytest.raises(ValueError, match="not supported"):
+        server.transform_request_payload(
+            {"text": "AI", "rollout_mode": "span_default"}
+        )

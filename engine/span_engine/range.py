@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 
 from engine.span_engine.counter import SPACELESS_COUNTERS
@@ -13,16 +12,17 @@ from engine.span_engine.date_time import (
 from engine.span_engine.delimiters import (
     COLON_LIKE_DELIMITERS,
     RANGE_LIKE_DELIMITERS,
-    TILDE_LIKE_DELIMITERS,
     is_colon_like,
     is_range_like,
     is_tilde_like,
 )
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import (
-    normalize_integer_text,
-    read_decimal_fraction_digits,
-    read_spaced_integer_text,
+from engine.span_engine.numeric_reading import read_decimal_fraction_digits
+from engine.span_engine.signed_numeric import (
+    SignProfile,
+    SignedNumericCore,
+    parse_signed_numeric_core,
+    render_signed_numeric,
 )
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.units import (
@@ -88,7 +88,6 @@ _COLON_SEMANTIC_PAIR_KEYWORDS_BY_LENGTH = sorted(
 )
 _PREV_BLOCKERS = frozenset("+-.,~:/")
 _PREV_SYMBOL_BLOCKERS = frozenset("$€£¥₩")
-_VALID_THOUSANDS_INTEGER_RE = re.compile(r"[1-9]\d{0,2}(?:,\d{3})+")
 _SENTENCE_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，", "！", "？"})
 _BROAD_RANGE_SPACED_TAILS = ("숫자범위", "범위", "구간")
 _BROAD_RANGE_ATTACHED_TAILS = (
@@ -163,25 +162,7 @@ _COLON_PAIR_BLOCKED_PREV_WORDS = (
 )
 
 
-@dataclass(frozen=True)
-class NumericDelimitedNumber:
-    raw: str
-    sign: str | None
-    integer_raw: str
-    integer_digits: str
-    fractional_digits: str | None
-
-    @property
-    def has_decimal(self) -> bool:
-        return self.fractional_digits is not None
-
-    @property
-    def is_negative(self) -> bool:
-        return self.sign == "-"
-
-    @property
-    def is_positive(self) -> bool:
-        return self.sign == "+"
+NumericDelimitedNumber = SignedNumericCore
 
 
 def is_range_separator(ch: str) -> bool:
@@ -735,7 +716,7 @@ def _basic_tilde_numeric_delimited_candidate(
     if not _valid_after_basic_tilde_range(raw_text, span):
         return None
     reading = _range_reading(left, right, range_zero_style=True)
-    if _needs_basic_tilde_tail_space(raw_text, right_end):
+    if _needs_hangul_tail_space(raw_text, right_end, _BROAD_RANGE_ATTACHED_TAILS):
         reading += " "
     return SurfaceCandidate(
         core_span=span,
@@ -839,19 +820,7 @@ def _numeric_delimited_or_numeric_like_reading(
 
 
 def _range_numeric_delimited_number_reading(number: NumericDelimitedNumber) -> str:
-    if "," in number.integer_raw or number.integer_digits == "0":
-        return render_numeric_delimited_number(number)
-    integer_reading = read_spaced_integer_text(number.integer_digits)
-    if integer_reading is None:
-        raise ValueError("invalid numeric-delimited integer part")
-    if number.sign == "-":
-        integer_reading = "마이너스 " + integer_reading
-    elif number.sign == "+":
-        integer_reading = "플러스 " + integer_reading
-    if number.fractional_digits is None:
-        return integer_reading
-    fractional = read_decimal_fraction_digits(number.fractional_digits)
-    return f"{integer_reading}쩜{fractional}"
+    return render_numeric_delimited_number(number)
 
 
 def _range_shared_suffix_reading(left: str, right: str, suffix: str) -> str:
@@ -921,13 +890,6 @@ def _consume_numeric_like(raw_text: str, start: int) -> int:
         index += 1
         while index < len(raw_text) and _is_ascii_digit(raw_text[index]):
             index += 1
-    return index
-
-
-def _consume_integer_block(raw_text: str, start: int) -> int:
-    index = start
-    while index < len(raw_text) and _is_ascii_digit(raw_text[index]):
-        index += 1
     return index
 
 
@@ -1329,68 +1291,23 @@ def _is_two_digit_00_to_59(raw: str) -> bool:
 def parse_numeric_delimited_number(raw: str) -> NumericDelimitedNumber | None:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
-    if not raw:
-        return None
-    sign: str | None = None
-    unsigned_raw = raw
-    if raw.startswith("+"):
-        sign = "+"
-        unsigned_raw = raw[1:]
-    elif raw.startswith("-"):
-        sign = "-"
-        unsigned_raw = raw[1:]
-    if not unsigned_raw:
-        return None
-    if unsigned_raw.count(".") > 1:
-        return None
-    integer_raw = unsigned_raw
-    fractional_digits: str | None = None
-    if "." in unsigned_raw:
-        integer_raw, fractional_digits = unsigned_raw.split(".", 1)
-        if not fractional_digits or not _is_ascii_digits(fractional_digits):
-            return None
-    if not integer_raw:
-        return None
-    if integer_raw == "0":
-        integer_digits = "0"
-    else:
-        if integer_raw[0] == "0":
-            return None
-        if "," in integer_raw:
-            if _VALID_THOUSANDS_INTEGER_RE.fullmatch(integer_raw) is None:
-                return None
-            integer_digits = integer_raw.replace(",", "")
-        else:
-            if not _is_ascii_digits(integer_raw):
-                return None
-            integer_digits = integer_raw
-    return NumericDelimitedNumber(
-        raw=raw,
-        sign=sign,
-        integer_raw=integer_raw,
-        integer_digits=integer_digits,
-        fractional_digits=fractional_digits,
+    return parse_signed_numeric_core(
+        raw,
+        minus_aliases=frozenset({"-"}),
     )
 
 
 def render_numeric_delimited_number(number: NumericDelimitedNumber) -> str:
     if not isinstance(number, NumericDelimitedNumber):
         raise TypeError("number must be NumericDelimitedNumber")
-    integer_reading = read_spaced_integer_text(number.integer_digits)
-    if integer_reading is None:
-        raise ValueError("invalid numeric-delimited integer part")
-    if number.sign == "-":
-        integer_reading = "마이너스 " + integer_reading
-    elif number.sign == "+":
-        integer_reading = "플러스 " + integer_reading
-    if number.fractional_digits is None:
-        return integer_reading
-    fractional = _numeric_delimited_fractional_reading(number.fractional_digits)
-    return f"{integer_reading}쩜{fractional}"
-
-
-def _numeric_delimited_fractional_reading(fractional_digits: str) -> str:
-    return read_decimal_fraction_digits(fractional_digits)
+    reading = render_signed_numeric(
+        number,
+        sign_profile=SignProfile.DEFAULT,
+        spaced_integer=True,
+    )
+    if reading is None:
+        raise ValueError("invalid numeric-delimited number")
+    return reading
 
 
 def _is_time_like_colon_pair(
@@ -1512,27 +1429,31 @@ def _colon_semantic_pair_reading(
         f"{render_numeric_delimited_number(left)} 대 "
         f"{render_numeric_delimited_number(right)}"
     )
-    if _needs_colon_pair_tail_space(raw_text, span.end):
+    if _needs_hangul_tail_space(raw_text, span.end, _COLON_PAIR_ATTACHED_TAILS):
         reading += " "
     return reading
 
 
-def _needs_colon_pair_tail_space(raw_text: str, tail_start: int) -> bool:
+def _needs_hangul_tail_space(
+    raw_text: str, tail_start: int, attached_tails: tuple[str, ...]
+) -> bool:
     next_char = raw_text[tail_start] if tail_start < len(raw_text) else None
-    if next_char is None or not ("\uac00" <= next_char <= "\ud7a3"):
+    if next_char is None or not ("가" <= next_char <= "힣"):
         return False
-    return not _has_attached_colon_pair_tail(raw_text, tail_start)
+    return not _has_attached_tail(raw_text, tail_start, attached_tails)
 
 
-def _has_attached_colon_pair_tail(raw_text: str, tail_start: int) -> bool:
-    for tail in _COLON_PAIR_ATTACHED_TAILS:
+def _has_attached_tail(
+    raw_text: str, tail_start: int, attached_tails: tuple[str, ...]
+) -> bool:
+    for tail in attached_tails:
         if not raw_text.startswith(tail, tail_start):
             continue
         if len(tail) > 1:
             return True
         after = tail_start + len(tail)
         return after == len(raw_text) or not (
-            "\uac00" <= raw_text[after] <= "\ud7a3"
+            "가" <= raw_text[after] <= "힣"
         )
     return False
 
@@ -1643,26 +1564,6 @@ def _valid_after_basic_tilde_range(raw_text: str, span: SourceSpan) -> bool:
         return True
     if "\uac00" <= next_char <= "\ud7a3":
         return True
-    return False
-
-
-def _needs_basic_tilde_tail_space(raw_text: str, tail_start: int) -> bool:
-    next_char = raw_text[tail_start] if tail_start < len(raw_text) else None
-    if next_char is None or not ("\uac00" <= next_char <= "\ud7a3"):
-        return False
-    return not _has_attached_basic_tilde_tail(raw_text, tail_start)
-
-
-def _has_attached_basic_tilde_tail(raw_text: str, tail_start: int) -> bool:
-    for tail in _BROAD_RANGE_ATTACHED_TAILS:
-        if not raw_text.startswith(tail, tail_start):
-            continue
-        if len(tail) > 1:
-            return True
-        after = tail_start + len(tail)
-        return after == len(raw_text) or not (
-            "\uac00" <= raw_text[after] <= "\ud7a3"
-        )
     return False
 
 

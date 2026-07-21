@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform as canonical_transform
 from engine.span_engine import transform, transform_with_trace
 
 
@@ -25,7 +25,7 @@ from engine.span_engine import transform, transform_with_trace
 def test_mixed_counter_and_year_period_positive_production(
     text: str, expected: str
 ) -> None:
-    assert transform_with_rollout(text, mode="span_default", include_debug=False) == expected
+    assert canonical_transform(text) == expected
 
 
 @pytest.mark.parametrize(

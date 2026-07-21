@@ -36,7 +36,7 @@
 
 | 역할 | 경로 / 모듈 | 비고 |
 |------|-------------|------|
-| Source transform (개발·테스트) | `engine.main.transform`, `engine.main.transform_with_rollout` | `span_default`가 소스 기준 production rollout |
+| Source transform (개발·테스트) | `engine.main.transform` | mode 없는 span 단일 production facade |
 | PyInstaller 빌드 소스 entry | `bin/build_binary_entrypoint.py` | Linux `build_binary.sh`, 원격 `build_remote_package.sh`, GHA desktop workflow **동일** |
 | 로컬 dist 바이너리 | `dist/tts_preprocessor` | `scripts/build_binary.sh` 산출물 (이름: underscore) |
 | 패키지 바이너리 | `packages/tts-preprocessor/bin/tts_preprocessor` | API·`start_server.sh` 기본 런타임 |
@@ -45,7 +45,7 @@
 | 바이너리 탐색 순서 | `TTS_PREPROCESSOR_BINARY` → `dist/tts_preprocessor` → `packages/.../tts_preprocessor` | `api/binary_runtime.py` |
 | Desktop 바이너리 (GHA) | `tts-preprocessor.exe` / `tts-preprocessor` | Linux 운영 패키지와 **파일명·빌드 경로 분리** |
 
-`bin/build_binary_entrypoint.py`는 기본 `--rollout-mode span_default`로 `engine.main.transform_with_rollout`을 호출한다. 이 경로는 span 엔진 변환·comma adapter·bracket filter 후 `split_paragraphs()`로 문단을 나눈다. API production 경로는 소스 import 없이 패키지 바이너리만 실행한다 (`api/server.py` 주석).
+`bin/build_binary_entrypoint.py`는 mode 인자 없이 `engine.main.transform`을 호출한다. 이 경로는 span 엔진 변환·comma adapter·bracket filter 후 `split_paragraphs()`로 문단을 나눈다. API production 경로는 소스 import 없이 패키지 바이너리만 실행한다 (`api/server.py` 주석).
 
 `start_server.sh`는 `TTS_PREPROCESSOR_BINARY`가 이미 설정되어 있으면 그 값을
 사용하고, 없으면 `packages/tts-preprocessor/bin/tts_preprocessor`를 기본
@@ -72,15 +72,12 @@ GitHub Actions desktop workflow에 **Linux job을 넣지 않는** 이유도 동�
 ```bash
 pyinstaller \
   --clean \
-  --onefile \
-  --name tts_preprocessor \
-  --paths "$ROOT_DIR" \
-  --collect-submodules engine \
-  --add-data "$ROOT_DIR/engine/data:engine/data" \
-  bin/build_binary_entrypoint.py
+  --noconfirm \
+  "$ROOT_DIR/tts_preprocessor.spec"
 ```
 
-- 원격 빌드는 Python 3.10 `buildenv` + `enum.StrEnum` **runtime hook** 추가 (`build_remote_package.sh`).
+- spec은 production facade의 실제 의존성만 수집하며 source archive를 artifact에 포함하지 않는다.
+- 원격 빌드는 Python 3.10 `buildenv` + `enum.StrEnum` **runtime hook**을 spec이 자동 적용한다.
 - `build_binary.sh`는 빌드 후 dist 바이너리 **smoke** 1건 실행.
 
 ### 4.3 `scripts/release.py` (로컬 릴리스)
@@ -320,4 +317,4 @@ python scripts/release.py
 - `deploy_server.sh` / 원격 `build_remote_package.sh`는 `app/downloads/`를 비운 뒤 Linux zip만 재생성한다. desktop zip은 재업로드가 필요할 수 있다.
 - macOS 바이너리는 서명·공증 없이 배포되므로 Gatekeeper 경고가 날 수 있다.
 - API·제품 실행 경로에서 `engine/` 소스를 직접 import하지 않는다. 소스 변경 후에는 바이너리를 반드시 재빌드한다.
-- old binary가 `--rollout-mode` 또는 `--include-debug`를 지원하지 않으면 운영에서는 source fallback을 켜지 말고 바이너리를 재빌드/교체한다. `TTS_PREPROCESSOR_ALLOW_SOURCE_ROLLOUT_FALLBACK`는 local/dev escape hatch이며 production에서 사용하지 않는다.
+- old binary가 `--include-debug`를 지원하지 않으면 운영에서는 source fallback을 켜지 말고 바이너리를 재빌드/교체한다. `TTS_PREPROCESSOR_ALLOW_SOURCE_DEBUG_FALLBACK`는 local/dev escape hatch이며 production에서 사용하지 않는다.

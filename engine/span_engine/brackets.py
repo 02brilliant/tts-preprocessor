@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from engine.span_engine.claim_registry import SurfaceClaimRegistry, spans_overlap
 from engine.span_engine.models import ClaimedRange, RenderPiece, SourceSpan, TraceLogEntry

@@ -22,3 +22,9 @@ def assert_exact(actual: str, case: TextCase) -> None:
         + f"actual={actual!r}"
     )
     assert actual == case.expected, message
+
+
+def assert_text_exact(actual: str, text: str, expected: str) -> None:
+    assert actual == expected, (
+        f"input={text!r}\nexpected={expected!r}\nactual={actual!r}"
+    )

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform as canonical_transform
 from engine.span_engine.transform import transform
 
 
@@ -23,7 +22,7 @@ JSON_LIKE_PROTECTED_CASES = [
 
 
 def production_source_transform(text: str) -> str:
-    return transform_with_rollout(text, mode="span_default", include_debug=False)
+    return canonical_transform(text)
 
 
 @pytest.mark.parametrize("text", JSON_LIKE_PROTECTED_CASES)
@@ -32,10 +31,6 @@ def test_json_like_string_values_preserve_source_and_production(text: str):
     assert production_source_transform(text) == text
 
 
-@pytest.mark.parametrize("text", JSON_LIKE_PROTECTED_CASES)
-def test_json_like_string_values_preserve_legacy_helper_path(text: str):
-    assert transform_text(text) == text
-
 
 def test_json_like_outside_text_still_transforms():
     text = '{"price":"KRW1000"} 밖의 KRW1000'
@@ -43,7 +38,6 @@ def test_json_like_outside_text_still_transforms():
 
     assert transform(text) == expected
     assert production_source_transform(text) == expected
-    assert transform_text(text) == expected
 
 
 def test_json_like_integrated_protected_contexts_source_and_production():
@@ -70,4 +64,3 @@ def test_non_json_quote_policy_is_not_expanded():
 
     assert transform(text) == expected
     assert production_source_transform(text) == expected
-    assert transform_text(text) == expected

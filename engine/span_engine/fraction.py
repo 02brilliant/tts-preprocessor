@@ -5,6 +5,11 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_fraction_text
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    apply_sign_profile,
+    parse_sign_surface,
+)
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _SLASH_ALIASES = "/／⁄∕"
@@ -46,8 +51,20 @@ def scan_fraction_candidates(
         if reading is None:
             candidates.append(_preserve_candidate(span, "fraction_zero_or_invalid_preserve"))
             continue
-        if match.group("sign"):
-            reading = f"마이너스 {reading}"
+        sign_surface = match.group("sign")
+        policy = SIGNED_OWNER_POLICIES["fraction"]
+        sign_kind = parse_sign_surface(
+            sign_surface,
+            minus_aliases=policy.minus_aliases,
+        )
+        reading = apply_sign_profile(
+            reading,
+            sign_kind,
+            sign_profile=policy.sign_profile,
+        )
+        if reading is None:
+            candidates.append(_preserve_candidate(span, "fraction_sign_invalid_preserve"))
+            continue
         candidates.append(
             SurfaceCandidate(
                 core_span=span,
@@ -59,6 +76,9 @@ def scan_fraction_candidates(
                     "numerator": numerator,
                     "denominator": denominator,
                     "reading": reading,
+                    "sign_profile": policy.sign_profile.value,
+                    "sign_surface": sign_surface or None,
+                    "numeric_form": "FRACTION",
                 },
             )
         )

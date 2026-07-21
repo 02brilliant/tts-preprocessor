@@ -7,6 +7,13 @@ from dataclasses import dataclass, field
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import RenderPiece, TraceLogEntry
 from engine.span_engine.protected import protected_literal_spans
+from engine.span_engine.prosody_support import (
+    find_piece_index_for_insertion as _find_piece_index_for_insertion,
+    merge_ranges as _merge_ranges,
+    next_non_space_index as _next_non_space_index,
+    previous_visible_index as _previous_visible_index,
+    previous_whitespace_run_start as _previous_whitespace_run_start,
+)
 
 _SENTENCE_BOUNDARIES = frozenset(".!?\n")
 _STRONG_PUNCTUATION = frozenset(",:;.!?\n")
@@ -148,20 +155,6 @@ def _build_safety_context(
         blocked_ranges=merged,
         starts=tuple(start for start, _ in merged),
     )
-
-
-def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    normalized = sorted((start, end) for start, end in ranges if start < end)
-    if not normalized:
-        return []
-    merged = [normalized[0]]
-    for start, end in normalized[1:]:
-        prev_start, prev_end = merged[-1]
-        if start <= prev_end:
-            merged[-1] = (prev_start, max(prev_end, end))
-            continue
-        merged.append((start, end))
-    return merged
 
 
 def _find_candidates(
@@ -563,46 +556,12 @@ def _has_space_boundary(
     )
 
 
-def _previous_whitespace_run_start(raw_text: str, end: int) -> int:
-    index = end
-    while index > 0 and raw_text[index - 1].isspace():
-        index -= 1
-    return index
-
-
-def _previous_visible_index(raw_text: str, start: int) -> int | None:
-    index = start - 1
-    while index >= 0 and raw_text[index].isspace():
-        index -= 1
-    return index if index >= 0 else None
-
-
-def _next_non_space_index(raw_text: str, start: int) -> int | None:
-    index = start
-    while index < len(raw_text) and raw_text[index].isspace():
-        index += 1
-    if index >= len(raw_text):
-        return None
-    return index
-
-
 def _raw_comma_positions(raw_text: str, start: int, end: int) -> list[int]:
     return [index for index in range(start, end) if raw_text[index] == ","]
 
 
 def _visible_len(text: str) -> int:
     return sum(1 for char in text if not char.isspace())
-
-
-def _find_piece_index_for_insertion(
-    pieces: list[RenderPiece], insert_at: int
-) -> int | None:
-    for index, piece in enumerate(pieces):
-        if piece.source_span is None:
-            continue
-        if piece.source_span.start <= insert_at < piece.source_span.end:
-            return index
-    return None
 
 
 def _make_extra_prosody_comma_piece(

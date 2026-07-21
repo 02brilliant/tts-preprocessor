@@ -1,6 +1,6 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -49,11 +49,11 @@ POLICY_CASES = [
         reason="Thirty is the last native special-case form before the sino fallback begins.",
     ),
     TextCase(
-        case_id="counter-hybrid-31-sino-fallback",
+        case_id="counter-hybrid-31-native-reading",
         text="31명",
-        expected="삼십일 명",
-        rule="counter noun / fallback",
-        reason="Thirty-one is outside the native safe range and must fall back to sino reading.",
+        expected="서른한 명",
+        rule="counter noun / positive",
+        reason="Thirty-one remains inside the canonical native range for the registered hybrid-safe counter 명.",
     ),
     TextCase(
         case_id="counter-nonhybrid-57-gae-sino-fallback",
@@ -150,16 +150,16 @@ POLICY_CASES = [
     TextCase(
         case_id="currency-compact-krw-decimal-big-unit",
         text="1.5조 원",
-        expected="일조 오천억 원",
+        expected="일쩜오 조 원",
         rule="currency / compact KRW",
-        reason="A decimal big-unit KRW expression must expand numerically and then reuse the large-number reading rules.",
+        reason="A decimal big-unit KRW expression keeps its compact decimal reading and separates the Korean unit.",
     ),
     TextCase(
-        case_id="currency-krw-decimal-not-supported",
+        case_id="currency-krw-decimal-supported",
         text="₩100.5",
-        expected="₩100.5",
-        rule="currency / guard",
-        reason="KRW does not support decimal currency input and must stay original.",
+        expected="백쩜오 원",
+        rule="currency / decimal support",
+        reason="A KRW symbol prefix supports an atomic decimal reading followed by 원.",
     ),
     TextCase(
         case_id="currency-invalid-trailing-alpha-skip",
@@ -183,11 +183,12 @@ POLICY_CASES = [
         reason="An unsupported currency-code extension before the number must stay original.",
     ),
     TextCase(
-        case_id="currency-negative-form-not-supported",
+        case_id="canonical-currency-symbol-signed-amount",
         text="$-10",
-        expected="$-10",
-        rule="currency / negative guard",
-        reason="Negative currency input is not part of the supported currency policy and must not normalize as a currency.",
+        expected="마이너스 십 달러",
+        rule="currency / signed decimal-aware amount",
+        reason="A registered currency symbol may precede a signed numeric block and the currency owner full-consumes the surface.",
+        classification="override",
     ),
     # Unit policy: exact whitelist plus invalid-tail blocking.
     TextCase(
@@ -254,11 +255,11 @@ POLICY_CASES = [
         reason="The caret cubic-meter form is explicitly listed as a supported geometry unit variant.",
     ),
     TextCase(
-        case_id="unit-single-letter-voltage-with-number",
+        case_id="unit-unregistered-voltage-preserve",
         text="220V",
-        expected="이백이십 볼트",
-        rule="simple unit / positive",
-        reason="A supported single-letter unit may normalize only when it has an explicit numeric prefix.",
+        expected="220V",
+        rule="simple unit / exact registry guard",
+        reason="V is not in the canonical English unit registry, so the complete token remains unchanged.",
     ),
     TextCase(
         case_id="unit-frequency-invalid-tail-skip",
@@ -348,9 +349,9 @@ POLICY_CASES = [
     TextCase(
         case_id="special-snp-dynamic-reading",
         text="S&P 500",
-        expected="에스엔피 오백",
+        expected="에스앤피 오백",
         rule="special acronym-number / positive",
-        reason="S&P followed by a number is a special dynamic mapping, not generic acronym fallback plus number.",
+        reason="S&P uses its registered ampersand reading before the following number is normalized.",
     ),
     TextCase(
         case_id="special-snp-alternate-surface",
@@ -360,11 +361,11 @@ POLICY_CASES = [
         reason="SNP is treated as the same special surface as S&P for the dynamic numeric reading.",
     ),
     TextCase(
-        case_id="special-d-number-protected",
+        case_id="special-d-number-code-reading",
         text="D-14",
-        expected="D-14",
-        rule="protection layer / D-number",
-        reason="D-number identifiers are protected before rule parsing and must survive unchanged.",
+        expected="디 십사",
+        rule="special D-number / code reading",
+        reason="A D-number code is read as the registered letter name followed by the normalized integer.",
     ),
     TextCase(
         case_id="special-emergency-context-positive-112",
@@ -390,23 +391,24 @@ POLICY_CASES = [
     TextCase(
         case_id="special-emergency-disallowed-suffix-fallback",
         text="오늘 119건이 접수됐다",
-        expected="오늘 백십구건이 접수됐다",
+        expected="오늘 백십구 건이 접수됐다",
         rule="emergency number / disallowed suffix",
-        reason="건 is not an allowed emergency tail, so 119 must fall back to the general numeric reading.",
+        reason="건 blocks the emergency reading but remains a registered counter owner with canonical spacing.",
     ),
     TextCase(
         case_id="special-emergency-general-number-with-myeong",
         text="112명 참석",
-        expected="백십이명 참석",
+        expected="백십이 명 참석",
         rule="emergency number / suffix guard",
-        reason="명 is not an allowed emergency tail, so 112 must normalize as a general number plus suffix.",
+        reason="명 blocks the emergency reading but remains a registered counter owner with canonical spacing.",
     ),
     TextCase(
-        case_id="special-emergency-embedded-token-negative",
+        case_id="special-single-letter-alnum-code-a112",
         text="A112",
-        expected="A112",
-        rule="emergency number / boundary guard",
-        reason="An embedded token boundary blocks emergency parsing and should also prevent partial numeric consumption.",
+        expected="에이 백십이",
+        rule="single-letter alnum code / emergency exclusion",
+        reason="A112 full-consumes as a registered single-letter alnum code, so emergency and partial numeric fallback remain excluded.",
+        classification="override",
     ),
     TextCase(
         case_id="special-emergency-embedded-lowercase-negative",
@@ -428,4 +430,4 @@ POLICY_CASES = [
 @pytest.mark.parametrize("case", POLICY_CASES, ids=lambda case: case.case_id)
 def test_counter_currency_units_and_special_policy_matrix(case: TextCase):
     # These cases directly encode the source-of-truth policy for counters, currency, units, and special formats.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)

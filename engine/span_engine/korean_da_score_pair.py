@@ -17,7 +17,11 @@ from engine.span_engine.numeric_reading import (
 )
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
 from engine.span_engine.range import COLON_SEMANTIC_PAIR_KEYWORDS
-from engine.span_engine.signed import parse_signed_numeric
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    parse_signed_numeric_core,
+    render_signed_numeric,
+)
 from engine.span_engine.units import supported_unit_prefix_length
 
 _INTEGER_PATTERN = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
@@ -310,13 +314,21 @@ def _readable_numeric_operand_reading(raw_operand: str) -> str | None:
     if raw_operand[0] in {"+", "-"}:
         if "/" in raw_operand:
             return None
-        unsigned = raw_operand[1:]
-        number_reading = parse_signed_numeric(unsigned)
-        if number_reading is None:
+        policy = SIGNED_OWNER_POLICIES["colon_semantic_pair"]
+        core = parse_signed_numeric_core(
+            raw_operand,
+            allow_plus=policy.accepts_plus,
+            allow_minus=policy.accepts_minus,
+            minus_aliases=policy.minus_aliases,
+            require_sign=True,
+            numeric_forms=policy.numeric_forms,
+        )
+        if core is None:
             return None
-        if raw_operand[0] == "+":
-            return f"플러스 {number_reading}"
-        return f"마이너스 {number_reading}"
+        return render_signed_numeric(
+            core,
+            sign_profile=policy.sign_profile,
+        )
     if "/" in raw_operand:
         if raw_operand.count("/") != 1:
             return None

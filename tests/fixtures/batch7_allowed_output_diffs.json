@@ -1,0 +1,37 @@
+{
+  "batch_id": "policy-alignment-batch-7",
+  "description": "Batch 7 conservative topic and connector boundaries plus source-mapped subordinate prosody insertion contract. All audited rows promote current span output without a runtime transition.",
+  "stable_decisions": [
+    {
+      "decision_id": "long-topic-explicit-shift-quarter",
+      "input": "연구팀 운영 계획은 이번 분기부터 전면 조정된다",
+      "expected": "연구팀 운영 계획은 이번 분기부터 전면 조정된다",
+      "owner_contract": "length and a following frame phrase do not license a broad topic comma in production prosody"
+    },
+    {
+      "decision_id": "long-topic-explicit-shift-stage",
+      "input": "대외 협력 운영 방안은 이후 단계에서 다시 검토된다",
+      "expected": "대외 협력 운영 방안은 이후 단계에서 다시 검토된다",
+      "owner_contract": "production prosody preserves a topic boundary unless an explicit registered insertion rule claims it"
+    },
+    {
+      "decision_id": "prosody-required-leading-hanpyeon",
+      "input": "한편 마지막 설명은 다른 주제로 전환된다",
+      "expected": "한편 마지막 설명은 다른 주제로 전환된다",
+      "owner_contract": "한편 is a paragraph transition and context-gated mid-sentence marker, not an unconditional leading-comma connector"
+    },
+    {
+      "decision_id": "typed-surface-e2e-event-mixed-paragraph",
+      "input": "12·12 사태 이후 시장은 흔들렸지만 FTA 요건과 AI·반도체 전략은 유지됐다",
+      "expected": "십이십이 사태 이후 시장은 흔들렸지만, 에프티에이 요건과 에이아이·반도체 전략은 유지됐다",
+      "owner_contract": "event, acronym, and lexical claims render independently before prosody_extra inserts a source-mapped comma after a valid -지만 clause"
+    },
+    {
+      "decision_id": "typed-surface-e2e-range-and-degree",
+      "input": "기온은 -1.3도까지 떨어졌지만 3~8cm 적설은 유지됐다",
+      "expected": "기온은 마이너스 일쩜삼도까지 떨어졌지만, 삼에서 팔 센티미터 적설은 유지됐다",
+      "owner_contract": "signed number and range owners remain atomic while prosody_extra inserts only the valid subordinate-clause comma"
+    }
+  ],
+  "allowed_diffs": []
+}

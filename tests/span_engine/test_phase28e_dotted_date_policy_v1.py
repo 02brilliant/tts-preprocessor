@@ -25,9 +25,7 @@ def test_dotted_full_date_valid_and_invalid_policy_v1(
 @pytest.mark.parametrize(
     "text",
     [
-        "2025.01",
         "버전 2025.01",
-        "2025.1",
         "docs/2025.01.03",
         "http://x/2025.01.03",
         "v2025.01.03",

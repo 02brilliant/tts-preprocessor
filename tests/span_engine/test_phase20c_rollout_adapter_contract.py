@@ -35,17 +35,9 @@ def test_phase20c_transform_payload_contract() -> None:
     }
 
 
-def test_phase20c_rollout_mode_helper_contract() -> None:
+def test_phase20c_production_adapter_has_no_rollout_mode_helpers() -> None:
     adapter = importlib.import_module("engine.span_engine.production_adapter")
-    normalize_rollout_mode = getattr(adapter, "normalize_rollout_mode")
 
-    assert normalize_rollout_mode("legacy_default") == "legacy_default"
-    assert normalize_rollout_mode("span_shadow_compare") == "span_shadow_compare"
-    assert normalize_rollout_mode("span_default") == "span_default"
-
-    try:
-        normalize_rollout_mode("bad-mode")
-    except ValueError:
-        return
-    raise AssertionError("expected ValueError for invalid rollout mode")
-
+    assert not hasattr(adapter, "normalize_rollout_mode")
+    assert not hasattr(adapter, "run_rollout_transform")
+    assert not hasattr(adapter, "run_rollout_payload")

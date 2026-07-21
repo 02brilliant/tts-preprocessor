@@ -2,26 +2,18 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform_with_rollout
+from engine.main import transform, transform_debug
 
 
 def _production_transform(src: str) -> str:
-    return transform_with_rollout(
-        src,
-        mode="span_default",
-        include_debug=False,
-    )
+    return transform(src)
 
 
 def _claim_owners(src: str) -> list[str]:
-    result = transform_with_rollout(
-        src,
-        mode="span_default",
-        include_debug=True,
-    )
+    result = transform_debug(src)
     return [
         claim["owner"]
-        for claim in result["span_debug"]["trace"]["claim_logs"]
+        for claim in result["debug"]["trace"]["claim_logs"]
     ]
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from engine.pipeline.transform_engine import transform_text
+from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -14,11 +14,12 @@ ADVERSARIAL_CASES = [
         reason="A standalone HH:MM pattern is explicitly ambiguous and must remain original.",
     ),
     TextCase(
-        case_id="adversarial-ratio-like-colon-form",
+        case_id="canonical-bare-colon-semantic-pair",
         text="16:9",
-        expected="16:9",
-        rule="ambiguity guard / ratio-like colon form",
-        reason="Ratio-like colon forms are explicitly excluded from time conversion.",
+        expected="십육 대 구",
+        rule="colon semantic pair / broad non-time-like gate",
+        reason="A valid bare N:M surface that is not a strong clock belongs to the semantic-pair owner.",
+        classification="override",
     ),
     TextCase(
         case_id="adversarial-bare-decimal-without-event-keyword",
@@ -63,25 +64,26 @@ ADVERSARIAL_CASES = [
         reason="Whitespace around the dot breaks decimal contiguity and must block conversion.",
     ),
     TextCase(
-        case_id="adversarial-spaced-middle-dot-right",
+        case_id="canonical-asymmetric-spaced-middle-dot-operands",
         text="12· 3",
-        expected="12· 3",
-        rule="middle dot / spacing guard",
-        reason="Whitespace on either side of a middle dot breaks the decimal interpretation.",
+        expected="십이· 삼",
+        rule="spaced middle dot / independent operands",
+        reason="A right-side gap disables contiguous middle-dot parsing; both numeric operands normalize independently while the source separator and gap remain exact.",
+        classification="middle_dot",
     ),
     TextCase(
-        case_id="adversarial-ambiguous-year-month-dot-form",
+        case_id="canonical-shape-only-year-month-dot-form-is-decimal",
         text="2025.01",
-        expected="2025.01",
-        rule="decimal vs date ambiguity",
-        reason="A short year-month dotted form is explicitly identified as ambiguous and should stay original.",
+        expected="이천이십오쩜영일",
+        rule="decimal / no shape-only date inference",
+        reason="A four-digit first block alone is not an explicit Korean date context gate.",
     ),
     TextCase(
-        case_id="adversarial-standalone-2400",
+        case_id="canonical-standalone-2400-boundary",
         text="24:00",
-        expected="24:00",
-        rule="HH:MM / standalone guard",
-        reason="Even though 24:00 is a valid boundary time, it still needs positive time context and should stay original when standalone.",
+        expected="이십사시",
+        rule="HH:MM / exact standalone day boundary",
+        reason="The exact 24:00 boundary is a canonical strong standalone time and overrides the broad ambiguity guard.",
     ),
     TextCase(
         case_id="adversarial-emergency-disallowed-suffix-ho",
@@ -107,9 +109,10 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="adversarial-protected-two-block-hyphen",
         text="12-15장",
-        expected="12-15장",
-        rule="hyphen protection / ambiguity guard",
-        reason="A two-block numeric hyphen plus Korean suffix remains protected and must not become a range or counter reading.",
+        expected="십이에서 십오 장",
+        rule="hyphen range / canonical registered 장 suffix",
+        reason="The registered 장 suffix licenses the restricted hyphen range owner; generic two-block hyphens remain protected.",
+        classification="canonical",
     ),
     TextCase(
         case_id="adversarial-generic-two-block-hyphen",
@@ -152,4 +155,4 @@ ADVERSARIAL_CASES = [
 @pytest.mark.parametrize("case", ADVERSARIAL_CASES, ids=lambda case: case.case_id)
 def test_adversarial_guard_and_ambiguity_matrix(case: TextCase):
     # Adversarial cases deliberately probe boundary mismatches, unsupported mixes, and partial-match hazards.
-    assert_exact(transform_text(case.text), case)
+    assert_exact(transform(case.text), case)
