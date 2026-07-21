@@ -8,14 +8,8 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     "text",
     [
-        "123-4567",
-        "12-3456",
-        "12345-6789",
-        "1234-567",
-        "1-2",
         "12-34",
         "123-456",
-        "2025-01",
         "1 -2-3",
         "1- 2-3",
         "A-1-2",
@@ -31,6 +25,22 @@ from engine.span_engine import transform
 )
 def test_hyphen_preserve_cases(text: str) -> None:
     assert transform(text) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("123-4567", "일이삼 사오육칠"),
+        ("12-3456", "일이 삼사오육"),
+        ("12345-6789", "일이삼사오 육칠팔구"),
+        ("1234-567", "일이삼사 오육칠"),
+        ("01-02", "공일 공이"),
+    ],
+)
+def test_two_block_numeric_code_separator_reading(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
 
 
 def test_spaced_hyphen_numeric_multiblock_preserves_separator() -> None:
@@ -53,7 +63,6 @@ def test_spaced_hyphen_numeric_multiblock_positive_boundaries(
 @pytest.mark.parametrize(
     "text",
     [
-        "1 - 2",
         "1  -  2  -  3",
         "1 -2-3",
         "1- 2-3",

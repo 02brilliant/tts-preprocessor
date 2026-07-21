@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import re
 
+from engine.span_engine.arithmetic import (
+    scan_basic_arithmetic_expression_candidates,
+    scan_invalid_basic_arithmetic_preserve_candidates,
+)
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
 from engine.span_engine.currency import (
@@ -208,6 +212,7 @@ CLAIM_ORDER_DOC = (
     "currency",
     "date",
     "time",
+    "phone",
     "colon_semantic_pair",
     "korean_da_score_pair",
     "multi_colon_numeric",
@@ -217,10 +222,14 @@ CLAIM_ORDER_DOC = (
     "spaced_hyphen_numeric_blocks",
     "numeric_delimited_hyphen_range",
     "range",
+    "hyphen_digit_blocks",
     "percent_point",
     "duration",
     "multiplier",
     "unit_contamination_preserve",
+    "caret_power_unit",
+    "basic_arithmetic_expression",
+    "invalid_basic_arithmetic_expression_preserve",
     "fraction",
     "signed_temperature",
     "signed_degree",
@@ -239,8 +248,6 @@ CLAIM_ORDER_DOC = (
     "middle_dot_numeric",
     "public_number",
     "counter_noun",
-    "phone",
-    "hyphen_digit_blocks",
     "jamo",
     "administrative_suffix",
     "korean_numeric_chain",
@@ -304,6 +311,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_date_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_time_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_phone_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_colon_semantic_pair_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_korean_da_score_pair_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_multi_colon_numeric_candidates(raw_text), registry, excluded_ranges))
@@ -314,10 +322,26 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_spaced_hyphen_numeric_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_delimited_hyphen_range_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_range_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_hyphen_digit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_percent_point_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_duration_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_multiplier_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_unit_contamination_preserve_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_caret_power_unit_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_basic_arithmetic_expression_candidates(raw_text, excluded_ranges),
+            registry,
+            excluded_ranges,
+        )
+    )
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_invalid_basic_arithmetic_preserve_candidates(raw_text, excluded_ranges),
+            registry,
+            excluded_ranges,
+        )
+    )
 
     # Priority: signed and unit owners must full-consume before generic decimals.
     candidates.extend(_claim_scanned_candidates(scan_fraction_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
@@ -327,7 +351,6 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_ph_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_slash_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_caret_power_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_simple_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
@@ -351,8 +374,6 @@ def claim_surfaces(
 
     candidates.extend(_claim_scanned_candidates(scan_public_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(remaining_counter_candidates, registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_phone_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_hyphen_digit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(unsafe_korean_chain_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_jamo_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_administrative_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))

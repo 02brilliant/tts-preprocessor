@@ -13,8 +13,16 @@ def test_hyphen_range_compatibility_metadata_helpers():
 
 
 def test_hyphen_two_block_standalone_blocks_internal_numeric_fallback():
-    for source in ("1-2", "1–2", "03-04", "12-31", "123-456"):
+    for source in ("1–2", "12-31", "123-456"):
         assert transform(source) == source
+
+
+def test_ascii_hyphen_two_block_is_ambiguous_preserve():
+    assert transform("1-2") == "1-2"
+
+
+def test_leading_zero_two_block_uses_digit_code_reading():
+    assert transform("03-04") == "공삼 공사"
 
 
 def test_hyphen_two_block_with_range_compatible_unit():

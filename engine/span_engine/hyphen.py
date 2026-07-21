@@ -112,6 +112,9 @@ def _scan_candidate_from(
     if len(blocks) == 2 and [len(block) for block in blocks] == [4, 4]:
         owner = "phone"
         surface_type = "PHONE_SURFACE"
+    elif len(blocks) == 2 and _is_two_block_numeric_code(blocks):
+        owner = "hyphen_digit_blocks"
+        surface_type = "CODE_SEPARATOR_BLOCK_SURFACE"
     elif len(blocks) >= 3 and len(blocks) <= 9:
         lengths = [len(block) for block in blocks]
         if len(blocks) == 3 and lengths == [4, 2, 2]:
@@ -142,13 +145,41 @@ def _scan_candidate_from(
         full_span=span,
         owner=owner,
         surface_type=surface_type,
-        reason="hyphen_digit_block_route" if owner == "hyphen_digit_blocks" else "phone_route",
+        reason=(
+            "phone_route"
+            if owner == "phone"
+            else (
+                "two_block_numeric_code_separator_route"
+                if len(blocks) == 2
+                else "hyphen_digit_block_route"
+            )
+        ),
         metadata={
             "blocks": blocks,
             "reading": reading,
             "tail": _tail_prefix(tail),
         },
     )
+
+
+def _is_two_block_numeric_code(blocks: list[str]) -> bool:
+    if len(blocks) != 2:
+        return False
+    if _is_supported_short_hyphen_year_month(blocks):
+        return False
+    return any(
+        len(block) >= 4 or (len(block) > 1 and block.startswith("0"))
+        for block in blocks
+    )
+
+
+def _is_supported_short_hyphen_year_month(blocks: list[str]) -> bool:
+    year_raw, month_raw = blocks
+    if len(year_raw) != 4 or len(month_raw) != 2:
+        return False
+    year = int(year_raw)
+    month = int(month_raw)
+    return 1900 <= year <= 2099 and 1 <= month <= 12
 
 
 def _consume_digits(raw_text: str, start: int) -> int:

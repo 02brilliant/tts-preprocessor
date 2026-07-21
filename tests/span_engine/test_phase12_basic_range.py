@@ -22,14 +22,14 @@ def test_basic_numeric_range(text: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected"),
     [
-        "3-8",
-        "1 - 2",
+        ("3-8", "3-8"),
+        ("1 - 2", "일 빼기 이"),
     ],
 )
-def test_hyphen_and_spaced_ranges_preserve(text: str) -> None:
-    assert transform(text) == text
+def test_hyphen_and_spaced_basic_subtraction(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 def test_spaced_tilde_range_transforms_policy_update() -> None:

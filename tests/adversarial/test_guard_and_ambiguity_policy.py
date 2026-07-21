@@ -115,11 +115,11 @@ ADVERSARIAL_CASES = [
         classification="canonical",
     ),
     TextCase(
-        case_id="adversarial-generic-two-block-hyphen",
+        case_id="adversarial-ambiguous-compact-hyphen",
         text="1-2",
         expected="1-2",
-        rule="hyphen protection / generic negative",
-        reason="The policy explicitly avoids broadly interpreting generic two-block hyphen forms.",
+        rule="ambiguous compact numeric hyphen / preserve",
+        reason="A bare compact N-N surface is ambiguous and remains atomic preserve.",
     ),
     TextCase(
         case_id="adversarial-no-numeric-prefix-unit",

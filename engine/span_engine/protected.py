@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import re
 
+from engine.span_engine.arithmetic import (
+    is_strict_basic_arithmetic_expression,
+    unsupported_parenthesized_arithmetic_spans,
+)
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 
 _URL_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:https?://|www\.)[^\s,，]+")
@@ -78,6 +82,7 @@ def protected_literal_spans(text: str) -> list[SourceSpan]:
     if not isinstance(text, str):
         raise TypeError("text must be str")
     spans: list[SourceSpan] = []
+    spans.extend(unsupported_parenthesized_arithmetic_spans(text))
     for span in _markdown_code_spans(text):
         spans.append(span)
     for span in _quoted_english_prose_spans(text):
@@ -108,6 +113,11 @@ def protected_literal_spans(text: str) -> list[SourceSpan]:
         _CPP_STYLE_RE,
     ):
         for match in regex.finditer(text):
+            if (
+                regex is _MATH_ASSIGNMENT_RE
+                and is_strict_basic_arithmetic_expression(match.group(0))
+            ):
+                continue
             span = SourceSpan(match.start(), match.end())
             if _overlaps_any(span, spans):
                 continue

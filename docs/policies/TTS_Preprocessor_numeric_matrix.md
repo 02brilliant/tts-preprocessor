@@ -1224,3 +1224,62 @@ Optional runners:
 The optional binary/API matrix uses the shared `scripts/probes/runtime_matrix.py`
 helper. A stale binary can fail until rebuilt through the normal release
 workflow; this policy section does not require running build scripts directly.
+
+## 13. Basic arithmetic expression matrix
+
+The arithmetic owner is numeric/fraction-only, full-consume, read-only (no
+calculation), and subordinate to registered structured/protected owners.
+
+| Type | Surface | Canonical / route |
+|---|---|---|
+| add | `3+4` | `삼 더하기 사` |
+| subtract | `3.2 - 5.7` | `삼쩜이 빼기 오쩜칠` |
+| multiply `x` | `4.5 x 3` | `사쩜오 곱하기 삼` |
+| multiply sign | `4.5×3` | `사쩜오 곱하기 삼` |
+| divide | `8÷2` | `팔 나누기 이` |
+| signed operands | `+3.4 x -2.3` | `플러스 삼쩜사 곱하기 마이너스 이쩜삼` |
+| equality, vowel | `3+4=7` | `삼 더하기 사는 칠` |
+| equality, consonant | `3+6=9` | `삼 더하기 육은 구` |
+| fraction operands | `1/3+2/3` | `삼분의 일 더하기 삼분의 이` |
+| slash standalone | `8/2` | existing fraction: `이분의 팔` |
+| exact spaced subtract | `3 - 4` | `삼 빼기 사` |
+| bare compact hyphen | `3-4`, `12-15`, `123-456` | atomic preserve |
+| mixed compact subtract | `3-2+1`, `2×4-3` | `삼 빼기 이 더하기 일`, `이 곱하기 사 빼기 삼` |
+| equation compact subtract | `4-3=1` | `사 빼기 삼은 일` |
+| pure compact hyphen chain | `10-3-2` | existing digit-block: `일공 삼 이` |
+| leading-zero code | `01-02` | existing digit-block: `공일 공이` |
+| long-block code | `1234-56` | existing digit-block: `일이삼사 오육` |
+| short hyphen year-month | `2025-01` | existing source-exact preserve |
+| compact decimal/signed-range ambiguity | `1.5-2`, `-2.480-3.24` | existing atomic preserve |
+| registered range | `12-15장` | existing range: `십이에서 십오 장` |
+| registered phone | `1234-5678` | existing phone digit-block reading |
+| registered managed code | `version-2` | existing managed-code reading `버전 투` |
+| invalid operand | `3 + .5` | atomic preserve |
+| repeated operator | `3++4` | atomic preserve |
+| identifier expression | `A+B` | protected preserve |
+| unsupported star | `3*4` | atomic preserve |
+| unsupported uppercase X | `3X4` | atomic preserve |
+| unsupported unit operand | `3kg+4kg` | atomic preserve |
+| unsupported parenthesized arithmetic | `(3+4)×2` | full source preserve |
+| unsupported numeric function | `sqrt(4)` | full source preserve |
+| protected path | `/path/3+4/log` | protected preserve |
+
+Owner contract:
+
+- valid owner: `basic_arithmetic_expression` /
+  `BASIC_ARITHMETIC_EXPRESSION_SURFACE` /
+  `basic_arithmetic_expression_full_consume_gate`
+- invalid fallback: `preserve` /
+  `INVALID_BASIC_ARITHMETIC_EXPRESSION_PRESERVE_SURFACE` /
+  `invalid_basic_arithmetic_expression_preserve`
+- binary aliases: exactly `+`, `-`, `×`, lower-case numeric `x`, `÷`
+- excluded aliases: `X`, `*`, binary `/`
+- binary-minus spacing: exact one-space form unless another supported operator
+  or one valid equality establishes a full-consumed arithmetic expression
+- bare compact `N-N`, asymmetric minus spacing, and pure compact hyphen chains
+  do not enter arithmetic
+- other operator spacing: zero or one ASCII space on each side
+- equality: zero or one, generated `은/는` from the final left operand reading
+- protected/code-like and registered structured owners win before arithmetic
+- signed/fraction/decimal/generic numeric fallback cannot reenter a claimed or
+  atomically preserved expression

@@ -310,12 +310,12 @@ NORMALIZATION_CASES = [
         classification="digit_mode",
     ),
     TextCase(
-        case_id="generic-two-block-hyphen-stays-original",
+        case_id="generic-two-block-hyphen-ambiguous-preserve",
         text="1-2",
         expected="1-2",
-        rule="hyphen protection / negative",
-        reason="A generic two-block hyphen form stays original.",
-        classification="conflict",
+        rule="ambiguous compact numeric hyphen / preserve",
+        reason="Bare compact N-N remains source-exact unless another operator or equality establishes arithmetic intent.",
+        classification="canonical",
     ),
     TextCase(
         case_id="fraction-basic",

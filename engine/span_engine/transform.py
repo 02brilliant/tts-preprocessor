@@ -3,6 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from engine.span_engine.arithmetic import (
+    is_invalid_basic_arithmetic_expression_text,
+    is_strict_basic_arithmetic_expression,
+    unsupported_parenthesized_arithmetic_spans,
+)
 from engine.span_engine.brackets import (
     apply_final_bracket_filter,
     find_bracket_ranges,
@@ -126,12 +131,30 @@ def _transform_with_language_gate_trace(
         )
     ):
         return _transform_core_with_trace(text)
+    if stripped and is_strict_basic_arithmetic_expression(stripped):
+        return _transform_core_with_trace(text)
     if stripped and not is_code_like_line(stripped) and is_standalone_supported_token(stripped):
         return _transform_core_with_trace(text)
     if not has_hangul_syllable(text) and is_code_like_line(text):
         core_output = _try_core_trace_for_whole_input(text, text)
         if core_output is not None:
             return core_output
+        return TransformOutput(
+            normalized_text=text,
+            render_pieces=[_preserve_render_piece(text, 0, len(text))],
+            trace=None,
+        )
+    if (
+        not has_hangul_syllable(text)
+        and stripped
+        and any(char in stripped for char in "()")
+        and not (stripped.startswith("(") and stripped.endswith(")"))
+        and (
+            any(char in stripped for char in "+-×X*÷=^/")
+            or bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\([^()]*\)", stripped))
+        )
+        and is_invalid_basic_arithmetic_expression_text(stripped)
+    ):
         return TransformOutput(
             normalized_text=text,
             render_pieces=[_preserve_render_piece(text, 0, len(text))],
@@ -508,7 +531,14 @@ def _parser_trace_log(surface: Surface) -> TraceLogEntry:
             "reading": surface.reading,
             **{
                 key: surface.metadata[key]
-                for key in ("sign_profile", "numeric_form", "sign_surface")
+                for key in (
+                    "sign_profile",
+                    "numeric_form",
+                    "sign_surface",
+                    "operand_kinds",
+                    "operator_kinds",
+                    "has_equality",
+                )
                 if key in surface.metadata
             },
         },
@@ -522,20 +552,32 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     validate_token_coverage(checked_text, tokens)
     bracket_ranges = find_bracket_ranges(checked_text)
     incomplete_bracket_ranges = find_incomplete_bracket_ranges(checked_text)
+    unsupported_parenthesized_spans = unsupported_parenthesized_arithmetic_spans(
+        checked_text
+    )
+    active_bracket_ranges = [
+        bracket_range
+        for bracket_range in bracket_ranges
+        if not any(
+            bracket_range.span.start < span.end
+            and span.start < bracket_range.span.end
+            for span in unsupported_parenthesized_spans
+        )
+    ]
     registry = SurfaceClaimRegistry()
     shadow = build_shadow_buffer(tokens)
-    protect_square_brackets_before_claim(registry, bracket_ranges)
+    protect_square_brackets_before_claim(registry, active_bracket_ranges)
     candidates = claim_surfaces(
         checked_text,
         tokens,
         registry,
-        excluded_ranges=bracket_ranges + incomplete_bracket_ranges,
+        excluded_ranges=active_bracket_ranges + incomplete_bracket_ranges,
     )
     surfaces = parse_candidates(checked_text, candidates)
     pieces = render_tokens_with_surfaces(checked_text, tokens, surfaces)
     slash_alias_logs: list[TraceLogEntry] = []
     pieces, slash_alias_logs = _apply_sentence_final_slash_punctuation_alias(
-        pieces, checked_text, bracket_ranges + incomplete_bracket_ranges
+        pieces, checked_text, active_bracket_ranges + incomplete_bracket_ranges
     )
     particle_result = apply_safe_post_surface_particle_exception(pieces)
     pieces = particle_result.pieces
@@ -548,14 +590,14 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     )
     if not validation.passed:
         raise RuntimeError("shadow validation failed")
-    prosody_result = apply_prosody_comma_adapter(pieces, checked_text, bracket_ranges)
+    prosody_result = apply_prosody_comma_adapter(pieces, checked_text, active_bracket_ranges)
     pieces = prosody_result.pieces
     extra_prosody_result = apply_extra_prosody_comma_adapter(
-        pieces, checked_text, bracket_ranges
+        pieces, checked_text, active_bracket_ranges
     )
     pieces = extra_prosody_result.pieces
     pre_filter_text = join_render_pieces(pieces)
-    bracket_filter = apply_final_bracket_filter(pieces, bracket_ranges)
+    bracket_filter = apply_final_bracket_filter(pieces, active_bracket_ranges)
     normalized_text = bracket_filter.normalized_text
 
     from engine.span_engine.models import TransformTrace
@@ -564,17 +606,17 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     trace.claim_logs.extend(registry.claims)
     trace.claim_collision_logs.extend(registry.collision_logs)
     trace.gate_logs.extend(
-        build_time_gate_logs(checked_text, bracket_ranges + incomplete_bracket_ranges)
+        build_time_gate_logs(checked_text, active_bracket_ranges + incomplete_bracket_ranges)
     )
     trace.gate_logs.extend(
-        build_event_gate_logs(checked_text, bracket_ranges + incomplete_bracket_ranges)
+        build_event_gate_logs(checked_text, active_bracket_ranges + incomplete_bracket_ranges)
     )
     trace.gate_logs.extend(
-        build_emergency_gate_logs(checked_text, bracket_ranges + incomplete_bracket_ranges)
+        build_emergency_gate_logs(checked_text, active_bracket_ranges + incomplete_bracket_ranges)
     )
     trace.gate_logs.extend(
         build_public_number_gate_logs(
-            checked_text, bracket_ranges + incomplete_bracket_ranges
+            checked_text, active_bracket_ranges + incomplete_bracket_ranges
         )
     )
     trace.particle_exception_logs.extend(particle_result.logs)

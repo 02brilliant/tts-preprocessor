@@ -602,25 +602,32 @@ Invalid numeric blocks are preserved and must not be partially rewritten.
 
 Protected/path/url/email/backtick/JSON-like/code-like surfaces remain preserve.
 
-Math-like expressions are preserved as whole spans until a dedicated math
-reading owner is designed. This protection is limited to clear operator
-expressions such as `A+B`, `x+y=3`, `a+=1`, `x-y=3`, `x*2=4`, `x/2=3`,
-`a==1`, `a>=1`, and `a<=1`; their internal numeric fragments must not be read
-by broad numeric fallback. This does not change ordinary signed number handling
-such as `값은 +1입니다`.
+Math/code-like expressions remain whole-span preserve unless the narrower
+`basic_arithmetic_expression` owner full-consumes a numeric/fraction-only
+expression under section 45. Variable, assignment, compound-operator, code,
+unit-bearing, URL/path, and identifier expressions such as `A+B`, `x+y=3`,
+`a+=1`, `x-y=3`, `x*2=4`, `x/2=3`, `a==1`, `a>=1`, and `a<=1` keep their
+existing protection; broad numeric fallback must not read their internal
+fragments. Ordinary standalone signed-number handling is unchanged.
 
-These targeted follow-up rules do not change bracket/parenthesis elision,
-square-bracket protection, temperature sign canonical (`+온도` -> `영상`,
-or `-온도` -> `영하`).
+These targeted follow-up rules retain square-bracket protection and temperature
+sign canonical (`+온도` -> `영상`, or `-온도` -> `영하`). General
+parenthesis elision also remains in force except for the narrow unsupported
+parenthesized arithmetic/function atomic-preserve boundary defined in sections
+7.6.1 and 45.
 
-`N-M` 단독 또는 ambiguous form은 claim하지 않고 내부 numeric fallback도 막는다.
-
-```text
-1-2 -> 1-2
-03-04 -> 03-04
-12-31 -> 12-31
-123-456 -> 123-456
-```
+ASCII hyphen-minus can be subtraction only under the section 45 intent gate.
+A bare compact two-block `N-N` surface remains ambiguous and source-exact:
+`1-2`, `3-2`, `12-15`, `10-20`, and `123-456` do not enter the
+arithmetic owner. A compact pure numeric hyphen chain such as `10-3-2` keeps
+the existing hyphen-digit/code route. Exact spaced subtraction remains
+unambiguous. Compact binary minus is allowed only when another supported
+operator or a single valid equality makes the entire full-consumed candidate
+arithmetic, as in `3-2+1`, `2×4-3`, or `4-3=1`. Registered dates,
+phones, ranges, managed codes, leading-zero/two-block numeric codes, long-block
+codes, and protected contexts retain their existing owners. The established
+supported short hyphen year-month preserve boundary also remains authoritative:
+`2025-01` stays source-exact rather than entering the generic long-block code route.
 
 `N-M` 뒤에 optional ASCII space와 range-compatible registered unit/counter/classifier/range noun이 있을 때만 range reading으로 처리한다. 모든 등록 단위를 자동 허용하지 않는다.
 
@@ -2801,6 +2808,14 @@ AㄱB -> preserve 또는 mixed token owner가 명시될 때만 처리
 
 사용자가 입력한 `(...)` 괄호는 모든 normalization, render, validation이 끝난 후 최종 출력 단계에서 괄호와 괄호 안 텍스트를 모두 삭제한다.
 
+단, `basic_arithmetic_expression` 문법이 의도적으로 지원하지 않는
+숫자 기반 괄호식·숫자 인자 함수형 토큰은 full-consume 실패 뒤 내부
+숫자만 변환하거나 토큰 일부를 삭제하지 않는다. `(3+4)×2`,
+`sqrt(4)`처럼 좁게 식별된 전체 토큰은 protected preserve span으로
+원자 보존하며, 이 span에 한해서만 최종 parenthesis elision을
+적용하지 않는다. 일반 `문장(임시)`와 `(+3°)`의 기존 parenthesis
+삭제 정책은 그대로 유지한다.
+
 원칙:
 
 - 내부 처리 과정에서는 `(...)`와 내부 텍스트를 유지한다.
@@ -4481,6 +4496,7 @@ Hyphen Code Separator Routing Table:
 | `ㄱ-2` | `code_separator_block` | two-block hyphen, non-numeric character included | URL/path/email, square bracket 내부이면 preserve | `기역 이` |
 | `01-02` | `code_separator_block` | two-block numeric hyphen, leading zero condition | URL/path/email, square bracket 내부이면 preserve | `공일 공이` |
 | `1234-5678` | `code_separator_block` | two-block numeric hyphen, 4+ digit condition | URL/path/email, square bracket 내부이면 preserve | `일이삼사 오육칠팔` |
+| `2025-01` | preserve | supported-range `YYYY-MM` short year-month boundary | short year-month preserve is more specific than the generic 4+ digit code rule | `2025-01` |
 | `1-2` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `1-2` |
 | `12-15` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `12-15` |
 | `123-456` | preserve | two-block numeric hyphen, no leading zero and no 4+ digit block | 항상 preserve | `123-456` |
@@ -11081,3 +11097,103 @@ The range owner recognizes `~`, `～`, `∼`, and `〜` only within its owner-lo
 alias inventory. A shared Korean month suffix applies to both operands:
 `1∼11월 -> 일월에서 십일월`. Unsafe ASCII tails and URL/path/JSON/backtick or
 square-bracket protected interiors do not leak a partial range conversion.
+
+## 45. Basic Arithmetic Expression Owner
+
+`basic_arithmetic_expression` full-claims a restricted expression containing
+only existing-policy numeric or slash-fraction operands. Its surface type is
+`BASIC_ARITHMETIC_EXPRESSION_SURFACE` and its canonical claim reason is
+`basic_arithmetic_expression_full_consume_gate`. The owner is evaluated after
+absolute protected and registered structured owners (including date, time,
+phone, range, hyphen-digit/code blocks, duration, multiplier, and
+unit-contamination protection) but
+before standalone fraction, signed-number, decimal, and generic-number
+fallback. A registered managed code such as `version-2` therefore keeps its
+existing managed-code reading rather than being reclassified as arithmetic.
+
+Supported binary operators are owner-local and are not globally replaced:
+
+```text
++  -> 더하기
+-  -> 빼기
+×  -> 곱하기
+x  -> 곱하기, only between two valid operands
+÷  -> 나누기
+```
+
+Uppercase `X`, `*`, and binary `/` are not enabled. Slash remains internal to
+the existing fraction operand, so `8/2` keeps the fraction canonical while
+`8÷2 -> 팔 나누기 이`. Unit, currency, percent, temperature, counter,
+large-unit, variable, function, parenthesized, exponent, and root operands are
+out of scope. No calculation or precedence evaluation is performed; operator
+chains are read in source order. Unsupported parenthesized numeric arithmetic
+and numeric-argument function tokens are narrow protected literals, including
+inside a Korean sentence: `(3+4)×2` and `sqrt(4)` preserve their full source
+surface and bypass only the final parenthesis-elision presentation step. This
+does not broaden function parsing or alter ordinary parenthesis deletion.
+
+The parser is state-based. At expression start, after a binary operator, or
+after `=`, `+`/supported minus belongs to the existing signed operand. After a
+complete operand, ASCII `+`/`-` is binary. A sign directly repeated after a
+binary plus/minus is rejected (`3++4`); a spaced signed operand such as
+`3 + -4` is valid. Numeric parsing/rendering delegates to
+`SignedNumericCore`, and fraction validation/rendering delegates to the shared
+fraction operand adapter. Fraction is attempted before numeric parsing so its
+internal slash is never division.
+
+### Arithmetic binary minus and existing hyphen owners
+
+Binary `-` does not alter existing date, phone, hyphen-digit/code,
+managed-code, or restricted-range ownership. With no other arithmetic operator
+and no equality, subtraction requires exactly one ASCII space on both sides:
+`3 - 4 -> 삼 빼기 사`. Bare compact `N-N` and asymmetric `N- N`/`N -N`
+forms preserve atomically. The existing supported-range short year-month shape
+`YYYY-MM` (for example `2025-01`) also remains source-exact and does not enter
+the arithmetic or generic long-block code route.
+
+Compact binary minus is allowed when the full candidate contains at least one
+other supported binary operator (`+`, `×`, numeric-operand `x`, or `÷`) or
+exactly one valid `=`, and the entire mixed expression/equation full-consumes.
+Thus `3-2+1 -> 삼 빼기 이 더하기 일`, `2×4-3 -> 이 곱하기 사 빼기 삼`,
+and `4-3=1 -> 사 빼기 삼은 일`. A pure compact hyphen chain such as
+`10-3-2` does not receive this exception and keeps its existing block route.
+A higher-priority structured/protected claim always wins.
+
+Other supported operators still allow no space or exactly one ASCII space.
+Two spaces, tabs, and newlines fail full-consume. Rendering canonicalizes each
+accepted operator boundary to one generated space. Equality is allowed at most
+once. The `=` source symbol generates `은` or `는` from the jongseong of the
+rendered final left operand; it is not source-particle correction. Operand-start
+minus remains the existing signed-number unary `마이너스`.
+
+```text
+3+4 -> 삼 더하기 사
+3.2 - 5.7 -> 삼쩜이 빼기 오쩜칠
++3.4 x -2.3 -> 플러스 삼쩜사 곱하기 마이너스 이쩜삼
+1/3+2/3 -> 삼분의 일 더하기 삼분의 이
+3+4=7 -> 삼 더하기 사는 칠
+3+6=9 -> 삼 더하기 육은 구
+3-2 -> 3-2
+3-2+1 -> 삼 빼기 이 더하기 일
+2×4-3 -> 이 곱하기 사 빼기 삼
+4-3=1 -> 사 빼기 삼은 일
+10-3-2 -> 일공 삼 이
+```
+
+The no-Hangul route admits a segment only when this grammar full-consumes it.
+The existing code/protected route remains closed for `A+B`, `x+y=3`, `a+=1`,
+`C++17`, URL/path/email/JSON/backtick/fenced-code and bracket interiors. Broad
+math preservation skips only an exact strict numeric arithmetic match.
+
+Arithmetic-looking invalid input uses the preserve surface
+`INVALID_BASIC_ARITHMETIC_EXPRESSION_PRESERVE_SURFACE` with reason
+`invalid_basic_arithmetic_expression_preserve`. It claims the full candidate
+before signed/decimal/number fallback, preventing mixed generated reading and
+ASCII residue. Existing malformed-signed, phone, date, registered range, code,
+and other more-specific preserve owners retain priority.
+
+Arithmetic operands and operators emit `GENERATED_READING` pieces with their
+source operand/operator spans. Source whitespace inside the typed surface is
+consumed under the existing `SURFACE_INTERNAL_CONSUMED` Shadow Validation
+contract; text outside the surface keeps original provenance. Parser trace
+records `operand_kinds`, `operator_kinds`, and `has_equality`.

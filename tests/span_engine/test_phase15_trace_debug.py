@@ -34,9 +34,16 @@ def test_date_precedence_trace_debug() -> None:
     assert not any(claim.owner == "hyphen_digit_blocks" for claim in output.trace.claim_logs)
 
 
-def test_hyphen_preserve_trace_debug() -> None:
+def test_ascii_hyphen_ambiguous_preserve_trace_debug() -> None:
     output = transform_with_trace("1-2")
 
     assert output.normalized_text == "1-2"
-    assert not any(piece.provenance == "GENERATED_READING" for piece in output.render_pieces)
+    assert len(output.trace.claim_logs) == 1
+    claim = output.trace.claim_logs[0]
+    assert claim.owner == "preserve"
+    assert claim.reason == "invalid_basic_arithmetic_expression_preserve"
+    assert all(
+        piece.provenance == "ORIGINAL_BOUNDARY"
+        for piece in output.render_pieces
+    )
 

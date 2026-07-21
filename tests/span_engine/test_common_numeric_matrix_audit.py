@@ -105,7 +105,6 @@ def test_owner_attached_numeric_current_matrix(text: str, expected: str):
         "1~",
         "3::4테스트",
         "1-2테스트",
-        "1-2",
         "+1.5-2kg",
         "-1.5-2kg",
         "2,34억",

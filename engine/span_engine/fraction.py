@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
@@ -24,6 +25,15 @@ _PREV_BLOCKERS = frozenset("+.,~:/_")
 _NEXT_BLOCKERS = frozenset(".,+-~:/_")
 
 
+@dataclass(frozen=True)
+class FractionOperandParse:
+    source_span: SourceSpan
+    numerator: str
+    denominator: str
+    sign_surface: str | None
+    reading: str
+
+
 def scan_fraction_candidates(
     raw_text: str, excluded_ranges: list[BracketRange] | None = None
 ) -> list[SurfaceCandidate]:
@@ -45,25 +55,9 @@ def scan_fraction_candidates(
             continue
         if not _valid_boundary(raw_text, span):
             continue
-        numerator = match.group("numerator")
-        denominator = match.group("denominator")
-        reading = read_fraction_text(numerator, denominator)
-        if reading is None:
+        parsed = parse_fraction_operand_at(raw_text, match.start())
+        if parsed is None or parsed.source_span.end != match.end():
             candidates.append(_preserve_candidate(span, "fraction_zero_or_invalid_preserve"))
-            continue
-        sign_surface = match.group("sign")
-        policy = SIGNED_OWNER_POLICIES["fraction"]
-        sign_kind = parse_sign_surface(
-            sign_surface,
-            minus_aliases=policy.minus_aliases,
-        )
-        reading = apply_sign_profile(
-            reading,
-            sign_kind,
-            sign_profile=policy.sign_profile,
-        )
-        if reading is None:
-            candidates.append(_preserve_candidate(span, "fraction_sign_invalid_preserve"))
             continue
         candidates.append(
             SurfaceCandidate(
@@ -73,16 +67,57 @@ def scan_fraction_candidates(
                 surface_type="FRACTION_SURFACE",
                 reason="slash_fraction_full_consume_gate",
                 metadata={
-                    "numerator": numerator,
-                    "denominator": denominator,
-                    "reading": reading,
-                    "sign_profile": policy.sign_profile.value,
-                    "sign_surface": sign_surface or None,
+                    "numerator": parsed.numerator,
+                    "denominator": parsed.denominator,
+                    "reading": parsed.reading,
+                    "sign_profile": SIGNED_OWNER_POLICIES["fraction"].sign_profile.value,
+                    "sign_surface": parsed.sign_surface,
                     "numeric_form": "FRACTION",
                 },
             )
         )
     return candidates
+
+
+def parse_fraction_operand_at(
+    raw_text: str,
+    start: int,
+) -> FractionOperandParse | None:
+    """Parse one existing-policy fraction operand without outer-boundary checks."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(start, int):
+        raise TypeError("start must be int")
+    if start < 0 or start >= len(raw_text):
+        return None
+    match = _FRACTION_RE.match(raw_text, start)
+    if match is None:
+        return None
+    numerator = match.group("numerator")
+    denominator = match.group("denominator")
+    reading = read_fraction_text(numerator, denominator)
+    if reading is None:
+        return None
+    sign_surface = match.group("sign") or None
+    policy = SIGNED_OWNER_POLICIES["fraction"]
+    sign_kind = parse_sign_surface(
+        sign_surface,
+        minus_aliases=policy.minus_aliases,
+    )
+    reading = apply_sign_profile(
+        reading,
+        sign_kind,
+        sign_profile=policy.sign_profile,
+    )
+    if reading is None:
+        return None
+    return FractionOperandParse(
+        source_span=SourceSpan(start, match.end()),
+        numerator=numerator,
+        denominator=denominator,
+        sign_surface=sign_surface,
+        reading=reading,
+    )
 
 
 def _spaced_fraction_token_end(raw_text: str, start: int) -> int:
@@ -143,4 +178,9 @@ def _span_overlaps_excluded_range(
     )
 
 
-__all__ = ["parse_fraction_candidate", "scan_fraction_candidates"]
+__all__ = [
+    "FractionOperandParse",
+    "parse_fraction_candidate",
+    "parse_fraction_operand_at",
+    "scan_fraction_candidates",
+]

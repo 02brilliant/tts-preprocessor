@@ -81,3 +81,12 @@ python scripts/release.py
 
 bash scripts/start_server.sh    # 로컬 서버 시작 [http://localhost:8010/web/]
 bash scripts/stop_server.sh     # 로컬 서버 종료
+
+
+
+##### 수정사항 메모
+
+- KB금융 (미처리)
+- M&A (미처리)
+- 자동차는 모두 6,700대, 12,500입니다. 자동차는 모두 6,700대 12,500입니다.
+  (자동차는 모두 6,700대, 만 이천오백입니다. 자동차는 모두 육천칠백 대 만이천오백입니다.)

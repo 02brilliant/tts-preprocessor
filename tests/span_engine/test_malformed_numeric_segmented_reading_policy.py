@@ -88,7 +88,7 @@ def test_structural_delimiter_colon_like_audit(text: str, expected: str) -> None
     ("text", "expected"),
     [
         ("1-2", "1-2"),
-        ("03-04", "03-04"),
+        ("03-04", "공삼 공사"),
         ("12-31", "12-31"),
         ("123-456", "123-456"),
         ("file-2025-01.txt", "file-2025-01.txt"),

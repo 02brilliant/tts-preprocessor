@@ -104,7 +104,13 @@ def scan_two_block_hyphen_code_candidates(raw_text: str) -> list[SurfaceCandidat
                 owner="two_block_hyphen_code",
                 surface_type="CODE_SEPARATOR_BLOCK_SURFACE",
                 reason="two_block_hyphen_decimal_code_policy",
-                metadata={"reading": f"{left_reading} {number_reading}"},
+                metadata={
+                    "reading": f"{left_reading} {number_reading}",
+                    "left": left,
+                    "left_reading": left_reading,
+                    "number": number,
+                    "number_reading": number_reading,
+                },
             )
         )
     return candidates

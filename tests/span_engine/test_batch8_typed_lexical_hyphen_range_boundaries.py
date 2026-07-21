@@ -28,7 +28,7 @@ def test_batch8_registered_jang_suffix_licenses_restricted_hyphen_range(
 
 
 @pytest.mark.parametrize(
-    "text", ["1-2", "12-15장abc", "-12-15장", "01-15장", "12-015장"]
+    "text", ["12-15장abc", "-12-15장", "01-15장", "12-015장"]
 )
 def test_batch8_unlicensed_or_unsafe_hyphen_ranges_preserve_atomically(
     text: str,

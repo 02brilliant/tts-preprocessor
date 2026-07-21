@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.administrative import parse_administrative_suffix_candidate
+from engine.span_engine.arithmetic import parse_basic_arithmetic_candidate
 from engine.span_engine.currency import parse_currency_candidate
 from engine.span_engine.counter import parse_counter_candidate
 from engine.span_engine.compound_unit import (
@@ -61,16 +62,19 @@ from engine.span_engine.signed import parse_signed_candidate
 from engine.span_engine.units import parse_unit_candidate
 
 
-_SIGNED_CONTRACT_METADATA_KEYS = (
+_SURFACE_TRACE_METADATA_KEYS = (
     "sign_profile",
     "numeric_form",
     "sign_surface",
+    "operand_kinds",
+    "operator_kinds",
+    "has_equality",
 )
 
 
 def _surface_metadata(candidate: SurfaceCandidate) -> dict[str, object]:
     metadata: dict[str, object] = {"reason": candidate.reason}
-    for key in _SIGNED_CONTRACT_METADATA_KEYS:
+    for key in _SURFACE_TRACE_METADATA_KEYS:
         if key in candidate.metadata:
             metadata[key] = candidate.metadata[key]
     return metadata
@@ -115,6 +119,10 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     elif candidate.owner == "managed_acronym_numeric_code":
         reading = parse_managed_acronym_numeric_code_candidate(raw_text, candidate)
     elif candidate.owner == "two_block_hyphen_code":
+        if _is_hangul_two_block_hyphen_code(candidate):
+            return _make_hangul_two_block_hyphen_code_surface(
+                raw_text, candidate, raw
+            )
         reading = parse_two_block_hyphen_code_candidate(raw_text, candidate)
     elif candidate.owner == "number":
         reading = read_spaced_integer_text(raw)
@@ -142,6 +150,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_percent_point_candidate(raw_text, candidate)
     elif candidate.owner == "fraction":
         reading = parse_fraction_candidate(raw_text, candidate)
+    elif candidate.owner == "basic_arithmetic_expression":
+        return parse_basic_arithmetic_candidate(raw_text, candidate)
     elif candidate.owner == "emergency":
         reading = parse_emergency_candidate(raw_text, candidate)
     elif candidate.owner == "public_number":
@@ -151,7 +161,12 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     elif candidate.owner == "phone":
         reading = phone_reading(raw)
     elif candidate.owner == "hyphen_digit_blocks":
-        reading = hyphen_digit_reading(raw)
+        metadata_reading = candidate.metadata.get("reading")
+        reading = (
+            metadata_reading
+            if isinstance(metadata_reading, str)
+            else hyphen_digit_reading(raw)
+        )
     elif candidate.owner == "spaced_hyphen_numeric_blocks":
         reading = parse_spaced_hyphen_numeric_candidate(raw_text, candidate)
     elif candidate.owner in {"caret_power_unit", "simple_unit", "special_unit"}:
@@ -193,6 +208,60 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         span=candidate.core_span,
         reading=reading,
         metadata=_surface_metadata(candidate),
+    )
+
+
+def _is_hangul_two_block_hyphen_code(candidate: SurfaceCandidate) -> bool:
+    left = candidate.metadata.get("left")
+    return isinstance(left, str) and bool(left) and all(
+        "\uac00" <= char <= "\ud7a3" for char in left
+    )
+
+
+def _make_hangul_two_block_hyphen_code_surface(
+    raw_text: str,
+    candidate: SurfaceCandidate,
+    raw: str,
+) -> Surface | None:
+    left = candidate.metadata.get("left")
+    number = candidate.metadata.get("number")
+    number_reading = candidate.metadata.get("number_reading")
+    if not all(isinstance(value, str) for value in (left, number, number_reading)):
+        return None
+    assert isinstance(left, str)
+    assert isinstance(number, str)
+    assert isinstance(number_reading, str)
+    hyphen_start = candidate.core_span.start + len(left)
+    number_start = hyphen_start + 1
+    render_pieces = [
+        RenderPiece(
+            text=left,
+            provenance="ORIGINAL_KOREAN",
+            source_span=SourceSpan(candidate.core_span.start, hyphen_start),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=" ",
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(hyphen_start, number_start),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=number_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(number_start, candidate.core_span.end),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+    return _make_core_render_surface(
+        candidate,
+        raw,
+        f"{left} {number_reading}",
+        render_pieces,
+        default_surface_type="CODE_SEPARATOR_BLOCK_SURFACE",
     )
 
 

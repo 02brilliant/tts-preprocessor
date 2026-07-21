@@ -253,7 +253,7 @@ def test_two_block_hyphen_decimal_code_policy() -> None:
     assert transform("B-2.5") == "비 이쩜오"
     assert transform("x-3") == "엑스 삼"
     assert transform("A-10C") == "에이 십 씨"
-    for text in ["3-2", "1-2", "1-1 무", "B-2.5beta", "x-2.5℉", "A-3kg"]:
+    for text in ["1-1 무", "B-2.5beta", "x-2.5℉", "A-3kg"]:
         assert transform(text) == text
     assert transform("12-15장") == "십이에서 십오 장"
 
@@ -514,7 +514,7 @@ def test_compact_dae_relation_reads_both_numbers(text: str, expected: str) -> No
 
 @pytest.mark.parametrize(
     "text",
-    ["1-1 무", "1-2", "현대1대1", "A1대1", "1대1beta"],
+    ["1-1 무", "현대1대1", "A1대1", "1대1beta"],
 )
 def test_compact_dae_relation_keeps_out_of_scope_and_unsafe_preserve(
     text: str,
