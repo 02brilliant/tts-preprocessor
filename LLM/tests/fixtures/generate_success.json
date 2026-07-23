@@ -1,0 +1,14 @@
+{
+  "model": "gemma4:e4b",
+  "created_at": "2026-01-01T00:00:00.000000Z",
+  "response": "확인",
+  "done": true,
+  "done_reason": "stop",
+  "context": [1, 2, 3],
+  "total_duration": 100,
+  "load_duration": 10,
+  "prompt_eval_count": 5,
+  "prompt_eval_duration": 20,
+  "eval_count": 1,
+  "eval_duration": 30
+}

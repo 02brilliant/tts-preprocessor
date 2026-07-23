@@ -60,6 +60,21 @@
       font-weight: 700;
     }
 
+    select {
+      min-width: 190px;
+      padding: 10px 38px 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fffdf9;
+      color: var(--text);
+      font: inherit;
+    }
+
+    select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     textarea {
       width: 100%;
       min-height: 180px;
@@ -117,6 +132,47 @@
       color: var(--error-text);
     }
 
+    .llm-controls {
+      display: flex;
+      align-items: end;
+      gap: 20px;
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 253, 249, 0.7);
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-group label {
+      margin: 0;
+    }
+
+    .toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .toggle-label input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+    }
+
+    .model-status {
+      flex: 1 1 220px;
+      align-self: center;
+    }
+
     .result-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -134,6 +190,32 @@
     .result-box h2 {
       margin: 0 0 10px;
       font-size: 18px;
+    }
+
+    .result-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .result-meta h2 {
+      margin: 0;
+    }
+
+    .timing {
+      color: rgba(43, 36, 27, 0.72);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .comparison-divider {
+      margin: 8px 0 0;
+      padding-top: 22px;
+      border-top: 2px solid rgba(140, 79, 43, 0.22);
+      font-size: 20px;
     }
 
     .plain-output,
@@ -211,6 +293,10 @@
       white-space: pre-wrap;
     }
 
+    .result-box .error-box {
+      margin: 10px 0 0;
+    }
+
     .downloads {
       margin-top: 24px;
     }
@@ -282,6 +368,15 @@
       h1 {
         font-size: 26px;
       }
+
+      .llm-controls {
+        align-items: stretch;
+      }
+
+      .control-group,
+      .control-group select {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -294,22 +389,61 @@
       <label for="input">입력 텍스트</label>
       <textarea id="input" placeholder="예: AI는 2025-01-03에 3kg 제품을 69% 할인한다">AI는 2025-01-03에 3kg 제품을 69% 할인한다</textarea>
 
+      <div class="llm-controls">
+        <div class="control-group">
+          <span id="llm-enabled-label">AI LLM 실행</span>
+          <label class="toggle-label" for="llm-enabled">
+            <input id="llm-enabled" type="checkbox" checked aria-labelledby="llm-enabled-label">
+            <span>ON</span>
+          </label>
+        </div>
+
+        <div class="control-group">
+          <label for="llm-model">AI LLM 모델</label>
+          <select id="llm-model" disabled aria-describedby="model-status">
+            <option>모델 목록 불러오는 중...</option>
+          </select>
+        </div>
+
+        <div id="model-status" class="status model-status" aria-live="polite"></div>
+      </div>
+
       <div class="actions">
         <button id="run-button" type="button">실행</button>
         <div id="status" class="status" aria-live="polite"></div>
       </div>
 
-      <div id="error" class="error-box" role="alert"></div>
-
       <div class="result-grid">
         <section class="result-box">
-          <h2>정규화 결과</h2>
+          <div class="result-meta">
+            <h2>규칙 기반 정규화 결과</h2>
+            <div id="rule-timing" class="timing">규칙 기반 전체 응답시간: -</div>
+          </div>
+          <div id="rule-status" class="status" aria-live="polite"></div>
+          <div id="error" class="error-box" role="alert"></div>
           <div id="output" class="plain-output"></div>
         </section>
 
         <section class="result-box">
-          <h2>Diff</h2>
+          <h2>원문 대비 규칙 기반 Diff</h2>
           <div id="diff" class="diff-output"></div>
+        </section>
+
+        <h2 class="comparison-divider">AI LLM 비교 결과</h2>
+
+        <section class="result-box">
+          <div class="result-meta">
+            <h2>AI LLM 정규화 결과</h2>
+            <div id="llm-timing" class="timing">LLM 전체 응답시간: -</div>
+          </div>
+          <div id="llm-status" class="status" aria-live="polite"></div>
+          <div id="llm-error" class="error-box" role="alert"></div>
+          <div id="llm-output" class="plain-output"></div>
+        </section>
+
+        <section class="result-box">
+          <h2>원문 대비 AI LLM Diff</h2>
+          <div id="llm-diff" class="diff-output"></div>
         </section>
       </div>
 
@@ -326,10 +460,21 @@
     const outputEl = document.getElementById("output");
     const diffEl = document.getElementById("diff");
     const statusEl = document.getElementById("status");
+    const ruleStatusEl = document.getElementById("rule-status");
+    const ruleTimingEl = document.getElementById("rule-timing");
     const errorEl = document.getElementById("error");
+    const llmEnabledEl = document.getElementById("llm-enabled");
+    const llmModelEl = document.getElementById("llm-model");
+    const modelStatusEl = document.getElementById("model-status");
+    const llmStatusEl = document.getElementById("llm-status");
+    const llmTimingEl = document.getElementById("llm-timing");
+    const llmErrorEl = document.getElementById("llm-error");
+    const llmOutputEl = document.getElementById("llm-output");
+    const llmDiffEl = document.getElementById("llm-diff");
     const runButton = document.getElementById("run-button");
     const downloadsStatusEl = document.getElementById("downloads-status");
     const downloadsListEl = document.getElementById("downloads-list");
+    let modelsLoaded = false;
 
     // ── HTML escape ─────────────────────────────────────────────────────────
     function escapeHtml(text) {
@@ -544,29 +689,59 @@
       }).join("");
     }
 
-    function renderDiff(source, target) {
+    function renderDiff(source, target, targetEl) {
       const parts = diffTokens(source, target);
-      diffEl.innerHTML = renderParts(parts);
+      targetEl.innerHTML = renderParts(parts);
     }
 
     // ── UI helpers ───────────────────────────────────────────────────────────
 
-    function setLoading(isLoading) {
+    function setRunBusy(isLoading) {
       runButton.disabled = isLoading;
-      statusEl.textContent = isLoading ? "변환 중..." : "";
+      statusEl.textContent = isLoading
+        ? (llmEnabledEl.checked
+          ? "두 전처리 방식을 실행하는 중..."
+          : "규칙 기반 전처리를 실행하는 중...")
+        : "";
       statusEl.className = isLoading ? "status loading" : "status";
     }
 
-    function showError(message) {
-      errorEl.style.display = "block";
-      errorEl.textContent = message;
-      statusEl.textContent = "오류가 발생했습니다.";
-      statusEl.className = "status error";
+    function showScopedError(errorBox, statusBox, message) {
+      errorBox.style.display = "block";
+      errorBox.textContent = message;
+      statusBox.textContent = "오류가 발생했습니다.";
+      statusBox.className = "status error";
     }
 
-    function clearError() {
-      errorEl.style.display = "none";
-      errorEl.textContent = "";
+    function clearScopedError(errorBox) {
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+    }
+
+    function formatDuration(milliseconds) {
+      if (!Number.isFinite(milliseconds) || milliseconds < 0) return "-";
+      if (milliseconds < 1000) return `${milliseconds.toFixed(1)} ms`;
+      return `${(milliseconds / 1000).toFixed(2)} s`;
+    }
+
+    function resetLLMResult(message = "") {
+      clearScopedError(llmErrorEl);
+      llmOutputEl.textContent = "";
+      llmDiffEl.textContent = "";
+      llmTimingEl.textContent = "LLM 전체 응답시간: -";
+      llmStatusEl.textContent = message;
+      llmStatusEl.className = "status";
+    }
+
+    function syncLLMControls() {
+      const enabled = llmEnabledEl.checked;
+      llmEnabledEl.nextElementSibling.textContent = enabled ? "ON" : "OFF";
+      llmModelEl.disabled = !enabled || !modelsLoaded;
+      if (!enabled) {
+        resetLLMResult("AI LLM을 실행하지 않습니다.");
+      } else if (modelsLoaded && llmStatusEl.textContent === "AI LLM을 실행하지 않습니다.") {
+        llmStatusEl.textContent = "";
+      }
     }
 
     const DOWNLOAD_TARGETS = [
@@ -658,16 +833,71 @@
       return window.location.origin;
     }
 
-    async function run() {
-      const text = inputEl.value;
-
-      clearError();
-      setLoading(true);
+    async function loadLLMModels() {
+      modelStatusEl.textContent = "AI LLM 모델 목록을 불러오는 중...";
+      modelStatusEl.className = "status loading model-status";
 
       try {
-        const API_BASE = getBackendBase();
+        const response = await fetch(`${getBackendBase()}/api/llm/models`, {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detail = typeof data.detail === "string"
+            ? data.detail
+            : "AI LLM 모델 목록 요청에 실패했습니다.";
+          throw new Error(detail);
+        }
+        if (
+          !Array.isArray(data.models)
+          || data.models.length === 0
+          || data.models.some((model) => typeof model !== "string")
+          || typeof data.default_model !== "string"
+          || !data.models.includes(data.default_model)
+        ) {
+          throw new Error("AI LLM 모델 목록 응답 형식이 올바르지 않습니다.");
+        }
 
-        const response = await fetch(`${API_BASE}/api/transform`, {
+        llmModelEl.replaceChildren(
+          ...data.models.map((model) => {
+            const option = document.createElement("option");
+            option.value = model;
+            option.textContent = model;
+            option.selected = model === data.default_model;
+            return option;
+          }),
+        );
+        modelsLoaded = true;
+        modelStatusEl.textContent = "";
+        modelStatusEl.className = "status model-status";
+      } catch (error) {
+        modelsLoaded = false;
+        llmModelEl.replaceChildren();
+        const option = document.createElement("option");
+        option.textContent = "모델 목록을 불러올 수 없음";
+        llmModelEl.append(option);
+        modelStatusEl.textContent = error instanceof TypeError
+          ? "AI LLM API 서버에 연결할 수 없습니다."
+          : error instanceof Error
+            ? error.message
+            : "AI LLM 모델 목록을 불러올 수 없습니다.";
+        modelStatusEl.className = "status error model-status";
+      } finally {
+        syncLLMControls();
+      }
+    }
+
+    async function runRuleTransform(text) {
+      clearScopedError(errorEl);
+      outputEl.textContent = "";
+      diffEl.textContent = "";
+      ruleTimingEl.textContent = "규칙 기반 전체 응답시간: -";
+      ruleStatusEl.textContent = "규칙 기반 처리 중...";
+      ruleStatusEl.className = "status loading";
+      const startedAt = performance.now();
+
+      try {
+        const response = await fetch(`${getBackendBase()}/api/transform`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -681,24 +911,116 @@
           throw new Error(detail);
         }
 
-        const normalizedText = typeof data.normalized_text === "string" ? data.normalized_text : "";
+        if (typeof data.normalized_text !== "string") {
+          throw new Error("규칙 기반 API 응답 형식이 올바르지 않습니다.");
+        }
+        const normalizedText = data.normalized_text;
         outputEl.textContent = normalizedText;
-        renderDiff(text, normalizedText);
-        statusEl.textContent = "완료";
-        statusEl.className = "status";
+        renderDiff(text, normalizedText, diffEl);
+        ruleStatusEl.textContent = "완료";
+        ruleStatusEl.className = "status";
       } catch (error) {
         outputEl.textContent = "";
         diffEl.textContent = "";
-        showError(error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.");
+        showScopedError(
+          errorEl,
+          ruleStatusEl,
+          error instanceof TypeError
+            ? "규칙 기반 API 서버에 연결할 수 없습니다."
+            : error instanceof Error
+              ? error.message
+              : "규칙 기반 처리 중 알 수 없는 오류가 발생했습니다.",
+        );
       } finally {
-        runButton.disabled = false;
-        if (!statusEl.classList.contains("error")) {
-          setLoading(false);
-        }
+        ruleTimingEl.textContent =
+          `규칙 기반 전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
       }
     }
 
+    async function runLLMTransform(text) {
+      clearScopedError(llmErrorEl);
+      llmOutputEl.textContent = "";
+      llmDiffEl.textContent = "";
+      llmTimingEl.textContent = "LLM 전체 응답시간: -";
+      llmStatusEl.textContent = "AI LLM 처리 중...";
+      llmStatusEl.className = "status loading";
+      const startedAt = performance.now();
+
+      try {
+        if (!modelsLoaded || !llmModelEl.value) {
+          throw new Error("AI LLM 모델 목록을 먼저 불러와야 합니다.");
+        }
+
+        const response = await fetch(`${getBackendBase()}/api/llm/transform`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text,
+            model: llmModelEl.value,
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detail = typeof data.detail === "string"
+            ? data.detail
+            : "AI LLM 요청에 실패했습니다.";
+          throw new Error(detail);
+        }
+        if (typeof data.llm_text !== "string") {
+          throw new Error("AI LLM API 응답 형식이 올바르지 않습니다.");
+        }
+
+        const clientElapsed = performance.now() - startedAt;
+        const llmText = data.llm_text;
+        llmOutputEl.textContent = llmText;
+        renderDiff(text, llmText, llmDiffEl);
+        llmStatusEl.textContent = "완료";
+        llmStatusEl.className = "status";
+        const upstreamTiming = Number.isFinite(data.elapsed_ms)
+          ? ` · LLM 서버 처리시간: ${formatDuration(data.elapsed_ms)}`
+          : "";
+        llmTimingEl.textContent =
+          `LLM 전체 응답시간: ${formatDuration(clientElapsed)}${upstreamTiming}`;
+      } catch (error) {
+        llmOutputEl.textContent = "";
+        llmDiffEl.textContent = "";
+        showScopedError(
+          llmErrorEl,
+          llmStatusEl,
+          error instanceof TypeError
+            ? "AI LLM API 서버에 연결할 수 없습니다."
+            : error instanceof Error
+              ? error.message
+              : "AI LLM 처리 중 알 수 없는 오류가 발생했습니다.",
+        );
+        llmTimingEl.textContent =
+          `LLM 전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
+      }
+    }
+
+    async function run() {
+      const text = inputEl.value;
+      setRunBusy(true);
+
+      const jobs = [runRuleTransform(text)];
+      if (llmEnabledEl.checked) {
+        jobs.push(runLLMTransform(text));
+      } else {
+        resetLLMResult("AI LLM을 실행하지 않았습니다.");
+      }
+
+      await Promise.allSettled(jobs);
+      setRunBusy(false);
+      statusEl.textContent = "처리 완료";
+      statusEl.className = "status";
+    }
+
     runButton.addEventListener("click", run);
+    llmEnabledEl.addEventListener("change", syncLLMControls);
+    syncLLMControls();
+    loadLLMModels();
     loadDownloads();
   </script>
 </body>

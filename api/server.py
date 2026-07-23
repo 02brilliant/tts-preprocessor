@@ -22,11 +22,20 @@ from api.binary_runtime import (
     run_transform_binary,
     run_transform_binary_debug,
 )
+from LLM.client import (
+    LLMConnectionError,
+    LLMResponseError,
+    LLMTimeoutError,
+    LLMUpstreamHTTPError,
+    generate,
+)
+from LLM.config import ConfigurationError, load_model_config, load_runtime_settings
+from LLM.prompt_template import PromptTemplateError, build_prompt
 
 app = FastAPI()
 
-# Production /api/transform calls the packaged runtime binary. Source imports
-# here are limited to server wiring and binary resolution, not transform logic.
+# Production /api/transform calls the packaged runtime binary. LLM support is
+# isolated under LLM/ and only proxies requests to the configured local model.
 
 # ✅ web과 downloads를 함께 공개
 app.mount("/web", StaticFiles(directory="web", html=True), name="web")
@@ -45,6 +54,11 @@ class TransformRequest(BaseModel):
                 "rollout_mode is no longer supported by the production API"
             )
         return value
+
+
+class LLMTransformRequest(BaseModel):
+    text: str
+    model: str | None = None
 
 
 app.add_middleware(
@@ -85,6 +99,50 @@ def transform_api(req: TransformRequest) -> dict:
     if not normalized_text:
         raise HTTPException(status_code=500, detail="정규화 결과가 비어 있습니다.")
     return result
+
+
+@app.get("/api/llm/models")
+def llm_models_api() -> dict:
+    try:
+        model_config = load_model_config()
+    except ConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {
+        "models": list(model_config.models),
+        "default_model": model_config.default_model,
+    }
+
+
+@app.api_route("/api/llm/transform", methods=["POST"])
+def llm_transform_api(req: LLMTransformRequest) -> dict:
+    try:
+        model_config = load_model_config()
+        model = req.model or model_config.default_model
+        if model not in model_config.models:
+            raise HTTPException(status_code=400, detail="Unsupported LLM model.")
+
+        settings = load_runtime_settings()
+        prompt = build_prompt(req.text)
+        result = generate(model=model, prompt=prompt, settings=settings)
+    except HTTPException:
+        raise
+    except ConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PromptTemplateError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except LLMTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except (LLMConnectionError, LLMUpstreamHTTPError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except LLMResponseError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return {
+        "llm_text": result.text,
+        "model": model,
+        "elapsed_ms": round(result.elapsed_ms, 3),
+    }
 
 
 def transform_request_payload(payload: dict) -> dict:

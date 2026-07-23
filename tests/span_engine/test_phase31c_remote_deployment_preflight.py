@@ -11,8 +11,11 @@ def test_phase31c_deploy_script_target_and_remote_build_cleanup_contract() -> No
     assert 'REMOTE_HOST="10.20.10.162"' in deploy
     assert 'REMOTE_BASE_DIR="~/tts-preprocessor"' in deploy
     assert 'REMOTE_APP_DIR="$REMOTE_BASE_DIR/app"' in deploy
+    assert 'REMOTE_LLM_DIR="$REMOTE_APP_DIR/LLM"' in deploy
     assert 'REMOTE_BUILD_SRC_DIR="$REMOTE_BASE_DIR/buildsrc"' in deploy
     assert 'rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"' in deploy
+    assert '"$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_LLM_DIR/"' in deploy
+    assert 'docs/info_Local_LLM_server.txt' in deploy
     assert '"$remote_base_dir/app/engine"' in deploy
     assert '"$remote_base_dir/app/docs"' in deploy
     assert "run_remote_build_action prepare" in deploy

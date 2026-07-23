@@ -53,6 +53,10 @@ def test_server_health_uses_new_linux_download_url() -> None:
         'check_optional_get "Windows release download" "$WINDOWS_DOWNLOAD_URL"'
         in check_server
     )
+    assert 'LLM_MODELS_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/models"' in check_server
+    assert 'LLM_TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/transform"' in check_server
+    assert 'check_llm_models "$LLM_MODELS_OUTPUT"' in check_server
+    assert 'check_post_llm_transform "$LLM_TRANSFORM_OUTPUT"' in check_server
 
 
 def test_server_health_allows_missing_optional_windows_download(
@@ -84,7 +88,11 @@ done
 if [[ "$url" == *"/downloads/tts-preprocessor-windows.zip" ]]; then
   exit 22
 fi
-if [[ "$url" == *"/api/transform" ]]; then
+if [[ "$url" == *"/api/llm/models" ]]; then
+  printf '%s\\n' '{"models":["gemma4:31b","gemma4:26b","gemma4:e4b"],"default_model":"gemma4:e4b"}' > "$output_file"
+elif [[ "$url" == *"/api/llm/transform" ]]; then
+  printf '%s\\n' '{"llm_text":"LLM 배포 확인입니다.","model":"gemma4:e4b","elapsed_ms":1}' > "$output_file"
+elif [[ "$url" == *"/api/transform" ]]; then
   printf '%s\\n' '{"normalized_text":"케이 원, 케이푸드, 백십이 명, 유월"}' > "$output_file"
 else
   printf '%s\\n' "ok" > "$output_file"
@@ -119,6 +127,8 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert "from engine" not in api_server
     assert 'app.mount("/downloads"' in api_server
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
+    assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
+    assert 'LOCAL_LLM_BASE_URL LOCAL_LLM_TOKEN' in start_server
     assert (
         'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"'
         in remote_build

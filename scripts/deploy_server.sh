@@ -24,6 +24,7 @@ SSH_TARGET="${REMOTE_USER}@${REMOTE_HOST}"
 # shellcheck disable=SC2088
 REMOTE_BASE_DIR="~/tts-preprocessor"
 REMOTE_APP_DIR="$REMOTE_BASE_DIR/app"
+REMOTE_LLM_DIR="$REMOTE_APP_DIR/LLM"
 REMOTE_DOWNLOADS_DIR="$REMOTE_APP_DIR/downloads"
 REMOTE_BUILD_SRC_DIR="$REMOTE_BASE_DIR/buildsrc"
 REMOTE_BUILD_SRC_DOCS_DIR="$REMOTE_BUILD_SRC_DIR/docs"
@@ -231,6 +232,19 @@ for required_local_file in \
   fi
 done
 
+for required_llm_file in \
+  "$ROOT_DIR/LLM/__init__.py" \
+  "$ROOT_DIR/LLM/client.py" \
+  "$ROOT_DIR/LLM/config.py" \
+  "$ROOT_DIR/LLM/models.json" \
+  "$ROOT_DIR/LLM/prompt_template.py" \
+  "$ROOT_DIR/LLM/docs/LLM_prompt.txt"; do
+  if [[ ! -f "$required_llm_file" || ! -r "$required_llm_file" ]]; then
+    echo "[deploy][ERROR] Missing local LLM runtime prerequisite: $required_llm_file" >&2
+    exit 1
+  fi
+done
+
 if [[ ! -x "$PROJECT_PYTHON" || ! -x "$PROJECT_PYINSTALLER" ]]; then
   echo "[deploy][ERROR] Project Python and PyInstaller must be executable." >&2
   exit 1
@@ -260,8 +274,14 @@ case "$remote_base_dir" in
   "~/"*) remote_base_dir="$HOME/${remote_base_dir#\~/}" ;;
 esac
 buildenv_dir="$remote_base_dir/buildenv"
+llm_env_file="$remote_base_dir/config/llm.env"
 [[ -f "$remote_base_dir/scripts/stop_server.sh" ]] || {
   echo "[deploy][ERROR] Missing existing remote stop script." >&2
+  exit 1
+}
+[[ -r "$llm_env_file" ]] || {
+  echo "[deploy][ERROR] Missing readable LLM environment file: $llm_env_file" >&2
+  echo "[deploy][ERROR] Set LOCAL_LLM_BASE_URL and LOCAL_LLM_TOKEN there before deployment." >&2
   exit 1
 }
 for executable in \
@@ -292,6 +312,7 @@ esac
 rm -rf -- "$remote_base_dir/buildsrc"
 mkdir -p \
   "$remote_base_dir/app/api" \
+  "$remote_base_dir/app/LLM/docs" \
   "$remote_base_dir/app/web" \
   "$remote_base_dir/app/packages" \
   "$remote_base_dir/app/downloads" \
@@ -309,6 +330,10 @@ REMOTE
 echo "[deploy] Syncing application and required Linux build sources..."
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/api/" "$SSH_TARGET:$REMOTE_APP_DIR/api/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/web/" "$SSH_TARGET:$REMOTE_APP_DIR/web/"
+rsync "${RSYNC_COMMON_ARGS[@]}" \
+  --exclude="tests/" \
+  --exclude="docs/info_Local_LLM_server.txt" \
+  "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_LLM_DIR/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
 rsync -avz "$LOCAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_binary_entrypoint.py"
 rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
@@ -484,7 +509,7 @@ if ! start_remote_server; then
   exit 1
 fi
 
-echo "[deploy] Verifying Web, Linux, macOS, API docs, and API transform..."
+echo "[deploy] Verifying Web, Linux, macOS, API docs, rule transform, and LLM transform..."
 if ! bash "$CHECK_SERVER_SCRIPT"; then
   echo "[deploy][ERROR] Deployment artifacts were published and the server was started," >&2
   echo "[deploy][ERROR] but final verification failed." >&2

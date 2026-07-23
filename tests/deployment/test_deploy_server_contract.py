@@ -37,6 +37,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "pyinstaller_runtime_hooks",
         "docs",
         "downloads",
+        "LLM/docs",
     ):
         (tmp_path / directory).mkdir(parents=True, exist_ok=True)
     shutil.copy2(SOURCE_DEPLOY, tmp_path / "scripts/deploy_server.sh")
@@ -58,6 +59,12 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "bin/build_binary_entrypoint.py",
         "pyinstaller_runtime_hooks/enum_strenum_compat.py",
         "docs/Release_Package_README.txt",
+        "LLM/__init__.py",
+        "LLM/client.py",
+        "LLM/config.py",
+        "LLM/models.json",
+        "LLM/prompt_template.py",
+        "LLM/docs/LLM_prompt.txt",
     ):
         target = tmp_path / relative
         if not target.exists():

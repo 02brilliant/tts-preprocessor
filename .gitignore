@@ -35,3 +35,6 @@ run/
 .agents/
 .codex/
 .cursor/
+
+# AI LLM server info
+LLM/docs/info_Local_LLM_server.txt

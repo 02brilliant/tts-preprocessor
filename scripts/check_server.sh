@@ -11,6 +11,8 @@ MACOS_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preproces
 WINDOWS_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preprocessor-windows.zip"
 DOCS_URL="http://${SERVER_HOST}:${SERVER_PORT}/docs"
 TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/transform"
+LLM_MODELS_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/models"
+LLM_TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/transform"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -73,12 +75,49 @@ check_post_transform() {
   fi
 }
 
+check_llm_models() {
+  local output_file="$1"
+
+  echo "[check] LLM model list: ${LLM_MODELS_URL}"
+  if ! curl -fsS "$LLM_MODELS_URL" -o "$output_file"; then
+    echo "[FAIL] LLM model list request failed: ${LLM_MODELS_URL}" >&2
+    exit 1
+  fi
+
+  if ! grep -Fq '"default_model":"gemma4:e4b"' "$output_file"; then
+    echo "[FAIL] LLM model list response does not contain the configured default model" >&2
+    exit 1
+  fi
+}
+
+check_post_llm_transform() {
+  local output_file="$1"
+  local payload='{"text":"LLM 배포 확인입니다.","model":"gemma4:e4b"}'
+
+  echo "[check] LLM transform: ${LLM_TRANSFORM_URL}"
+  if ! curl -fsS \
+    -X POST "$LLM_TRANSFORM_URL" \
+    -H "Content-Type: application/json" \
+    --data "$payload" \
+    -o "$output_file"; then
+    echo "[FAIL] LLM transform request failed: ${LLM_TRANSFORM_URL}" >&2
+    exit 1
+  fi
+
+  if ! grep -q '"llm_text"' "$output_file"; then
+    echo "[FAIL] LLM transform response does not contain llm_text" >&2
+    exit 1
+  fi
+}
+
 WEB_OUTPUT="${TMP_DIR}/web.html"
 LINUX_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-linux.zip"
 MACOS_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-macos.zip"
 WINDOWS_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-windows.zip"
 DOCS_OUTPUT="${TMP_DIR}/docs.html"
 TRANSFORM_OUTPUT="${TMP_DIR}/transform.json"
+LLM_MODELS_OUTPUT="${TMP_DIR}/llm-models.json"
+LLM_TRANSFORM_OUTPUT="${TMP_DIR}/llm-transform.json"
 
 check_get "Web page" "$WEB_URL" "$WEB_OUTPUT"
 check_get "Linux release download" "$LINUX_DOWNLOAD_URL" "$LINUX_DOWNLOAD_OUTPUT"
@@ -86,10 +125,14 @@ check_get "macOS release download" "$MACOS_DOWNLOAD_URL" "$MACOS_DOWNLOAD_OUTPUT
 check_optional_get "Windows release download" "$WINDOWS_DOWNLOAD_URL" "$WINDOWS_DOWNLOAD_OUTPUT"
 check_get "API docs" "$DOCS_URL" "$DOCS_OUTPUT"
 check_post_transform "$TRANSFORM_OUTPUT"
+check_llm_models "$LLM_MODELS_OUTPUT"
+check_post_llm_transform "$LLM_TRANSFORM_OUTPUT"
 
 echo "[OK] Web page responded: ${WEB_URL}"
 echo "[OK] Linux release download responded: ${LINUX_DOWNLOAD_URL}"
 echo "[OK] macOS release download responded: ${MACOS_DOWNLOAD_URL}"
 echo "[OK] API docs responded: ${DOCS_URL}"
 echo "[OK] API transform responded: ${TRANSFORM_URL}"
+echo "[OK] LLM model list responded: ${LLM_MODELS_URL}"
+echo "[OK] LLM transform responded: ${LLM_TRANSFORM_URL}"
 echo "[OK] Server validation completed successfully."

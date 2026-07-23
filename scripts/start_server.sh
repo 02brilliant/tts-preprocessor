@@ -30,6 +30,7 @@ fi
 PYTHON_BIN="${TTS_SERVER_PYTHON_BIN:-$DEFAULT_PYTHON_BIN}"
 PID_FILE="$RUN_DIR/tts_web_service.pid"
 LOG_FILE="$LOG_DIR/tts_web_service.log"
+LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"
 
 mkdir -p "$LOG_DIR" "$RUN_DIR"
 
@@ -51,6 +52,24 @@ if [[ -f "$PID_FILE" ]]; then
   fi
   rm -f "$PID_FILE"
 fi
+
+if [[ ! -r "$LLM_ENV_FILE" ]]; then
+  echo "Missing readable LLM environment file: $LLM_ENV_FILE" >&2
+  echo "Set LOCAL_LLM_BASE_URL and LOCAL_LLM_TOKEN in this file before starting." >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+. "$LLM_ENV_FILE"
+set +a
+
+for required_llm_variable in LOCAL_LLM_BASE_URL LOCAL_LLM_TOKEN; do
+  if [[ -z "${!required_llm_variable:-}" ]]; then
+    echo "Missing required LLM environment variable: $required_llm_variable" >&2
+    exit 1
+  fi
+done
 
 cd "$APP_DIR"
 nohup env \
