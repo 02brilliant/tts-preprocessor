@@ -6,7 +6,9 @@ SERVER_HOST="10.20.10.162"
 SERVER_PORT=8010
 
 WEB_URL="http://${SERVER_HOST}:${SERVER_PORT}/web/"
-DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preprocessor.zip"
+LINUX_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preprocessor-linux.zip"
+MACOS_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preprocessor-macos.zip"
+WINDOWS_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preprocessor-windows.zip"
 DOCS_URL="http://${SERVER_HOST}:${SERVER_PORT}/docs"
 TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/transform"
 
@@ -22,6 +24,19 @@ check_get() {
   if ! curl -fsS "$url" -o "$output_file"; then
     echo "[FAIL] ${name} request failed: ${url}" >&2
     exit 1
+  fi
+}
+
+check_optional_get() {
+  local name="$1"
+  local url="$2"
+  local output_file="$3"
+
+  echo "[check] ${name} (optional): ${url}"
+  if curl -fsS "$url" -o "$output_file"; then
+    echo "[OK] ${name} responded: ${url}"
+  else
+    echo "[INFO] ${name} is not currently available; continuing: ${url}"
   fi
 }
 
@@ -59,17 +74,22 @@ check_post_transform() {
 }
 
 WEB_OUTPUT="${TMP_DIR}/web.html"
-DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor.zip"
+LINUX_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-linux.zip"
+MACOS_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-macos.zip"
+WINDOWS_DOWNLOAD_OUTPUT="${TMP_DIR}/tts-preprocessor-windows.zip"
 DOCS_OUTPUT="${TMP_DIR}/docs.html"
 TRANSFORM_OUTPUT="${TMP_DIR}/transform.json"
 
 check_get "Web page" "$WEB_URL" "$WEB_OUTPUT"
-check_get "release download" "$DOWNLOAD_URL" "$DOWNLOAD_OUTPUT"
+check_get "Linux release download" "$LINUX_DOWNLOAD_URL" "$LINUX_DOWNLOAD_OUTPUT"
+check_get "macOS release download" "$MACOS_DOWNLOAD_URL" "$MACOS_DOWNLOAD_OUTPUT"
+check_optional_get "Windows release download" "$WINDOWS_DOWNLOAD_URL" "$WINDOWS_DOWNLOAD_OUTPUT"
 check_get "API docs" "$DOCS_URL" "$DOCS_OUTPUT"
 check_post_transform "$TRANSFORM_OUTPUT"
 
 echo "[OK] Web page responded: ${WEB_URL}"
-echo "[OK] release download responded: ${DOWNLOAD_URL}"
+echo "[OK] Linux release download responded: ${LINUX_DOWNLOAD_URL}"
+echo "[OK] macOS release download responded: ${MACOS_DOWNLOAD_URL}"
 echo "[OK] API docs responded: ${DOCS_URL}"
 echo "[OK] API transform responded: ${TRANSFORM_URL}"
 echo "[OK] Server validation completed successfully."

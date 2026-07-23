@@ -1,4 +1,4 @@
-name: Build desktop executables
+name: Build Windows executable
 
 on:
   workflow_dispatch:
@@ -7,26 +7,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: windows
-            os: windows-latest
-            artifact_name: tts-preprocessor-windows
-            executable_name: tts-preprocessor.exe
-            archive_name: tts-preprocessor-windows.zip
-            add_data_sep: ";"
-          - target: macos
-            os: macos-latest
-            artifact_name: tts-preprocessor-macos
-            executable_name: tts-preprocessor
-            archive_name: tts-preprocessor-macos.zip
-            add_data_sep: ":"
+  build-windows:
+    name: Build Windows executable
+    runs-on: windows-latest
 
     steps:
       - name: Checkout source
@@ -37,102 +20,105 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies
-        shell: bash
+      - name: Install PyInstaller
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          # No root requirements.txt; engine runtime is stdlib-only.
-          pip install --no-cache-dir pyinstaller
+          python -m pip install --no-cache-dir pyinstaller==6.21.0
 
-      - name: Create StrEnum runtime hook (Python 3.10)
-        shell: bash
+      - name: Verify shared PyInstaller runtime hook
+        shell: pwsh
         run: |
-          mkdir -p pyinstaller_runtime_hooks
-          cat > pyinstaller_runtime_hooks/enum_strenum_compat.py <<'PY'
-          import enum
-
-          if not hasattr(enum, "StrEnum"):
-              class StrEnum(str, enum.Enum):
-                  def __str__(self):
-                      return self.value
-
-                  @staticmethod
-                  def _generate_next_value_(name, start, count, last_values):
-                      return name.lower()
-
-              enum.StrEnum = StrEnum
-          PY
+          $hook = "pyinstaller_runtime_hooks\enum_strenum_compat.py"
+          if (-not (Test-Path -LiteralPath $hook -PathType Leaf)) {
+            throw "Shared StrEnum runtime hook not found: $hook"
+          }
+          $spec = Get-Content -LiteralPath "tts_preprocessor.spec" -Raw
+          if ($spec -notmatch 'bin.+build_binary_entrypoint\.py') {
+            throw "Official binary entrypoint is missing from tts_preprocessor.spec"
+          }
 
       - name: Build executable
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          ROOT_DIR="$GITHUB_WORKSPACE"
-          export TTS_PREPROCESSOR_EXECUTABLE_NAME=tts-preprocessor
-          pyinstaller \
-            --clean \
-            --noconfirm \
-            "$ROOT_DIR/tts_preprocessor.spec"
-          test -f "dist/${{ matrix.executable_name }}"
+          $env:TTS_PREPROCESSOR_EXECUTABLE_NAME = "tts-preprocessor"
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            "$env:GITHUB_WORKSPACE\tts_preprocessor.spec"
+          if (-not (Test-Path -LiteralPath "dist\tts-preprocessor.exe" -PathType Leaf)) {
+            throw "Built executable not found: dist\tts-preprocessor.exe"
+          }
 
-      - name: Prepare artifact (Windows)
-        if: matrix.target == 'windows'
+      - name: Smoke test executable
+        shell: pwsh
+        run: |
+          $smokeText = "2천8백28억, 2천8백28억테스트"
+          $expected = "이천팔백이십팔억, 이천팔백이십팔억 테스트"
+          $actual = (& ".\dist\tts-preprocessor.exe" --text $smokeText | Out-String).TrimEnd()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows executable smoke test exited with $LASTEXITCODE"
+          }
+          if ($actual -ne $expected) {
+            throw "Windows executable smoke mismatch. Expected '$expected', got '$actual'"
+          }
+
+      - name: Create Windows ZIP
         shell: pwsh
         run: |
           $readme = "docs\Release_Package_README.txt"
-          if (-not (Test-Path -LiteralPath $readme)) {
+          if (-not (Test-Path -LiteralPath $readme -PathType Leaf)) {
             throw "README template not found: $readme"
           }
+
           New-Item -ItemType Directory -Force -Path package, artifact | Out-Null
           Copy-Item -LiteralPath "dist\tts-preprocessor.exe" -Destination "package\tts-preprocessor.exe"
           Copy-Item -LiteralPath $readme -Destination "package\README.txt"
+
           $zip = "artifact\tts-preprocessor-windows.zip"
-          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
           Compress-Archive -Path "package\*" -DestinationPath $zip -Force
 
-      - name: Verify artifact (Windows)
-        if: matrix.target == 'windows'
+      - name: Verify Windows ZIP
         shell: pwsh
         run: |
           $zip = "artifact\tts-preprocessor-windows.zip"
+          if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
+            throw "Windows ZIP not found: $zip"
+          }
+
           Expand-Archive -Path $zip -DestinationPath verify-windows -Force
-          if (-not (Test-Path -LiteralPath "verify-windows\README.txt")) {
-            throw "README.txt missing in $zip"
+          $actual = @(
+            Get-ChildItem -LiteralPath verify-windows -Recurse -File |
+              ForEach-Object {
+                $_.FullName.Substring((Resolve-Path verify-windows).Path.Length + 1).Replace("\", "/")
+              } |
+              Sort-Object
+          )
+          $expected = @("README.txt", "tts-preprocessor.exe")
+          $difference = Compare-Object -ReferenceObject $expected -DifferenceObject $actual
+          if ($difference) {
+            $difference | Format-Table | Out-String | Write-Host
+            throw "Unexpected Windows ZIP contents: $($actual -join ', ')"
           }
-          if (-not (Test-Path -LiteralPath "verify-windows\tts-preprocessor.exe")) {
-            throw "tts-preprocessor.exe missing in $zip"
+
+          $forbidden = $actual | Where-Object {
+            $_ -match '(^|/)(engine|tests|docs|\.venv|__pycache__)(/|$)' -or
+            $_ -match '\.py(c)?$'
           }
-          Write-Host "Contents of $zip :"
-          Get-ChildItem verify-windows | Format-Table Name, Length
+          if ($forbidden) {
+            throw "Source or development files found in Windows ZIP: $($forbidden -join ', ')"
+          }
 
-      - name: Prepare artifact (macOS)
-        if: matrix.target == 'macos'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f "docs/Release_Package_README.txt"
-          mkdir -p package artifact
-          cp "dist/tts-preprocessor" "package/tts-preprocessor"
-          cp "docs/Release_Package_README.txt" "package/README.txt"
-          chmod +x "package/tts-preprocessor"
-          rm -f "artifact/tts-preprocessor-macos.zip"
-          (cd package && zip -r "../artifact/tts-preprocessor-macos.zip" .)
-          echo "Contents of artifact/tts-preprocessor-macos.zip:"
-          unzip -l "artifact/tts-preprocessor-macos.zip"
+          $smokeText = "2천8백28억, 2천8백28억테스트"
+          $expectedSmoke = "이천팔백이십팔억, 이천팔백이십팔억 테스트"
+          $actualSmoke = (& ".\verify-windows\tts-preprocessor.exe" --text $smokeText | Out-String).TrimEnd()
+          if ($LASTEXITCODE -ne 0 -or $actualSmoke -ne $expectedSmoke) {
+            throw "Extracted Windows executable smoke test failed."
+          }
 
-      - name: Verify artifact (macOS)
-        if: matrix.target == 'macos'
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf verify-macos
-          unzip -q "artifact/tts-preprocessor-macos.zip" -d verify-macos
-          test -f "verify-macos/README.txt"
-          test -f "verify-macos/tts-preprocessor"
-          ls -la verify-macos
-
-      - name: Upload artifact
+      - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: artifact/${{ matrix.archive_name }}
+          name: tts-preprocessor-windows
+          path: artifact/tts-preprocessor-windows.zip
+          if-no-files-found: error

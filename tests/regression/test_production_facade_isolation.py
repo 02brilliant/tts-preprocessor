@@ -158,3 +158,7 @@ def test_pyinstaller_config_uses_current_dependency_closure() -> None:
     assert "hiddenimports=[]" in spec
     assert "datas=[]" in spec
     assert "excludes=[]" in spec
+    assert "pyinstaller_runtime_hooks" in spec
+    assert (
+        root_dir / "pyinstaller_runtime_hooks" / "enum_strenum_compat.py"
+    ).is_file()

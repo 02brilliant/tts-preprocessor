@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
+PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
 DIST_DIR="$ROOT_DIR/dist"
 BUILD_DIR="$ROOT_DIR/build"
 SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
@@ -11,8 +12,19 @@ SOURCE_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 SMOKE_TEXT="2천8백28억, 2천8백28억테스트"
 SMOKE_EXPECTED="이천팔백이십팔억, 이천팔백이십팔억 테스트"
 
+if [[ "$(uname -s)" != "Linux" ]]; then
+  echo "scripts/build_binary.sh is for Linux local validation only." >&2
+  echo "Use scripts/build_macos_package.sh for macOS packages." >&2
+  exit 1
+fi
+
 if [[ ! -d "$VENV_DIR" ]]; then
   echo "Missing virtual environment: $VENV_DIR" >&2
+  exit 1
+fi
+
+if [[ ! -x "$PYINSTALLER_BIN" ]]; then
+  echo "Missing PyInstaller executable: $PYINSTALLER_BIN" >&2
   exit 1
 fi
 
@@ -21,12 +33,10 @@ if [[ ! -f "$SOURCE_ENTRYPOINT" ]]; then
   exit 1
 fi
 
-source "$VENV_DIR/bin/activate"
-
 cd "$ROOT_DIR"
 rm -rf "$DIST_DIR" "$BUILD_DIR"
 
-pyinstaller \
+"$PYINSTALLER_BIN" \
   --clean \
   --noconfirm \
   "$SPEC_FILE"

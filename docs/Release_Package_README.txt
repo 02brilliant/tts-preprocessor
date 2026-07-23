@@ -13,23 +13,29 @@ TTS 엔진에서 자연스럽게 읽히도록 변환하는 역할을 합니다.
 현재 실행모듈은 운영체제별로 3가지가 제공됩니다.
 
 1) Linux 실행모듈
-   - 파일명: tts_preprocessor
+   - 배포 ZIP: tts-preprocessor-linux.zip
+   - 파일명: tts-preprocessor
    - Linux 서버/API/웹 backend 연동용
-   - 예시 경로: ./bin/tts_preprocessor
+   - 예시 경로: ./tts-preprocessor
 
 2) Windows 실행모듈
+   - 배포 ZIP: tts-preprocessor-windows.zip
    - 파일명: tts-preprocessor.exe
    - Windows PC 또는 Windows 서버에서 직접 실행 가능
 
 3) macOS 실행모듈
+   - 배포 ZIP: tts-preprocessor-macos.zip
    - 파일명: tts-preprocessor
-   - macOS에서 직접 실행 가능
-   - 서명/공증이 포함되지 않은 빌드라면 최초 실행 시 Gatekeeper 경고가 표시될 수 있습니다.
+   - Apple Silicon arm64 Mac에서 직접 실행 가능
+   - Intel x86_64 및 Universal Binary는 현재 지원 범위가 아닙니다.
+   - 서명/공증이 포함되지 않아 최초 실행 시 Gatekeeper 경고가 표시될 수 있습니다.
 
 주의:
 - Linux 운영 서버용 실행모듈과 Windows/macOS 실행모듈은 서로 다른 OS용 바이너리입니다.
 - 사용하는 운영체제에 맞는 실행모듈을 다운로드하여 사용해야 합니다.
 - Windows/macOS 실행모듈은 보조 배포용이며, 서버 운영 배포 기준은 Linux 실행모듈입니다.
+- 새 Linux 운영 버전 배포 직후 Windows ZIP은 같은 소스 버전의 GitHub Actions
+  빌드가 완료될 때까지 일시적으로 제공되지 않을 수 있습니다.
 
 --------------------------------------------------
 ■ 주요 변환 기능
@@ -98,7 +104,7 @@ AI는 2025-01-03에 3kg 제품을 69% 할인한다
 --------------------------------------------------
 
 Linux:
-  ./bin/tts_preprocessor
+  ./tts-preprocessor
 
 Windows:
   tts-preprocessor.exe
@@ -116,7 +122,7 @@ macOS:
 
 [Linux]
 
-./bin/tts_preprocessor --text "AI는 2025-01-03에 3kg 제품을 69% 할인한다"
+./tts-preprocessor --text "AI는 2025-01-03에 3kg 제품을 69% 할인한다"
 
 [Windows - PowerShell 또는 CMD]
 
@@ -138,7 +144,7 @@ macOS:
 
 [Linux]
 
-./bin/tts_preprocessor --input input.txt --output output.txt
+./tts-preprocessor --input input.txt --output output.txt
 
 [Windows - PowerShell 또는 CMD]
 
@@ -164,7 +170,7 @@ output.txt:
 
 [Linux]
 
-echo "AI는 2025-01-03에 3kg 제품을 69% 할인한다" | ./bin/tts_preprocessor
+echo "AI는 2025-01-03에 3kg 제품을 69% 할인한다" | ./tts-preprocessor
 
 [Windows - PowerShell]
 
@@ -202,7 +208,7 @@ import subprocess
 text = "AI는 2025-01-03에 3kg 제품을 69% 할인한다"
 
 result = subprocess.run(
-    ["./bin/tts_preprocessor", "--text", text],
+    ["./tts-preprocessor", "--text", text],
     capture_output=True,
     text=True,
     encoding="utf-8",
@@ -240,7 +246,7 @@ const { execFile } = require("child_process");
 const text = "AI는 2025-01-03에 3kg 제품을 69% 할인한다";
 
 execFile(
-  "./bin/tts_preprocessor",
+  "./tts-preprocessor",
   ["--text", text],
   { encoding: "utf8" },
   (err, stdout, stderr) => {
@@ -283,7 +289,7 @@ execFile(
 
 - 실행 권한이 필요할 수 있습니다.
 
-chmod +x ./bin/tts_preprocessor
+chmod +x ./tts-preprocessor
 
 - 서버/API 연동 시에는 packaged 실행모듈 경로를 명확히 지정하는 것을 권장합니다.
 - 운영 API는 source import가 아니라 실행모듈 subprocess 호출 방식으로 연동해야 합니다.
@@ -310,6 +316,8 @@ chmod +x ./tts-preprocessor
 
 - 서명/공증되지 않은 실행모듈은 Gatekeeper 경고가 표시될 수 있습니다.
 - 경고가 표시되면 macOS 보안 설정에서 실행을 허용해야 할 수 있습니다.
+- 현재 제공 ZIP은 Apple Silicon arm64 전용입니다.
+- Intel Mac용 x86_64 및 Universal Binary는 제공하지 않습니다.
 - 입력/출력 파일은 UTF-8 인코딩을 권장합니다.
 
 --------------------------------------------------

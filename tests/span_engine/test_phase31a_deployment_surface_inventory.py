@@ -14,15 +14,18 @@ def test_phase31a_required_scripts_and_artifacts_exist() -> None:
         Path("scripts/deploy_server.sh"),
         Path("scripts/release.py"),
         Path("scripts/build_remote_package.sh"),
+        Path("scripts/build_macos_package.sh"),
+        Path("scripts/upload_desktop_packages.sh"),
         Path("api/server.py"),
         Path("api/binary_runtime.py"),
         Path("bin/build_binary_entrypoint.py"),
+        Path("pyinstaller_runtime_hooks/enum_strenum_compat.py"),
     ):
         assert path.exists(), path
 
     for path in (
         Path("dist/tts_preprocessor"),
-        Path("packages/tts-preprocessor/bin/tts_preprocessor"),
+        Path("packages/tts-preprocessor/tts-preprocessor"),
     ):
         if path.exists():
             assert path.is_file(), path
@@ -32,14 +35,14 @@ def test_phase31a_required_scripts_and_artifacts_exist() -> None:
 
 
 def test_phase31a_release_zip_contains_only_runtime_payload() -> None:
-    release_zip = Path("downloads/tts-preprocessor.zip")
+    release_zip = Path("downloads/tts-preprocessor-linux.zip")
     if not release_zip.exists():
         return
 
     with zipfile.ZipFile(release_zip) as archive:
         names = archive.namelist()
 
-    assert "tts-preprocessor/bin/tts_preprocessor" in names
+    assert "tts-preprocessor/tts-preprocessor" in names
     forbidden = [
         name
         for name in names
@@ -97,13 +100,27 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     binary_runtime = Path("api/binary_runtime.py").read_text(encoding="utf-8")
 
     assert "TTS_PREPROCESSOR_BINARY=\"$LATEST_BINARY\"" in start_script
-    assert "packages/tts-preprocessor/bin/tts_preprocessor" in start_script
+    assert "packages/tts-preprocessor/tts-preprocessor" in start_script
     assert "REMOTE_HOST=\"10.20.10.162\"" in deploy_script
     assert "$REMOTE_BUILD_SRC_DIR/engine/" in deploy_script
-    assert "$REMOTE_APP_DIR/engine" in deploy_script
+    assert '"$remote_base_dir/app/engine"' in deploy_script
+    assert '"$remote_base_dir/app/docs"' in deploy_script
     assert "build_remote_package.sh" in deploy_script
     assert "$VERSION" not in deploy_script
-    assert "rm -rf \"$BUILD_SRC_DIR\"" in remote_build_script
+    assert '"$BUILD_SRC_DIR"' in remote_build_script
+    assert 'ARCHIVE_NAME="tts-preprocessor-linux.zip"' in remote_build_script
+    assert 'find "$DOWNLOADS_DIR"' not in remote_build_script
+    assert "tts-preprocessor-macos.zip" not in remote_build_script
+    assert "tts-preprocessor-windows.zip" not in remote_build_script
+    assert "run_remote_build_action prepare" in deploy_script
+    assert "run_remote_build_action publish" in deploy_script
+    assert "if ! stop_remote_server" in deploy_script
+    assert (
+        deploy_script.index("if ! stop_remote_server")
+        < deploy_script.index("if ! run_remote_build_action publish")
+    )
+    assert '"$downloads_dir/tts-preprocessor-macos.zip"' in deploy_script
+    assert '"$downloads_dir/tts-preprocessor-windows.zip"' in deploy_script
     assert "subprocess.run" in binary_runtime
     assert "TTS_PREPROCESSOR_BINARY" in binary_runtime
 
@@ -117,6 +134,8 @@ def test_phase31a_build_package_is_packaging_only() -> None:
     assert "def build_binary" not in build_package_script
     assert "--binary" in build_package_script
     assert "dist/tts_preprocessor" in build_package_script
+    assert 'ARCHIVE_NAME = "tts-preprocessor-linux.zip"' in build_package_script
+    assert "DOWNLOADS_DIR.iterdir()" not in build_package_script
 
     assert "build_binary.sh" in release_script
     assert "\"scripts/build_package.py\"" in release_script

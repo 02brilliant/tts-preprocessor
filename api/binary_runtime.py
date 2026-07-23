@@ -27,7 +27,9 @@ def _iter_binary_candidates() -> list[Path]:
         candidates.append(Path(env_path).expanduser())
 
     candidates.append(ROOT_DIR / "dist" / DEFAULT_BINARY_NAME)
-    candidates.append(ROOT_DIR / "packages" / "tts-preprocessor" / "bin" / DEFAULT_BINARY_NAME)
+    candidates.append(
+        ROOT_DIR / "packages" / "tts-preprocessor" / "tts-preprocessor"
+    )
 
     return candidates
 

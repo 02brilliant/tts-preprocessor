@@ -570,17 +570,23 @@
     }
 
     const DOWNLOAD_TARGETS = [
-      { name: "Linux 실행모듈 다운로드", file: "tts-preprocessor.zip" },
-      { name: "Windows 실행모듈 다운로드", file: "tts-preprocessor-windows.zip" },
-      { name: "macOS 실행모듈 다운로드", file: "tts-preprocessor-macos.zip" },
+      { name: "Linux 실행모듈 다운로드", file: "tts-preprocessor-linux.zip" },
+      { name: "Windows 실행모듈 다운로드 (GitHub Actions 빌드 후 제공)", file: "tts-preprocessor-windows.zip" },
+      { name: "macOS Apple Silicon (arm64) 실행모듈 다운로드", file: "tts-preprocessor-macos.zip" },
     ];
 
+    function getDownloadUrl(file) {
+      return `${getBackendBase()}/downloads/${encodeURIComponent(file)}`;
+    }
+
     async function checkDownloadAvailable(file) {
+      const downloadUrl = getDownloadUrl(file);
+      const checkUrl = `${downloadUrl}?availability=${Date.now()}`;
       try {
-        const response = await fetch(
-          `${getBackendBase()}/downloads/${encodeURIComponent(file)}`,
-          { method: "HEAD" }
-        );
+        const response = await fetch(checkUrl, {
+          method: "HEAD",
+          cache: "no-store",
+        });
         return response.ok;
       } catch {
         return false;
@@ -599,7 +605,8 @@
         const available = item.available === true;
 
         if (available) {
-          const downloadHref = `${getBackendBase()}/downloads/${encodeURIComponent(item.file)}`;
+          const downloadUrl = getDownloadUrl(item.file);
+          const downloadHref = `${downloadUrl}?download=${Date.now()}`;
           return `
             <div class="download-item">
               <div class="download-meta">

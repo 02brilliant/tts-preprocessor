@@ -3,86 +3,121 @@
 ## 실행 원칙
 
 - `engine/` 소스는 개발과 테스트용이다.
-- 제품 실행은 Python 소스(`engine/`)를 직접 import하지 않고, PyInstaller로 빌드된 실행파일을 통해 수행한다.
-- PyInstaller entrypoint는 `bin/build_binary_entrypoint.py`다.
-- 빌드 직후 Linux 실행파일은 `dist/tts_preprocessor`에 생성된다.
-- 릴리스 패키지용 Linux 실행파일은 `packages/tts-preprocessor/bin/tts_preprocessor`에 복사된다.
-- 웹서버/API는 최종적으로 패키지 내부 실행파일을 호출한다.
-- 소스를 수정한 뒤에는 실행모듈을 반드시 다시 빌드해야 한다.
-- `check_server.sh`는 health/sanity check이며, semantic regression 대체물이 아니다.
-- semantic probe canonical entrypoint는 `scripts/probes/run_semantic_probes.py`다.
-- 기본 release/deploy 검증은 `core` suite 기준이고, `scenario` suite는 수동/확장 regression 검증이다.
-- production `span_default`는 span 변환·comma adapter·bracket filter 후 `split_paragraphs()`로 긴 문단을 보수적으로 나눈다. 기존 줄바꿈은 문단 경계 정책에 따라 `\n\n`으로 정규화될 수 있다.
+- 제품 변환은 PyInstaller 실행 파일을 통해 수행한다.
+- 공식 PyInstaller entrypoint는 `bin/build_binary_entrypoint.py`다.
+- 웹서버/API는 `TTS_PREPROCESSOR_BINARY`로 지정한
+  `packages/tts-preprocessor/tts-preprocessor`를 호출한다.
+- `check_server.sh`는 health/sanity check이며 semantic regression 대체물이 아니다.
+- canonical semantic probe entrypoint는 `scripts/probes/run_semantic_probes.py`다.
 
-## Linux 운영 배포 원칙
+## 운영체제별 빌드 책임
 
-Linux 운영 바이너리는 기존 서버 배포 프로세스를 유지한다.
+| 대상 | 빌드 위치 | 최종 ZIP |
+|---|---|---|
+| Linux 운영 | Ubuntu 22.04 운영 서버의 기존 `buildenv` | `tts-preprocessor-linux.zip` |
+| macOS Apple Silicon | M1 Mac 로컬 `.venv` | `tts-preprocessor-macos.zip` |
+| Windows | GitHub Actions `windows-latest` | `tts-preprocessor-windows.zip` |
 
-- 운영 서버: Ubuntu 22.04.5 / glibc 2.35 / Python 3.10.12 / `buildenv`
-- 로컬 WSL: Ubuntu 24.04.3 / glibc 2.39 / Python 3.12.3
+Linux 운영 바이너리는 macOS나 GitHub Actions에서 빌드하지 않는다. 통합
+배포는 원격 Linux prepare와 로컬 macOS 빌드를 병렬 실행하고 둘 다 성공한
+뒤에만 서버를 중지하고 Linux package/ZIP을 publish한다. 이후 정확한 기존
+macOS·Windows ZIP을 삭제하고 새 macOS ZIP을 검증·반영한 다음 서버를
+시작한다.
 
-WSL에서 만든 Linux 바이너리는 운영 서버 glibc와 맞지 않을 수 있으므로 운영 배포용으로 사용하지 않는다.
+## Linux 운영 배포
 
-
-
-
-
-## ===== 서버 (Linux 운영) 배포 [http://10.20.10.162:8010/web/]
-
+```sh
 cd ~/tts-preprocessor
-source .venv/bin/activate
+PYTHONPATH=. .venv/bin/python -m pytest -m "not binary_runtime" -q
 
-python scripts/release.py       # 로컬 릴리즈 패키지 생성 (서버 배포만 필요할 경우 생략 가능)
+bash scripts/deploy_server.sh
+bash scripts/check_server.sh
 
-bash scripts/deploy_server.sh   # 원격 buildsrc에서 패키지 생성 후 배포
-bash scripts/check_server.sh    # health/sanity 검증
+.venv/bin/python scripts/probes/run_semantic_probes.py \
+  --suite core \
+  --runtime api \
+  --api http://10.20.10.162:8010
+```
 
-python3 scripts/probes/run_semantic_probes.py --suite core --runtime api --api http://10.20.10.162:8010
-python3 scripts/probes/run_semantic_probes.py --suite scenario --runtime api --api http://10.20.10.162:8010
+운영 서버는 Ubuntu 22.04.5 / glibc 2.35 / Python 3.10.12의 기존
+`buildenv`를 사용한다. 배포 스크립트는 buildenv를 생성하거나 패키지를
+설치·업그레이드하지 않는다. PyInstaller 호환성은 dist, staging package,
+published package의 core semantic probe로 판정한다.
 
+`deploy_server.sh`는 source sync 후 Linux prepare와 같은 worktree의 macOS
+arm64 빌드를 동시에 시작한다. 두 빌드가 성공해야 Linux publish, desktop ZIP
+무효화, 새 macOS ZIP 업로드, 서버 시작과 health 검증을 수행한다. 서버는
+publish 전에 중지한다. publish 이후 실패에는 자동 rollback을 하지 않으며
+서버를 시작하지 않고 전체 배포 재실행을 안내한다. Windows ZIP은 빌드하거나
+업로드하지 않는다.
 
+## macOS Apple Silicon 패키지
 
+```sh
+bash scripts/build_macos_package.sh
+```
 
+산출물:
 
-## ===== Windows / Mac OS용 실행모듈 빌드
-# GitHub commit & push 완료 후, GitHub 웹페이지에서 실행
+- `build/macos/dist/tts-preprocessor`
+- `downloads/tts-preprocessor-macos.zip`
 
-GitHub 저장소
-→ Actions
-→ Build desktop executables
-→ Run workflow
-→ Run workflow 클릭
+ZIP 루트에는 `tts-preprocessor`, `README.txt`만 포함된다. 현재 빌드는
+Apple Silicon arm64 전용이며 Intel x86_64 및 Universal Binary는 지원
+범위가 아니다. 코드 서명·공증이 없으므로 Gatekeeper 경고가 발생할 수 있다.
+통합 배포에서는 이 스크립트를 직접 실행할 필요 없이 `deploy_server.sh`가
+항상 새로 실행한다.
 
-생성되는 artifact:
+## Windows 패키지
+
+코드 리뷰 → commit → push 후 GitHub 저장소 → Actions →
+Build Windows executable → Run workflow
+
+산출 artifact:
+
+```text
 tts-preprocessor-windows → tts-preprocessor-windows.zip
-tts-preprocessor-macos   → tts-preprocessor-macos.zip
+```
 
-downloads 폴더에 복사 후, 서버 복사 실행
+다운로드한 ZIP을 로컬 `downloads/`에 배치한다.
+Windows workflow는 현재 검증된 `PyInstaller==6.21.0`을 사용한다.
 
-cd ~/tts-preprocessor
-scp downloads/tts-preprocessor-windows.zip \
-    downloads/tts-preprocessor-macos.zip \
-    brilliant@10.20.10.162:~/tts-preprocessor/app/downloads/
-ssh brilliant@10.20.10.162 'ls -lh ~/tts-preprocessor/app/downloads/'   # 서버 확인
+## 데스크톱 ZIP 업로드
 
+Windows ZIP 계약만 확인:
 
+```sh
+bash scripts/upload_desktop_packages.sh --platform windows --validate-only
+```
 
+Windows ZIP만 업로드:
 
+```sh
+bash scripts/upload_desktop_packages.sh --platform windows
+```
 
-## ===== 로컬 릴리스 패키지 생성 (서버 배포 제외)
+업로드 스크립트는 Windows 전용이며 명시적 `--platform windows`를 요구한다.
+macOS/Linux ZIP, 서버 패키지, 서버 프로세스는 변경하지 않는다. SSH 인증은
+기존 SSH 설정과 agent를 사용하며 개인키나 인증정보를 스크립트에 저장하지
+않는다.
 
-cd ~/tts-preprocessor
-source .venv/bin/activate
+## 로컬 Linux 검증 릴리스
 
-# PYTHONPATH=. ./.venv/bin/pytest -q -s tests ## 로컬 개발 테스트 전체 실행
+`release.py`와 `build_binary.sh`는 Linux 로컬 검증 전용이다. macOS에서는
+실행하지 않는다.
 
-python scripts/release.py
-# (release.py 내부에서 scripts/build_binary.sh & scripts/build_package.py & 테스트 실행 포함)
+```sh
+.venv/bin/python scripts/release.py
+```
 
-bash scripts/start_server.sh    # 로컬 서버 시작 [http://localhost:8010/web/]
-bash scripts/stop_server.sh     # 로컬 서버 종료
+결과:
 
+```text
+downloads/tts-preprocessor-linux.zip
+```
 
+이 결과는 운영 서버 호환성을 보장하지 않는다. 운영 Linux 바이너리는 반드시
+Ubuntu 22.04 운영 서버의 기존 `buildenv`에서 생성한다.
 
 ##### 수정사항 메모
 

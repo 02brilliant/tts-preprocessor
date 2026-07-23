@@ -36,7 +36,7 @@ mkdir -p "$LOG_DIR" "$RUN_DIR"
 if [[ -n "${TTS_PREPROCESSOR_BINARY:-}" ]]; then
   LATEST_BINARY="$TTS_PREPROCESSOR_BINARY"
 else
-  LATEST_BINARY="$APP_DIR/packages/tts-preprocessor/bin/tts_preprocessor"
+  LATEST_BINARY="$APP_DIR/packages/tts-preprocessor/tts-preprocessor"
   if [[ ! -f "$LATEST_BINARY" ]]; then
     echo "No packaged binary found at $LATEST_BINARY" >&2
     exit 1

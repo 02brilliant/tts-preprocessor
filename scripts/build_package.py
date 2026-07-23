@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -11,7 +13,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 PACKAGES_DIR = ROOT_DIR / "packages"
 DOWNLOADS_DIR = ROOT_DIR / "downloads"
 PACKAGE_NAME = "tts-preprocessor"
-ARCHIVE_NAME = "tts-preprocessor.zip"
+ARCHIVE_NAME = "tts-preprocessor-linux.zip"
 DEFAULT_BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
 README_TEMPLATE_PATH = ROOT_DIR / "docs" / "Release_Package_README.txt"
 
@@ -29,10 +31,10 @@ def build_package(binary_path: Path = DEFAULT_BINARY_PATH) -> Path:
 
     prepared_binary = resolve_binary_path(binary_path)
     require_prepared_binary(prepared_binary)
-    remove_previous_artifacts(package_dir, archive_path)
+    remove_previous_artifacts(package_dir)
     create_package_structure(package_dir, prepared_binary)
     validate_package_structure(package_dir)
-    create_archive(package_dir, archive_path)
+    create_archive_atomically(package_dir, archive_path)
 
     return archive_path
 
@@ -59,36 +61,22 @@ def require_prepared_binary(binary_path: Path) -> None:
         )
 
 
-def remove_previous_artifacts(current_package_dir: Path, current_archive_path: Path) -> None:
+def remove_previous_artifacts(current_package_dir: Path) -> None:
     PACKAGES_DIR.mkdir(parents=True, exist_ok=True)
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-    for path in PACKAGES_DIR.iterdir():
-        if path == current_package_dir:
-            continue
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
-
-    for path in DOWNLOADS_DIR.iterdir():
-        if path == current_archive_path:
-            continue
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
+    if current_package_dir.exists():
+        shutil.rmtree(current_package_dir)
 
 
 def create_package_structure(package_dir: Path, binary_path: Path) -> None:
     if package_dir.exists():
         shutil.rmtree(package_dir)
 
-    bin_dir = package_dir / "bin"
-    bin_dir.mkdir(parents=True, exist_ok=True)
+    package_dir.mkdir(parents=True, exist_ok=True)
 
     (package_dir / "README.txt").write_text(build_readme(), encoding="utf-8")
-    binary_target = bin_dir / "tts_preprocessor"
+    binary_target = package_dir / "tts-preprocessor"
     shutil.copy2(binary_path, binary_target)
     binary_target.chmod(0o755)
 
@@ -112,14 +100,46 @@ def validate_package_structure(package_dir: Path) -> None:
         raise RuntimeError(f"Package contains forbidden source artifacts: {joined}")
 
 
-def create_archive(package_dir: Path, archive_path: Path) -> None:
+def create_archive_atomically(package_dir: Path, archive_path: Path) -> None:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as zip_file:
-        for path in sorted(package_dir.rglob("*")):
-            if path.is_dir():
-                continue
-            zip_file.write(path, path.relative_to(package_dir.parent))
+    with tempfile.NamedTemporaryFile(
+        dir=archive_path.parent,
+        prefix=f".{ARCHIVE_NAME}.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+
+    try:
+        with ZipFile(temporary_path, "w", compression=ZIP_DEFLATED) as zip_file:
+            for path in sorted(package_dir.rglob("*")):
+                if path.is_dir():
+                    continue
+                zip_file.write(path, path.relative_to(package_dir.parent))
+
+        validate_archive(temporary_path)
+        os.replace(temporary_path, archive_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def validate_archive(archive_path: Path) -> None:
+    expected_names = {
+        "tts-preprocessor/README.txt",
+        "tts-preprocessor/tts-preprocessor",
+    }
+    with ZipFile(archive_path) as zip_file:
+        corrupt_member = zip_file.testzip()
+        if corrupt_member is not None:
+            raise RuntimeError(f"Archive contains a corrupt member: {corrupt_member}")
+        actual_names = {name for name in zip_file.namelist() if not name.endswith("/")}
+
+    if actual_names != expected_names:
+        raise RuntimeError(
+            "Unexpected Linux archive contents: "
+            f"expected={sorted(expected_names)}, actual={sorted(actual_names)}"
+        )
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

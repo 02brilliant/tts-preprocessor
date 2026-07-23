@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -8,14 +9,13 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PYTHON_BIN = ROOT_DIR / ".venv" / "bin" / "python"
 BUILD_BINARY_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
-PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "bin" / "tts_preprocessor"
+PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "tts-preprocessor"
 SEMANTIC_PROBE_RUNNER = ROOT_DIR / "scripts" / "probes" / "run_semantic_probes.py"
 
 
 def run_pytest(*extra_args: str) -> subprocess.CompletedProcess[str]:
-    python_bin = str(PYTHON_BIN if PYTHON_BIN.exists() else sys.executable)
     return subprocess.run(
-        [python_bin, "-m", "pytest", "-q", "--capture=no", *extra_args],
+        [str(PYTHON_BIN), "-m", "pytest", "-q", "--capture=no", *extra_args],
         cwd=ROOT_DIR,
         capture_output=True,
         text=True,
@@ -47,10 +47,9 @@ def run_semantic_binary_probes(binary_path: Path, label: str) -> subprocess.Comp
             stderr=f"Semantic probe runner not found: {SEMANTIC_PROBE_RUNNER}",
         )
 
-    python_bin = str(PYTHON_BIN if PYTHON_BIN.exists() else sys.executable)
     return subprocess.run(
         [
-            python_bin,
+            str(PYTHON_BIN),
             str(SEMANTIC_PROBE_RUNNER),
             "--runtime",
             "binary",
@@ -64,10 +63,9 @@ def run_semantic_binary_probes(binary_path: Path, label: str) -> subprocess.Comp
 
 
 def run_build() -> subprocess.CompletedProcess[str]:
-    python_bin = str(PYTHON_BIN if PYTHON_BIN.exists() else sys.executable)
     return subprocess.run(
         [
-            python_bin,
+            str(PYTHON_BIN),
             "scripts/build_package.py",
             "--binary",
             "dist/tts_preprocessor",
@@ -81,6 +79,18 @@ def run_build() -> subprocess.CompletedProcess[str]:
 def main(argv: list[str]) -> int:
     if len(argv) > 2:
         print("Usage: python scripts/release.py [ignored-version]", file=sys.stderr)
+        return 1
+
+    if platform.system() != "Linux":
+        print(
+            "scripts/release.py creates a Linux local-validation package and "
+            "must run on Linux. Use scripts/build_macos_package.sh on macOS.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not PYTHON_BIN.is_file():
+        print(f"Missing project Python interpreter: {PYTHON_BIN}", file=sys.stderr)
         return 1
 
     test_result = run_pytest("-m", "not binary_runtime")
@@ -157,7 +167,7 @@ def main(argv: list[str]) -> int:
         print("Packaged binary semantic probe failed. Release aborted.", file=sys.stderr)
         return 1
 
-    print("Release completed: downloads/tts-preprocessor.zip")
+    print("Release completed: downloads/tts-preprocessor-linux.zip")
     return 0
 
 
