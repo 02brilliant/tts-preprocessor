@@ -1,6 +1,12 @@
 # TTS Preprocessor Policy Changelog
 
-이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/policies/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
+이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
+
+- Added conditional dual-role acronym handling for `KB`: safe standalone and Korean-context forms read `케이비`, while existing simple/data-rate unit scanners retain `10KB`, `10 KB`, and `1,000KB/s`; `KB/s`, numeric-code-like tails, identifiers, and protected contexts preserve. The conditional entry is intentionally outside the exact managed dictionary so it cannot inherit managed numeric-code suffixes.
+- Added full-claim `ampersand_acronym` for safe unspaced `UPPERCASE_BLOCK&UPPERCASE_BLOCK` surfaces. It reuses central letter readings and renders the original `&` span as `앤`; spaced, mixed-case, numeric, repeated-ampersand, code-like, and protected forms preserve. Base `Q&A` and `S&P` moved from fixed dictionary ownership to this structural owner, while `S&P500` and `S&P 500` remain finance-index full claims.
+- Revised source-attached numeric `대`: valid unsigned numeric values 40 or greater now always use the Sino reading with reason `dae_counter_sino_threshold_40_plus`, while protected/structured, signed, leading-zero, malformed, ordinal, and full-claimed score surfaces keep precedence. Values below 40 retain the conservative context gate.
+- Extended the centralized `대` quantity inventory with `자동차` and added the bounded topic/quantity bridge `registered noun + 은/는/이/가 + space + 모두/총 + space + N대`. The bridge does not cross punctuation and is consulted before a keywordless independent score-pair interpretation; explicit score/game context remains score-owned. Explicit quantity `N대 M` uses `numeric_dae_quantity_sequence` rather than the score owner, while context-free spaced threshold `40대 M` is split into threshold counter plus ordinary number and compact `40대3` retains the structured relation owner.
+- Routed documents containing fenced code through the whole-input protected-span path so the language line gate cannot re-enter `KB`, ampersand acronyms, or threshold `N대` inside a fence.
 
 - Audited arithmetic routing: standalone compact `3+4` was retained by the no-Hangul path, spaced expressions entered core and only their independent number/decimal operands converted, and assignments such as `3+4=7` overlapped the broad `_MATH_ASSIGNMENT_RE` protected claim. `A+B`, `x-y=3`, `a+=1`, and `C++17` already used the protected/code-like route.
 - Added `basic_arithmetic_expression` / `BASIC_ARITHMETIC_EXPRESSION_SURFACE` with reason `basic_arithmetic_expression_full_consume_gate`. A state parser distinguishes operand-position unary signs from binary `+/-`, supports `+`, `-`, `×`, lower-case operand-delimited `x`, `÷`, and at most one `=`, and reads chains in source order without calculation. `X`, `*`, and binary `/` remain unsupported.
@@ -69,7 +75,7 @@
   whitelist-based numeric suffix full-claim while broad acronym+number fallback
   and protected-context reentry remain prohibited.
 - Split managed dictionary inventory into
-  `docs/policies/TTS_Preprocessor_managed_dictionary.md`, added
+  `docs/TTS_Preprocessor_managed_dictionary.md`, added
   current/current_with_condition/pending/conflict/future/historical-only labels, and
   recorded that this pass changes documentation only, not production code.
 - Connected the managed dictionary `current` inventory to span production by
@@ -225,8 +231,8 @@
 
 정책 문서는 버전 번호별 구현 지시가 아니라 현재 정책의 단일 기준 문서로 정리한다.
 
-- `docs/policies/TTS_Preprocessor_policy.md`를 현재 canonical policy로 둔다.
-- `docs/policies/TTS_Preprocessor_policy_changelog.md`는 결정 기록으로만 사용한다.
+- `docs/TTS_Preprocessor_policy.md`를 현재 canonical policy로 둔다.
+- `docs/TTS_Preprocessor_policy_changelog.md`는 결정 기록으로만 사용한다.
 - 과거 버전명 중심 문서와 누적된 임시 notes는 참고 자료이며, 정책 해석은 canonical policy 본문을 우선한다.
 - 앞부분에 덧붙었던 eligibility, symbol alias, preserve taxonomy, numeric/date/range correction 내용은 관련 owner 본문과 우선순위/테스트 섹션에 통합한다.
 

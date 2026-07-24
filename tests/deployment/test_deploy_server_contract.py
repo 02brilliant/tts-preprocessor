@@ -62,6 +62,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/__init__.py",
         "LLM/client.py",
         "LLM/config.py",
+        "LLM/gemini_client.py",
         "LLM/models.json",
         "LLM/prompt_template.py",
         "LLM/docs/LLM_prompt.txt",
@@ -176,6 +177,9 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
             elif grep -q 'stop_server.sh' "$payload"; then
               printf 'server-stop\\n' >> "{calls}"
               status="${{FAKE_STOP_STATUS:-0}}"
+            elif grep -q 'name __pycache__' "$payload"; then
+              printf 'python-bytecode-cleanup\\n' >> "{calls}"
+              status="${{FAKE_BYTECODE_CLEANUP_STATUS:-0}}"
             elif grep -q 'tts-preprocessor-windows.zip' "$payload"; then
               printf 'delete-desktop\\n' >> "{calls}"
               status="${{FAKE_DELETE_STATUS:-0}}"
@@ -237,6 +241,7 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     macos_start = deploy.index('bash "$MACOS_BUILD_SCRIPT"')
     first_wait = deploy.index('wait "$LINUX_BUILD_PID"')
     stop = deploy.index("if ! stop_remote_server")
+    bytecode_cleanup = deploy.index("if ! clear_remote_python_bytecode")
     publish = deploy.index("if ! run_remote_build_action publish")
     install_scripts = deploy.index("if ! install_remote_server_scripts")
     desktop_delete = deploy.index(
@@ -251,6 +256,7 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert (
         first_wait
         < stop
+        < bytecode_cleanup
         < publish
         < install_scripts
         < desktop_delete
@@ -263,6 +269,11 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert "prepare-$DEPLOY_ID.log" in deploy
     assert '"$action" "$deploy_id"' in deploy
     assert "--platform windows" not in deploy
+    assert '"$REMOTE_APP_DIR/api"' in deploy
+    assert '"$REMOTE_LLM_DIR"' in deploy
+    assert 'find "$api_dir" "$llm_dir"' in deploy
+    assert "-name __pycache__" in deploy
+    assert "--delete-excluded" not in deploy
 
 
 @pytest.mark.skipif(
@@ -394,6 +405,7 @@ def test_server_stop_failure_prevents_publish_and_cleans_staging(tmp_path: Path)
     assert "linux-cleanup" in events
     _assert_not_run(
         events,
+        "python-bytecode-cleanup",
         "linux-publish",
         "delete-desktop",
         "macos-scp",
@@ -419,6 +431,30 @@ def test_publish_failure_leaves_server_stopped_and_desktops_untouched(
     _assert_not_run(events, "delete-desktop", "macos-scp", "server-start")
     assert "server remains stopped" in result.stderr
     assert "run the full deployment again" in result.stderr
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_bytecode_cleanup_failure_prevents_publish_and_restart(tmp_path: Path) -> None:
+    script, env, calls = _prepare_deploy_tree(tmp_path)
+    env["FAKE_BYTECODE_CLEANUP_STATUS"] = "58"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode != 0
+    events = _events(calls)
+    assert events.index("server-stop") < events.index("python-bytecode-cleanup")
+    assert "linux-cleanup" in events
+    _assert_not_run(
+        events,
+        "linux-publish",
+        "delete-desktop",
+        "macos-scp",
+        "server-start",
+    )
+    assert "Python bytecode cleanup failed" in result.stderr
 
 
 @pytest.mark.skipif(
@@ -496,6 +532,7 @@ def test_successful_deploy_orders_all_operations_and_cleanup(tmp_path: Path) -> 
     events = _events(calls)
     stop = events.index("server-stop")
     publish = events.index("linux-publish")
+    bytecode_cleanup = events.index("python-bytecode-cleanup")
     install_scripts = events.index("install-server-scripts")
     delete = events.index("delete-desktop")
     scp = events.index("macos-scp")
@@ -506,6 +543,7 @@ def test_successful_deploy_orders_all_operations_and_cleanup(tmp_path: Path) -> 
     cleanup = events.index("linux-cleanup")
     assert (
         stop
+        < bytecode_cleanup
         < publish
         < install_scripts
         < delete

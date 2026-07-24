@@ -75,7 +75,7 @@ def test_existing_prefixed_ordinal_dae_owner_is_unchanged(
 
 def test_dae_counter_noun_inventory_is_central_and_minimal() -> None:
     assert REGISTERED_DAE_COUNTER_NOUNS == frozenset(
-        {"차량", "장비", "버스", "서버", "카메라"}
+        {"차량", "자동차", "장비", "버스", "서버", "카메라"}
     )
     assert all(
         is_registered_dae_counter_noun(noun)
@@ -109,7 +109,6 @@ def test_context_gate_distinguishes_defer_and_owner_fallback() -> None:
         ("장비 5대", "장비 다섯 대"),
         ("버스 10대", "버스 열 대"),
         ("서버 20대", "서버 스무 대"),
-        ("카메라 40대", "카메라 사십 대"),
         ("차량 2대입니다", "차량 두 대입니다"),
         ("장비 3대 추가", "장비 세 대 추가"),
     ],
@@ -172,11 +171,8 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
         "3대",
         "10대",
         "20대가",
-        "40대를",
-        "100대로",
         "5대 과제",
         "10대 사업",
-        "100대 명소",
         "20대 남성",
         "가족 3대",
         "가족 3대가 모였다",

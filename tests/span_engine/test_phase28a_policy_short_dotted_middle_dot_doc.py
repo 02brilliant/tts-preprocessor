@@ -4,7 +4,7 @@ def test_phase28a_policy_document_content():
     """
     Phase 28A/29F: canonical policy short dotted / middle-dot numeric 문서 내용 검증.
     """
-    policy_path = Path("docs/policies/TTS_Preprocessor_policy.md")
+    policy_path = Path("docs/TTS_Preprocessor_policy.md")
     assert policy_path.exists(), f"{policy_path} 파일이 존재하지 않습니다."
 
     content = policy_path.read_text(encoding="utf-8")

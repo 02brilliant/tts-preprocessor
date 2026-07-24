@@ -89,7 +89,7 @@ if [[ "$url" == *"/downloads/tts-preprocessor-windows.zip" ]]; then
   exit 22
 fi
 if [[ "$url" == *"/api/llm/models" ]]; then
-  printf '%s\\n' '{"models":["gemma4:31b","gemma4:26b","gemma4:e4b"],"default_model":"gemma4:e4b"}' > "$output_file"
+  printf '%s\\n' '{"models":["gemma4:31b","gemma4:26b","gemma4:e4b","gemini-3.6-flash","gemini-3.5-flash","gemini-3.5-flash-lite"],"default_model":"gemma4:e4b"}' > "$output_file"
 elif [[ "$url" == *"/api/llm/transform" ]]; then
   printf '%s\\n' '{"llm_text":"LLM 배포 확인입니다.","model":"gemma4:e4b","elapsed_ms":1}' > "$output_file"
 elif [[ "$url" == *"/api/transform" ]]; then
@@ -128,7 +128,9 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert 'app.mount("/downloads"' in api_server
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
     assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
-    assert 'LOCAL_LLM_BASE_URL LOCAL_LLM_TOKEN' in start_server
+    assert 'LOCAL_LLM_CONFIGURED=false' in start_server
+    assert 'GEMINI_LLM_CONFIGURED=false' in start_server
+    assert 'GEMINI_API_KEY' in start_server
     assert (
         'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"'
         in remote_build

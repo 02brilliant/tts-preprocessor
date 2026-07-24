@@ -55,7 +55,7 @@ fi
 
 if [[ ! -r "$LLM_ENV_FILE" ]]; then
   echo "Missing readable LLM environment file: $LLM_ENV_FILE" >&2
-  echo "Set LOCAL_LLM_BASE_URL and LOCAL_LLM_TOKEN in this file before starting." >&2
+  echo "Configure at least one LLM provider in this file before starting." >&2
   exit 1
 fi
 
@@ -64,12 +64,19 @@ set -a
 . "$LLM_ENV_FILE"
 set +a
 
-for required_llm_variable in LOCAL_LLM_BASE_URL LOCAL_LLM_TOKEN; do
-  if [[ -z "${!required_llm_variable:-}" ]]; then
-    echo "Missing required LLM environment variable: $required_llm_variable" >&2
-    exit 1
-  fi
-done
+LOCAL_LLM_CONFIGURED=false
+GEMINI_LLM_CONFIGURED=false
+if [[ -n "${LOCAL_LLM_BASE_URL:-}" && -n "${LOCAL_LLM_TOKEN:-}" ]]; then
+  LOCAL_LLM_CONFIGURED=true
+fi
+if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  GEMINI_LLM_CONFIGURED=true
+fi
+if [[ "$LOCAL_LLM_CONFIGURED" != true && "$GEMINI_LLM_CONFIGURED" != true ]]; then
+  echo "No complete LLM provider configuration was found." >&2
+  echo "Configure local LLM credentials or GEMINI_API_KEY before starting." >&2
+  exit 1
+fi
 
 cd "$APP_DIR"
 nohup env \

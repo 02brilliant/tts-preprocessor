@@ -4,19 +4,26 @@ import re
 from dataclasses import dataclass
 
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.signed_numeric import parse_signed_numeric_core
 
 
 # Minimal canonical inventory for nouns that directly license the `대` quantity
 # counter. Keep this metadata centralized; scanners must not carry local keyword
 # lists or infer counter semantics from arbitrary Hangul nouns.
 REGISTERED_DAE_COUNTER_NOUNS = frozenset(
-    {"차량", "장비", "버스", "서버", "카메라"}
+    {"자동차", "차량", "장비", "버스", "서버", "카메라"}
 )
+REGISTERED_DAE_TOPIC_PARTICLES = frozenset({"은", "는", "이", "가"})
+REGISTERED_DAE_QUANTITY_MARKERS = frozenset({"모두", "총"})
 
 _INTEGER_CORE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _NUMERIC_DAE_RE = re.compile(rf"(?P<number>{_INTEGER_CORE}(?:\.\d+)?)대")
 _CONTINUATION_RE = re.compile(
     rf"(?P<noun>[가-힣]+) (?P<first>{_INTEGER_CORE})대 $"
+)
+_TOPIC_QUANTITY_RE = re.compile(
+    r"(?P<noun>[가-힣]+)(?P<particle>은|는|이|가) "
+    r"(?P<marker>모두|총) $"
 )
 _RELATION_RIGHT_RE = re.compile(r" ?(?:[+-]?\d|\d+/\d)")
 
@@ -44,21 +51,22 @@ def evaluate_numeric_dae_counter_context(
     if not isinstance(candidate_span, SourceSpan):
         raise TypeError("candidate_span must be SourceSpan")
 
-    previous_noun = _direct_previous_noun(raw_text, candidate_span.start)
-    if previous_noun is not None and is_registered_dae_counter_noun(previous_noun):
+    if is_sino_threshold_numeric_dae(raw_text, candidate_span):
         return NumericDaeDecision(
             action="DEFER_TO_COUNTER",
             owner="contextual_numeric_dae",
-            reason="dae_counter_registered_noun_direct_context",
+            reason="dae_counter_sino_threshold_40_plus",
             span=candidate_span,
         )
 
-    continuation_noun = _registered_counter_series_noun(raw_text, candidate_span.start)
-    if continuation_noun is not None:
+    explicit_reason = explicit_numeric_dae_counter_context_reason(
+        raw_text, candidate_span
+    )
+    if explicit_reason is not None:
         return NumericDaeDecision(
             action="DEFER_TO_COUNTER",
             owner="contextual_numeric_dae",
-            reason="dae_counter_registered_noun_adjacent_continuation",
+            reason=explicit_reason,
             span=candidate_span,
         )
 
@@ -68,6 +76,30 @@ def evaluate_numeric_dae_counter_context(
         reason="explicit_dae_counter_context_missing",
         span=candidate_span,
     )
+
+
+def explicit_numeric_dae_counter_context_reason(
+    raw_text: str, candidate_span: SourceSpan
+) -> str | None:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(candidate_span, SourceSpan):
+        raise TypeError("candidate_span must be SourceSpan")
+
+    previous_noun = _direct_previous_noun(raw_text, candidate_span.start)
+    if previous_noun is not None and is_registered_dae_counter_noun(previous_noun):
+        return "dae_counter_registered_noun_direct_context"
+
+    continuation_noun = _registered_counter_series_noun(raw_text, candidate_span.start)
+    if continuation_noun is not None:
+        return "dae_counter_registered_noun_adjacent_continuation"
+
+    topic_quantity_noun = _registered_topic_quantity_noun(
+        raw_text, candidate_span.start
+    )
+    if topic_quantity_noun is not None:
+        return "dae_counter_registered_noun_topic_quantity_context"
+    return None
 
 
 def scan_ambiguous_numeric_dae_preserve_candidates(
@@ -171,6 +203,44 @@ def _registered_counter_series_noun(raw_text: str, numeric_start: int) -> str | 
     return noun
 
 
+def _registered_topic_quantity_noun(
+    raw_text: str, numeric_start: int
+) -> str | None:
+    match = _TOPIC_QUANTITY_RE.search(raw_text[:numeric_start])
+    if match is None:
+        return None
+    noun = match.group("noun")
+    particle = match.group("particle")
+    marker = match.group("marker")
+    if (
+        not is_registered_dae_counter_noun(noun)
+        or particle not in REGISTERED_DAE_TOPIC_PARTICLES
+        or marker not in REGISTERED_DAE_QUANTITY_MARKERS
+    ):
+        return None
+    if match.start("noun") > 0 and _is_identifier_neighbor(
+        raw_text[match.start("noun") - 1]
+    ):
+        return None
+    return noun
+
+
+def is_sino_threshold_numeric_dae(
+    raw_text: str, candidate_span: SourceSpan
+) -> bool:
+    raw = raw_text[candidate_span.start : candidate_span.end]
+    if not raw.endswith("대"):
+        return False
+    numeric_core = parse_signed_numeric_core(
+        raw[:-1],
+        allow_plus=False,
+        allow_minus=False,
+    )
+    if numeric_core is None or numeric_core.sign_kind is not None:
+        return False
+    return int(numeric_core.integer_digits) >= 40
+
+
 def _safe_left_boundary(raw_text: str, start: int) -> bool:
     if start == 0:
         return True
@@ -209,7 +279,11 @@ def _is_identifier_neighbor(char: str) -> bool:
 __all__ = [
     "NumericDaeDecision",
     "REGISTERED_DAE_COUNTER_NOUNS",
+    "REGISTERED_DAE_QUANTITY_MARKERS",
+    "REGISTERED_DAE_TOPIC_PARTICLES",
     "evaluate_numeric_dae_counter_context",
+    "explicit_numeric_dae_counter_context_reason",
+    "is_sino_threshold_numeric_dae",
     "is_registered_dae_counter_noun",
     "parse_ambiguous_numeric_dae_preserve_candidate",
     "scan_ambiguous_numeric_dae_preserve_candidates",

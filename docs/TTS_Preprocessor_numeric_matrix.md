@@ -137,7 +137,7 @@ Current standalone invalid/malformed forms:
 | Owner | Valid numeric forms | Sign | Decimal | Comma | Spacing | Invalid handling | Trailing zero state |
 |---|---|---|---|---|---|---|---|
 | unit | integer, decimal, comma integer/decimal for supported unit policy; owner-local meter aliases include `m` and fullwidth Latin `ｍ`; a registered ASCII-letter unit immediately followed by `^2` or `^3` uses the caret-power owner | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes, inheriting the base unit's decimal eligibility | yes for allowed unit matrix | number-to-unit spacing remains the base unit policy; unit-to-`^2`/`^3` must have no space | malformed numeric+unit follows its existing path; caret power is licensed only at end-of-input or before whitespace/Hangul, and a digit/ASCII-letter tail does not use power reading | `7m^2 -> 칠 제곱미터`, `7m^3 -> 칠 세제곱미터`; invalid boundaries retain their pre-Batch-1 behavior |
-| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun, e.g. `6400명`, `6,400명`, `6천400명`, `1척`; attached `N대` additionally requires the registered direct-noun or narrow adjacent-continuation context | no arithmetic sign semantics | yes through the no-space registered decimal suffix owner; attached decimal `N.N대` uses the same explicit context gate | yes for valid integer/comma integer; mixed compact core must parse fully | integer counter owner allows no space or one ASCII space before counter generally; source-attached `N대` is gated; decimal registered suffix owner requires no space before suffix and renders one generated space | unsafe mixed counter tails preserve and broad internal digit fallback is blocked, e.g. `6천400명abc`, `6천400명/log`, `4.3명abc`, `1척abc`, `A1척`; ambiguous attached `N대` and `N.N대` preserve atomically | decimal counter suffixes use ordinary decimal/Sino reading; integer counters retain native/hybrid/Sino rules; `차량 3대 -> 차량 세 대`, `장비 1.5대 -> 장비 일쩜오 대`, but bare `3대` and `1.5대` preserve |
+| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun, e.g. `6400명`, `6,400명`, `6천400명`, `1척`; attached `N대` below 40 requires the registered direct-noun, narrow continuation, or bounded topic/quantity context, while valid `N대` at 40+ needs no semantic context | no arithmetic sign semantics | yes through the no-space registered decimal suffix owner; attached decimal `N.N대` uses the same context/threshold gate | yes for valid integer/comma integer; mixed compact core must parse fully | integer counter owner allows no space or one ASCII space before counter generally; source-attached `N대` is gated; decimal registered suffix owner requires no space before suffix and renders one generated space | unsafe mixed counter tails preserve and broad internal digit fallback is blocked, e.g. `6천400명abc`, `6천400명/log`, `4.3명abc`, `1척abc`, `A1척`; below-40 ambiguous attached `N대` and `N.N대` preserve atomically | decimal counter suffixes use ordinary decimal/Sino reading; integer counters retain native/hybrid/Sino rules; `자동차 3대 -> 자동차 세 대`, `자동차는 모두 3대 -> 자동차는 모두 세 대`, `40대 -> 사십 대`, but bare `3대` and `1.5대` preserve |
 | multiplier | unsigned integer/comma integer and unsigned decimal/comma decimal followed by Korean multiplier noun `배`, e.g. `3배`, `3 배`, `1.5배`, `1,000.5 배` | no signed multiplier in this phase | yes | yes for valid comma integer/decimal | no space or one ASCII space before `배`; renders one generated space before original `배` | malformed/signed forms are not claimed by multiplier in this phase; protected/code-like contexts preserve first | decimal uses ordinary Sino decimal reading; integer `1..39` uses native/hybrid counter-style reading and `40+` uses Sino |
 | duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | decimal duration/time suffixes use ordinary decimal/Sino reading, e.g. `1.5분 -> 일쩜오 분`, `4.5주 -> 사쩜오 주` |
 
@@ -206,11 +206,19 @@ Clock-hour `N시` is handled by the time owner with an owner-local safe Korean t
 
 ### Ambiguous standalone numeric `대` matrix
 
-The source-attached `N대` rule does not assign counter or Sino semantics from
-shape alone. The exact centralized counter-noun inventory is `차량`, `장비`,
-`버스`, `서버`, and `카메라`. It is evaluated only as the immediately
-preceding lexical noun, plus the narrow adjacent continuation
-`registered noun + N대 + space + N대{tail}`.
+The source-attached `N대` rule uses a value threshold before semantic
+ambiguity. A valid unsigned integer/comma integer or decimal/comma decimal with
+numeric value 40 or greater always uses the Sino reading plus original `대`;
+semantic context is not required. Protected/code-like, signed, leading-zero,
+malformed, prefixed ordinal, and full-claimed score/relation surfaces remain
+higher-priority owner decisions.
+
+Values below 40 retain the conservative contextual gate. The exact centralized
+counter-noun inventory is `자동차`, `차량`, `장비`, `버스`, `서버`, and
+`카메라`. In addition to the immediately preceding lexical noun and narrow
+adjacent continuation, the gate accepts only
+`registered noun + 은/는/이/가 + space + 모두/총 + space + N대`. It does not
+cross punctuation or infer arbitrary nouns, verbs, or distant context.
 
 | 유형 | 예 | canonical |
 |---|---|---|
@@ -218,15 +226,20 @@ preceding lexical noun, plus the narrow adjacent continuation
 | spaced relation | `2 대 1` | existing `이 대 일` |
 | ordinal | `제2대` | existing `제 이대` |
 | explicit registered counter | `차량 3대` | `차량 세 대` |
+| topic/quantity registered counter | `자동차는 모두 3대` | `자동차는 모두 세 대` |
 | explicit decimal counter | `장비 1.5대` | `장비 일쩜오 대` |
 | narrow adjacent continuation | `차량 2대 1대를` | `차량 두 대 한 대를` |
+| Sino threshold integer | `40대`, `6,700대` | `사십 대`, `육천칠백 대` |
+| Sino threshold decimal | `40.5대` | `사십쩜오 대` |
 | ambiguous bare | `3대` | preserve |
 | ambiguous particle/ending tail | `20대가`, `3대째` | preserve |
 | semantic ambiguity | `20대 남성`, `가족 3대` | preserve |
 | bare decimal | `1.5대` | preserve |
 | protected/code-like | `[3대]`, backtick `3대`, `path/3대/file`, `A3대` | existing protected result |
 
-`ambiguous_numeric_dae_preserve` uses surface type
+The threshold path reuses the existing counter/decimal renderers and records
+reason `dae_counter_sino_threshold_40_plus`. `ambiguous_numeric_dae_preserve`
+is limited to otherwise-unowned values below 40 and uses surface type
 `AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE` and reason
 `no_existing_owner_and_no_explicit_counter_context`. It is an atomic preserve
 claim before decimal, generic number, and Korean numeric-chain fallback. The
@@ -235,6 +248,33 @@ verb-based quantity, or probabilistic context inference. “Arbitrary Hangul
 suffix is not a registered numeric suffix” remains unchanged; registry-backed
 counter meaning and general numeric-core reading are separate, and attached
 `대` is an explicit preserve exception to the latter.
+
+Claim precedence is:
+
+```text
+protected / structured owner
+-> explicit score or game context N대M
+-> threshold-qualified N대 or explicit contextual N대
+-> keywordless independent N대M
+-> below-40 ambiguous N대 preserve
+-> generic number fallback
+```
+
+For a registered explicit quantity context followed by another independent
+number, `numeric_dae_quantity_sequence` full-claims `N대 M`, uses the counter
+renderer on the left and the ordinary compact number reader on the right.
+This prevents a quantity list from being mislabeled as a keywordless score:
+
+```text
+자동차는 모두 6,700대, 12,500입니다.
+-> 자동차는 모두 육천칠백 대, 만 이천오백입니다.
+자동차는 모두 6,700대 12,500입니다.
+-> 자동차는 모두 육천칠백 대 만이천오백입니다.
+```
+
+An explicit score keyword still wins. A context-free spaced threshold form such
+as `40대 3` is handled as threshold counter plus ordinary number, while the
+source-compact structured relation `40대3` remains score/relation-owned.
 
 Signed temperature/degree right-boundary policy is owner-local. The signed
 temperature/degree surfaces `+N°`, `-N°`, `+N℃`, `-N℃`, `+N℉`, `-N℉`,

@@ -29,13 +29,28 @@ from LLM.client import (
     LLMUpstreamHTTPError,
     generate,
 )
-from LLM.config import ConfigurationError, load_model_config, load_runtime_settings
+from LLM.config import (
+    ConfigurationError,
+    load_gemini_settings,
+    load_model_config,
+    load_runtime_settings,
+)
+from LLM.gemini_client import (
+    GeminiAuthenticationError,
+    GeminiConnectionError,
+    GeminiRateLimitError,
+    GeminiResponseError,
+    GeminiServiceDisabledError,
+    GeminiTimeoutError,
+    GeminiUpstreamHTTPError,
+    generate_gemini,
+)
 from LLM.prompt_template import PromptTemplateError, build_prompt
 
 app = FastAPI()
 
 # Production /api/transform calls the packaged runtime binary. LLM support is
-# isolated under LLM/ and only proxies requests to the configured local model.
+# isolated under LLM/ and routes only to the selected configured provider.
 
 # ✅ web과 downloads를 함께 공개
 app.mount("/web", StaticFiles(directory="web", html=True), name="web")
@@ -119,12 +134,28 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
     try:
         model_config = load_model_config()
         model = req.model or model_config.default_model
-        if model not in model_config.models:
+        model_definition = model_config.get(model)
+        if model_definition is None:
             raise HTTPException(status_code=400, detail="Unsupported LLM model.")
 
-        settings = load_runtime_settings()
         prompt = build_prompt(req.text)
-        result = generate(model=model, prompt=prompt, settings=settings)
+        if model_definition.provider == "local":
+            result = generate(
+                model=model_definition.upstream_model,
+                prompt=prompt,
+                settings=load_runtime_settings(),
+            )
+        elif model_definition.provider == "gemini":
+            result = generate_gemini(
+                model=model_definition.upstream_model,
+                prompt=prompt,
+                settings=load_gemini_settings(),
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Configured LLM provider is unsupported.",
+            )
     except HTTPException:
         raise
     except ConfigurationError as exc:
@@ -136,6 +167,19 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
     except (LLMConnectionError, LLMUpstreamHTTPError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except LLMResponseError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except GeminiTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except GeminiRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except GeminiServiceDisabledError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (
+        GeminiAuthenticationError,
+        GeminiConnectionError,
+        GeminiUpstreamHTTPError,
+        GeminiResponseError,
+    ) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {

@@ -119,6 +119,11 @@ def _transform_with_language_gate_trace(
     text: str, *, split_spaced_slash_boundaries: bool = True
 ) -> TransformOutput:
     stripped = text.strip()
+    if any(
+        text[span.start : span.end].startswith("```")
+        for span in protected_literal_spans(text)
+    ):
+        return _transform_core_with_trace(text)
     if (
         len(stripped) >= 3
         and (

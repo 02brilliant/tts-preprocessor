@@ -3,7 +3,7 @@
 ## 1. 기준과 운영 런타임
 
 배포 정책의 authoritative 기준은
-`docs/policies/TTS_Preprocessor_deployment_policy.md`다. 이 문서는 현재 단일
+`docs/TTS_Preprocessor_deployment_policy.md`다. 이 문서는 현재 단일
 배포자·단일 Apple Silicon Mac·단일 Ubuntu 22.04 서버의 실제 운영 절차를
 설명한다.
 

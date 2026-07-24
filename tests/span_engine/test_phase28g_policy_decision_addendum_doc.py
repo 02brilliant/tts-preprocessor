@@ -5,7 +5,7 @@ from pathlib import Path
 
 def test_phase28g_policy_document_contains_decision_notes() -> None:
     """Canonical policy doc must contain Phase 28G binding decisions."""
-    text = Path("docs/policies/TTS_Preprocessor_policy.md").read_text(encoding="utf-8")
+    text = Path("docs/TTS_Preprocessor_policy.md").read_text(encoding="utf-8")
 
     required_phrases = [
         "Phase 28G-B: middle-dot numeric block fallback",

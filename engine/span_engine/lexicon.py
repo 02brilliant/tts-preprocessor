@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.numeric_reading import read_spaced_integer_text
-from engine.span_engine.models import RenderPiece, SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 
 DICTIONARY_READINGS: dict[str, str] = {
     "AFC": "에이에프씨",
@@ -67,7 +67,6 @@ DICTIONARY_READINGS: dict[str, str] = {
     "release": "릴리즈",
     "REST": "레스트",
     "ROM": "롬",
-    "S&P": "에스앤피",
     "TTS": "티티에스",
     "STT": "에스티티",
     "API": "에이피아이",
@@ -140,7 +139,6 @@ DICTIONARY_READINGS: dict[str, str] = {
     "YoY": "와이오와이",
     "MoM": "엠오엠",
     "QoQ": "큐오큐",
-    "Q&A": "큐앤에이",
     "gRPC": "지알피씨",
     "FAO": "에프에이오",
     "FIFA": "피파",
@@ -164,6 +162,9 @@ FINANCE_INDEX_BASE_READINGS: dict[str, str] = {
     "NASDAQ": "나스닥",
     "KOSPI": "코스피",
     "KOSDAQ": "코스닥",
+}
+CONTEXTUAL_ACRONYM_READINGS: dict[str, str] = {
+    "KB": "케이비",
 }
 _K_HANGUL_PREFIX = "K-"
 _K_HANGUL_UNSAFE_TAIL_CHARS = frozenset("-_/.")
@@ -204,6 +205,12 @@ def dictionary_reading(raw: str) -> str | None:
     return DICTIONARY_READINGS.get(raw)
 
 
+def contextual_acronym_reading(raw: str) -> str | None:
+    if not isinstance(raw, str):
+        raise TypeError("raw must be str")
+    return CONTEXTUAL_ACRONYM_READINGS.get(raw)
+
+
 def lexical_compound_reading(raw: str) -> str | None:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
@@ -234,6 +241,192 @@ def spell_uppercase_acronym(raw: str) -> str:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
     return "".join(LETTER_READINGS[char] for char in raw)
+
+
+def scan_contextual_acronym_candidates(
+    raw_text: str,
+    unit_candidates: list[SurfaceCandidate],
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(unit_candidates, list):
+        raise TypeError("unit_candidates must be list[SurfaceCandidate]")
+    candidates: list[SurfaceCandidate] = []
+    for surface in CONTEXTUAL_ACRONYM_READINGS:
+        start = raw_text.find(surface)
+        while start != -1:
+            end = start + len(surface)
+            span = SourceSpan(start, end)
+            if (
+                _safe_contextual_acronym_boundary(raw_text, start, end)
+                and not any(
+                    _spans_overlap(span, unit_candidate.full_span)
+                    for unit_candidate in unit_candidates
+                )
+            ):
+                candidates.append(
+                    SurfaceCandidate(
+                        core_span=span,
+                        full_span=span,
+                        owner="contextual_acronym",
+                        surface_type="CONTEXTUAL_ACRONYM_SURFACE",
+                        reason="approved_dual_role_acronym_outside_unit_context",
+                    )
+                )
+            start = raw_text.find(surface, start + 1)
+    return sorted(candidates, key=lambda candidate: candidate.core_span.start)
+
+
+def scan_ampersand_acronym_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not _is_ascii_upper(raw_text[index]):
+            index += 1
+            continue
+        left_start = index
+        while index < len(raw_text) and _is_ascii_upper(raw_text[index]):
+            index += 1
+        left_end = index
+        if index >= len(raw_text) or raw_text[index] != "&":
+            continue
+        ampersand_start = index
+        index += 1
+        right_start = index
+        while index < len(raw_text) and _is_ascii_upper(raw_text[index]):
+            index += 1
+        right_end = index
+        if right_start == right_end:
+            continue
+        if not _safe_ampersand_acronym_boundary(raw_text, left_start, right_end):
+            continue
+        left = raw_text[left_start:left_end]
+        right = raw_text[right_start:right_end]
+        span = SourceSpan(left_start, right_end)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="ampersand_acronym",
+                surface_type="AMPERSAND_ACRONYM_SURFACE",
+                reason="safe_uppercase_ampersand_acronym_full_claim",
+                metadata={
+                    "left_reading": spell_uppercase_acronym(left),
+                    "right_reading": spell_uppercase_acronym(right),
+                    "left_span": SourceSpan(left_start, left_end),
+                    "ampersand_span": SourceSpan(
+                        ampersand_start, ampersand_start + 1
+                    ),
+                    "right_span": SourceSpan(right_start, right_end),
+                },
+            )
+        )
+    return candidates
+
+
+def scan_unsupported_ampersand_acronym_preserve_candidates(
+    raw_text: str,
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not (raw_text[index].isascii() and raw_text[index].isalnum()):
+            index += 1
+            continue
+        start = index
+        while index < len(raw_text) and (
+            (raw_text[index].isascii() and raw_text[index].isalnum())
+            or raw_text[index] in {"_", "&"}
+        ):
+            index += 1
+        token = raw_text[start:index]
+        if "&" not in token or token.startswith("&") or token.endswith("&"):
+            continue
+        if token.count("&") == 1:
+            left, right = token.split("&", 1)
+            if (
+                left
+                and right
+                and all(_is_ascii_upper(char) for char in left)
+                and all(_is_ascii_upper(char) for char in right)
+            ):
+                continue
+        span = SourceSpan(start, index)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="UNSUPPORTED_AMPERSAND_ACRONYM_PRESERVE_SURFACE",
+                reason="unsupported_ampersand_acronym_atomic_preserve",
+                metadata={"claim_type": "preserve"},
+            )
+        )
+    return candidates
+
+
+def parse_ampersand_acronym_candidate(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "ampersand_acronym":
+        return None
+    left_reading = candidate.metadata.get("left_reading")
+    right_reading = candidate.metadata.get("right_reading")
+    left_span = candidate.metadata.get("left_span")
+    ampersand_span = candidate.metadata.get("ampersand_span")
+    right_span = candidate.metadata.get("right_span")
+    if not (
+        isinstance(left_reading, str)
+        and isinstance(right_reading, str)
+        and isinstance(left_span, SourceSpan)
+        and isinstance(ampersand_span, SourceSpan)
+        and isinstance(right_span, SourceSpan)
+    ):
+        return None
+    reading = f"{left_reading}앤{right_reading}"
+    raw = raw_text[candidate.core_span.start : candidate.core_span.end]
+    render_pieces = [
+        RenderPiece(
+            text=LETTER_READINGS[raw_text[index]],
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(index, index + 1),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+        for index in range(left_span.start, left_span.end)
+    ]
+    render_pieces.append(
+        RenderPiece(
+            text="앤",
+            provenance="GENERATED_READING",
+            source_span=ampersand_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    )
+    render_pieces.extend(
+        RenderPiece(
+            text=LETTER_READINGS[raw_text[index]],
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(index, index + 1),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+        for index in range(right_span.start, right_span.end)
+    )
+    return Surface(
+        surface_type=candidate.surface_type or "AMPERSAND_ACRONYM_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=render_pieces,
+        metadata={"reason": candidate.reason},
+    )
 
 
 def scan_lexical_compound_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -454,6 +647,42 @@ def _safe_fixed_surface_boundary(raw_text: str, start: int, end: int) -> bool:
     return True
 
 
+def _safe_contextual_acronym_boundary(raw_text: str, start: int, end: int) -> bool:
+    prev_char = raw_text[start - 1] if start > 0 else None
+    next_char = raw_text[end] if end < len(raw_text) else None
+    if prev_char is not None and (
+        _is_identifier_neighbor(prev_char) or prev_char in {".", "&"}
+    ):
+        return False
+    if next_char is not None and (
+        (next_char.isascii() and next_char.isalnum())
+        or "\u3130" <= next_char <= "\u318f"
+        or next_char in {"_", "-", "/", ".", "&"}
+    ):
+        return False
+    return True
+
+
+def _safe_ampersand_acronym_boundary(
+    raw_text: str, start: int, end: int
+) -> bool:
+    prev_char = raw_text[start - 1] if start > 0 else None
+    next_char = raw_text[end] if end < len(raw_text) else None
+    if prev_char is not None and (
+        _is_identifier_neighbor(prev_char) or prev_char in {".", "&"}
+    ):
+        return False
+    if next_char is not None and (
+        _is_identifier_neighbor(next_char) or next_char in {".", "&"}
+    ):
+        return False
+    return True
+
+
+def _spans_overlap(left: SourceSpan, right: SourceSpan) -> bool:
+    return left.start < right.end and right.start < left.end
+
+
 def _safe_finance_index_boundary(raw_text: str, start: int, end: int) -> bool:
     prev_char = raw_text[start - 1] if start > 0 else None
     next_char = raw_text[end] if end < len(raw_text) else None
@@ -512,14 +741,20 @@ def _is_identifier_neighbor(char: str) -> bool:
 
 
 __all__ = [
+    "CONTEXTUAL_ACRONYM_READINGS",
     "DICTIONARY_READINGS",
     "LETTER_READINGS",
     "LEXICAL_COMPOUND_READINGS",
     "acronym_hangul_hyphen_render_pieces",
+    "contextual_acronym_reading",
     "dictionary_reading",
     "k_hangul_lexical_reading",
     "lexical_compound_reading",
     "parse_finance_index_numeric_suffix_candidate",
+    "parse_ampersand_acronym_candidate",
+    "scan_ampersand_acronym_candidates",
+    "scan_unsupported_ampersand_acronym_preserve_candidates",
+    "scan_contextual_acronym_candidates",
     "scan_finance_index_numeric_suffix_candidates",
     "scan_acronym_hangul_hyphen_candidates",
     "scan_k_hangul_lexical_candidates",

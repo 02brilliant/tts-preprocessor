@@ -9,6 +9,10 @@ from engine.span_engine.currency import (
     KOREAN_CURRENCY_SUFFIX_READINGS,
 )
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.numeric_dae import (
+    explicit_numeric_dae_counter_context_reason,
+    is_sino_threshold_numeric_dae,
+)
 from engine.span_engine.multiplier import multiplier_number_reading
 from engine.span_engine.numeric_reading import (
     normalize_integer_text,
@@ -158,10 +162,24 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
             else "right_compact"
         )
         right_span = SourceSpan(match.start(right_group_name), match.end(right_group_name))
-        gate_reason = _score_pair_gate_reason(raw_text, span, right, right_span)
+        delimiter_span = SourceSpan(left_span.end, right_span.start)
+        gate_reason = _score_pair_gate_reason(
+            raw_text,
+            span,
+            right,
+            right_span,
+            left_span,
+            delimiter_span,
+        )
         if gate_reason is None:
             continue
-        delimiter_span = SourceSpan(left_span.end, right_span.start)
+        is_quantity_sequence = (
+            gate_reason == "numeric_dae_quantity_sequence_explicit_counter_context"
+        )
+        if is_quantity_sequence:
+            counter_reading = counter_number_reading(left, "대")
+            if counter_reading is not None:
+                left_reading = counter_reading.rstrip()
         compact_integer_rendering = _uses_compact_integer_rendering(
             raw_text, left, right, delimiter_span
         )
@@ -176,8 +194,16 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
             SurfaceCandidate(
                 core_span=span,
                 full_span=span,
-                owner="korean_da_score_pair",
-                surface_type="KOREAN_DA_SCORE_PAIR_SURFACE",
+                owner=(
+                    "numeric_dae_quantity_sequence"
+                    if is_quantity_sequence
+                    else "korean_da_score_pair"
+                ),
+                surface_type=(
+                    "NUMERIC_DAE_QUANTITY_SEQUENCE_SURFACE"
+                    if is_quantity_sequence
+                    else "KOREAN_DA_SCORE_PAIR_SURFACE"
+                ),
                 reason=gate_reason,
                 metadata={
                     "left": left,
@@ -198,7 +224,10 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
 def parse_korean_da_score_pair_candidate(
     raw_text: str, candidate: SurfaceCandidate
 ) -> Surface | None:
-    if candidate.owner != "korean_da_score_pair":
+    if candidate.owner not in {
+        "korean_da_score_pair",
+        "numeric_dae_quantity_sequence",
+    }:
         return None
     reading = candidate.metadata.get("reading")
     left_reading = candidate.metadata.get("left_reading")
@@ -368,7 +397,12 @@ def _valid_left_boundary(raw_text: str, start: int) -> bool:
 
 
 def _score_pair_gate_reason(
-    raw_text: str, span: SourceSpan, right: str, right_span: SourceSpan
+    raw_text: str,
+    span: SourceSpan,
+    right: str,
+    right_span: SourceSpan,
+    left_span: SourceSpan,
+    delimiter_span: SourceSpan,
 ) -> str | None:
     if not _valid_right_boundary(raw_text, span):
         return None
@@ -376,6 +410,21 @@ def _score_pair_gate_reason(
         return None
     if _has_score_pair_context(raw_text, span):
         return "korean_da_score_pair_score_context_gate"
+    if (
+        raw_text[delimiter_span.start : delimiter_span.end].startswith("대")
+        and explicit_numeric_dae_counter_context_reason(
+            raw_text, SourceSpan(left_span.start, left_span.end + 1)
+        )
+        is not None
+    ):
+        return "numeric_dae_quantity_sequence_explicit_counter_context"
+    if (
+        raw_text[delimiter_span.start : delimiter_span.end] == "대 "
+        and is_sino_threshold_numeric_dae(
+            raw_text, SourceSpan(left_span.start, left_span.end + 1)
+        )
+    ):
+        return None
     if is_independent_right_number_for_da_pair(raw_text, right, right_span):
         return "korean_da_score_pair_independent_right_number_gate"
     return None

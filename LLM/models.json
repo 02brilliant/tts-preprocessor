@@ -1,8 +1,35 @@
 {
   "models": [
-    "gemma4:31b",
-    "gemma4:26b",
-    "gemma4:e4b"
+    {
+      "id": "gemma4:31b",
+      "provider": "local",
+      "upstream_model": "gemma4:31b"
+    },
+    {
+      "id": "gemma4:26b",
+      "provider": "local",
+      "upstream_model": "gemma4:26b"
+    },
+    {
+      "id": "gemma4:e4b",
+      "provider": "local",
+      "upstream_model": "gemma4:e4b"
+    },
+    {
+      "id": "gemini-3.6-flash",
+      "provider": "gemini",
+      "upstream_model": "gemini-3.6-flash"
+    },
+    {
+      "id": "gemini-3.5-flash",
+      "provider": "gemini",
+      "upstream_model": "gemini-3.5-flash"
+    },
+    {
+      "id": "gemini-3.5-flash-lite",
+      "provider": "gemini",
+      "upstream_model": "gemini-3.5-flash-lite"
+    }
   ],
   "default_model": "gemma4:e4b"
 }

@@ -16,7 +16,7 @@ missing from `span_default` is a production drift item.
 
 ## 2. Relationship to Canonical Policy
 
-`docs/policies/TTS_Preprocessor_policy.md` remains the single canonical policy
+`docs/TTS_Preprocessor_policy.md` remains the single canonical policy
 for the full preprocessor. This document owns the managed dictionary surface
 inventory, readings, status labels, compound rendering decisions, and
 dictionary-specific implementation/test contract.
@@ -189,14 +189,12 @@ span production managed dictionary and covered by production-path tests.
 | `PPI` | 피피아이 | current | exact | safe token boundary | Fixed economy term. |
 | `PPT` | 피피티 | current | exact | safe token boundary | Fixed file term. |
 | `PPTX` | 피피티엑스 | current | exact | safe token boundary | Fixed file term. |
-| `Q&A` | 큐앤에이 | current | exact | safe token boundary | Fixed question-answer term. |
 | `QoQ` | 큐오큐 | current | exact | safe token boundary | Fixed finance comparison term. |
 | `RAM` | 램 | current | exact | safe token boundary | Fixed hardware term. |
 | `release` | 릴리즈 | current | exact | safe token boundary | Fixed software/release term. |
 | `REST` | 레스트 | current | exact | safe token boundary | Fixed technical term. |
 | `ROE` | 알오이 | current | exact | safe token boundary | Fixed finance term. |
 | `ROM` | 롬 | current | exact | safe token boundary | Fixed hardware term. |
-| `S&P` | 에스앤피 | current | exact | safe token boundary | Fixed finance index. |
 | `SBS` | 에스비에스 | current | exact | safe token boundary | Fixed broadcast term. |
 | `SDK` | 에스디케이 | current | exact | safe token boundary | Fixed technical term. |
 | `SDR` | 에스디알 | current | exact | safe token boundary | Fixed media term. |
@@ -256,6 +254,8 @@ full-claim the entire conditional surface and must preserve protected contexts.
 
 | Surface family | Reading policy | Status | Match type | Boundary | Notes |
 |---|---|---|---|---|---|
+| dual-role `KB` | 케이비 | current_with_condition | contextual acronym | full claim outside registered unit/data-rate structure | `KB`, `KB금융`, and `KB 금융` read as 케이비; `10KB`, `10 KB`, and `1,000KB/s` remain unit-owned, while `KB/s`, `KB1`, and `KB-1` preserve. This entry is not a current exact managed dictionary entry and must not inherit `managed_acronym_numeric_code`. |
+| uppercase ampersand acronym | letter names + 앤 + letter names | current_with_condition | `UPPERCASE_BLOCK&UPPERCASE_BLOCK` | safe full-token boundary | `M&A`, `R&D`, `A&B`, `Q&A`, and standalone `S&P`; protected/code-like contexts and spaced, mixed-case, numeric, or repeated-ampersand forms preserve. `Q&A` and base `S&P` are intentionally not fixed dictionary entries. |
 | `S&P` + numeric suffix | 에스앤피 + number reading | current_with_condition | whitelist finance index suffix | full claim | `S&P500`, `S&P 500`; no broad acronym+number fallback. |
 | `NASDAQ` + numeric suffix | 나스닥 + number reading | current_with_condition | whitelist finance index suffix | full claim | `NASDAQ100`, `NASDAQ 100`. |
 | `KOSPI` + numeric suffix | 코스피 + number reading | current_with_condition | whitelist finance index suffix | full claim | `KOSPI200`, `KOSPI 200`. |

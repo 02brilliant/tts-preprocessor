@@ -67,10 +67,13 @@ from engine.span_engine.korean_numeric_chain import scan_korean_numeric_chain_ca
 from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
+    scan_ampersand_acronym_candidates,
     scan_acronym_hangul_hyphen_candidates,
+    scan_contextual_acronym_candidates,
     scan_k_hangul_lexical_candidates,
     scan_finance_index_numeric_suffix_candidates,
     scan_lexical_compound_candidates,
+    scan_unsupported_ampersand_acronym_preserve_candidates,
 )
 from engine.span_engine.managed_numeric_code import (
     scan_managed_acronym_numeric_code_candidates,
@@ -200,6 +203,9 @@ CLAIM_ORDER_DOC = (
     "protected_literal",
     "dictionary",
     "finance_index",
+    "contextual_acronym",
+    "ampersand_acronym",
+    "unsupported_ampersand_acronym_preserve",
     "k_hangul_lexical",
     "lexical_compound",
     "acronym_hangul_hyphen",
@@ -215,6 +221,7 @@ CLAIM_ORDER_DOC = (
     "phone",
     "colon_semantic_pair",
     "korean_da_score_pair",
+    "numeric_dae_quantity_sequence",
     "multi_colon_numeric",
     "event",
     "emergency",
@@ -281,14 +288,28 @@ def claim_surfaces(
         if candidate.owner == "korean_numeric_chain"
     ]
     counter_candidates = scan_counter_candidates(raw_text)
+    compound_slash_unit_candidates = scan_compound_slash_unit_candidates(
+        raw_text, excluded_ranges
+    )
+    simple_unit_candidates = scan_simple_unit_candidates(raw_text)
+    unit_contamination_candidates = scan_unit_contamination_preserve_candidates(
+        raw_text
+    )
+    contextual_acronym_unit_candidates = [
+        *compound_slash_unit_candidates,
+        *simple_unit_candidates,
+        *unit_contamination_candidates,
+    ]
     contextual_dae_counter_candidates = [
         candidate
         for candidate in counter_candidates
         if candidate.metadata.get("counter") == "대"
         and candidate.reason
         in {
+            "dae_counter_sino_threshold_40_plus",
             "dae_counter_registered_noun_direct_context",
             "dae_counter_registered_noun_adjacent_continuation",
+            "dae_counter_registered_noun_topic_quantity_context",
         }
     ]
     remaining_counter_candidates = [
@@ -299,6 +320,9 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_contextual_acronym_candidates(raw_text, contextual_acronym_unit_candidates), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_ampersand_acronym_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_unsupported_ampersand_acronym_preserve_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_acronym_hangul_hyphen_candidates(raw_text), registry, excluded_ranges))
@@ -326,7 +350,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_percent_point_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_duration_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_multiplier_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_unit_contamination_preserve_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(unit_contamination_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_caret_power_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(
         _claim_scanned_candidates(
@@ -349,10 +373,10 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_signed_degree_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ph_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_compound_slash_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(compound_slash_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_simple_unit_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(simple_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))

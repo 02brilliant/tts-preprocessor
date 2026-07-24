@@ -72,7 +72,7 @@ def test_prefixed_ordinal_spaced_je_number(
         ("101문항", "백일 문항"),
         ("2항목", "두 항목"),
         ("2대", "2대"),
-        ("40대", "40대"),
+        ("40대", "사십 대"),
     ],
 )
 def test_plain_counter_reading_unchanged(

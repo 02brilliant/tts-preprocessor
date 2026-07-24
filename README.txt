@@ -28,6 +28,7 @@ macOS·Windows ZIP을 삭제하고 새 macOS ZIP을 검증·반영한 다음 서
 
 ```sh
 cd ~/tts-preprocessor
+source .venv/bin/activate
 PYTHONPATH=. .venv/bin/python -m pytest -m "not binary_runtime" -q
 
 bash scripts/deploy_server.sh
@@ -121,7 +122,4 @@ Ubuntu 22.04 운영 서버의 기존 `buildenv`에서 생성한다.
 
 ##### 수정사항 메모
 
-- KB금융 (미처리)
-- M&A (미처리)
-- 자동차는 모두 6,700대, 12,500입니다. 자동차는 모두 6,700대 12,500입니다.
-  (자동차는 모두 6,700대, 만 이천오백입니다. 자동차는 모두 육천칠백 대 만이천오백입니다.)
+- (기타) python 버전 업데이트 필요 (현재 3.10, 3.12 또는 3.13 권장)

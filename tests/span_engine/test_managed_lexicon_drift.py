@@ -8,7 +8,7 @@ from engine.main import transform
 from engine.span_engine import transform_with_trace
 from engine.span_engine.lexicon import DICTIONARY_READINGS
 
-MANAGED_DICTIONARY_POLICY = Path("docs/policies/TTS_Preprocessor_managed_dictionary.md")
+MANAGED_DICTIONARY_POLICY = Path("docs/TTS_Preprocessor_managed_dictionary.md")
 
 
 def production_transform(text: str) -> str:
@@ -96,7 +96,6 @@ def test_finance_index_numeric_suffix_full_claim_blocks_partial_p500() -> None:
         ("WHO", "더블유에이치오"),
         ("FOMC", "에프오엠씨"),
         ("NASDAQ", "나스닥"),
-        ("S&P", "에스앤피"),
         ("KOSPI", "코스피"),
         ("KOSDAQ", "코스닥"),
     ],
@@ -108,6 +107,15 @@ def test_managed_lexicon_representative_entries_are_span_dictionary(
     assert production_transform(f"{surface} 항목") == f"{expected} 항목"
     trace = transform_with_trace(f"{surface} 항목").trace
     assert any(claim.owner == "dictionary" for claim in trace.claim_logs)
+
+
+@pytest.mark.parametrize("surface", ["Q&A", "S&P"])
+def test_ampersand_acronyms_are_not_exact_dictionary_entries(surface: str) -> None:
+    assert surface not in DICTIONARY_READINGS
+    assert surface not in _managed_dictionary_current_entries()
+    trace = transform_with_trace(surface).trace
+    assert any(claim.owner == "ampersand_acronym" for claim in trace.claim_logs)
+    assert not any(claim.owner == "dictionary" for claim in trace.claim_logs)
 
 
 @pytest.mark.parametrize(

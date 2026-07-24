@@ -7,7 +7,13 @@ def test_frontend_has_independent_llm_controls_results_and_timing() -> None:
     assert 'id="llm-enabled"' in web
     assert 'id="llm-enabled" type="checkbox" checked' in web
     assert 'id="llm-model"' in web
-    assert "gemma4:e4b" not in web
+    for model in (
+        "gemma4:e4b",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+    ):
+        assert model not in web
     assert 'id="llm-output"' in web
     assert 'id="llm-diff"' in web
     assert 'id="rule-timing"' in web

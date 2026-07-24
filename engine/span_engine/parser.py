@@ -33,9 +33,11 @@ from engine.span_engine.large_unit import (
 )
 from engine.span_engine.lexicon import (
     acronym_hangul_hyphen_render_pieces,
+    contextual_acronym_reading,
     dictionary_reading,
     k_hangul_lexical_reading,
     lexical_compound_reading,
+    parse_ampersand_acronym_candidate,
     parse_finance_index_numeric_suffix_candidate,
     spell_uppercase_acronym,
 )
@@ -104,6 +106,10 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = dictionary_reading(raw)
     elif candidate.owner == "finance_index":
         reading = parse_finance_index_numeric_suffix_candidate(raw_text, candidate)
+    elif candidate.owner == "contextual_acronym":
+        reading = contextual_acronym_reading(raw)
+    elif candidate.owner == "ampersand_acronym":
+        return parse_ampersand_acronym_candidate(raw_text, candidate)
     elif candidate.owner == "k_hangul_lexical":
         return _make_k_hangul_lexical_surface(raw_text, candidate, raw)
     elif candidate.owner == "lexical_compound":
@@ -194,7 +200,10 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_administrative_suffix_candidate(raw_text, candidate)
     elif candidate.owner == "korean_numeric_chain":
         return parse_korean_numeric_chain_candidate(raw_text, candidate)
-    elif candidate.owner == "korean_da_score_pair":
+    elif candidate.owner in {
+        "korean_da_score_pair",
+        "numeric_dae_quantity_sequence",
+    }:
         return parse_korean_da_score_pair_candidate(raw_text, candidate)
     elif candidate.owner == "ambiguous_numeric_dae_preserve":
         return parse_ambiguous_numeric_dae_preserve_candidate(raw_text, candidate)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-POLICY_DIR = ROOT / "docs" / "policies"
+POLICY_DIR = ROOT / "docs"
 
 
 def test_phase35a_canonical_policy_document_contract() -> None:
@@ -35,5 +35,5 @@ def test_phase35a_canonical_policy_document_contract() -> None:
         assert phrase in canonical
 
     assert "릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록" in changelog
-    assert "docs/policies/TTS_Preprocessor_policy.md" in changelog
+    assert "docs/TTS_Preprocessor_policy.md" in changelog
     assert "결정 기록으로만 사용" in changelog

@@ -162,6 +162,29 @@ bash "$remote_base_dir/scripts/stop_server.sh"
 REMOTE
 }
 
+clear_remote_python_bytecode() {
+  ssh -- "$SSH_TARGET" bash -s -- \
+    "$REMOTE_APP_DIR/api" \
+    "$REMOTE_LLM_DIR" <<'REMOTE'
+set -euo pipefail
+api_dir="$1"
+llm_dir="$2"
+
+for app_dir in "$api_dir" "$llm_dir"; do
+  [[ -d "$app_dir" ]] || {
+    echo "[deploy][ERROR] Missing expected application directory: $app_dir" >&2
+    exit 1
+  }
+done
+
+find "$api_dir" "$llm_dir" \
+  -type d \
+  -name __pycache__ \
+  -prune \
+  -exec rm -rf -- {} +
+REMOTE
+}
+
 start_remote_server() {
   ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_BASE_DIR" <<'REMOTE'
 set -euo pipefail
@@ -236,6 +259,7 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/__init__.py" \
   "$ROOT_DIR/LLM/client.py" \
   "$ROOT_DIR/LLM/config.py" \
+  "$ROOT_DIR/LLM/gemini_client.py" \
   "$ROOT_DIR/LLM/models.json" \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/docs/LLM_prompt.txt"; do
@@ -281,7 +305,7 @@ llm_env_file="$remote_base_dir/config/llm.env"
 }
 [[ -r "$llm_env_file" ]] || {
   echo "[deploy][ERROR] Missing readable LLM environment file: $llm_env_file" >&2
-  echo "[deploy][ERROR] Set LOCAL_LLM_BASE_URL and LOCAL_LLM_TOKEN there before deployment." >&2
+  echo "[deploy][ERROR] Configure at least one LLM provider there before deployment." >&2
   exit 1
 }
 for executable in \
@@ -407,6 +431,13 @@ echo "[deploy] Stopping the server before Linux publish..."
 if ! stop_remote_server; then
   best_effort_remote_cleanup || true
   echo "[deploy][ERROR] Server stop failed; Linux publish and desktop changes were not run." >&2
+  exit 1
+fi
+
+echo "[deploy] Removing stale Python bytecode from the stopped application..."
+if ! clear_remote_python_bytecode; then
+  best_effort_remote_cleanup || true
+  echo "[deploy][ERROR] Python bytecode cleanup failed; publish and server restart were not run." >&2
   exit 1
 fi
 

@@ -105,7 +105,7 @@ Managed dictionary-only no-Hangul inputs are a separate narrow exception:
 if the entire input is composed only of exact current managed dictionary entries
 and approved separators/whitespace, it may enter the core transform. The
 canonical inventory and detailed guard are defined in
-`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+`docs/TTS_Preprocessor_managed_dictionary.md`.
 
 ### 0.0.2.1 Hangul-containing input whole-fallback prohibition
 
@@ -1011,10 +1011,25 @@ backtick spans, fenced code, square bracket interiors, identifier-like tokens,
 and code-like tokens must not be claimed by this owner.
 
 The owner must not claim when the right side forms another owner-attached numeric
-surface. Left-side lexical context such as `차량`, `장비`, or `카메라` does not by
-itself block the owner when the right-side number is independent. The
-disambiguation is based on whether the right-side number forms a registered
-owner-attached numeric surface.
+surface. An exact registered `대` quantity context, including direct
+`자동차 N대`, the bounded `자동차는 모두 N대` / `차량은 총 N대` bridge, and
+narrow registered continuation, blocks the keywordless independent-right-number
+gate. When such a counter is followed by an independent number, the whole
+`N대 M` span is owned by `numeric_dae_quantity_sequence`: the left side reuses
+the counter reading and the right side reuses the ordinary number reader.
+An explicit score/result keyword still wins over this quantity context.
+
+For a valid threshold-qualified value, spaced `40대 M` is split into the
+threshold counter and ordinary number before the keywordless score gate.
+Source-compact `40대3` remains the existing, more specific full-claimed
+relation. This preserves the following ordering:
+
+```text
+explicit score/game N대M
+-> contextual or threshold N대
+-> keywordless independent N대M
+-> below-40 ambiguous N대 preserve
+```
 
 ```text
 세트스코어는 2 대 1입니다. -> 세트스코어는 이 대 일입니다.
@@ -1466,6 +1481,27 @@ Dollar owner는 `$`, `＄`, `﹩`를 동일한 달러 기호로 처리한다.
 ```
 
 Yen/won/euro 기존 정책은 유지한다.
+
+#### Ampersand acronym reading
+
+ASCII `&`는 전역 alias가 아니다. `ampersand_acronym` owner가 안전한
+공백 없는 `UPPERCASE_BLOCK&UPPERCASE_BLOCK` 전체를 full-claim한 경우에만
+원문 `&` source span을 `앤`으로 렌더한다. 양쪽 block은 하나 이상의 ASCII
+대문자로만 이루어지고 중앙 `LETTER_READINGS`를 재사용한다.
+
+```text
+M&A -> 엠앤에이
+R&D -> 알앤디
+A&B -> 에이앤비
+Q&A -> 큐앤에이
+S&P -> 에스앤피
+```
+
+`M & A`, `a&b`, `A&b`, `A&1`, `x&&y`, URL query, JSON, backtick,
+fenced code, shell/code-like, path, email, square-bracket interior는
+대상이 아니다. `Q&A`와 base `S&P`는 fixed dictionary entry가 아니라 이
+구조 owner가 담당한다. `S&P500`, `S&P 500`은 더 구체적인
+`finance_index` owner가 먼저 full-claim한다.
 
 ### 0.0.9 현재 정책에서 의도적으로 제외하는 alias / normalization
 
@@ -3046,8 +3082,11 @@ currency owner.
 |---:|---|---|---|
 | 0 | square bracket protection | `[12.3]`, `[3kg]`, `[2025/13/03]` | `bracket` |
 | 1 | URL/path/email/protected literal | `docs/2025/01/03`, `https://example.com/2026/04/17`, `user@example.com`, `v1.2.3-beta` | `preserve` (`PROTECTED_LITERAL_SURFACE`) |
-| 2 | dictionary / fixed lexical | `K-POP`, `KOSPI`, `AI`, `FTA` | `dictionary` |
+| 2 | dictionary / fixed lexical | `K-POP`, `KOSPI`, `GPT`, `FTA` | `dictionary` |
 | 3 | finance index numeric suffix | `S&P500`, `NASDAQ100` | `finance_index` |
+| 3a | dual-role contextual acronym | `KB`, `KB금융` | `contextual_acronym` |
+| 3b | uppercase ampersand acronym | `M&A`, `Q&A`, `S&P` | `ampersand_acronym` |
+| 3c | unsupported ampersand acronym-like atomic preserve | `A&1`, `A&b`, `x&&y` | `preserve` |
 | 4 | K-Hangul lexical prefix | `K-푸드`, `K-뷰티`, `K-팝` | `k_hangul_lexical` |
 | 5 | lexical compound | `AI·반도체`, `ISO·IEC` | `lexical_compound` |
 | 6 | managed acronym-Hangul hyphen lexical compound | `KTX-이음` | `acronym_hangul_hyphen` |
@@ -3062,6 +3101,7 @@ currency owner.
 | 15 | time format | `13:05에`, `오전 3시` | `time` |
 | 16 | N:M semantic pair | `1:2 비율`, `3:1 승리` | `colon_semantic_pair` |
 | 17 | Korean `대` score pair | `스코어 2대1`, `경기는 2대 1로` | `korean_da_score_pair` |
+| 17a | explicit `대` quantity sequence | `자동차 3대 1`, `자동차는 모두 6,700대 12,500` | `numeric_dae_quantity_sequence` |
 | 18 | multi-colon numeric | `1:2:3` | `multi_colon_numeric` |
 | 19 | fixed event / event keyword | `5·18 민주화운동`, `12.12 사태`, `12.3 비상계엄` | `event` |
 | 20 | emergency number context | `긴급번호 112는`, `119에 신고` | `emergency` |
@@ -3084,7 +3124,7 @@ currency owner.
 | 37 | simple unit | `50kg`, `3km` | `simple_unit` |
 | 38 | decimal registered suffix | `1.5차`, `4.5주` | `decimal_registered_suffix` |
 | 39 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
-| 39a | explicit contextual numeric `대` | `차량 3대`, `차량 2대 1대를` | `counter_noun` |
+| 39a | threshold or explicit contextual numeric `대` | `40대`, `차량 3대`, `자동차는 모두 3대` | `counter_noun`, `decimal_registered_suffix` |
 | 39b | ambiguous attached numeric `대` atomic preserve | `3대`, `20대가`, `1.5대` | `ambiguous_numeric_dae_preserve` |
 | 39c | invalid/unsupported direct-sign atomic preserve | `+01`, `++1`, `+3대` | `invalid_signed_numeric_preserve` |
 | 40 | decimal fallback | `12.3`, `7.25` | `decimal` |
@@ -3174,6 +3214,9 @@ CLAIM_ORDER = [
     protected_literal_claim,
     dictionary_claim,
     finance_index_claim,
+    contextual_acronym_claim,
+    ampersand_acronym_claim,
+    unsupported_ampersand_acronym_preserve_claim,
     k_hangul_lexical_claim,
     lexical_compound_claim,
     acronym_hangul_hyphen_claim,
@@ -3187,6 +3230,7 @@ CLAIM_ORDER = [
     time_claim,
     colon_semantic_pair_claim,
     korean_da_score_pair_claim,
+    numeric_dae_quantity_sequence_claim,
     event_claim,
     emergency_claim,
     spaced_separator_preserve_claim,
@@ -3250,7 +3294,6 @@ MFN
 KOSPI
 KOSDAQ
 KTX
-S&P
 ```
 
 원칙:
@@ -3277,6 +3320,31 @@ OpenAI -> preserve 또는 dictionary 있을 때만 처리
 USB3 -> generic acronym fallback 금지
 A-1 -> acronym fallback 금지
 ```
+
+#### 9.3.0 Dual-role contextual acronym `KB`
+
+`KB` is an approved conditional acronym outside the exact managed dictionary.
+It reads `케이비` when it is not part of an existing simple-unit or data-rate
+surface and is not inside a protected or identifier-like context.
+
+```text
+KB -> 케이비
+KB금융 -> 케이비금융
+KB 금융 -> 케이비 금융
+10KB -> 십 킬로바이트
+10 KB -> 십 킬로바이트
+1,000KB/s -> 초당 천 킬로바이트
+KB/s -> KB/s
+KB1 -> KB1
+KB-1 -> KB-1
+```
+
+The owner reuses existing unit scanner candidates to identify unit-owned spans;
+it does not duplicate unit syntax. Its canonical surface type is
+`CONTEXTUAL_ACRONYM_SURFACE` and reason is
+`approved_dual_role_acronym_outside_unit_context`. Because `KB` is not a
+current exact managed dictionary entry, it must not inherit
+`managed_acronym_numeric_code`.
 
 #### 9.3.0.1 Managed Dictionary Numeric-Code Suffix
 
@@ -3341,8 +3409,8 @@ General alphabet fallback은 dictionary/acronym owner와 CODE_SEPARATOR_BLOCK_SU
 
 1. dictionary에 등록된 약어와 fixed term은 dictionary reading을 우선한다.
 2. CODE_SEPARATOR_BLOCK_SURFACE 내부의 영문은 항상 알파벳 한 글자씩 읽는다.
-3. 단독 영문 1글자는 URL/path/email/code protection 내부가 아니면 알파벳 이름으로 읽을 수 있다.
-4. 연속 대문자 block은 dictionary에 없더라도 알파벳 한 글자씩 읽을 수 있다.
+3. 일반 uppercase acronym fallback은 두 글자 이상의 연속 ASCII 대문자 block만 대상으로 한다.
+4. 단독 영문 1글자는 일반 fallback으로 새로 읽지 않으며 single-letter code 등 명시 owner에서만 읽을 수 있다.
 5. mixed-case token은 dictionary에 없으면 preserve한다.
 6. alnum mixed token은 명시 owner가 없으면 preserve한다.
 7. alphabetic contamination이 있는 currency/unit/date/code-like token은 preserve한다.
@@ -3350,12 +3418,8 @@ General alphabet fallback은 dictionary/acronym owner와 CODE_SEPARATOR_BLOCK_SU
 canonical output:
 
 ```text
-A -> 에이
-B -> 비
-ABC -> 에이 비 씨
-A-B-C -> 에이 비 씨
-A / B -> 에이 / 비
-A - B -> 에이 - 비
+ABC -> 에이비씨
+AB -> 에이비
 ```
 
 dictionary output:
@@ -3364,6 +3428,13 @@ dictionary output:
 AI -> 에이아이
 USB -> 유에스비
 OECD -> 오이씨디
+```
+
+ampersand acronym output:
+
+```text
+M&A -> 엠앤에이
+Q&A -> 큐앤에이
 S&P -> 에스앤피
 ```
 
@@ -3373,6 +3444,10 @@ preserve output:
 OpenAI -> OpenAI
 USB300 -> USB300
 A12.3B -> A12.3B
+A -> A
+A-B-C -> A-B-C
+A / B -> A / B
+A - B -> A - B
 EURA 300 -> EURA 300
 300EURabc -> 300EURabc
 5Hzabc -> 5Hzabc    
@@ -3433,7 +3508,7 @@ Managed dictionary entries are fixed lexical exceptions, not broad acronym,
 code, slash, or numeric fallback. The canonical surface/reading inventory,
 status labels, compound rendering decisions, pending/conflict items, and
 implementation/test contract are maintained in
-`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+`docs/TTS_Preprocessor_managed_dictionary.md`.
 
 This section keeps only the shared principles:
 
@@ -4664,7 +4739,7 @@ Counter Policy Table:
 | `판` | hybrid | 39 | `39판 -> 서른아홉 판` | 40부터 sino |
 | `줄` | hybrid | 39 | `39줄 -> 서른아홉 줄` | 40부터 sino |
 | `칸` | hybrid | 39 | `39칸 -> 서른아홉 칸` | 40부터 sino |
-| `대` | hybrid | 39 | `39대 -> 서른아홉 대` | 40부터 sino |
+| `대` | hybrid | 39 | `차량 39대 -> 차량 서른아홉 대` | 40 미만은 등록 수량 문맥에서만 owner 진입; 40부터 문맥 없이 sino |
 | `석` | hybrid | 39 | `39석 -> 서른아홉 석` | 40부터 sino |
 | `표` | hybrid | 39 | `39표 -> 서른아홉 표` | 40부터 sino |
 | `매` | hybrid | 39 | `39매 -> 서른아홉 매` | 40부터 sino |
@@ -4752,7 +4827,12 @@ Compact large-unit 숫자 core 바로 뒤에 approximate marker `여`가 붙으�
 
 숫자+counter에서 `1~99`는 기존 counter별 고유어/native, hybrid threshold 39, 한자어 정책을 따른다. 하지만 `100` 이상은 counter 종류와 관계없이 숫자 전체를 한자어로 읽는다. `100` 이상에서는 마지막 두 자리만 고유어로 읽는 tail-native 방식을 사용하지 않는다.
 
-아래 단위는 hybrid counter로 처리한다. `1~39`는 고유어 관형형, `40` 이상은 한자어로 읽는다. `100` 이상은 기존 100+ Sino counter policy에 따라 전체 숫자를 한자어로 읽는다.
+아래 단위는 hybrid counter로 처리한다. owner 진입이 승인된 경우
+`1~39`는 고유어 관형형, `40` 이상은 한자어로 읽는다. 단, source-attached
+`N대`의 `1~39`는 등록 수량 문맥에서만 owner에 진입하고 그 밖에는
+preserve한다. `N대`의 `40` 이상은 의미 문맥 없이 owner에 진입한다.
+`100` 이상은 기존 100+ Sino counter policy에 따라 전체 숫자를
+한자어로 읽는다.
 
 ```text
 대, 석, 표, 매, 문항, 문제, 곡, 장면, 세트, 팩, 봉, 종류, 항목, 사례, 척
@@ -8357,13 +8437,13 @@ production 구현과 문서 규칙의 대응은 다음과 같다.
 | runtime contract | `api/server.py` → `api.binary_runtime.run_transform_binary` |
 
 Deployment/runtime entrypoint policy is maintained in
-`docs/policies/TTS_Preprocessor_deployment_policy.md`. The official
+`docs/TTS_Preprocessor_deployment_policy.md`. The official
 production source entrypoint is
 `engine.main.transform(text)`.
 
 For the detailed numeric valid/invalid matrix, owner-attached numeric behavior,
 partial fallback audit, malformed numeric follow-up taxonomy, and trailing-zero
-current state, see `docs/policies/TTS_Preprocessor_numeric_matrix.md`.
+current state, see `docs/TTS_Preprocessor_numeric_matrix.md`.
 
 ## 26. 새 규칙 추가 시 준수사항
 
@@ -9998,12 +10078,17 @@ square-bracket protected interior, 또는 unsafe alphabetic tail은
 #### Ambiguous standalone numeric `대`
 
 기존 상위 owner가 claim하지 않은 source-attached `숫자+대` surface는
-표면형만으로 counter, 연령대, 주요 항목 수, 세대, 순번 또는 한자어 의미를
-추론하지 않는다. 기본값은 읽기가 아니라 원문 보존이다.
+numeric value를 먼저 평가한다. Valid unsigned integer/comma integer 또는
+decimal/comma decimal 값이 40 이상이면 의미 문맥을 추론하지 않고 기존
+counter/decimal renderer의 한자어 reading과 원래 `대`를 사용한다. Valid
+value가 40 미만일 때만 counter, 연령대, 주요 항목 수, 세대, 순번 의미의
+모호성을 이유로 보수적인 문맥 gate와 preserve 기본값을 적용한다.
 
-우선순위는 protected/code-like owner, `korean_da_score_pair` 관계형
-`N대M`, prefixed ordinal `제N대`, 명시적 contextual `N대` counter,
-`ambiguous_numeric_dae_preserve`, generic decimal/number fallback 순이다.
+우선순위는 protected/code-like/structured owner, 명시적 score context의
+`korean_da_score_pair`, prefixed ordinal `제N대`, 40 이상 Sino threshold
+또는 명시적 contextual `N대` counter, 문맥 없는 independent
+`korean_da_score_pair`, 40 미만 `ambiguous_numeric_dae_preserve`, generic
+decimal/number fallback 순이다.
 관계형 owner가 지원하는 `N대M`, `N대 M`, `N 대 M`의 operand validation,
 source spacing, rendering 및 fallback은 변경하지 않는다. `제N대`도 기존
 `numeric_suffix` owner와 `prefixed_ordinal_numeric_suffix` reason을
@@ -10014,15 +10099,18 @@ source spacing, rendering 및 fallback은 변경하지 않는다. `제N대`도 �
 다음과 같다.
 
 ```text
-차량, 장비, 버스, 서버, 카메라
+자동차, 차량, 장비, 버스, 서버, 카메라
 ```
 
 Attached `N대`가 바로 앞의 정확한 등록 명사와 `등록 명사 + ASCII space +
 N대` 구조를 형성한 경우에만 기존 `counter_noun` parser/renderer에
-위임한다. 조사나 문장부호를 건너뛰지 않고, 넓은 좌측 window, 동사
-allowlist, scanner-local keyword set 또는 임의의 일반 명사 추론을 사용하지
-않는다. 따라서 `차량 3대`는 contextual counter지만 `차량은 3대`와
-`가족 3대`는 이 최소 규칙에서 preserve다.
+위임한다. 추가로 정확히 `등록 명사 + 은/는/이/가 + ASCII space +
+모두/총 + ASCII space + N대`인 제한된 topic/quantity bridge를 허용한다.
+조사나 표지어를 임의 확장하지 않고, 문장부호를 건너뛰지 않으며, 넓은 좌측
+window, 동사 allowlist, scanner-local keyword set 또는 임의의 일반 명사
+추론을 사용하지 않는다. 따라서 `자동차는 모두 3대`는 contextual
+counter지만 `차량은 3대`와 `가족은 모두 3대`는 이 최소 규칙에서
+preserve다.
 
 동일 수량열 continuation은 정확히 `등록 명사 + N대 + ASCII space +
 N대{조사·어미}`로 인접한 경우에만 허용한다. 쉼표, 절 경계, 다른 명사,
@@ -10030,21 +10118,36 @@ N대{조사·어미}`로 인접한 경우에만 허용한다. 쉼표, 절 경계
 
 ```text
 차량 3대 -> 차량 세 대
+자동차 3대 -> 자동차 세 대
+자동차는 모두 3대 -> 자동차는 모두 세 대
+차량은 총 5대 -> 차량은 총 다섯 대
 장비 5대 -> 장비 다섯 대
 버스 10대 -> 버스 열 대
 서버 20대 -> 서버 스무 대
-카메라 40대 -> 카메라 사십 대
+40대 -> 사십 대
+40대 남성 -> 사십 대 남성
+100대 명소 -> 백 대 명소
+6,700대, -> 육천칠백 대,
+40.5대 -> 사십쩜오 대
 차량 2대 1대를 점검했다 -> 차량 두 대 한 대를 점검했다
 차량 2대, 가족 1대가 모였다 -> 차량 두 대, 가족 1대가 모였다
 ```
 
-소수도 같은 gate를 사용한다. 명시 문맥의 `장비 1.5대`만 기존
-`decimal_registered_suffix` reading `장비 일쩜오 대`를 사용한다.
-Bare `1.5대` 및 `1.5대가`는 전체를 preserve하며 내부 decimal owner가
-재진입하지 않는다. Malformed decimal/counter surface는 기존의 더 구체적인
+소수도 같은 value threshold와 context gate를 사용한다. `40.0대`,
+`40.5대`는 각각 `사십쩜영 대`, `사십쩜오 대`로 읽는다. 40 미만에서는
+명시 문맥의 `장비 1.5대`만 기존 `decimal_registered_suffix` reading
+`장비 일쩜오 대`를 사용하고, bare `1.5대` 및 `1.5대가`는 전체를
+preserve한다. Malformed decimal/counter surface는 기존의 더 구체적인
 preserve 정책을 유지한다.
 
-상위 owner와 명시 counter gate가 모두 실패하면
+40 이상 threshold의 canonical reason은
+`dae_counter_sino_threshold_40_plus`다. 이 threshold는 semantic ambiguity만
+해제한다. URL/path/email/JSON/backtick/fenced-code/shell-like/square-bracket
+보호, signed counter, leading zero, malformed comma/decimal, ASCII
+identifier/unsafe tail, prefixed ordinal, full-claimed score/relation owner는
+계속 우선한다.
+
+상위 owner, 40 이상 threshold와 명시 counter gate가 모두 실패하면
 `ambiguous_numeric_dae_preserve`가
 `AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE`를 claim한다. Canonical reason은
 `no_existing_owner_and_no_explicit_counter_context`이고 claim type은
@@ -10059,7 +10162,8 @@ token에 있으면 source-exact preserve span에 함께 포함할 수 있다. �
 3대 -> 3대
 10대 -> 10대
 20대가 -> 20대가
-40대를 -> 40대를
+40대를 -> 사십 대를
+100대로 -> 백 대로
 5대 과제 -> 5대 과제
 20대 남성 -> 20대 남성
 가족 3대 -> 가족 3대
@@ -10067,7 +10171,7 @@ token에 있으면 source-exact preserve span에 함께 포함할 수 있다. �
 1.5대 -> 1.5대
 ```
 
-본 단계에서는 `5대 과제`, `20대 남성`, `가족 3대`의 의미를
+40 미만에서는 `5대 과제`, `20대 남성`, `가족 3대`의 의미를
 판별하는 semantic owner, 동사 기반 counter 추론, 확률/점수 기반 문맥 판정,
 제 없는 순번 또는 세대/연령대 사전을 추가하지 않는다. 숫자와 `대` 사이에
 공백이 있는 기존 standalone counter surface는 이번 source-attached `N대`
@@ -10230,7 +10334,7 @@ full consume 실패 후 raw residue 유지
 Technical, IT, file-format, media-display, finance, institution, and sports
 fixed lexical entries are no longer maintained as repeated inventory tables in
 this canonical policy. They are managed as fixed lexical exceptions in
-`docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+`docs/TTS_Preprocessor_managed_dictionary.md`.
 
 This section keeps only the binding rules:
 
@@ -10238,7 +10342,7 @@ This section keeps only the binding rules:
   code, slash, hyphen, or numeric fallback.
 - The canonical surface/reading inventory, status labels, pending/conflict
   decisions, exact slash compounds, and implementation contract live in
-  `docs/policies/TTS_Preprocessor_managed_dictionary.md`.
+  `docs/TTS_Preprocessor_managed_dictionary.md`.
 - `current` and `current_with_condition` entries require span production
   coverage. Adding or changing a managed dictionary reading requires updating
   the managed dictionary policy and its parity tests in the same change.
@@ -10434,7 +10538,7 @@ URL/path/email 내부 기호는 preserve
 
 이전 문서의 "immediately addable" 목록은 더 이상 canonical inventory가
 아니다. fixed lexical candidate의 승격 여부와 reading은
-`docs/policies/TTS_Preprocessor_managed_dictionary.md`의 status taxonomy에
+`docs/TTS_Preprocessor_managed_dictionary.md`의 status taxonomy에
 따른다. `current`로 승격된 항목만 span production과 parity test의 구현
 대상이다.
 

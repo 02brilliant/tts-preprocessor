@@ -173,17 +173,23 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
     normalized_number = raw_number.replace(",", "")
     if not _is_valid_integer(raw_number) or not is_supported_counter(counter):
         return None
-    if is_emergency_ambiguous_number(normalized_number) and (
-        normalized_number,
-        counter,
-    ) not in EMERGENCY_COUNTER_FALLBACKS:
-        return None
-    if normalized_number in PUBLIC_NUMBER_AMBIGUOUS_NUMBERS and counter not in {"점"}:
-        return None
     if _has_unsupported_leading_zero(normalized_number, counter):
         return None
 
     value = int(normalized_number)
+    dae_sino_threshold = counter == "대" and value >= 40
+
+    if not dae_sino_threshold and is_emergency_ambiguous_number(normalized_number) and (
+        normalized_number,
+        counter,
+    ) not in EMERGENCY_COUNTER_FALLBACKS:
+        return None
+    if (
+        not dae_sino_threshold
+        and normalized_number in PUBLIC_NUMBER_AMBIGUOUS_NUMBERS
+        and counter not in {"점"}
+    ):
+        return None
 
     mode = counter_mode(counter)
     if value >= 100:
