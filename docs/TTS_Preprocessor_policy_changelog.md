@@ -2,6 +2,19 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Unified successfully claimed colon-time hour rendering with the existing
+  clock-hour mapping: `00` reads `영시`, `01..12` use native Korean forms, and
+  `13..24` use Sino-Korean forms. This corrects `02..09` strong leading-zero
+  readings such as `09:30 -> 아홉시 삼십분` without expanding the existing
+  strong/ambiguous admission gate, suffix-clock leading-zero preservation, or
+  protected and higher-priority semantic contexts.
+- Replaced the blanket compact large-unit `개` preserve with a registered-counter
+  full-claim path. The counter scanner now reuses the large-unit integer core
+  parser's end, complete value, and canonical reading, so `3만개`,
+  `12만개입니다`, and `1만3천개다` follow the 100+ Sino counter policy while
+  `개월` keeps longest-match/spaceless behavior. ASCII, slash, code-like,
+  unregistered Hangul tails, leading-zero forms, and lexical `만개` remain
+  preserve-first without partial numeric reentry.
 - Added conditional dual-role acronym handling for `KB`: safe standalone and Korean-context forms read `케이비`, while existing simple/data-rate unit scanners retain `10KB`, `10 KB`, and `1,000KB/s`; `KB/s`, numeric-code-like tails, identifiers, and protected contexts preserve. The conditional entry is intentionally outside the exact managed dictionary so it cannot inherit managed numeric-code suffixes.
 - Added full-claim `ampersand_acronym` for safe unspaced `UPPERCASE_BLOCK&UPPERCASE_BLOCK` surfaces. It reuses central letter readings and renders the original `&` span as `앤`; spaced, mixed-case, numeric, repeated-ampersand, code-like, and protected forms preserve. Base `Q&A` and `S&P` moved from fixed dictionary ownership to this structural owner, while `S&P500` and `S&P 500` remain finance-index full claims.
 - Revised source-attached numeric `대`: valid unsigned numeric values 40 or greater now always use the Sino reading with reason `dae_counter_sino_threshold_40_plus`, while protected/structured, signed, leading-zero, malformed, ordinal, and full-claimed score surfaces keep precedence. Values below 40 retain the conservative context gate.

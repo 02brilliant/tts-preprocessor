@@ -281,7 +281,7 @@ def test_large_unit_protected_path_url_backtick_preserve(text: str) -> None:
         ("3:4테스트", "삼 대 사 테스트"),
         ("1-2kg", "일에서 이 킬로그램"),
         ("1-2테스트", "1-2테스트"),
-        ("09:30", "구시 삼십분"),
+        ("09:30", "아홉시 삼십분"),
     ],
 )
 def test_large_unit_non_target_regression(text: str, expected: str) -> None:

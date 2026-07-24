@@ -21,6 +21,16 @@ def prod(text: str) -> str:
         ("version 1:23", "version 1:23"),
         ("file 1:23", "file 1:23"),
         ("요한복음 3:16", "요한복음 3:16"),
+        ("점수는 09:30이다", "점수는 09:30이다"),
+        ("비율은 09:30이다", "비율은 09:30이다"),
+        ("요한복음 09:30", "요한복음 09:30"),
+        ("line 09:30", "line 09:30"),
+        ("case 09:30", "case 09:30"),
+        ("file 09:30", "file 09:30"),
+        ("/path/09:30/log", "/path/09:30/log"),
+        ("https://example.com?t=09:30", "https://example.com?t=09:30"),
+        ('{"time":"09:30"}', '{"time":"09:30"}'),
+        ("`09:30`", "`09:30`"),
     ],
 )
 def test_colon_protected_contexts_precede_broad_nm_claims(text: str, expected: str) -> None:
@@ -30,11 +40,30 @@ def test_colon_protected_contexts_precede_broad_nm_claims(text: str, expected: s
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
+        ("0:00", "영시"),
+        ("0:05", "영시 오분"),
+        ("00:00", "영시"),
         ("00:30", "영시 삼십분"),
+        ("01:00", "한시"),
         ("01:40", "한시 사십분"),
-        ("09:30", "구시 삼십분"),
+        ("02:30", "두시 삼십분"),
+        ("03:30", "세시 삼십분"),
+        ("04:30", "네시 삼십분"),
+        ("05:30", "다섯시 삼십분"),
+        ("06:30", "여섯시 삼십분"),
+        ("07:30", "일곱시 삼십분"),
+        ("08:30", "여덟시 삼십분"),
+        ("09:00", "아홉시"),
+        ("09:30", "아홉시 삼십분"),
+        ("09:59", "아홉시 오십구분"),
+        ("10:00", "열시"),
+        ("11:05", "열한시 오분"),
+        ("12:00", "열두시"),
         ("3:04", "세시 사분"),
+        ("13:00", "십삼시"),
         ("13:05", "십삼시 오분"),
+        ("20:00", "이십시"),
+        ("24:00", "이십사시"),
         ("24:09", "이십사시 구분"),
     ],
 )
@@ -46,7 +75,15 @@ def test_strong_time_like_without_context_reads_as_time(text: str, expected: str
     "text",
     [
         "3:40",
+        "0:30",
+        "10:30",
+        "11:30",
+        "12:59",
         "13:40",
+        "19:30",
+        "21:30",
+        "22:30",
+        "23:59",
         "24:50",
     ],
 )
@@ -58,11 +95,30 @@ def test_ambiguous_time_like_without_context_currently_preserves(text: str) -> N
     ("text", "expected"),
     [
         ("3:40에", "세시 사십분에"),
+        ("10:30에", "열시 삼십분에"),
+        ("11:30에", "열한시 삼십분에"),
+        ("12:59에", "열두시 오십구분에"),
+        ("19:30에", "십구시 삼십분에"),
+        ("21:30에", "이십일시 삼십분에"),
+        ("22:30에", "이십이시 삼십분에"),
+        ("23:59에", "이십삼시 오십구분에"),
         ("24:50까지", "이십사시 오십분까지"),
     ],
 )
 def test_ambiguous_time_like_with_time_context_reads_as_time(text: str, expected: str) -> None:
     assert prod(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "09시",
+        "09시다",
+        "07시 05분",
+    ],
+)
+def test_leading_zero_suffix_clock_hour_remains_preserved(text: str) -> None:
+    assert prod(text) == text
 
 
 @pytest.mark.parametrize(

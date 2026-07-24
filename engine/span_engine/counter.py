@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_spaced_integer_value
 from engine.span_engine.number import number_to_korean_under_10000
-from engine.span_engine.large_unit import parse_mixed_integer_core_at
+from engine.span_engine.large_unit import (
+    parse_large_unit_integer_core_at,
+    parse_mixed_integer_core_at,
+)
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
@@ -125,6 +128,39 @@ _NATIVE_TENS = {
     90: "아흔",
 }
 _PREV_BLOCKERS = frozenset("+-.,~:/")
+_LARGE_UNIT_COUNTER_COLLISION_COUNTERS = frozenset({"개", "개월"})
+_LARGE_UNIT_COUNTER_ATTACHED_TAILS = (
+    "였습니다",
+    "이었습니다",
+    "였지만",
+    "였고",
+    "였다",
+    "입니다",
+    "이다",
+    "이었",
+    "이며",
+    "이고",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "에",
+    "에서",
+    "에게",
+    "로",
+    "으로",
+    "와",
+    "과",
+    "도",
+    "만",
+    "부터",
+    "까지",
+    "처럼",
+    "마다",
+    "다",
+)
 
 
 def counter_mode(counter: str) -> str | None:
@@ -229,11 +265,22 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             index += 1
             continue
         number_start = index
-        mixed_core = parse_mixed_integer_core_at(raw_text, number_start)
+        large_unit_core = parse_large_unit_integer_core_at(raw_text, number_start)
+        small_unit_core = parse_mixed_integer_core_at(raw_text, number_start)
+        plain_number_end = _consume_integer(raw_text, number_start)
+        prefer_plain_counter = (
+            plain_number_end is not None
+            and _has_registered_counter_at(raw_text, plain_number_end)
+        )
+        mixed_core = (
+            None if prefer_plain_counter else large_unit_core or small_unit_core
+        )
+        if prefer_plain_counter:
+            large_unit_core = None
         number_end = (
             mixed_core.end
             if mixed_core is not None
-            else _consume_integer(raw_text, number_start)
+            else plain_number_end
         )
         if number_end is None:
             index += 1
@@ -270,26 +317,53 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 raw_text, counter_end
             ):
                 break
+            full_large_unit_counter_claim = (
+                large_unit_core is not None
+                and counter in _LARGE_UNIT_COUNTER_COLLISION_COUNTERS
+            )
+            if full_large_unit_counter_claim and _has_unsafe_large_unit_counter_tail(
+                raw_text, counter_end
+            ):
+                break
             reason = "counter_policy_gate"
             if counter == "대" and not has_space_before_counter:
                 decision = evaluate_numeric_dae_counter_context(raw_text, full_span)
                 if decision.action != "DEFER_TO_COUNTER":
                     break
                 reason = decision.reason
+            claim_span = full_span if full_large_unit_counter_claim else number_span
             candidates.append(
                 SurfaceCandidate(
-                    core_span=number_span,
+                    core_span=claim_span,
                     full_span=full_span,
                     owner="counter_noun",
                     surface_type="COUNTER_SURFACE",
                     suffix_spans=[counter_span],
-                    reason=reason,
+                    reason=(
+                        "counter_large_unit_core_full_consume"
+                        if full_large_unit_counter_claim
+                        else reason
+                    ),
                     metadata={
                         "raw_number": raw_number,
                         "counter": counter,
                         "counter_mode": counter_mode(counter),
                         "counter_span": counter_span,
                         "reading": reading,
+                        "numeric_span": number_span,
+                        "numeric_core_kind": (
+                            "large_unit"
+                            if large_unit_core is not None
+                            else "mixed_small_unit"
+                            if mixed_core is not None
+                            else "arabic_integer"
+                        ),
+                        "full_counter_claim": full_large_unit_counter_claim,
+                        "source_space_span": (
+                            SourceSpan(number_end, counter_start)
+                            if has_space_before_counter
+                            else None
+                        ),
                     },
                 )
             )
@@ -320,6 +394,14 @@ def _has_supported_counter_prefix_tail(
     return False
 
 
+def _has_registered_counter_at(raw_text: str, number_end: int) -> bool:
+    counter_start = _consume_optional_ascii_space(raw_text, number_end)
+    return any(
+        raw_text.startswith(counter, counter_start)
+        for counter in COUNTERS_BY_LENGTH
+    )
+
+
 def _has_supported_counter_unsafe_tail(raw_text: str, counter_end: int) -> bool:
     next_char = raw_text[counter_end] if counter_end < len(raw_text) else None
     return next_char is not None and next_char.isascii() and next_char.isalnum()
@@ -329,6 +411,18 @@ def _has_mixed_counter_path_tail(raw_text: str, counter_end: int) -> bool:
     return counter_end < len(raw_text) and raw_text[counter_end] == "/"
 
 
+def _has_unsafe_large_unit_counter_tail(raw_text: str, counter_end: int) -> bool:
+    if counter_end >= len(raw_text):
+        return False
+    tail = raw_text[counter_end:]
+    first = tail[0]
+    if first.isspace() or first in ",.!?)]};:":
+        return False
+    if not _is_complete_hangul(first):
+        return True
+    return not tail.startswith(_LARGE_UNIT_COUNTER_ATTACHED_TAILS)
+
+
 def parse_counter_candidate(
     raw_text: str, candidate: SurfaceCandidate
 ) -> str | None:
@@ -336,12 +430,89 @@ def parse_counter_candidate(
         return None
     reading = candidate.metadata.get("reading")
     if isinstance(reading, str):
+        if candidate.metadata.get("full_counter_claim") is True:
+            counter_span = candidate.metadata.get("counter_span")
+            numeric_span = candidate.metadata.get("numeric_span")
+            if not isinstance(counter_span, SourceSpan) or not isinstance(
+                numeric_span, SourceSpan
+            ):
+                return None
+            source_gap = raw_text[numeric_span.end : counter_span.start]
+            counter = raw_text[counter_span.start : counter_span.end]
+            return f"{reading}{source_gap}{counter}"
         return reading
     raw_number = raw_text[candidate.core_span.start : candidate.core_span.end]
     counter = candidate.metadata.get("counter")
     if not isinstance(counter, str):
         return None
     return counter_number_reading(raw_number, counter)
+
+
+def counter_render_pieces(
+    raw_text: str, candidate: SurfaceCandidate
+) -> list[RenderPiece] | None:
+    if (
+        candidate.owner != "counter_noun"
+        or candidate.metadata.get("full_counter_claim") is not True
+    ):
+        return None
+    reading = candidate.metadata.get("reading")
+    numeric_span = candidate.metadata.get("numeric_span")
+    counter_span = candidate.metadata.get("counter_span")
+    source_space_span = candidate.metadata.get("source_space_span")
+    if (
+        not isinstance(reading, str)
+        or not isinstance(numeric_span, SourceSpan)
+        or not isinstance(counter_span, SourceSpan)
+        or (
+            source_space_span is not None
+            and not isinstance(source_space_span, SourceSpan)
+        )
+    ):
+        return None
+
+    generated_space = reading.endswith(" ")
+    numeric_reading = reading[:-1] if generated_space else reading
+    metadata = {"surface_type": candidate.surface_type}
+    pieces = [
+        RenderPiece(
+            text=numeric_reading,
+            provenance="GENERATED_READING",
+            source_span=numeric_span,
+            owner=candidate.owner,
+            metadata=metadata,
+        )
+    ]
+    if isinstance(source_space_span, SourceSpan):
+        pieces.append(
+            RenderPiece(
+                text=raw_text[source_space_span.start : source_space_span.end],
+                provenance="ORIGINAL_SPACE",
+                source_span=source_space_span,
+                owner=candidate.owner,
+                metadata=metadata,
+            )
+        )
+    elif generated_space:
+        pieces.append(
+            RenderPiece(
+                text=" ",
+                provenance="GENERATED_READING",
+                source_span=counter_span,
+                owner=candidate.owner,
+                metadata=metadata,
+            )
+        )
+    pieces.append(
+        RenderPiece(
+            text=raw_text[counter_span.start : counter_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=counter_span,
+            owner=candidate.owner,
+            metadata=metadata,
+        )
+    )
+    return pieces
 
 
 def _sino(value: int) -> str | None:
@@ -462,6 +633,7 @@ __all__ = [
     "THRESHOLD_39_HYBRID_COUNTERS",
     "counter_mode",
     "counter_number_reading",
+    "counter_render_pieces",
     "is_emergency_ambiguous_number",
     "is_supported_counter",
     "native_number_under_100",

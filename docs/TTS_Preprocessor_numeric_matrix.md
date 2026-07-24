@@ -145,9 +145,20 @@ Leading-zero owner decisions are explicit exceptions to ordinary owner parsing.
 A leading-zero counter such as `01명` preserves the complete surface; it does
 not become `한 명`. A leading-zero suffix clock-hour such as `09시` or
 `07시 05분` also preserves the complete time surface. Colon time remains a
-separate owner, so `09:30 -> 구시 삼십분`.
-Strong standalone colon-time exceptions are canonical owner decisions:
-`0:00 -> 영시` and `24:00 -> 이십사시`. These two exact boundary forms are
+separate owner, so `09:30 -> 아홉시 삼십분`.
+
+Compact structured large-unit integer cores reuse the large-unit parser in the
+counter owner when followed by registered `개` or longest-match `개월`. The
+counter owner full-claims the numeric core and counter, uses the complete
+Sino-Korean reading for values 100 or greater, preserves the original counter,
+and applies the existing counter spacing rule:
+`3만개 -> 삼만 개`, `1만3천개다 -> 일만삼천 개다`, and
+`1만3천개월 -> 일만삼천개월`. Unsafe ASCII, slash, code-like, or unregistered
+Hangul tails remain atomic preserve boundaries and must not leak an internal
+large-unit or number rewrite.
+
+Strong standalone colon-time boundary decisions are canonical owner decisions:
+`0:00 -> 영시`, `00:00 -> 영시`, and `24:00 -> 이십사시`. These forms are
 not governed by the older broad “standalone time-like preserve” wording.
 Other ambiguous standalone time-like forms continue to follow the existing gate.
 
@@ -547,30 +558,46 @@ Strong time-like surfaces should read as time outside protected contexts:
 ```text
 00:30 -> 영시 삼십분
 01:40 -> 한시 사십분
-09:30 -> 구시 삼십분
+02:30 -> 두시 삼십분
+08:30 -> 여덟시 삼십분
+09:30 -> 아홉시 삼십분
+10:00 -> 열시
+11:05 -> 열한시 오분
+12:00 -> 열두시
 3:04 -> 세시 사분
 13:05 -> 십삼시 오분
 24:09 -> 이십사시 구분
 ```
 
-This is implemented for bare and ordinary non-protected contexts. Two-digit
-leading-zero hours use the stage-2 canonical shown above: `00` is `영`, `01` is
-`한`, and `02..09` use Sino readings such as `09:30 -> 구시 삼십분`.
+This is implemented for bare and ordinary non-protected contexts. For every
+successfully claimed colon time, hour `00` is read as `영시`, hours `01..12`
+use native Korean clock-hour forms, and hours `13..24` use Sino-Korean number
+readings followed by `시`.
 
-An exact `00` minute component is omitted after a successful time claim. The
-`24` hour remains a valid strong hour for every valid two-digit minute, while a
+An exact `00` minute component is omitted after a successful time claim.
+Existing strong admission covers valid two-digit leading-zero `0H:MM` surfaces
+and valid colon times whose minute is `00..09`. Other valid time-like forms,
+including `24:10..24:59`, retain the existing ambiguous context gate. A
 one-digit minute is non-time-like and may fall to the broad semantic-pair owner:
 
 ```text
+0:00 -> 영시
 00:00 -> 영시
 24:01 -> 이십사시 일분
 7:5 -> 칠 대 오
 ```
 
+`0:00` is the existing single-digit zero-hour boundary and `00:00` is the
+two-digit leading-zero colon form. Both are owned time surfaces and render
+`영시`. This clarification does not broaden other single-digit zero-hour forms.
+
 ### 9.4 Ambiguous time-like target policy
 
-`H:MM` or `HH:MM` with hour `0..24` and minute `10..59` can be time, ratio, or
-score depending on context.
+Valid `H:MM` or `HH:MM` surfaces not covered by the strong rule can be time,
+ratio, or score depending on context. In particular, non-leading-zero hours
+with minute `10..59` retain the existing ambiguous context gate. Valid
+two-digit leading-zero `0H:MM` surfaces are strong outside protected or
+higher-priority semantic contexts and are not part of this ambiguous set.
 
 Time context should read as time:
 
@@ -786,7 +813,7 @@ Current production-source audit examples:
 | Surface | Current output | Inventory note |
 |---|---|---|
 | `3:15` | `3:15` | ambiguous time-like preserve |
-| `09:30` | `구시 삼십분` | strong time-like |
+| `09:30` | `아홉시 삼십분` | strong time-like |
 | `0:00` | `영시` | exact strong standalone time boundary |
 | `24:00` | `이십사시` | exact strong standalone day boundary |
 | `1 - 2 - 3` | `일 - 이 - 삼` | exact spaced-hyphen multi-block; source separator retained |
@@ -1152,7 +1179,7 @@ USD01.50
 Current regression audit preserves existing behavior for:
 
 ```text
-09:30 -> 구시 삼십분
+09:30 -> 아홉시 삼십분
 00:30 -> 영시 삼십분
 010-1234-5678 -> 공일공 일이삼사 오육칠팔
 +82-10-1234-5678 -> 플러스 팔이 일공 일이삼사 오육칠팔

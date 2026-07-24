@@ -818,8 +818,11 @@ release 1:2테스트 -> 릴리즈 일 대 이 테스트
 Basic time-like shape는 `H:MM` 또는 `HH:MM`이고, minute block이 exactly two
 digits이며 `00..59`, hour가 `00..24`인 경우다. 이 shape는 broad `대`
 읽기보다 우선 보호된다. Time owner가 claim하려면 protected/code-like
-context가 아니어야 하고, 기존 explicit time context gate가 필요하다. 허용
-gate는 `오전/오후/AM/PM` prefix, `에/부터/까지/쯤/경` 후행 표지, 또는
+context가 아니어야 한다. Valid two-digit leading-zero `0H:MM`과 minute
+`00..09`인 기존 strong time-like 형식은 보호 또는 상위 semantic context
+밖에서 time owner가 직접 claim한다. 그 밖의 ambiguous time-like 형식에는
+기존 explicit time context gate가 필요하다. 허용 gate는
+`오전/오후/AM/PM` prefix, `에/부터/까지/쯤/경` 후행 표지, 또는
 surface에 좁게 인접한 schedule/time keyword(`회의`, `일정`, `시작`, `종료`,
 `마감`, `출발`, `도착`, `예약`)다. `24:09`는 time-like/time 대상이고,
 `25:30`은 explicit time context가 없으면 basic time-like가 아니다.
@@ -827,12 +830,21 @@ Exact standalone boundary decisions override older broad preserve wording:
 
 ```text
 0:00 -> 영시
+00:00 -> 영시
 24:00 -> 이십사시
 ```
 
-Successful time claims omit an exact zero-minute component. `24:MM` remains a
-strong valid time for `MM=00..59`; a one-digit minute is not an HH:MM shape and
-may route to the broad semantic-pair owner.
+`0:00`은 기존 single-digit zero-hour boundary이고 `00:00`은 two-digit
+leading-zero colon time이다. 두 표면 모두 time owner가 claim하며 `영시`로
+읽는다. 이 명시는 다른 single-digit zero-hour 형식의 admission을 확장하지
+않는다.
+
+For every successfully claimed colon time, hour `00` is read as `영시`, hours
+`01..12` use native Korean clock-hour forms, and hours `13..24` use
+Sino-Korean number readings followed by `시`. Successful time claims omit an
+exact zero-minute component. `24:10..24:59`를 포함해 strong 규칙에 포함되지
+않는 valid time-like 표면은 기존 ambiguous context gate를 유지한다. 한 자리
+minute은 HH:MM shape가 아니며 broad semantic-pair owner로 갈 수 있다.
 
 ```text
 회의는 00:00에 시작한다 -> 회의는 영시에 시작한다
@@ -848,7 +860,9 @@ preserve, and ratio/score, scripture-like, line/case/file, protected,
 URL/path/JSON/backtick/code-like contexts remain excluded.
 
 ```text
-09:30 -> 09:30
+09:30 -> 아홉시 삼십분
+10:30 -> 10:30
+10:30에 시작 -> 열시 삼십분에 시작
 09:30에 시작 -> 아홉시 삼십분에 시작
 13:05에 시작 -> 십삼시 오분에 시작
 14:00부터 -> 십사시부터
@@ -5394,6 +5408,25 @@ canonical output:
 6,402억 달러 -> 육천사백이억 달러
 8만 9천 개 -> 팔만 구천 개
 ```
+
+공백 없는 compact large-unit integer core 바로 뒤에 등록 counter `개` 또는
+longest-match counter `개월`이 붙는 경우에도 같은 full-consume 원칙을
+적용한다. Large-unit integer parser의 `end`, 전체 값, canonical reading을
+counter owner가 재사용하고, 100 이상 counter의 전체 한자어 reading 및 기존
+counter spacing 정책을 적용한다. `개`로 시작한다는 이유만으로 전체 token을
+invalid large-unit preserve하면 안 된다.
+
+```text
+3만개 -> 삼만 개
+12만개입니다 -> 십이만 개입니다
+1만3천개다 -> 일만삼천 개다
+1만3천개월 -> 일만삼천개월
+```
+
+등록 counter 뒤의 ASCII/code-like tail, slash path, 미등록 Hangul 결합은
+full-consume 실패로 보존한다. 따라서 `1만3천개abc`, `1만3천개/log`,
+`1만3천개발`, `1만3천개시`에서 앞 `1만3천`만 부분 변환하면 안 된다.
+숫자 없는 lexical `만개`도 이 규칙의 대상이 아니다.
 
 금지:
 
@@ -10682,7 +10715,7 @@ Leading-zero suffix clock-hour surface는 숫자 의미로 재해석하지 않�
 09시 -> 09시
 09시다 -> 09시다
 07시 05분 -> 07시 05분
-09:30 -> 구시 삼십분
+09:30 -> 아홉시 삼십분
 ```
 
 Clock-hour `N시` may be followed by a safe attached Korean tail. The original tail is preserved verbatim; the preprocessor does not correct Korean particles or endings.

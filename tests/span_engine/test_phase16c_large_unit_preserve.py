@@ -15,12 +15,23 @@ from engine.span_engine import transform
         "만",
         "억",
         "조",
-        "3만개",
-        "12만개입니다",
     ],
 )
 def test_large_unit_atomic_preserve_and_forbidden(text: str) -> None:
     assert transform(text) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("3만개", "삼만 개"),
+        ("12만개입니다", "십이만 개입니다"),
+    ],
+)
+def test_large_unit_registered_counter_uses_counter_policy(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

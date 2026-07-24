@@ -288,6 +288,11 @@ def claim_surfaces(
         if candidate.owner == "korean_numeric_chain"
     ]
     counter_candidates = scan_counter_candidates(raw_text)
+    large_unit_counter_candidates = [
+        candidate
+        for candidate in counter_candidates
+        if candidate.metadata.get("full_counter_claim") is True
+    ]
     compound_slash_unit_candidates = scan_compound_slash_unit_candidates(
         raw_text, excluded_ranges
     )
@@ -316,6 +321,7 @@ def claim_surfaces(
         candidate
         for candidate in counter_candidates
         if candidate not in contextual_dae_counter_candidates
+        and candidate not in large_unit_counter_candidates
     ]
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
@@ -331,6 +337,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_acronym_fallback(tokens, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_date_candidates(raw_text, excluded_ranges), registry, excluded_ranges))

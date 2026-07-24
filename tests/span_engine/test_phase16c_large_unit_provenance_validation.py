@@ -19,16 +19,22 @@ def test_large_unit_atomic_provenance_and_validation() -> None:
     assert any(getattr(log, "passed", False) for log in output.trace.validation_logs)
 
 
-def test_large_unit_atomic_preserve_for_ambiguous_counter_like_suffix() -> None:
+def test_large_unit_registered_counter_provenance_and_validation() -> None:
     output = transform_with_trace("3만개")
 
-    assert output.normalized_text == "3만개"
-    assert not any(
-        piece.owner == "large_unit_atomic"
+    assert output.normalized_text == "삼만 개"
+    assert any(
+        piece.owner == "counter_noun"
         and piece.provenance == "GENERATED_READING"
         for piece in output.render_pieces
     )
-    assert any(getattr(log, "passed", False) for log in output.trace.validation_logs)
+    assert any(
+        piece.owner == "counter_noun"
+        and piece.provenance == "ORIGINAL_KOREAN"
+        and piece.text == "개"
+        for piece in output.render_pieces
+    )
+    assert all(getattr(log, "passed", False) for log in output.trace.validation_logs)
 
 
 def test_large_unit_atomic_safe_particle_must_not_broad_correct() -> None:

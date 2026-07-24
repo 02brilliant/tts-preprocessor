@@ -22,6 +22,12 @@ _LARGE_UNIT_SIGNS = frozenset({"+", "-"})
 _SMALL_UNITS = {"천": 1000, "백": 100, "십": 10}
 _SMALL_UNIT_ORDER = {"천": 3, "백": 2, "십": 1}
 _LARGE_UNIT_ORDER = {"만": 1, "억": 2, "조": 3, "경": 4}
+_LARGE_UNIT_VALUES = {
+    "만": 10_000,
+    "억": 100_000_000,
+    "조": 1_000_000_000_000,
+    "경": 10_000_000_000_000_000,
+}
 _ATTACHED_HANGUL_TAILS = (
     "였고",
     "였지만",
@@ -64,6 +70,7 @@ class _LargeUnitParse:
     sign_profile: str | None = None
     numeric_form: str | None = None
     sign_surface: str | None = None
+    integer_value: int | None = None
 
 
 def is_large_unit(ch: str) -> bool:
@@ -306,6 +313,37 @@ class MixedIntegerCoreParse:
     value: int
 
 
+def parse_large_unit_integer_core_at(
+    raw_text: str, start: int
+) -> MixedIntegerCoreParse | None:
+    """Parse a complete unsigned integer core containing a Korean large unit."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(start, int):
+        raise TypeError("start must be int")
+    if start < 0 or start >= len(raw_text):
+        return None
+    if raw_text[start] in _LARGE_UNIT_SIGNS:
+        return None
+
+    parsed = _parse_large_unit_at(raw_text, start)
+    if (
+        parsed is None
+        or parsed.has_decimal
+        or parsed.integer_value is None
+        or parsed.integer_value < 0
+    ):
+        return None
+    reading = parsed.reading
+    if not parsed.reading_includes_suffix:
+        reading = f"{reading}{raw_text[parsed.suffix_span.start:parsed.suffix_span.end]}"
+    return MixedIntegerCoreParse(
+        end=parsed.core_span.end,
+        reading=reading,
+        value=parsed.integer_value,
+    )
+
+
 def parse_mixed_integer_core_at(
     raw_text: str, start: int
 ) -> MixedIntegerCoreParse | None:
@@ -338,6 +376,7 @@ def _parse_structured_integer_large_unit_at(
     large_group_saw_small_units: list[bool] = []
     saw_large_unit = False
     last_large_unit_span: SourceSpan | None = None
+    integer_value = 0
 
     while index < len(raw_text):
         group = _parse_small_group(raw_text, index)
@@ -403,6 +442,7 @@ def _parse_structured_integer_large_unit_at(
                 )
             )
             large_group_saw_small_units.append(group.saw_small_unit)
+            integer_value += group.value * _LARGE_UNIT_VALUES[large_unit]
             saw_large_unit = True
             last_large_unit_span = SourceSpan(next_index, next_index + 1)
             previous_large_order = large_order
@@ -411,6 +451,7 @@ def _parse_structured_integer_large_unit_at(
 
         if saw_large_unit:
             readings.append(group.reading)
+            integer_value += group.value
             index = next_index
         break
 
@@ -426,6 +467,7 @@ def _parse_structured_integer_large_unit_at(
         has_decimal=False,
         reason="large_unit_structured_integer_surface",
         reading_includes_suffix=True,
+        integer_value=integer_value,
     )
 
 
@@ -593,6 +635,12 @@ def _parse_numeric_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse |
         sign_profile=policy.sign_profile.value,
         numeric_form=core.numeric_form,
         sign_surface=core.sign_surface,
+        integer_value=(
+            int(numeric_text.replace(",", ""))
+            * _LARGE_UNIT_VALUES[raw_text[numeric_end]]
+            if not has_decimal and not sign
+            else None
+        ),
     )
 
 
@@ -676,6 +724,7 @@ def _parse_mixed_large_unit_at(raw_text: str, start: int) -> _LargeUnitParse | N
                 reading="".join(parts),
                 has_decimal=False,
                 reason="large_unit_mixed_arabic_hangul_integer_surface",
+                integer_value=total * _LARGE_UNIT_VALUES[raw_text[integer_end]],
             )
 
         if integer_end < len(raw_text) and is_large_unit(raw_text[integer_end]):
@@ -944,6 +993,7 @@ __all__ = [
     "is_unsafe_large_unit_tail",
     "large_unit_render_pieces",
     "parse_large_unit_candidate",
+    "parse_large_unit_integer_core_at",
     "parse_mixed_integer_core_at",
     "scan_large_unit_candidates",
 ]

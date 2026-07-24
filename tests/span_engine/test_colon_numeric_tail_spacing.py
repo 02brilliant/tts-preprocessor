@@ -79,7 +79,7 @@ def test_colon_numeric_sentence_punctuation() -> None:
 def test_colon_numeric_time_like_preserve_or_time_policy() -> None:
     cases = [
         ("09:30테스트", "09:30테스트"),
-        ("09:30 테스트", "구시 삼십분 테스트"),
+        ("09:30 테스트", "아홉시 삼십분 테스트"),
         ("24:09테스트", "24:09테스트"),
         ("24:09 테스트", "이십사시 구분 테스트"),
         ("3:04테스트", "3:04테스트"),

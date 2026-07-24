@@ -122,7 +122,7 @@ CASES = [
     ProbeCase("malformed_large_dot", "25..50억", "25..50억"),
     ProbeCase("malformed_large_comma", "2,34억", "2,34억"),
     ProbeCase("malformed_large_double_comma", "2,,345억", "2,,345억"),
-    ProbeCase("time_like_09_30", "09:30", "구시 삼십분"),
+    ProbeCase("time_like_09_30", "09:30", "아홉시 삼십분"),
     ProbeCase("time_like_00_30", "00:30", "영시 삼십분"),
     ProbeCase("time_like_13_05", "13:05", "십삼시 오분"),
     ProbeCase("time_like_24_09", "24:09", "이십사시 구분"),

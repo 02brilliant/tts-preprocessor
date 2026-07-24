@@ -308,11 +308,7 @@ def scan_time_candidates(
             )
         if gate["decision"] != "pass":
             continue
-        reading = (
-            strong_time_number_reading(match.group(1), hour, minute)
-            if gate["reason"] == "strong_time_like_bare"
-            else time_number_reading(hour, minute)
-        )
+        reading = time_number_reading(hour, minute)
         candidates.append(
             SurfaceCandidate(
                 core_span=span,
@@ -413,24 +409,6 @@ def time_number_reading(hour: int, minute: int, second: int | None = None) -> st
     if second is not None:
         reading += f" {number_to_korean_under_10000(second)}초"
     return reading
-
-
-def strong_time_number_reading(hour_text: str, hour: int, minute: int) -> str:
-    hour_reading = _strong_time_hour_reading(hour_text, hour)
-    reading = f"{hour_reading}시"
-    if minute != 0:
-        reading += f" {number_to_korean_under_10000(minute)}분"
-    return reading
-
-
-def _strong_time_hour_reading(hour_text: str, hour: int) -> str:
-    if hour_text == "00":
-        return "영"
-    if hour_text == "01":
-        return "한"
-    if len(hour_text) == 2 and hour_text.startswith("0"):
-        return number_to_korean_under_10000(hour)
-    return clock_hour_reading(hour) or number_to_korean_under_10000(hour)
 
 
 def clock_hour_reading(hour: int) -> str | None:

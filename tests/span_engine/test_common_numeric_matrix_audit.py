@@ -135,7 +135,7 @@ def test_protected_contexts_precede_numeric_owners(text: str, expected: str):
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("09:30", "구시 삼십분"),
+        ("09:30", "아홉시 삼십분"),
         ("13:05 브리핑", "십삼시 오분 브리핑"),
         ("3:4", "삼 대 사"),
         ("1-2kg", "일에서 이 킬로그램"),

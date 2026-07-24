@@ -607,7 +607,7 @@ CASES = [
     ScenarioCase(
         "g08_time_like_current_policy",
         joined(GROUP_8_TIME_LIKE),
-        contains=("영시 삼십분", "구시 삼십분", "십삼시 오분", "이십사시 구분", "이십오 대 삼십"),
+        contains=("영시 삼십분", "아홉시 삼십분", "십삼시 오분", "이십사시 구분", "이십오 대 삼십"),
         preserves=("24:50", "+1:02", "1:02:03", "오후 13:05", "line 1:23", "case 1:23", "version 1:23", "요한복음 3:16"),
     ),
     ScenarioCase("g08_colon_invalid_preserve", joined(GROUP_8_COLON_INVALID), preserves=GROUP_8_COLON_INVALID, note="3:04 is checked separately as current time-like behavior"),

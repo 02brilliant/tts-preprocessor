@@ -200,7 +200,7 @@ def test_decimal_fractional_zero_invalid_and_malformed_current_behavior(
 
 
 LEADING_ZERO_OWNER_REGRESSION_CASES = [
-    ("09:30", "구시 삼십분"),
+    ("09:30", "아홉시 삼십분"),
     ("00:30", "영시 삼십분"),
     ("13:05", "십삼시 오분"),
     ("24:09", "이십사시 구분"),
@@ -216,7 +216,7 @@ LEADING_ZERO_OWNER_REGRESSION_CASES = [
     ("file-01.txt", "file-01.txt"),
     (
         "leading-zero 관련 09:30, 010-1234-5678, 01, 01.5, v01은 기존 정책을 유지해야 한다.",
-        "leading-zero 관련 구시 삼십분, 공일공 일이삼사 오육칠팔, 01, 01.5, v01은 기존 정책을 유지해야 한다.",
+        "leading-zero 관련 아홉시 삼십분, 공일공 일이삼사 오육칠팔, 01, 01.5, v01은 기존 정책을 유지해야 한다.",
     ),
 ]
 

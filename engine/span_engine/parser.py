@@ -3,7 +3,7 @@ from __future__ import annotations
 from engine.span_engine.administrative import parse_administrative_suffix_candidate
 from engine.span_engine.arithmetic import parse_basic_arithmetic_candidate
 from engine.span_engine.currency import parse_currency_candidate
-from engine.span_engine.counter import parse_counter_candidate
+from engine.span_engine.counter import counter_render_pieces, parse_counter_candidate
 from engine.span_engine.compound_unit import (
     parse_compound_exact_unit_candidate,
     parse_compound_slash_unit_candidate,
@@ -180,6 +180,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     elif candidate.owner == "numeric_suffix":
         reading = parse_numeric_suffix_candidate(raw_text, candidate)
     elif candidate.owner == "counter_noun":
+        if candidate.metadata.get("full_counter_claim") is True:
+            return _make_counter_surface(raw_text, candidate, raw)
         reading = parse_counter_candidate(raw_text, candidate)
     elif candidate.owner in {
         "range",
@@ -354,6 +356,22 @@ def _make_large_unit_surface(
         reading,
         render_pieces,
         default_surface_type="LARGE_UNIT_ATOMIC_SURFACE",
+    )
+
+
+def _make_counter_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    reading = parse_counter_candidate(raw_text, candidate)
+    render_pieces = counter_render_pieces(raw_text, candidate)
+    if reading is None or render_pieces is None:
+        return None
+    return _make_core_render_surface(
+        candidate,
+        raw,
+        reading,
+        render_pieces,
+        default_surface_type="COUNTER_SURFACE",
     )
 
 
