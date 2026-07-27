@@ -41,14 +41,14 @@ _COMPOUND_SLASH = r"[/／]"
 _PERCENT = r"[%％﹪]"
 _TEMP_UNIT = r"(?:℃|℉|º|ºC|ºF|°C|°F|°\s*C|°\s*F|º\s*C|º\s*F)"
 _SIMPLE_UNIT = (
-    r"(?:㎠|㎢|㎤|㎦|㎜|㎝|㎞|㎎|㎏|㎖|㎡|㎥|㎐|㎒|㎓|㏈|"
-    r"m²|cm²|km²|m³|cm³|km³|m3|cm3|km3|kHz|MHz|GHz|Ghz|ghz|mL|ml|ML|MWh|kWh|Wh|MW|kW|W|mm|cm|km|"
+    r"(?:㎠|㎢|㎤|㎦|㎜|㎝|㎞|㎎|㎏|㎖|ℓ|㎅|㎆|㎇|㎡|㎥|㎐|㎑|㎒|㎓|㎫|㎷|㎹|㎽|㎾|㎿|㏈|‰|"
+    r"m²|m2|cm²|cm2|km²|km2|m³|cm³|km³|m3|cm3|km3|mHz|kHz|MHz|GHz|Ghz|ghz|mL|ml|ML|mPa|MPa|MWh|kWh|Wh|mW|MW|kW|W|mV|MV|mm|cm|km|"
     r"mg|kg|Hz|hz|dB|KB|MB|GB|PB|m|g|L|%)"
 )
 _COMPOUND_UNIT = (
-    r"(?:km|㎞|m|cm|㎝|mg|㎎|g|KB|MB|GB|TB|PB)"
+    r"(?:(?:km|㎞|m|cm|㎝|mg|㎎|g|KB|MB|GB|TB|PB)"
     rf"{_COMPOUND_SLASH}"
-    r"(?:h|hr|min|s|sec|L|l|ℓ|dL)"
+    r"(?:h|hr|min|s|sec|L|l|ℓ|dL)|㎧)"
 )
 _EXACT_COMPOUND = r"(?:Mbps|Gbps|rpm|fps|ppm|ppb|dBi)"
 _CURRENCY_PREFIX = r"[$＄﹩€₩￦¥￥£]"

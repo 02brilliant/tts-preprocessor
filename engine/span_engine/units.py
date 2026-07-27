@@ -23,12 +23,17 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "mL": "밀리리터",
     "ml": "밀리리터",
     "ML": "밀리리터",
+    "mPa": "밀리파스칼",
+    "MPa": "메가파스칼",
     "MWh": "메가와트시",
     "kWh": "킬로와트시",
     "Wh": "와트시",
+    "mW": "밀리와트",
     "MW": "메가와트",
     "kW": "킬로와트",
     "W": "와트",
+    "mV": "밀리볼트",
+    "MV": "메가볼트",
     "mm": "밀리미터",
     "cm": "센티미터",
     "km": "킬로미터",
@@ -36,6 +41,7 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "kg": "킬로그램",
     "Hz": "헤르츠",
     "hz": "헤르츠",
+    "mHz": "밀리헤르츠",
     "dB": "데시벨",
     "KB": "킬로바이트",
     "MB": "메가바이트",
@@ -70,12 +76,26 @@ SPECIAL_UNIT_READINGS: dict[str, str] = {
     "㎎": "밀리그램",
     "㎏": "킬로그램",
     "㎖": "밀리리터",
+    "ℓ": "리터",
+    "㎅": "킬로바이트",
+    "㎆": "메가바이트",
+    "㎇": "기가바이트",
+    "㎑": "킬로헤르츠",
+    "㎫": "메가파스칼",
+    "㎷": "밀리볼트",
+    "㎹": "메가볼트",
+    "㎽": "밀리와트",
+    "㎾": "킬로와트",
+    "㎿": "메가와트",
     "㎠": "제곱센티미터",
     "㎢": "제곱킬로미터",
     "㎡": "제곱미터",
     "m²": "제곱미터",
+    "m2": "제곱미터",
     "cm²": "제곱센티미터",
+    "cm2": "제곱센티미터",
     "km²": "제곱킬로미터",
+    "km2": "제곱킬로미터",
     "㎤": "세제곱센티미터",
     "㎦": "세제곱킬로미터",
     "㎥": "세제곱미터",
@@ -89,6 +109,7 @@ SPECIAL_UNIT_READINGS: dict[str, str] = {
     "㎒": "메가헤르츠",
     "㎓": "기가헤르츠",
     "㏈": "데시벨",
+    "‰": "퍼밀",
     "℃": "도",
     "℉": "화씨",
     "º": "도",
@@ -121,6 +142,8 @@ _PREV_BLOCKERS = frozenset(".,~:/") | SIGNED_NUMERIC_SIGN_ALIASES
 _PREV_SYMBOL_BLOCKERS = frozenset("$€£¥₩")
 _NEXT_BLOCKERS = frozenset(",~:/") | SIGNED_NUMERIC_SIGN_ALIASES
 _SUPERSCRIPT_EXPONENTS = frozenset("²³")
+_CJK_COMPATIBILITY_UNIT_SYMBOL_START = ord("㎀")
+_CJK_COMPATIBILITY_UNIT_SYMBOL_END = ord("㏟")
 _UNSAFE_TAIL_UNITS_BY_LENGTH = sorted(
     {
         *SIMPLE_UNIT_READINGS,
@@ -219,9 +242,14 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
         "MWh",
         "kWh",
         "Wh",
+        "mW",
         "MW",
         "kW",
         "W",
+        "mV",
+        "MV",
+        "mPa",
+        "MPa",
         "mm",
         "cm",
         "km",
@@ -235,8 +263,10 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
         "ｍ",
         "g",
         "L",
+        "ℓ",
         "Hz",
         "hz",
+        "mHz",
         "MHz",
         "GHz",
         "Ghz",
@@ -265,8 +295,22 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
         "㎤",
         "㎦",
         "㎐",
+        "㎑",
         "㎒",
         "㎓",
+        "㎅",
+        "㎆",
+        "㎇",
+        "㎫",
+        "㎷",
+        "㎹",
+        "㎽",
+        "㎾",
+        "㎿",
+        "‰",
+        "m2",
+        "cm2",
+        "km2",
         "%",
         "％",
         "﹪",
@@ -631,6 +675,21 @@ def _unit_tail_preserve_candidate(
             tail_end,
             "unit_like_ascii_tail_contamination",
         )
+    if unit_start < len(raw_text):
+        symbol = raw_text[unit_start]
+        if (
+            symbol != "㎧"
+            and _CJK_COMPATIBILITY_UNIT_SYMBOL_START
+            <= ord(symbol)
+            <= _CJK_COMPATIBILITY_UNIT_SYMBOL_END
+        ):
+            symbol_end = unit_start + 1
+            tail_end = _consume_unsafe_ascii_tail(raw_text, symbol_end)
+            return _preserve_candidate(
+                start,
+                tail_end,
+                "unregistered_compatibility_unit_symbol_preserve",
+            )
     return None
 
 
@@ -743,6 +802,16 @@ def _compound_slash_tail_preserve_candidate(
     raw_text: str, start: int, numeric_end: int
 ) -> SurfaceCandidate | None:
     segment_start = _consume_optional_ascii_space(raw_text, numeric_end)
+    if raw_text.startswith("㎧", segment_start):
+        symbol_end = segment_start + 1
+        tail_end = _consume_unsafe_ascii_tail(raw_text, symbol_end)
+        if tail_end == symbol_end:
+            return None
+        return _preserve_candidate(
+            start,
+            tail_end,
+            "compound_unit_like_ascii_tail_contamination",
+        )
     segment_end = segment_start
     while segment_end < len(raw_text) and (
         raw_text[segment_end].isascii()

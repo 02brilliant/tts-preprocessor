@@ -17,6 +17,7 @@ COMPOUND_SLASH_UNIT_READINGS: dict[str, str] = {
     "m/min": "분속 {number} 미터",
     "m/sec": "초속 {number} 미터",
     "m/s": "초속 {number} 미터",
+    "㎧": "초속 {number} 미터",
     "cm/s": "초속 {number} 센티미터",
     "㎝/s": "초속 {number} 센티미터",
     "km/L": "리터당 {number} 킬로미터",

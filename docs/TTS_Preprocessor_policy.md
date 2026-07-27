@@ -1412,8 +1412,36 @@ Frequency:
 
 ```text
 ㎐ -> 헤르츠
+㎑ -> 킬로헤르츠
 ㎒ -> 메가헤르츠
 ㎓ -> 기가헤르츠
+```
+
+Power, voltage, pressure, and data size:
+
+```text
+㎽ -> 밀리와트
+㎾ -> 킬로와트
+㎿ -> 메가와트
+㎷ -> 밀리볼트
+㎹ -> 메가볼트
+㎫ -> 메가파스칼
+㎅ -> 킬로바이트
+㎆ -> 메가바이트
+㎇ -> 기가바이트
+```
+
+Volume and speed:
+
+```text
+ℓ -> 리터
+㎧ -> m/s와 동일한 "초속 {number} 미터"
+```
+
+Separately registered symbol unit:
+
+```text
+‰ -> 퍼밀
 ```
 
 예:
@@ -1422,9 +1450,27 @@ Frequency:
 45㎠ -> 사십오 제곱센티미터
 3㎏ -> 삼 킬로그램
 60㎐ -> 육십 헤르츠
+55㎑ -> 오십오 킬로헤르츠
 3.2㎒ -> 삼쩜이 메가헤르츠
 3.2㎓ -> 삼쩜이 기가헤르츠
+55㎿ -> 오십오 메가와트
+2.5㎿ -> 이쩜오 메가와트
+55㎷ -> 오십오 밀리볼트
+55㎹ -> 오십오 메가볼트
+55㎫ -> 오십오 메가파스칼
+55㎆ -> 오십오 메가바이트
+55㎧ -> 초속 오십오 미터
+55‰ -> 오십오 퍼밀
 ```
+
+이 별칭은 전역 NFKC 정규화나 전역 문자열 치환으로 구현하지 않는다.
+등록 owner가 숫자와 완전한 기호를 full-claim할 때만 적용한다. 현재 알파벳
+단위 레지스트리에 대응하지 않는 `㎩`(Pa), `㎺`(pW), `㎸`(kV),
+`㎙`(fm)는 읽기를 임의로 추론하지 않고 숫자를 포함한 단위형 surface를
+원문 보존한다. 특히 `㎙`는 Unicode상 미터가 아니라 femtometer 기호이므로
+`미터` 별칭으로 사용하지 않는다. Unicode에는 `MPa`와 같은 `㎫`는 있지만
+`mPa`와 같은 단일 호환 기호는 없으며, `㎩`는 `Pa`이므로 `mPa` 별칭으로
+사용하지 않는다.
 
 #### Fullwidth Latin meter unit alias
 
@@ -1529,7 +1575,6 @@ fenced code, shell/code-like, path, email, square-bracket interior는
 6. `㌔`, `㍑` Japanese compatibility unit aliases
 7. `㎾h`, `㎾·h` kWh alias
 8. `円` currency alias
-9. `㎑` kHz alias
 
 위 항목은 필요하면 future/review phase에서 별도 정책으로 다룬다.
 
@@ -4163,13 +4208,18 @@ Simple Unit Inventory:
 | `mL` | `밀리리터` | numeric prefix 필요 |
 | `L` | `리터` | numeric prefix 필요 |
 | `V` | `볼트` | ambiguous single-letter guard |
+| `mV` | `밀리볼트` | numeric prefix 필요, lowercase `m` |
+| `MV` | `메가볼트` | numeric prefix 필요, uppercase `M` |
 | `A` | `암페어` | ambiguous single-letter guard |
 | `W` | `와트` | numeric prefix 필요 |
 | `kW` | `킬로와트` | numeric prefix 필요 |
+| `mW` | `밀리와트` | numeric prefix 필요, lowercase `m` |
 | `MW` | `메가와트` | numeric prefix 필요 |
 | `Wh` | `와트시` | numeric prefix 필요 |
 | `kWh` | `킬로와트시` | numeric prefix 필요 |
 | `MWh` | `메가와트시` | numeric prefix 필요 |
+| `mPa` | `밀리파스칼` | numeric prefix 필요, lowercase `m` |
+| `MPa` | `메가파스칼` | numeric prefix 필요, uppercase `M`; `MPA` 제외 |
 | `Hz`, `hz` | `헤르츠` | numeric prefix 필요 |
 | `dB` | `데시벨` | numeric prefix 필요 |
 | `bit` | `비트` | numeric prefix 필요 |
@@ -4179,8 +4229,9 @@ Simple Unit Inventory:
 | `GB` | `기가바이트` | numeric prefix 필요 |
 | `TB` | `테라바이트` | numeric prefix 필요 |
 | `PB` | `페타바이트` | numeric prefix 필요 |
-| `kHz`, `khz` | `킬로헤르츠` | numeric prefix 필요 |
-| `MHz`, `mhz` | `메가헤르츠` | numeric prefix 필요 |
+| `mHz` | `밀리헤르츠` | numeric prefix 필요, lowercase `m` |
+| `kHz` | `킬로헤르츠` | numeric prefix 필요 |
+| `MHz` | `메가헤르츠` | numeric prefix 필요, uppercase `M` |
 | `GHz`, `Ghz`, `ghz` | `기가헤르츠` | numeric prefix 필요 |
 | `Gbps` | `기가비피에스` | numeric prefix 필요 |
 | `Tbps` | `테라비피에스` | numeric prefix 필요 |
@@ -4192,20 +4243,34 @@ Special Unit Inventory:
 |---|---|
 | `㎜` | `밀리미터` |
 | `㎝` | `센티미터` |
-| `㎙` | `미터` |
 | `㎞` | `킬로미터` |
 | `㎎` | `밀리그램` |
 | `㎏` | `킬로그램` |
 | `㎖` | `밀리리터` |
 | `ℓ` | `리터` |
+| `㎅` | `킬로바이트` |
+| `㎆` | `메가바이트` |
+| `㎇` | `기가바이트` |
 | `㎐` | `헤르츠` |
+| `㎑` | `킬로헤르츠` |
+| `㎒` | `메가헤르츠` |
+| `㎓` | `기가헤르츠` |
 | `㏈` | `데시벨` |
+| `㎫` | `메가파스칼` |
+| `㎷` | `밀리볼트` |
+| `㎹` | `메가볼트` |
+| `㎽` | `밀리와트` |
+| `㎾` | `킬로와트` |
+| `㎿` | `메가와트` |
+| `‰` | `퍼밀` |
 | `㎡` | `제곱미터` |
 | `㎥` | `세제곱미터` |
 | `%` | `퍼센트` |
 | `％` | `퍼센트` |
-| `‰` | `퍼밀` |
 | `°` | `도` |
+
+`㎙`는 `fm`(femtometer) 기호이므로 미터 별칭에서 제외한다. `‰`는
+`%`와 의미가 같은 호환 표기는 아니지만, 별도 등록된 퍼밀 단위로 읽는다.
 
 Area / Volume Unit Inventory:
 
@@ -9821,7 +9886,7 @@ class LexiconEntry:
 |---|---|---|
 | `mm`, `㎜` | 밀리미터 | numeric prefix required |
 | `cm`, `㎝` | 센티미터 | numeric prefix required |
-| `m`, `ｍ`, `㎙` | 미터 | numeric prefix required, single-letter strict, `ｍ` is owner-local alias only |
+| `m`, `ｍ` | 미터 | numeric prefix required, single-letter strict, `ｍ` is owner-local alias only |
 | `km`, `㎞` | 킬로미터 | numeric prefix required |
 | `µm`, `μm` | 마이크로미터 | numeric prefix required |
 | `nm` | 나노미터 | numeric prefix required |
@@ -9874,9 +9939,9 @@ class LexiconEntry:
 
 | 입력 | reading | 조건 |
 |---|---|---|
-| `V`, `mV`, `kV` | 볼트 / 밀리볼트 / 킬로볼트 | numeric prefix required |
+| `mV`, `㎷`, `MV`, `㎹` | 밀리볼트 / 밀리볼트 / 메가볼트 / 메가볼트 | numeric prefix required; prefix case-sensitive |
 | `A`, `mA` | 암페어 / 밀리암페어 | numeric prefix required |
-| `W`, `kW`, `MW`, `GW` | 와트 / 킬로와트 / 메가와트 / 기가와트 | numeric prefix required |
+| `W`, `mW`, `㎽`, `kW`, `㎾`, `MW`, `㎿` | 와트 / 밀리와트 / 밀리와트 / 킬로와트 / 킬로와트 / 메가와트 / 메가와트 | numeric prefix required; prefix case-sensitive |
 | `Wh`, `kWh`, `MWh` | 와트시 / 킬로와트시 / 메가와트시 | numeric prefix required |
 | `J`, `kJ` | 줄 / 킬로줄 | numeric prefix required |
 | `cal`, `kcal` | 칼로리 / 킬로칼로리 | numeric prefix required |
@@ -9888,7 +9953,7 @@ class LexiconEntry:
 | 입력 | reading | 조건 |
 |---|---|---|
 | `Hz`, `hz`, `㎐` | 헤르츠 | numeric prefix required |
-| `kHz`, `MHz`, `GHz`, `THz` | 킬로헤르츠 / 메가헤르츠 / 기가헤르츠 / 테라헤르츠 | numeric prefix required |
+| `mHz`, `kHz`, `㎑`, `MHz`, `㎒`, `GHz`, `㎓` | 밀리헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 메가헤르츠 / 메가헤르츠 / 기가헤르츠 / 기가헤르츠 | numeric prefix required; prefix case-sensitive |
 | `dB`, `㏈` | 데시벨 | numeric prefix required |
 | `dBm` | 디비엠 | numeric prefix required |
 | `dBi` | 디비아이 | numeric prefix required |
@@ -9908,6 +9973,17 @@ class LexiconEntry:
 | `‰` | 퍼밀 | numeric prefix required |
 | `‱` | 만분율 | profile required |
 
+#### 압력
+
+| 입력 | reading | 조건 |
+|---|---|---|
+| `mPa` | 밀리파스칼 | numeric prefix required, lowercase `m` |
+| `MPa`, `㎫` | 메가파스칼 | numeric prefix required, uppercase `M`; `㎫` is an owner-local alias |
+
+`MPA`는 `MPa`의 대소문자 alias가 아니다. Unit owner는 exact `MPa`만
+소유하며 `MPA`는 news/acronym 처리 경로에 남긴다. 현재 standalone
+`MPA`는 `엠피에이`, 숫자와 붙은 `55MPA`는 원문 보존이다.
+
 ### 35.4 Slash compound unit dictionary
 
 기본 원칙은 “뒷단위당 앞단위”이지만, 자연스러운 고정 표현이 있으면 `시속`, `분속`, `초속`을 우선한다.
@@ -9917,7 +9993,7 @@ class LexiconEntry:
 | 입력 | reading template | 조건 |
 |---|---|---|
 | `km/h`, `㎞/h`, `km/hr` | 시속 {n} 킬로미터 | numeric prefix required |
-| `m/s`, `m/sec` | 초속 {n} 미터 | numeric prefix required |
+| `m/s`, `m/sec`, `㎧` | 초속 {n} 미터 | numeric prefix required; `㎧` is an owner-local compatibility alias |
 | `km/s` | 초속 {n} 킬로미터 | numeric prefix required |
 | `m/min` | 분속 {n} 미터 | numeric prefix required |
 | `ft/s` | 초속 {n} 피트 | numeric prefix required |
@@ -10056,7 +10132,7 @@ Boundary / unsafe tail:
 6. spaced hyphen numeric multi-block
    - `010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔`
 7. frequency case aliases
-   - `Hz/hz`, `kHz/khz`, `MHz/mhz`, `GHz/Ghz/ghz`는 numeric prefix가 있을 때 같은 family로 처리한다.
+   - `Hz/hz`, `mHz`, `kHz`, `MHz`, `GHz/Ghz/ghz`는 numeric prefix가 있을 때 등록된 case-sensitive frequency family로 처리한다.
 8. bitrate / byte-rate 표기 분리
    - `1Gbps -> 일 기가비피에스`를 유지한다.
    - slash throughput 표기 `1Gb/s`는 프로젝트 정책상 `초당 일 기가바이트`로 읽는다.
@@ -10289,7 +10365,7 @@ full consume 실패 후 raw residue 유지
 | `b` | 비트 | numeric prefix required, strict |
 | `B` | 바이트 | numeric prefix required, strict |
 | `Byte`, `Bytes` | 바이트 | numeric prefix required |
-| `KB`, `MB`, `GB`, `TB`, `PB`, `EB`, `ZB`, `YB` | 킬로바이트 / 메가바이트 / 기가바이트 / 테라바이트 / 페타바이트 / 엑사바이트 / 제타바이트 / 요타바이트 | numeric prefix required |
+| `KB`, `㎅`, `MB`, `㎆`, `GB`, `㎇`, `PB` | 킬로바이트 / 킬로바이트 / 메가바이트 / 메가바이트 / 기가바이트 / 기가바이트 / 페타바이트 | numeric prefix required; Unicode forms are owner-local aliases |
 
 #### 이진 접두어
 
@@ -10864,8 +10940,9 @@ EURA 300 -> EURA 300
 
 ### 37.4 Data, power, and frequency units
 
-`MB`, `GB`, `PB`, 전력 계열 `W`, `kW`, `MW`, `Wh`, `kWh`, `MWh`,
-주파수 계열 `Hz`, `hz`, `MHz`, `GHz`, 그리고 `Gbps`는 numeric prefix가
+`MB`, `GB`, `PB`, 전력 계열 `W`, `mW`, `kW`, `MW`, `Wh`, `kWh`, `MWh`,
+전압 계열 `mV`, `MV`, 압력 계열 `mPa`, `MPa`, 주파수 계열 `Hz`, `hz`,
+`mHz`, `MHz`, `GHz`, 그리고 `Gbps`는 numeric prefix가
 있을 때만 변환한다. 정수, valid comma, 소수를 허용한다. 전력
 simple-unit의 숫자와 단위 사이는 붙이거나 ASCII space 한 칸을 둘 수
 있고, 다른 단위는 각각의 기존 owner-local spacing 정책을 유지한다.
@@ -10877,6 +10954,12 @@ token preserve다.
 2.4PB -> 이쩜사 페타바이트
 2MW -> 이 메가와트
 2.5 MW -> 이쩜오 메가와트
+2.5mW -> 이쩜오 밀리와트
+2.5mV -> 이쩜오 밀리볼트
+2.5MV -> 이쩜오 메가볼트
+2.5mPa -> 이쩜오 밀리파스칼
+2.5MPa -> 이쩜오 메가파스칼
+2.5mHz -> 이쩜오 밀리헤르츠
 3MWh -> 삼 메가와트시
 3.2 MWh -> 삼쩜이 메가와트시
 3.2kWh -> 삼쩜이 킬로와트시
@@ -10904,12 +10987,13 @@ registry를 재사용하는 caret-power owner가 전체 surface를 claim한다. 
 Hz -> Hz
 ```
 
-대문자 `M` 접두어는 case-sensitive하게 적용한다. 기존 `MHz`,
-`MB`, `Mbps`, `MB/s`의 `메가~` reading을 유지하고, 전력 계열에서는
-`MW -> 메가와트`, `MWh -> 메가와트시`를 지원한다. `ML`은 기존
-milliliter alias이므로 `메가리터`로 재해석하지 않는다. `MV`, `MA`,
-`MJ`, `MPa`, `Mm`, `Mg`는 현재 기반 단위 registry 또는 충돌 해소 정책이
-없으므로 지원 범위를 넓히지 않는다. 단독 `MW`는 숫자+단위 owner가
+SI 접두어 `m`(milli)과 `M`(mega)은 case-sensitive하게 적용한다.
+`mW/MW`, `mV/MV`, `mPa/MPa`, `mHz/MHz`는 각각 밀리/메가 reading을
+구분한다. 기존 `MB`, `Mbps`, `MB/s`의 `메가~` reading도 유지한다.
+`ML`은 기존 milliliter alias이므로 `메가리터`로 재해석하지 않는다.
+`MA`, `MJ`, `Mm`, `Mg`는 news 약어, 식별자, 마그네슘 기호 또는 기존
+단위 정책과 충돌할 수 있어 자동 확장하지 않는다. `MPA`도 단위 alias로
+등록하지 않는다. 단독 `MW`는 숫자+단위 owner가
 아니므로 acronym fallback으로 철자 읽기하지 않고 원문을 보존한다.
 
 ### 37.5 pH

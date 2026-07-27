@@ -2,6 +2,36 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Extended the live case-sensitive SI unit pairs with `mW/MW`, `mV/MV`,
+  `mPa/MPa`, and `mHz/MHz`. Lowercase `m` renders `밀리`, uppercase `M`
+  renders `메가`, and valid integer/comma/decimal plus optional one-space
+  numeric forms reuse the existing simple-unit owner.
+- Added exact owner-local aliases `㎽ -> mW`, `㎷ -> mV`, `㎹ -> MV`, and
+  `㎫ -> MPa`. Unicode provides no single-character `mPa` alias; `㎩` means
+  `Pa` and remains unregistered. Exact uppercase `MPA` is deliberately not a
+  unit alias and remains on the news/acronym path.
+- Kept collision-prone automatic expansions closed: `ML` remains the existing
+  milliliter alias, while `MA`, `MJ`, `Mm`, and `Mg` are not added because of
+  acronym, identifier, chemical-symbol, or existing-policy ambiguity. Unit
+  candidates now make acronym fallback yield only when a complete numeric
+  unit surface exists, so `2.5 MV` is a unit while bare `MV` remains `엠브이`.
+- Added owner-local Unicode compatibility aliases for alphabetic units already
+  present in the live registry: `㎾`/`㎿`, `㎑`/`㎒`/`㎓`,
+  `㎅`/`㎆`/`㎇`, `ℓ`, and `㎧`. The aliases reuse the same Korean readings
+  as `kW`/`MW`, `kHz`/`MHz`/`GHz`, `KB`/`MB`/`GB`, `L`, and `m/s`
+  without global NFKC normalization. Canonical examples include
+  `55㎿ -> 오십오 메가와트` and `55㎧ -> 초속 오십오 미터`.
+- Added atomic preservation for unregistered CJK compatibility unit symbols so
+  inputs such as `55㎩`, `55㎺`, `55㎸`, and `55㎙` do not fall
+  through to a partial number-only reading. Corrected the stale `㎙` meter
+  claim: Unicode defines it as `fm` (femtometer), not plain meter. The later
+  case-sensitive SI expansion above supersedes the earlier preservation of
+  `㎽`, `㎷`, `㎹`, and `㎫`.
+- Aligned the documented ASCII area aliases `m2`, `cm2`, and `km2` with the
+  special-unit registry and added an explicit equivalence/protected-tail test
+  matrix covering both newly added and already supported unit symbols. Also
+  aligned the existing policy-declared `‰ -> 퍼밀` notation with the live
+  registry and tests; it is a separate unit, not a percent-equivalent alias.
 - Restricted specialized `시` and `시간` number readings to attached markers.
   A horizontal space before either marker delegates the numeric core to
   ordinary number policy: `3 시 -> 삼 시`, `3 시간 -> 삼 시간`, and
@@ -336,7 +366,6 @@ symbol alias는 owner-local matcher에서만 적용한다. 전역 Unicode normal
 - fullwidth Latin/digit normalization
 - NFD Hangul eligibility
 - middle-dot alias expansion beyond policy-defined forms
-- kHz compatibility symbol `㎑`
 
 ## 5. Numeric, Unit, and Suffix Corrections
 
@@ -491,7 +520,8 @@ Compact `N대M` relation은 score/ratio owner 확장이 아니라 일반 number 
 Frequency aliases:
 
 - `Hz` and `hz` use the same `헤르츠` policy.
-- `kHz/khz`, `MHz/mhz`, `GHz/Ghz/ghz` are same-family frequency units when a numeric prefix exists.
+- `mHz`, `kHz`, `MHz`, and `GHz/Ghz/ghz` are registered
+  case-sensitive frequency units when a numeric prefix exists.
 - Unsafe alphabetic tails preserve: `5Hzabc`, `5hzabc`.
 
 Bitrate and slash throughput are distinct:
@@ -789,7 +819,8 @@ Allowed output diffs: none.
 - Added `MW -> 메가와트` and `MWh -> 메가와트시` while retaining the existing
   `MHz`, `MB`, `Mbps`, and `MB/s` `메가~` readings.
 - Kept the prefix case-sensitive. `ML` remains the established milliliter alias;
-  `MV`, `MA`, `MJ`, `MPa`, `Mm`, and `Mg` remain unsupported.
+  at that phase `MV`, `MA`, `MJ`, `MPa`, `Mm`, and `Mg` remained unsupported.
+  The current case-sensitive SI expansion later enabled `MV` and `MPa`.
 - Registered power units accept attached or one-ASCII-space numeric forms.
   Alphabetic unsafe tails preserve atomically without partial number fallback.
 - Bare `MW` is blocked from generic acronym spelling and preserves because the

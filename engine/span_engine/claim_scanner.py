@@ -337,7 +337,14 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_managed_acronym_numeric_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_acronym_fallback(tokens, registry, excluded_ranges))
+    candidates.extend(
+        _claim_acronym_fallback(
+            tokens,
+            registry,
+            excluded_ranges,
+            simple_unit_candidates,
+        )
+    )
     candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
@@ -455,6 +462,7 @@ def _claim_acronym_fallback(
     tokens: list[SpanToken],
     registry: SurfaceClaimRegistry,
     excluded_ranges: list[BracketRange],
+    simple_unit_candidates: list[SurfaceCandidate],
 ) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
     for token in tokens:
@@ -472,6 +480,11 @@ def _claim_acronym_fallback(
                     token.raw, match.start(), match.end()
                 )
                 or span_overlaps_excluded_ranges(span, excluded_ranges)
+                or any(
+                    candidate.core_span.start <= span.start
+                    and span.end <= candidate.core_span.end
+                    for candidate in simple_unit_candidates
+                )
                 or not registry.can_claim(span, "acronym_fallback")
             ):
                 continue
