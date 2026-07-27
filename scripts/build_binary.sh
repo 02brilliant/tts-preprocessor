@@ -4,7 +4,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
+PYTHON_BIN="$VENV_DIR/bin/python"
 PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
+REQUIRED_PYTHON_SERIES="3.13"
 DIST_DIR="$ROOT_DIR/dist"
 BUILD_DIR="$ROOT_DIR/build"
 SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
@@ -23,8 +25,14 @@ if [[ ! -d "$VENV_DIR" ]]; then
   exit 1
 fi
 
-if [[ ! -x "$PYINSTALLER_BIN" ]]; then
-  echo "Missing PyInstaller executable: $PYINSTALLER_BIN" >&2
+if [[ ! -x "$PYTHON_BIN" || ! -x "$PYINSTALLER_BIN" ]]; then
+  echo "Missing project Python or PyInstaller executable under: $VENV_DIR/bin" >&2
+  exit 1
+fi
+
+PYTHON_RUNTIME="$("$PYTHON_BIN" -c 'import sys, sysconfig; print("%d.%d:%d" % (sys.version_info.major, sys.version_info.minor, int(bool(sysconfig.get_config_var("Py_GIL_DISABLED")))))')"
+if [[ "$PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
+  echo "Project Python must be standard-GIL Python $REQUIRED_PYTHON_SERIES.x; got: $PYTHON_RUNTIME" >&2
   exit 1
 fi
 

@@ -28,6 +28,125 @@
 
 Linux 운영 바이너리는 macOS 또는 GitHub Actions에서 만들지 않는다.
 
+### 1.1 Python 3.13 환경 기준
+
+개발, 테스트, API 서버, 세 플랫폼 PyInstaller 빌드는 일반 GIL CPython
+3.13을 사용한다. `.python-version`과 Windows CI는 검증된 패치 버전
+3.13.14를 고정하고, 빌드·배포 preflight는 보안 패치 갱신이 가능하도록
+3.13 계열과 `Py_GIL_DISABLED=0`을 요구한다.
+
+직접 의존성은 역할별로 고정한다.
+
+| 파일 | 용도 |
+|---|---|
+| `requirements/runtime.txt` | 운영 API의 FastAPI, Pydantic, Uvicorn |
+| `requirements/build.txt` | PyInstaller와 pyinstaller-hooks-contrib |
+| `requirements/dev.txt` | 로컬 개발·테스트 전체 환경과 FastAPI TestClient |
+
+Apple Silicon 로컬 환경은 Python 3.13 arm64로 새로 만든다. Python 3.10
+가상환경을 인플레이스 업그레이드하지 않는다.
+
+```sh
+mv .venv .venv-python310-backup
+python3.13 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements/dev.txt
+.venv/bin/python --version
+.venv/bin/python -c "import platform, sys; print(platform.machine()); print(sys.executable)"
+```
+
+기존 `.venv`를 이동하거나 삭제하기 전에는 현재 변경사항과 백업 경로를
+확인한다.
+
+### 1.2 Ubuntu 운영 서버 환경 교체
+
+운영 서버에는 서로 독립적인 두 환경이 있다.
+
+- `~/tts-preprocessor/.venv`: FastAPI/Uvicorn API 서버
+- `~/tts-preprocessor/buildenv`: Linux PyInstaller 바이너리 빌드
+
+시스템 `/usr/bin/python3`를 교체하지 않는다. 승인된 방식으로 일반 GIL
+Python 3.13을 별도 설치하고 다음이 통과하는지 먼저 확인한다.
+
+```sh
+python3.13 --version
+python3.13 -c 'import sysconfig; assert not sysconfig.get_config_var("Py_GIL_DISABLED")'
+python3.13 -m venv --help >/dev/null
+```
+
+의존성 파일은 개발 PC에서 서버 임시 경로로 먼저 전송한다.
+
+```sh
+scp requirements/runtime.txt brilliant@10.20.10.162:/tmp/tts-runtime-requirements.txt
+scp requirements/build.txt brilliant@10.20.10.162:/tmp/tts-build-requirements.txt
+```
+
+새 병렬 환경을 두지 않고 기존 경로를 재사용하려면 기존 환경을 백업 이름으로
+이동한 뒤 같은 원래 경로에 3.13 환경을 다시 만든다. 먼저 API 실행에 영향을
+주지 않는 `buildenv`를 교체한다.
+
+```sh
+cd ~/tts-preprocessor
+backup_suffix="$(date -u '+%Y%m%dT%H%M%SZ')"
+
+./buildenv/bin/python --version
+./buildenv/bin/pip freeze > "/tmp/tts-buildenv-$backup_suffix.txt"
+mv buildenv "buildenv-python310-$backup_suffix"
+
+python3.13 -m venv buildenv
+./buildenv/bin/python -m pip install --upgrade pip
+./buildenv/bin/python -m pip install -r /tmp/tts-build-requirements.txt
+./buildenv/bin/python --version
+./buildenv/bin/pyinstaller --version
+```
+
+API용 `.venv` 교체에는 서버 중지가 필요하다. 패키지 설치 시간도 중단 시간에
+포함된다.
+
+```sh
+cd ~/tts-preprocessor
+backup_suffix="$(date -u '+%Y%m%dT%H%M%SZ')"
+
+./.venv/bin/python --version
+./.venv/bin/python -m pip freeze > "/tmp/tts-api-venv-$backup_suffix.txt"
+bash scripts/stop_server.sh
+mv .venv ".venv-python310-$backup_suffix"
+
+python3.13 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install -r /tmp/tts-runtime-requirements.txt
+./.venv/bin/python --version
+./.venv/bin/python -c 'import fastapi, pydantic, uvicorn'
+bash scripts/start_server.sh
+```
+
+교체 후 기존 환경 백업은 Linux prepare/publish, 서버 health check, API
+semantic probe가 모두 통과할 때까지 보존한다. 실제 교체는 코드 배포와
+분리된 운영자 작업이며 `deploy_server.sh`가 대신 수행하지 않는다.
+
+API 환경 롤백은 서버를 중지하고 실패한 새 환경을 별도 이름으로 보존한 뒤
+백업을 원래 경로로 복귀시킨다.
+
+```sh
+cd ~/tts-preprocessor
+bash scripts/stop_server.sh
+mv .venv .venv-python313-failed
+mv .venv-python310-<백업시각> .venv
+bash scripts/start_server.sh
+```
+
+빌드 환경도 같은 원칙으로 복귀시킨다.
+
+```sh
+cd ~/tts-preprocessor
+mv buildenv buildenv-python313-failed
+mv buildenv-python310-<백업시각> buildenv
+```
+
+`python313-failed` 경로가 이미 있거나 백업 경로가 하나로 확정되지 않았다면
+명령을 실행하지 말고 `ls -ld .venv* buildenv*`로 정확한 대상을 먼저
+확인한다.
+
 ## 2. Linux + macOS 통합 배포
 
 Mac 저장소 루트에서 실행한다.
@@ -38,8 +157,9 @@ bash scripts/deploy_server.sh
 
 이 명령은 다음 순서로 동작한다.
 
-1. Darwin arm64, `.venv` Python/PyInstaller, 로컬 명령과 필수 파일 검사
-2. 서버의 기존 `buildenv`와 필수 원격 명령 검사
+1. Darwin arm64, 표준 GIL Python 3.13 `.venv`, PyInstaller, 로컬 명령과
+   필수 파일 검사
+2. 서버의 기존 Python 3.13 `.venv`/`buildenv`와 필수 원격 명령 검사
 3. 새 원격 `buildsrc`에 entrypoint, `engine/`, spec, 공용 runtime hook,
    core semantic probes, release README와 다음 시작에 쓸 server control script 전송
 4. 고유 deploy ID로 원격 Linux `prepare`와 로컬 macOS arm64 빌드를 병렬 시작
@@ -69,9 +189,9 @@ bash scripts/build_remote_package.sh publish <deploy-id>
 bash scripts/build_remote_package.sh cleanup <deploy-id>
 ```
 
-`prepare`는 기존 Ubuntu `buildenv`만 사용한다. buildenv 생성, `pip install`,
-`pip upgrade`, PyInstaller 변경은 하지 않는다. 다음 검증이 모두 성공하기
-전에는 운영 package와 모든 다운로드 ZIP을 변경하지 않는다.
+`prepare`는 기존 Ubuntu Python 3.13 `buildenv`만 사용한다. buildenv 생성,
+`pip install`, `pip upgrade`, PyInstaller 변경은 하지 않는다. 다음 검증이
+모두 성공하기 전에는 운영 package와 모든 다운로드 ZIP을 변경하지 않는다.
 
 1. Linux dist PyInstaller 빌드
 2. dist binary core semantic probe
@@ -142,6 +262,7 @@ bash scripts/build_macos_package.sh
 ```
 
 - Darwin arm64와 `.venv` Python arm64만 허용
+- 일반 GIL Python 3.13 계열만 허용
 - `.venv/bin/python`, `.venv/bin/pyinstaller`, 공용 spec/hook 사용
 - 실행 파일: `build/macos/dist/tts-preprocessor`
 - ZIP: `downloads/tts-preprocessor-macos.zip`
@@ -251,5 +372,6 @@ packages/tts-preprocessor/tts-preprocessor
 downloads/tts-preprocessor-linux.zip
 ```
 
-운영 Linux 호환성 판단은 Ubuntu 22.04 서버의 기존 `buildenv`와 dist,
-staging packaged, published packaged core semantic probe 결과를 기준으로 한다.
+운영 Linux 호환성 판단은 Ubuntu 22.04 서버의 기존 Python 3.13
+`buildenv`와 dist, staging packaged, published packaged core semantic
+probe 결과를 기준으로 한다.

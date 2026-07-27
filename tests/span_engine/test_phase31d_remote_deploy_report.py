@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def test_phase31d_remote_build_script_has_python310_strenum_runtime_hook() -> None:
+def test_phase31d_remote_build_script_keeps_shared_strenum_runtime_hook() -> None:
     script = Path("scripts/build_remote_package.sh").read_text(encoding="utf-8")
     spec = Path("tts_preprocessor.spec").read_text(encoding="utf-8")
     hook = Path("pyinstaller_runtime_hooks/enum_strenum_compat.py").read_text(

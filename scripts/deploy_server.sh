@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
 PROJECT_PYTHON="$ROOT_DIR/.venv/bin/python"
 PROJECT_PYINSTALLER="$ROOT_DIR/.venv/bin/pyinstaller"
+REQUIRED_PYTHON_SERIES="3.13"
 MACOS_BUILD_SCRIPT="$ROOT_DIR/scripts/build_macos_package.sh"
 REMOTE_BUILD_SCRIPT="$ROOT_DIR/scripts/build_remote_package.sh"
 WINDOWS_UPLOAD_SCRIPT="$ROOT_DIR/scripts/upload_desktop_packages.sh"
@@ -276,6 +277,11 @@ if [[ ! -x "$PROJECT_PYTHON" || ! -x "$PROJECT_PYINSTALLER" ]]; then
   exit 1
 fi
 PROJECT_PYTHON_ARCH="$("$PROJECT_PYTHON" -c 'import platform; print(platform.machine())')"
+PROJECT_PYTHON_RUNTIME="$("$PROJECT_PYTHON" -c 'import sys, sysconfig; print("%d.%d:%d" % (sys.version_info.major, sys.version_info.minor, int(bool(sysconfig.get_config_var("Py_GIL_DISABLED")))))')"
+if [[ "$PROJECT_PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
+  echo "[deploy][ERROR] Project Python must be standard-GIL Python $REQUIRED_PYTHON_SERIES.x; got: $PROJECT_PYTHON_RUNTIME" >&2
+  exit 1
+fi
 if [[ "$PROJECT_PYTHON_ARCH" != "arm64" ]]; then
   echo "[deploy][ERROR] Project Python must be arm64; got: $PROJECT_PYTHON_ARCH" >&2
   exit 1
@@ -300,6 +306,7 @@ case "$remote_base_dir" in
   "~/"*) remote_base_dir="$HOME/${remote_base_dir#\~/}" ;;
 esac
 buildenv_dir="$remote_base_dir/buildenv"
+runtime_python="$remote_base_dir/.venv/bin/python"
 llm_env_file="$remote_base_dir/config/llm.env"
 [[ -f "$remote_base_dir/scripts/stop_server.sh" ]] || {
   echo "[deploy][ERROR] Missing existing remote stop script." >&2
@@ -311,6 +318,7 @@ llm_env_file="$remote_base_dir/config/llm.env"
   exit 1
 }
 for executable in \
+  "$runtime_python" \
   "$buildenv_dir/bin/python" \
   "$buildenv_dir/bin/pip" \
   "$buildenv_dir/bin/pyinstaller"; do
@@ -318,6 +326,13 @@ for executable in \
     echo "[deploy][ERROR] Missing existing buildenv executable: $executable" >&2
     exit 1
   }
+done
+for python_bin in "$runtime_python" "$buildenv_dir/bin/python"; do
+  python_runtime="$("$python_bin" -c 'import sys, sysconfig; print("%d.%d:%d" % (sys.version_info.major, sys.version_info.minor, int(bool(sysconfig.get_config_var("Py_GIL_DISABLED")))))')"
+  if [[ "$python_runtime" != "3.13:0" ]]; then
+    echo "[deploy][ERROR] Runtime must use standard-GIL Python 3.13.x: $python_bin (got $python_runtime)" >&2
+    exit 1
+  fi
 done
 for command_name in \
   bash python3 mkdir rm mv cp chmod find sort stat sha256sum unzip rsync; do

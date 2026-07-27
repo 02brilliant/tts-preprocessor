@@ -6,6 +6,7 @@ import yaml
 
 
 WORKFLOW = Path(".github/workflows/build-desktop-executables.yml")
+BUILD_REQUIREMENTS = Path("requirements/build.txt")
 
 
 def _load_workflow() -> dict[str, object]:
@@ -40,7 +41,9 @@ def test_windows_workflow_is_manual_and_windows_only() -> None:
         if isinstance(step, dict) and step.get("uses") == "actions/setup-python@v5"
     ]
     assert len(setup_python) == 1
-    assert setup_python[0]["with"]["python-version"] == "3.10"
+    assert setup_python[0]["with"]["python-version"] == "3.13.14"
+    assert "sys.version_info[:2] == (3, 13)" in workflow
+    assert "Py_GIL_DISABLED" in workflow
     assert "macos-latest" not in workflow
     assert "ubuntu-latest" not in workflow
 
@@ -58,7 +61,10 @@ def test_windows_workflow_builds_smokes_and_uploads_one_flat_zip() -> None:
         and str(step.get("uses", "")).startswith("actions/upload-artifact@")
     ]
 
-    assert "pyinstaller==6.21.0" in workflow
+    build_requirements = BUILD_REQUIREMENTS.read_text(encoding="utf-8")
+    assert "-r requirements/build.txt" in workflow
+    assert "pyinstaller==6.21.0" in build_requirements
+    assert "pyinstaller-hooks-contrib==2026.6" in build_requirements
     assert "pyinstaller_runtime_hooks\\enum_strenum_compat.py" in workflow
     assert "tts_preprocessor.spec" in workflow
     assert "build_binary_entrypoint" in workflow

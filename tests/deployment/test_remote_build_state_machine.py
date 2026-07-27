@@ -70,6 +70,10 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         f"""
         #!/usr/bin/env bash
         set -euo pipefail
+        if [[ "${{1:-}}" == "-c" ]]; then
+          printf '%s\\n' "${{FAKE_PYTHON_RUNTIME:-3.13:0}}"
+          exit 0
+        fi
         if [[ "${{1:-}}" == "-" ]]; then
           if [[ "${{FAKE_ZIP_INVALID:-0}}" == "1" ]]; then
             printf 'not-a-zip' > "$3"
@@ -190,6 +194,17 @@ def test_dist_probe_failure_cleans_staging_and_preserves_release(tmp_path: Path)
     assert not (
         root / f"app/downloads/.tts-preprocessor-linux.prepare.{DEPLOY_ID}.zip"
     ).exists()
+
+
+def test_python_version_mismatch_fails_before_build(tmp_path: Path) -> None:
+    root, env = _prepare_remote_tree(tmp_path)
+    env["FAKE_PYTHON_RUNTIME"] = "3.10:0"
+
+    result = _run_remote_build(root, env, "prepare")
+
+    assert result.returncode != 0
+    assert "standard-GIL Python 3.13.x" in result.stderr
+    _assert_old_release_preserved(root)
 
 
 def test_prepared_probe_failure_cleans_staging_and_preserves_release(

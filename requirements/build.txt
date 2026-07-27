@@ -1,0 +1,3 @@
+# Direct dependencies for all PyInstaller build environments.
+pyinstaller==6.21.0
+pyinstaller-hooks-contrib==2026.6

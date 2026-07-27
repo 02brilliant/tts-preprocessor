@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
 PYTHON_BIN="$VENV_DIR/bin/python"
 PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
+REQUIRED_PYTHON_SERIES="3.13"
 SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SOURCE_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 RUNTIME_HOOK="$ROOT_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py"
@@ -60,9 +61,15 @@ fi
 
 PYTHON_ARCH="$("$PYTHON_BIN" -c 'import platform; print(platform.machine())')"
 PYTHON_EXECUTABLE="$("$PYTHON_BIN" -c 'import sys; print(sys.executable)')"
+PYTHON_RUNTIME="$("$PYTHON_BIN" -c 'import sys, sysconfig; print("%d.%d:%d" % (sys.version_info.major, sys.version_info.minor, int(bool(sysconfig.get_config_var("Py_GIL_DISABLED")))))')"
 echo "[macos-build] Python: $PYTHON_EXECUTABLE"
 echo "[macos-build] Python architecture: $PYTHON_ARCH"
 echo "[macos-build] PyInstaller: $("$PYINSTALLER_BIN" --version)"
+
+if [[ "$PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
+  echo "[macos-build][ERROR] Project Python must be standard-GIL Python $REQUIRED_PYTHON_SERIES.x; got: $PYTHON_RUNTIME" >&2
+  exit 1
+fi
 
 if [[ "$PYTHON_ARCH" != "arm64" ]]; then
   echo "[macos-build][ERROR] Project Python must be arm64; got: $PYTHON_ARCH" >&2

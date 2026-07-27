@@ -38,7 +38,27 @@ existing server `buildenv` MUST be validated and used without creating,
 installing, or upgrading it.
 
 All platforms use `bin/build_binary_entrypoint.py`, `tts_preprocessor.spec`,
-and the shared Python 3.10 `StrEnum` runtime hook.
+and the shared conditional `StrEnum` runtime hook. Python 3.13 already provides
+`enum.StrEnum`, so the hook is a no-op on the supported runtime and remains
+only to preserve the current packaging contract.
+
+## Python runtime baseline
+
+Development, tests, the macOS and Windows builds, the Linux production build,
+and the source API runtime use standard-GIL CPython 3.13. `.python-version` and
+CI pin the currently validated patch release, while build and deployment
+preflight checks accept the supported `>=3.13,<3.14` series so that security
+patch updates do not require a policy change.
+
+The production server has two independently managed environments:
+
+- `~/tts-preprocessor/.venv` runs the source API and MUST NOT import
+  `engine.*` for transformations.
+- `~/tts-preprocessor/buildenv` builds the source-free Linux executable.
+
+Both environments MUST use standard-GIL Python 3.13. Deployment validates both
+but MUST NOT create, install into, or upgrade either environment. Environment
+replacement and rollback are operator-owned pre-deployment procedures.
 
 ## Prepare and publish boundary
 

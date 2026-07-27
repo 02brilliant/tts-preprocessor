@@ -25,6 +25,7 @@ ROOT_DIR="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
 APP_DIR="$ROOT_DIR/app"
 BUILD_SRC_DIR="$ROOT_DIR/buildsrc"
 BUILD_ENV_DIR="$ROOT_DIR/buildenv"
+REQUIRED_PYTHON_SERIES="3.13"
 PACKAGES_DIR="$APP_DIR/packages"
 DOWNLOADS_DIR="$APP_DIR/downloads"
 PACKAGE_DIR="$PACKAGES_DIR/tts-preprocessor"
@@ -72,6 +73,7 @@ run_semantic_probe_set() {
 validate_build_environment() {
   local required_executable
   local required_command
+  local python_runtime
 
   if [[ ! -d "$BUILD_ENV_DIR" ]]; then
     echo "[remote-build][ERROR] Missing existing build environment: $BUILD_ENV_DIR" >&2
@@ -97,6 +99,12 @@ validate_build_environment() {
       return 1
     fi
   done
+
+  python_runtime="$("$BUILD_ENV_DIR/bin/python" -c 'import sys, sysconfig; print("%d.%d:%d" % (sys.version_info.major, sys.version_info.minor, int(bool(sysconfig.get_config_var("Py_GIL_DISABLED")))))')"
+  if [[ "$python_runtime" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
+    echo "[remote-build][ERROR] buildenv must use standard-GIL Python $REQUIRED_PYTHON_SERIES.x; got: $python_runtime" >&2
+    return 1
+  fi
 }
 
 validate_build_sources() {

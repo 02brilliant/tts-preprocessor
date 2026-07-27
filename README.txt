@@ -24,6 +24,33 @@ Linux 운영 바이너리는 macOS나 GitHub Actions에서 빌드하지 않는�
 macOS·Windows ZIP을 삭제하고 새 macOS ZIP을 검증·반영한 다음 서버를
 시작한다.
 
+## Python 및 의존성 기준
+
+- 기준 인터프리터는 일반 GIL 빌드의 CPython 3.13이다.
+- `.python-version`은 개발 및 CI의 재현 가능한 기준 패치인 3.13.14를
+  지정한다.
+- 빌드·배포 preflight는 보안 패치 업데이트를 허용하기 위해 3.13 계열
+  (`>=3.13,<3.14`)과 일반 GIL 빌드 여부를 검사한다.
+- API 직접 의존성은 `requirements/runtime.txt`, PyInstaller 빌드 의존성은
+  `requirements/build.txt`, 로컬 테스트 전체 환경은
+  `requirements/dev.txt`로 관리한다.
+
+기존 Python 3.10 가상환경을 인플레이스 업그레이드하지 않는다. Apple
+Silicon Mac에 일반 GIL Python 3.13 arm64를 설치한 뒤 기존 `.venv`를
+백업하고 같은 경로에 다시 만든다.
+
+```sh
+mv .venv .venv-python310-backup
+python3.13 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements/dev.txt
+.venv/bin/python --version
+.venv/bin/python -c "import platform, sys; print(platform.machine()); print(sys.executable)"
+```
+
+버전은 3.13.x, 아키텍처는 `arm64`여야 한다. 새 환경 검증이 끝날 때까지
+백업을 삭제하지 않는다.
+
 ## Linux 운영 배포
 
 ```sh
@@ -40,10 +67,13 @@ bash scripts/check_server.sh
   --api http://10.20.10.162:8010
 ```
 
-운영 서버는 Ubuntu 22.04.5 / glibc 2.35 / Python 3.10.12의 기존
-`buildenv`를 사용한다. 배포 스크립트는 buildenv를 생성하거나 패키지를
-설치·업그레이드하지 않는다. PyInstaller 호환성은 dist, staging package,
-published package의 core semantic probe로 판정한다.
+운영 서버는 Ubuntu 22.04.5 / glibc 2.35 환경을 유지한다. API 서버는
+`~/tts-preprocessor/.venv`, Linux 바이너리 빌드는
+`~/tts-preprocessor/buildenv`를 사용하며 둘 다 일반 GIL Python 3.13
+환경이어야 한다. 배포 스크립트는 이 환경을 생성하거나 패키지를
+설치·업그레이드하지 않고, source sync 전에 두 Python 런타임을 검증한다.
+PyInstaller 호환성은 dist, staging package, published package의 core
+semantic probe로 판정한다.
 
 `deploy_server.sh`는 source sync 후 Linux prepare와 같은 worktree의 macOS
 arm64 빌드를 동시에 시작한다. 두 빌드가 성공해야 Linux publish, desktop ZIP
@@ -80,8 +110,8 @@ Build Windows executable → Run workflow
 tts-preprocessor-windows → tts-preprocessor-windows.zip
 ```
 
-다운로드한 ZIP을 로컬 `downloads/`에 배치한다.
-Windows workflow는 현재 검증된 `PyInstaller==6.21.0`을 사용한다.
+다운로드한 ZIP을 로컬 `downloads/`에 배치한다. Windows workflow는
+CPython 3.13.14와 현재 검증된 `PyInstaller==6.21.0`을 사용한다.
 
 ## 데스크톱 ZIP 업로드
 
@@ -119,7 +149,3 @@ downloads/tts-preprocessor-linux.zip
 
 이 결과는 운영 서버 호환성을 보장하지 않는다. 운영 Linux 바이너리는 반드시
 Ubuntu 22.04 운영 서버의 기존 `buildenv`에서 생성한다.
-
-##### 수정사항 메모
-
-- (기타) python 버전 업데이트 필요 (현재 3.10, 3.12 또는 3.13 권장)

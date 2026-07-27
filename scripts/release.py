@@ -3,6 +3,7 @@ from __future__ import annotations
 import platform
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 
@@ -11,6 +12,7 @@ PYTHON_BIN = ROOT_DIR / ".venv" / "bin" / "python"
 BUILD_BINARY_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
 PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "tts-preprocessor"
 SEMANTIC_PROBE_RUNNER = ROOT_DIR / "scripts" / "probes" / "run_semantic_probes.py"
+REQUIRED_PYTHON_SERIES = (3, 13)
 
 
 def run_pytest(*extra_args: str) -> subprocess.CompletedProcess[str]:
@@ -85,6 +87,16 @@ def main(argv: list[str]) -> int:
         print(
             "scripts/release.py creates a Linux local-validation package and "
             "must run on Linux. Use scripts/build_macos_package.sh on macOS.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if (
+        sys.version_info[:2] != REQUIRED_PYTHON_SERIES
+        or sysconfig.get_config_var("Py_GIL_DISABLED")
+    ):
+        print(
+            "scripts/release.py requires standard-GIL Python 3.13.x.",
             file=sys.stderr,
         )
         return 1

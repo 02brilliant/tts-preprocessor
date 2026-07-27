@@ -72,7 +72,24 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         target = tmp_path / relative
         if not target.exists():
             target.write_text("fixture\n", encoding="utf-8")
-    (tmp_path / ".venv").symlink_to(ROOT_DIR / ".venv", target_is_directory=True)
+    project_bin = tmp_path / ".venv/bin"
+    project_bin.mkdir(parents=True)
+    _write_executable(
+        project_bin / "python",
+        """
+        #!/usr/bin/env bash
+        case "${2:-}" in
+          *platform.machine*) printf 'arm64\n' ;;
+          *Py_GIL_DISABLED*) printf '3.13:0\n' ;;
+          *os.path.getsize*) wc -c < "$3" | tr -d ' ' ;;
+          *) exit 1 ;;
+        esac
+        """,
+    )
+    _write_executable(
+        project_bin / "pyinstaller",
+        "#!/usr/bin/env bash\nprintf '6.21.0\\n'\n",
+    )
 
     archive_path = tmp_path / "downloads/tts-preprocessor-macos.zip"
     with zipfile.ZipFile(archive_path, "w") as archive:
