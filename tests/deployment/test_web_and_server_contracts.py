@@ -91,7 +91,7 @@ fi
 if [[ "$url" == *"/api/llm/models" ]]; then
   printf '%s\\n' '{"models":["gemma4:31b","gemma4:26b","gemma4:e4b","gemini-3.6-flash","gemini-3.5-flash","gemini-3.5-flash-lite"],"default_model":"gemma4:e4b"}' > "$output_file"
 elif [[ "$url" == *"/api/llm/transform" ]]; then
-  printf '%s\\n' '{"llm_text":"LLM 배포 확인입니다.","model":"gemma4:e4b","elapsed_ms":1}' > "$output_file"
+  printf '%s\\n' '{"prosody_text":"LLM 배포 확인입니다.","model":"gemma4:e4b","elapsed_ms":1}' > "$output_file"
 elif [[ "$url" == *"/api/transform" ]]; then
   printf '%s\\n' '{"normalized_text":"케이 원, 케이푸드, 백십이 명, 유월"}' > "$output_file"
 else

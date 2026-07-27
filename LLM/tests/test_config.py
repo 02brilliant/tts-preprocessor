@@ -7,10 +7,11 @@ import pytest
 
 from LLM.config import (
     ConfigurationError,
+    PROSODY_PROMPT_PATH,
+    SPEECH_PROMPT_PATH,
     load_gemini_settings,
     load_model_config,
     load_runtime_settings,
-    PROMPT_PATH,
 )
 
 
@@ -86,6 +87,24 @@ def test_gemini_settings_load_key_and_timeout(monkeypatch) -> None:
     assert settings.timeout_seconds == 12.5
 
 
-def test_prompt_template_is_stored_under_llm_docs() -> None:
-    assert PROMPT_PATH == Path("LLM/docs/LLM_prompt.txt").resolve()
-    assert PROMPT_PATH.is_file()
+def test_stage_prompt_templates_are_stored_under_llm_docs() -> None:
+    assert PROSODY_PROMPT_PATH == Path(
+        "LLM/docs/LLM_prompt_prosody.txt"
+    ).resolve()
+    assert SPEECH_PROMPT_PATH == Path(
+        "LLM/docs/LLM_prompt_speech.txt"
+    ).resolve()
+    assert PROSODY_PROMPT_PATH.is_file()
+    assert SPEECH_PROMPT_PATH.is_file()
+
+
+def test_deprecated_single_prompt_is_not_a_runtime_dependency() -> None:
+    runtime_sources = (
+        Path("LLM/config.py"),
+        Path("LLM/prompt_template.py"),
+        Path("api/server.py"),
+        Path("LLM/tests/smoke_gemini.py"),
+    )
+
+    for source_path in runtime_sources:
+        assert "LLM_prompt.txt" not in source_path.read_text(encoding="utf-8")

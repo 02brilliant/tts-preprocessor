@@ -1,49 +1,78 @@
-# Diff 표시 방식 설계 문서
+# 3단계 Diff 표시 설계
 
-## 1. Diff Item Type 정의
+## 1. 표시 화면
+
+| 단계 | 출력 | Diff |
+|---|---|---|
+| 1단계 규칙 기반 | `normalized_text` | 원본 → 1단계 |
+| 2단계 LLM Prosody | `prosody_text` | 1단계 → 2단계, 원본 → 2단계 누적 |
+| 3단계 LLM Speech | `speech_text` | 2단계 → 3단계, 원본 → 3단계 누적 |
+
+인접 단계 Diff는 해당 단계가 삽입한 표면을 그 단계 색으로 표시한다. 원본 대비
+누적 Diff는 각 최종 문자가 마지막으로 변경된 단계를 표시한다.
+
+## 2. 단계 provenance
+
+`web/pipeline_diff.js`는 원본 문자를 `sourceIndex`와 함께 ledger에 등록한다.
+각 단계 전환을 정렬한 뒤 다음 규칙으로 ledger를 계승한다.
+
+- 이전 단계와 일치한 문자는 기존 `stage`와 `sourceIndex`를 유지한다.
+- 새로 삽입된 문자는 현재 단계 번호와 `sourceIndex: null`을 가진다.
+- 삭제된 문자는 다음 ledger에 포함하지 않는다.
+- 후속 단계가 문자를 다시 변경하면 새 문자는 후속 단계가 소유한다.
+
+따라서 다음을 구분할 수 있다.
+
+- 1단계에서 생성되고 유지된 문자: 1단계
+- 2단계에서 삽입되고 유지된 쉼표·공백: 2단계
+- 3단계에서 새로 발음식 표면으로 바뀐 문자: 3단계
+- 원본에서 사라진 문자: 삭제
+
+긴 입력에서 LCS 행렬이 `MAX_LCS_CELLS`를 넘으면 공통 prefix와 suffix만 보존하고
+가운데 변경 구간을 한 덩어리로 처리한다. 이는 브라우저 메모리 폭증을 피하기 위한
+보수적 표시 fallback이며 실제 처리 결과 문자열에는 영향을 주지 않는다.
+
+## 3. Diff item
 
 | Type | 설명 |
-|------|------|
-| unchanged | 변경 없음 → 일반 텍스트 출력 |
-| deleted | 삭제됨 |
-| inserted | 추가됨 |
-| inserted_comma | `,` 또는 `，`만 단독 삽입된 경우 |
-| paragraph_tag | 입력에 없던 줄바꿈 묶음의 첫 `\n`에만 붙는 자동 문단 구분 태그 |
-| inserted_newline | 출력에는 반영되지만 태그는 붙지 않는 삽입 개행 |
-| whitespace_changed | 삭제된 공백 인접에 공백이 삽입된 경우만 해당 |
+|---|---|
+| `unchanged` | 원본 문자가 같은 순서로 유지됨 |
+| `deleted` | 원본에서 삭제됨 |
+| `inserted` | 특정 단계에서 생성됨 |
+| `inserted_comma` | 특정 단계에서 생성된 `,` 또는 `，` |
+| `whitespace_changed` | 특정 단계에서 생성된 공백 |
+| `paragraph_tag` | 1단계가 생성한 새 문단 경계 |
+| `inserted_newline` | 후속 단계 삽입 개행 표시용 방어 타입 |
 
----
+정상 LLM 응답 계약에서는 2단계가 개행을 추가할 수 없고 3단계가 개행을 변경할 수
+없다. 후속 단계의 `inserted_newline`은 화면 방어용이며 서버 검증에서 먼저
+거부되어야 한다.
 
-## 2. 스타일 규칙
+## 4. 스타일
 
-| Type | CSS 클래스 | 스타일 |
-|------|------------|--------|
-| deleted | `.diff-del` | #ffe0e0 배경 · #cc0000 텍스트 · 취소선 · bold 없음 |
-| inserted | `.diff-add` | #e6ffed 배경 · #1a7f37 텍스트 · bold |
-| inserted_comma | `.diff-add-comma` | #e6ffed 배경 · #1a7f37 텍스트 · bold · 점선 테두리 |
-| paragraph_tag | `.diff-paragraph` | #f0f0f0 배경 · #666 텍스트 · border-radius:999px 캡슐 |
-| inserted_newline | (없음) | 실제 줄바꿈만 출력 |
-| whitespace_changed | `.diff-add` 재사용 | 공백을 `␣` 심볼로 치환해 표시 |
-| unchanged | (없음) | 일반 텍스트 그대로 |
+| 의미 | CSS 클래스 | 색상 |
+|---|---|---|
+| 1단계 변경 | `.diff-stage-1` | 초록 |
+| 2단계 변경 | `.diff-stage-2` | 파랑 |
+| 3단계 변경 | `.diff-stage-3` | 보라 |
+| 삭제 | `.diff-del` | 빨강, 취소선 |
+| 단계 쉼표 | `.diff-comma` + 단계 클래스 | 단계 색, 점선 테두리 |
+| 단계 공백 | 단계 클래스 + `.diff-space-symbol` | 단계 색 `␣` |
+| 문단 경계 | `.diff-paragraph` + 단계 클래스 | 단계 색 캡슐 |
 
----
+색상만으로 단계를 판별하지 않도록 결과 위에 1·2·3단계와 삭제 범례를 항상
+표시한다.
 
-## 3. 공백 시각화 방식
+## 5. 공백과 개행
 
-- `deleted` 스팬 내부 공백만 `␣` 심볼로 치환 (`.diff-space-sym`)
-- `whitespace_changed`: 인접 삭제 공백이 있을 때만 발동 → `␣` 시각화 적용
-- `unchanged` 및 `inserted` 내 일반 공백: 그대로 출력 (불필요한 강조 없음)
+- 단계에서 새로 생성된 ASCII 공백은 `␣`로 표시한다.
+- 삭제된 공백도 `␣`로 표시한다.
+- unchanged 공백은 실제 공백으로 유지한다.
+- 원래 존재한 줄바꿈은 그대로 출력한다.
+- 1단계가 새 문단을 만들면 첫 개행 위치에 `<문단 자동 구분>` 캡슐을 표시한다.
 
----
+## 6. 보안
 
-## 4. Diff 처리 로직
-
-1. `tokenize()` — 정규식 기반으로 입력 문자열을 토큰 배열로 분리  
-   - 토큰 종류: 줄바꿈, 공백(연속 공백), 숫자 블록, 영문 블록, 한글 블록, 단위/통화 기호, 기타 단일 문자
-   - 숫자·한글·영문·기호가 섞인 토큰은 경계별로 분해
-   - 예: `12권과 → ["12", "권과"]`, `2025년 → ["2025", "년"]`, `WHO와 → ["WHO", "와"]`
-2. `buildTokenLCS()` — 토큰 배열에 대해 LCS DP 테이블 구축 (`Uint32Array` 기반)
-3. `traceTokenOps()` — LCS backtrack → 토큰별 `eq / ins / del` op 배열 생성
-4. `classifyTokenOp()` — op → DiffType 분류 (`unchanged / deleted / inserted / inserted_comma / _ins_newline / _ins_space`)
-5. `refineWhitespace()` — `_ins_space` 중 인접 삭제 공백이 있는 경우만 `whitespace_changed` 로 승격; 나머지는 `unchanged` 처리
-6. `refineNewlines()` — 연속 `_ins_newline` 묶음을 검사해, 입력 줄바꿈에 인접한 묶음은 모두 `inserted_newline`, 입력에 없던 새 묶음은 첫 개행만 `paragraph_tag` 로 변환
+모든 사용자 입력과 API 출력은 `escapeHtml()`을 통과한 뒤 `innerHTML`에
+삽입한다. 다운로드 이름과 파일명에도 같은 escaping을 적용한다. Diff용 HTML
+span만 렌더러가 생성한다.

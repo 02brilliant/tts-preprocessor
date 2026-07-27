@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Annotated, Literal
 
 import uvicorn
 from fastapi import FastAPI
@@ -10,7 +11,7 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -45,7 +46,15 @@ from LLM.gemini_client import (
     GeminiUpstreamHTTPError,
     generate_gemini,
 )
-from LLM.prompt_template import PromptTemplateError, build_prompt
+from LLM.prompt_template import (
+    PromptTemplateError,
+    build_prosody_prompt,
+    build_speech_prompt,
+)
+from LLM.response_validation import (
+    validate_prosody_response,
+    validate_speech_response,
+)
 
 app = FastAPI()
 
@@ -71,9 +80,26 @@ class TransformRequest(BaseModel):
         return value
 
 
-class LLMTransformRequest(BaseModel):
-    text: str
+class LLMProsodyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stage: Literal["prosody"]
+    normalized_text: str
     model: str | None = None
+
+
+class LLMSpeechRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stage: Literal["speech"]
+    prosody_text: str
+    model: str | None = None
+
+
+LLMTransformRequest = Annotated[
+    LLMProsodyRequest | LLMSpeechRequest,
+    Field(discriminator="stage"),
+]
 
 
 app.add_middleware(
@@ -138,24 +164,22 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         if model_definition is None:
             raise HTTPException(status_code=400, detail="Unsupported LLM model.")
 
-        prompt = build_prompt(req.text)
-        if model_definition.provider == "local":
-            result = generate(
-                model=model_definition.upstream_model,
-                prompt=prompt,
-                settings=load_runtime_settings(),
+        if isinstance(req, LLMProsodyRequest):
+            prompt = build_prosody_prompt(req.normalized_text)
+            result = _generate_with_provider(model_definition, prompt)
+            prosody_text = validate_prosody_response(
+                req.normalized_text,
+                result.text,
             )
-        elif model_definition.provider == "gemini":
-            result = generate_gemini(
-                model=model_definition.upstream_model,
-                prompt=prompt,
-                settings=load_gemini_settings(),
-            )
+            response = {"prosody_text": prosody_text}
         else:
-            raise HTTPException(
-                status_code=500,
-                detail="Configured LLM provider is unsupported.",
+            prompt = build_speech_prompt(req.prosody_text)
+            result = _generate_with_provider(model_definition, prompt)
+            speech_text = validate_speech_response(
+                req.prosody_text,
+                result.text,
             )
+            response = {"speech_text": speech_text}
     except HTTPException:
         raise
     except ConfigurationError as exc:
@@ -182,11 +206,29 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
     ) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    return {
-        "llm_text": result.text,
+    return response | {
         "model": model,
         "elapsed_ms": round(result.elapsed_ms, 3),
     }
+
+
+def _generate_with_provider(model_definition, prompt: str):
+    if model_definition.provider == "local":
+        return generate(
+            model=model_definition.upstream_model,
+            prompt=prompt,
+            settings=load_runtime_settings(),
+        )
+    if model_definition.provider == "gemini":
+        return generate_gemini(
+            model=model_definition.upstream_model,
+            prompt=prompt,
+            settings=load_gemini_settings(),
+        )
+    raise HTTPException(
+        status_code=500,
+        detail="Configured LLM provider is unsupported.",
+    )
 
 
 def transform_request_payload(payload: dict) -> dict:

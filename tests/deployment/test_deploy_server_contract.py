@@ -65,7 +65,9 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/gemini_client.py",
         "LLM/models.json",
         "LLM/prompt_template.py",
-        "LLM/docs/LLM_prompt.txt",
+        "LLM/response_validation.py",
+        "LLM/docs/LLM_prompt_prosody.txt",
+        "LLM/docs/LLM_prompt_speech.txt",
     ):
         target = tmp_path / relative
         if not target.exists():
@@ -232,6 +234,14 @@ def _events(calls: Path) -> list[str]:
 def _assert_not_run(events: list[str], *forbidden: str) -> None:
     for event in forbidden:
         assert event not in events
+
+
+def test_deploy_excludes_deprecated_single_prompt() -> None:
+    source = SOURCE_DEPLOY.read_text(encoding="utf-8")
+
+    assert '--exclude="docs/LLM_prompt.txt"' in source
+    assert "LLM/docs/LLM_prompt_prosody.txt" in source
+    assert "LLM/docs/LLM_prompt_speech.txt" in source
 
 
 def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
