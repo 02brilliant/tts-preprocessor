@@ -57,7 +57,6 @@ def test_macos_script_rejects_non_python313_project_environment(
     for relative in (
         "tts_preprocessor.spec",
         "bin/build_binary_entrypoint.py",
-        "pyinstaller_runtime_hooks/enum_strenum_compat.py",
         "docs/Release_Package_README.txt",
     ):
         target = project_root / relative
@@ -125,7 +124,7 @@ def test_macos_script_uses_project_tools_and_flat_archive_contract() -> None:
     assert 'ARCHIVE_NAME="tts-preprocessor-macos.zip"' in script
     assert "tts_preprocessor.spec" in script
     assert "bin/build_binary_entrypoint.py" in script
-    assert "pyinstaller_runtime_hooks/enum_strenum_compat.py" in script
+    assert "pyinstaller_runtime_hooks" not in script
     assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor'" in script
     assert 'find "$EXTRACT_DIR" -type l' in script
     assert 'mv -f -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"' in script

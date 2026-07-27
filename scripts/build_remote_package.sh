@@ -33,7 +33,6 @@ ARCHIVE_NAME="tts-preprocessor-linux.zip"
 ARCHIVE_PATH="$DOWNLOADS_DIR/$ARCHIVE_NAME"
 README_TEMPLATE_PATH="$BUILD_SRC_DIR/docs/Release_Package_README.txt"
 PYINSTALLER_BIN="$BUILD_ENV_DIR/bin/pyinstaller"
-RUNTIME_HOOK="$BUILD_SRC_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py"
 SEMANTIC_PROBE_RUNNER="$BUILD_SRC_DIR/scripts/probes/run_semantic_probes.py"
 SERVER_PID_FILE="$ROOT_DIR/run/tts_web_service.pid"
 
@@ -115,7 +114,6 @@ validate_build_sources() {
     "$BUILD_SRC_DIR/bin/build_binary_entrypoint.py" \
     "$BUILD_SRC_DIR/tts_preprocessor.spec" \
     "$README_TEMPLATE_PATH" \
-    "$RUNTIME_HOOK" \
     "$SEMANTIC_PROBE_RUNNER"; do
     if [[ ! -e "$required_source" ]]; then
       echo "[remote-build][ERROR] Missing remote build source: $required_source" >&2

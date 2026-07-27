@@ -33,7 +33,6 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (buildsrc / "bin").mkdir()
     (buildsrc / "docs").mkdir()
     (buildsrc / "scripts/probes").mkdir(parents=True)
-    (buildsrc / "pyinstaller_runtime_hooks").mkdir()
     package_dir.mkdir(parents=True)
     downloads_dir.mkdir(parents=True)
     fake_bin.mkdir()
@@ -50,9 +49,6 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     )
     (buildsrc / "scripts/probes/run_semantic_probes.py").write_text(
         "# intercepted by fake buildenv python\n", encoding="utf-8"
-    )
-    (buildsrc / "pyinstaller_runtime_hooks/enum_strenum_compat.py").write_text(
-        "# fixture hook\n", encoding="utf-8"
     )
 
     old_binary = package_dir / "tts-preprocessor"

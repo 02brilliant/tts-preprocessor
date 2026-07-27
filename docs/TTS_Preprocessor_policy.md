@@ -10864,16 +10864,27 @@ EURA 300 -> EURA 300
 
 ### 37.4 Data, power, and frequency units
 
-`MB`, `GB`, `PB`, `kWh`, `Hz`, `hz`, `MHz`, `GHz`, `Gbps`는 numeric prefix가 있을 때만 변환한다. 정수와 소수를 모두 허용한다. 공백형은 `Hz`/`hz` frequency 단위에 한정해 허용하고, 단독 unit은 preserve한다. alphabetic unsafe tail은 full token preserve다.
+`MB`, `GB`, `PB`, 전력 계열 `W`, `kW`, `MW`, `Wh`, `kWh`, `MWh`,
+주파수 계열 `Hz`, `hz`, `MHz`, `GHz`, 그리고 `Gbps`는 numeric prefix가
+있을 때만 변환한다. 정수, valid comma, 소수를 허용한다. 전력
+simple-unit의 숫자와 단위 사이는 붙이거나 ASCII space 한 칸을 둘 수
+있고, 다른 단위는 각각의 기존 owner-local spacing 정책을 유지한다.
+단독 unit은 unit owner가 claim하지 않고, alphabetic unsafe tail은 full
+token preserve다.
 
 ```text
 12.5MB -> 십이쩜오 메가바이트
 2.4PB -> 이쩜사 페타바이트
+2MW -> 이 메가와트
+2.5 MW -> 이쩜오 메가와트
+3MWh -> 삼 메가와트시
+3.2 MWh -> 삼쩜이 메가와트시
 3.2kWh -> 삼쩜이 킬로와트시
 60Hz -> 육십 헤르츠
 120 Hz -> 백이십 헤르츠
 3.2GHz -> 삼쩜이 기가헤르츠
 5Hzabc -> 5Hzabc
+3MWtest -> 3MWtest
 등록된 ASCII-letter 단위 바로 뒤에 `^2` 또는 `^3`이 붙으면 같은 단위
 registry를 재사용하는 caret-power owner가 전체 surface를 claim한다. 각각
 `제곱<단위>`, `세제곱<단위>`로 읽는다.
@@ -10892,6 +10903,14 @@ registry를 재사용하는 caret-power owner가 전체 surface를 claim한다. 
 ```
 Hz -> Hz
 ```
+
+대문자 `M` 접두어는 case-sensitive하게 적용한다. 기존 `MHz`,
+`MB`, `Mbps`, `MB/s`의 `메가~` reading을 유지하고, 전력 계열에서는
+`MW -> 메가와트`, `MWh -> 메가와트시`를 지원한다. `ML`은 기존
+milliliter alias이므로 `메가리터`로 재해석하지 않는다. `MV`, `MA`,
+`MJ`, `MPa`, `Mm`, `Mg`는 현재 기반 단위 registry 또는 충돌 해소 정책이
+없으므로 지원 범위를 넓히지 않는다. 단독 `MW`는 숫자+단위 owner가
+아니므로 acronym fallback으로 철자 읽기하지 않고 원문을 보존한다.
 
 ### 37.5 pH
 

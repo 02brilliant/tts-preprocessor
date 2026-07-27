@@ -19,7 +19,6 @@ def test_phase31a_required_scripts_and_artifacts_exist() -> None:
         Path("api/server.py"),
         Path("api/binary_runtime.py"),
         Path("bin/build_binary_entrypoint.py"),
-        Path("pyinstaller_runtime_hooks/enum_strenum_compat.py"),
     ):
         assert path.exists(), path
 

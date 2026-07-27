@@ -4,12 +4,6 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(SPECPATH).resolve()
-RUNTIME_HOOK = ROOT_DIR / "pyinstaller_runtime_hooks" / "enum_strenum_compat.py"
-if not RUNTIME_HOOK.is_file():
-    raise FileNotFoundError(
-        f"Required PyInstaller runtime hook is missing: {RUNTIME_HOOK}"
-    )
-RUNTIME_HOOKS = [str(RUNTIME_HOOK)]
 EXECUTABLE_NAME = os.environ.get(
     "TTS_PREPROCESSOR_EXECUTABLE_NAME",
     "tts_preprocessor",
@@ -23,7 +17,7 @@ a = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=RUNTIME_HOOKS,
+    runtime_hooks=[],
     excludes=[],
     noarchive=False,
     optimize=0,

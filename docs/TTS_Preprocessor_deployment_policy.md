@@ -37,10 +37,9 @@ Linux production binaries MUST NOT be built on macOS or GitHub Actions. The
 existing server `buildenv` MUST be validated and used without creating,
 installing, or upgrading it.
 
-All platforms use `bin/build_binary_entrypoint.py`, `tts_preprocessor.spec`,
-and the shared conditional `StrEnum` runtime hook. Python 3.13 already provides
-`enum.StrEnum`, so the hook is a no-op on the supported runtime and remains
-only to preserve the current packaging contract.
+All platforms use `bin/build_binary_entrypoint.py` and
+`tts_preprocessor.spec`. Python 3.13 provides `enum.StrEnum` natively, so no
+StrEnum compatibility runtime hook is packaged.
 
 ## Python runtime baseline
 

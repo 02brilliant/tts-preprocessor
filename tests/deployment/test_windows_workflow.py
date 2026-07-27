@@ -65,7 +65,7 @@ def test_windows_workflow_builds_smokes_and_uploads_one_flat_zip() -> None:
     assert "-r requirements/build.txt" in workflow
     assert "pyinstaller==6.21.0" in build_requirements
     assert "pyinstaller-hooks-contrib==2026.6" in build_requirements
-    assert "pyinstaller_runtime_hooks\\enum_strenum_compat.py" in workflow
+    assert "pyinstaller_runtime_hooks" not in workflow
     assert "tts_preprocessor.spec" in workflow
     assert "build_binary_entrypoint" in workflow
     assert "dist\\tts-preprocessor.exe" in workflow

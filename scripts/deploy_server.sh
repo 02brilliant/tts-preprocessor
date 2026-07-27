@@ -14,7 +14,6 @@ STOP_SERVER_SCRIPT="$ROOT_DIR/scripts/stop_server.sh"
 CHECK_SERVER_SCRIPT="$ROOT_DIR/scripts/check_server.sh"
 LOCAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor.spec"
 LOCAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_binary_entrypoint.py"
-LOCAL_RUNTIME_HOOK_PATH="$ROOT_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py"
 LOCAL_README_TEMPLATE_PATH="$ROOT_DIR/docs/Release_Package_README.txt"
 LOCAL_MACOS_ARCHIVE="$ROOT_DIR/downloads/tts-preprocessor-macos.zip"
 
@@ -242,7 +241,6 @@ for required_local_file in \
   "$PROJECT_PYINSTALLER" \
   "$LOCAL_SPEC_PATH" \
   "$LOCAL_ENTRYPOINT_PATH" \
-  "$LOCAL_RUNTIME_HOOK_PATH" \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$REMOTE_BUILD_SCRIPT" \
   "$MACOS_BUILD_SCRIPT" \
@@ -361,7 +359,6 @@ mkdir -p \
   "$remote_base_dir/buildsrc/docs" \
   "$remote_base_dir/buildsrc/engine" \
   "$remote_base_dir/buildsrc/deploy-scripts" \
-  "$remote_base_dir/buildsrc/pyinstaller_runtime_hooks" \
   "$remote_base_dir/buildsrc/scripts/probes" \
   "$remote_base_dir/scripts" \
   "$remote_base_dir/logs" \
@@ -379,9 +376,6 @@ rsync "${RSYNC_COMMON_ARGS[@]}" \
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
 rsync -avz "$LOCAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_binary_entrypoint.py"
 rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
-rsync -avz \
-  "$LOCAL_RUNTIME_HOOK_PATH" \
-  "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py"
 rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_BUILD_SRC_DOCS_DIR/Release_Package_README.txt"

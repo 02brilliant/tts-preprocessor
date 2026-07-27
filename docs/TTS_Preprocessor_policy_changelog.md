@@ -780,3 +780,25 @@ Allowed output diffs: none.
 - The deferred historical policy audit is now an exact empty JSON array.
 
 Allowed output diffs: none.
+
+## 23. Megawatt and Power-unit Alignment
+
+- Aligned the implemented simple-unit registry with the existing power-unit
+  policy inventory: `W`, `kW`, `MW`, `Wh`, `kWh`, and `MWh` require a numeric
+  prefix and use the ordinary integer/comma/decimal unit reader.
+- Added `MW -> 메가와트` and `MWh -> 메가와트시` while retaining the existing
+  `MHz`, `MB`, `Mbps`, and `MB/s` `메가~` readings.
+- Kept the prefix case-sensitive. `ML` remains the established milliliter alias;
+  `MV`, `MA`, `MJ`, `MPa`, `Mm`, and `Mg` remain unsupported.
+- Registered power units accept attached or one-ASCII-space numeric forms.
+  Alphabetic unsafe tails preserve atomically without partial number fallback.
+- Bare `MW` is blocked from generic acronym spelling and preserves because the
+  unit policy requires a numeric prefix.
+
+Allowed output diffs:
+
+- `1W: 1W -> 일 와트`
+- `1kW: 1kW -> 일 킬로와트`
+- `1MW: 1MW -> 일 메가와트`
+- `1Wh: 1Wh -> 일 와트시`
+- `1MWh: 1MWh -> 일 메가와트시`

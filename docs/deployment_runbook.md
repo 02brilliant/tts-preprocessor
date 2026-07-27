@@ -16,8 +16,8 @@
 
 공식 빌드 entrypoint는 `bin/build_binary_entrypoint.py`이며
 `engine.main.transform`을 호출한다. Linux, macOS, Windows는 공용
-`tts_preprocessor.spec`과
-`pyinstaller_runtime_hooks/enum_strenum_compat.py`를 사용한다. 최종 운영
+`tts_preprocessor.spec`을 사용한다. Python 3.13은 `enum.StrEnum`을 기본
+제공하므로 별도 StrEnum 호환 runtime hook은 사용하지 않는다. 최종 운영
 `app/`에는 `engine/`, 변환 테스트, Python 변환 소스를 두지 않는다.
 
 | 대상 | 빌드 위치 | 최종 ZIP |

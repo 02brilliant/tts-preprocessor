@@ -9,7 +9,6 @@ PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
 REQUIRED_PYTHON_SERIES="3.13"
 SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SOURCE_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
-RUNTIME_HOOK="$ROOT_DIR/pyinstaller_runtime_hooks/enum_strenum_compat.py"
 README_TEMPLATE="$ROOT_DIR/docs/Release_Package_README.txt"
 MACOS_BUILD_DIR="$ROOT_DIR/build/macos"
 MACOS_DIST_DIR="$MACOS_BUILD_DIR/dist"
@@ -41,7 +40,6 @@ for required_file in \
   "$PYINSTALLER_BIN" \
   "$SPEC_FILE" \
   "$SOURCE_ENTRYPOINT" \
-  "$RUNTIME_HOOK" \
   "$README_TEMPLATE"; do
   if [[ ! -e "$required_file" ]]; then
     echo "[macos-build][ERROR] Missing required file: $required_file" >&2

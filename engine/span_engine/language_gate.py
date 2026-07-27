@@ -42,7 +42,7 @@ _PERCENT = r"[%％﹪]"
 _TEMP_UNIT = r"(?:℃|℉|º|ºC|ºF|°C|°F|°\s*C|°\s*F|º\s*C|º\s*F)"
 _SIMPLE_UNIT = (
     r"(?:㎠|㎢|㎤|㎦|㎜|㎝|㎞|㎎|㎏|㎖|㎡|㎥|㎐|㎒|㎓|㏈|"
-    r"m²|cm²|km²|m³|cm³|km³|m3|cm3|km3|kHz|MHz|GHz|Ghz|ghz|mL|ml|ML|kWh|mm|cm|km|"
+    r"m²|cm²|km²|m³|cm³|km³|m3|cm3|km3|kHz|MHz|GHz|Ghz|ghz|mL|ml|ML|MWh|kWh|Wh|MW|kW|W|mm|cm|km|"
     r"mg|kg|Hz|hz|dB|KB|MB|GB|PB|m|g|L|%)"
 )
 _COMPOUND_UNIT = (

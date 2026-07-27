@@ -174,6 +174,7 @@ _ACRONYM_FALLBACK_BLOCKLIST = frozenset(
         "MHZ",
         "ML",
         "MM",
+        "MW",
         "AUD",
         "AM",
         "BTC",

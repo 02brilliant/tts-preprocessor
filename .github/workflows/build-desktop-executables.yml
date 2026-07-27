@@ -31,13 +31,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements/build.txt
 
-      - name: Verify shared PyInstaller runtime hook
+      - name: Verify official PyInstaller spec
         shell: pwsh
         run: |
-          $hook = "pyinstaller_runtime_hooks\enum_strenum_compat.py"
-          if (-not (Test-Path -LiteralPath $hook -PathType Leaf)) {
-            throw "Shared StrEnum runtime hook not found: $hook"
-          }
           $spec = Get-Content -LiteralPath "tts_preprocessor.spec" -Raw
           if ($spec -notmatch 'bin.+build_binary_entrypoint\.py') {
             throw "Official binary entrypoint is missing from tts_preprocessor.spec"
