@@ -4783,8 +4783,10 @@ Counter Policy Table:
 | `학기` | sino_only | - | `2학기 -> 이학기` | native 금지 |
 | `회` | sino_only | - | `제62회 -> 제 육십이회` | numeric prefixed noun과 연동 |
 
-Leading-zero counter는 일반 counter owner가 숫자 의미로 재해석하지 않고 전체 surface를 보존한다.
-날짜의 `월`/`일` 및 별도로 명시된 minute/second owner만 leading-zero override를 가질 수 있다.
+Leading-zero counter는 일반 counter owner가 숫자 의미로 재해석하지 않고
+전체 surface를 보존한다. 날짜의 `월`/`일`, 붙임형 clock-hour `시`,
+그리고 기존 spacing gate를 통과한 `분`/`초` owner만 명시적인
+leading-zero override를 가진다.
 
 ```text
 01명 -> 01명
@@ -4798,16 +4800,20 @@ Batch 2 leading-zero canonical owner matrix:
 ID: 00123 -> 아이디: 00123
 03kg -> 03kg
 ₩01,000 -> ₩01,000
-09시 -> 09시
-07시 05분 -> 07시 05분
+09시 -> 아홉 시
+09 시 -> 09 시
+00시 -> 영 시
+07시 05분 -> 일곱 시 오분
 010-1234-5678 01명 -> 공일공 일이삼사 오육칠팔 01명
 ```
 
 Unit와 currency owner는 invalid leading-zero amount의 full surface를 preserve
-claim하여 내부 numeric fallback을 차단한다. Suffix-clock owner는
-`TIME_PRESERVE_SURFACE`로 leading-zero numeric group을 보존한다. Identifier에서는
-등록 acronym만 독립적으로 변환할 수 있고 colon과 leading-zero payload는 보존한다.
-날짜 `월`/`일`과 phone block은 이 preserve matrix의 좁은 등록 예외다.
+claim하여 내부 numeric fallback을 차단한다. 붙임형 `시` 및 기존 spacing
+gate를 통과한 `분`/`초` owner는 자기 numeric core에 한해서만 leading
+zero를 제거한 값으로 읽는다.
+Identifier에서는 등록 acronym만 독립적으로 변환할 수 있고 colon과
+leading-zero payload는 보존한다. 날짜 `월`/`일`, phone block, suffix-time
+unit은 이 preserve matrix의 좁은 등록 예외다.
 
 Counter 100+ Sino policy:
 
@@ -10708,19 +10714,78 @@ Clock hour `N시`는 시각이다. `1~12시`는 고유어 hour form으로 읽고
 23시 59분 -> 이십삼 시 오십구분
 ```
 
-Leading-zero suffix clock-hour surface는 숫자 의미로 재해석하지 않고 시간 표현 전체를 보존한다.
-이 보존은 `시` suffix 형식에만 적용하며 colon time owner에는 적용하지 않는다.
+Suffix clock의 `시-분` 및 `분-초` 경계에는 zero or more horizontal
+whitespace를 허용한다. 따라서 compact, spaced, mixed-spacing 표면은 같은
+structured time surface다. Time owner가 전체 구조의 모든 numeric core를
+먼저 claim하며, source에 단위 사이 공백이 없으면 한 칸을 generated
+boundary로 추가한다. 이미 있는 horizontal whitespace는 원문대로 보존한다.
+줄바꿈은 이 optional spacing에 포함하지 않는다.
 
 ```text
-09시 -> 09시
-09시다 -> 09시다
-07시 05분 -> 07시 05분
+11시23분 -> 열한 시 이십삼분
+11시 23분 -> 열한 시 이십삼분
+11시23분45초 -> 열한 시 이십삼분 사십오초
+11시 23분45초 -> 열한 시 이십삼분 사십오초
+11시23분 45초 -> 열한 시 이십삼분 사십오초
+11시 23분 45초 -> 열한 시 이십삼분 사십오초
+23분45초 -> 이십삼분 사십오초
+23분 45초 -> 이십삼분 사십오초
+```
+
+붙임형 `N시`는 clock-hour policy를 따른다. 유효 범위는 `0..24`다.
+`0`은 `영`, `1..12`는 고유어 clock-hour form, `13..24`는 한자어
+number + `시`다. 선행 0은 붙임형 `시` owner 안에서 제거한 뒤 이 범위를
+검사한다. 따라서 `0시`, `00시`는 `영 시`, `09시`, `009시`는
+`아홉 시`다. 정규화한 값이 범위를 벗어나는 `99시`는 원문 보존한다.
+
+숫자와 `시` 사이에 horizontal whitespace가 있으면 clock-hour owner는
+claim하지 않는다. 숫자 core는 기존 일반 숫자 정책으로 처리하고 원문의
+space와 `시`는 보존한다. 따라서 `1 시 -> 일 시`, `3 시 -> 삼 시`,
+`13 시 -> 십삼 시`이며, 일반 leading-zero preserve가 적용되는
+`09 시`는 그대로 `09 시`다. 붙임형 time owner가 생성하는 출력은
+항상 number reading과 원문 `시` 사이에 한 칸을 둔다.
+
+`N분`과 `N초`는 단독 또는 복합 시간 표면 여부와 관계없이 기존
+Sino-Korean suffix reading을 유지하며 같은 공통 reader를 사용한다.
+정수부의 선행 0은 이 두 suffix owner 안에서만 제거한다. 소수인 경우
+정수부에만 같은 규칙을 적용하고 소수부는 기존처럼 원문 digit별로 읽는다.
+`분`과 `초`는 duration amount로도 사용되므로 자리 수나 `00..59` clock
+range로 제한하지 않는다. `11시60분 -> 열한 시 육십분`,
+`23분045초 -> 이십삼분 사십오초`,
+`123분545초 -> 백이십삼분 오백사십오초`,
+`01.5분 -> 일쩜오 분`이다. 현재
+canonical profile은 bare `N분`을 존칭 인원 counter가 아니라
+minute/duration suffix로 처리한다.
+
+Invalid clock hour, malformed/unsupported numeric core, unsafe tail,
+protected/code-like context는 전체 structured surface에 대해
+preserve-first다. 특히 unsupported compact 또는 malformed compound에서
+앞이나 뒤의 `N시`/`N분`/`N초`만 후순위 owner가 부분 변환하면 안 된다.
+
+```text
+09시 -> 아홉 시
+09 시 -> 09 시
+0시 -> 영 시
+00시 -> 영 시
+09시다 -> 아홉 시다
+07시 05분 -> 일곱 시 오분
+09시23분 -> 아홉 시 이십삼분
+09시23분45초 -> 아홉 시 이십삼분 사십오초
+11시005분 -> 열한 시 오분
+23분045초 -> 이십삼분 사십오초
+00시23분45초 -> 영 시 이십삼분 사십오초
+99시23분45초 -> 99시23분45초
 09:30 -> 아홉시 삼십분
 ```
 
+이 leading-zero override는 붙임형 `시`와 등록된 `분`/`초` owner에만
+적용한다. `01명`, `03kg`,
+`₩01,000`, identifier/code payload 및 다른 단위는 기존 preserve 정책을
+유지한다. `시`와 duration `시간`의 range/읽기 규칙도 통합하지 않는다.
+
 Clock-hour `N시` may be followed by a safe attached Korean tail. The original tail is preserved verbatim; the preprocessor does not correct Korean particles or endings.
 Safe tails include `은/는/이/가/을/를/로/으로/와/과/도/만/부터/까지/에/에는/에서/에도/보다/처럼/마다`
-and `이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`.
+and `다/이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`.
 Lexical/code-like continuations such as `시리즈`, `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain preserve-first.
 
 
@@ -10755,6 +10820,17 @@ Duration `N시간`은 지속 시간이다. `1~23시간`은 고유어 duration fo
 25시간 -> 이십오 시간
 48시간 -> 사십팔 시간
 72시간 -> 칠십이 시간
+```
+
+Duration owner도 숫자와 `시간`이 붙어 있을 때만 이 고유어/한자어
+duration 규칙을 적용한다. `N 시간`처럼 사이에 공백이 있으면 duration 및
+counter owner가 claim하지 않고 일반 숫자 읽기로 넘긴다.
+
+```text
+1 시간 -> 일 시간
+3 시간 -> 삼 시간
+13 시간 -> 십삼 시간
+09 시간 -> 09 시간
 ```
 
 `분`, `초`는 sino counter로 읽고 붙인다. `05분`, `05초`처럼 두 자리 leading zero minute/second는 time reading과 같은 방식으로 허용한다.

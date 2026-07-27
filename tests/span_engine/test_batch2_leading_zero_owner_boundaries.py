@@ -19,13 +19,13 @@ from engine.span_engine.transform import transform_with_trace
         ("03 kg", "03 kg"),
         ("₩01,000", "₩01,000"),
         ("₩ 01,000", "₩ 01,000"),
-        ("09시", "09시"),
-        ("07시 05분", "07시 05분"),
-        ("009시", "009시"),
+        ("09시", "아홉 시"),
+        ("07시 05분", "일곱 시 오분"),
+        ("009시", "아홉 시"),
         ("09 시", "09 시"),
     ],
 )
-def test_batch2_leading_zero_preserve_matrix(text: str, expected: str) -> None:
+def test_leading_zero_owner_matrix(text: str, expected: str) -> None:
     assert transform(text) == expected
 
 
@@ -78,21 +78,22 @@ def test_batch2_invalid_owner_amounts_full_claim_preserve(
     assert output.render_pieces[0].provenance == "ORIGINAL_BOUNDARY"
 
 
-def test_batch2_suffix_clock_uses_time_preserve_surface() -> None:
+def test_suffix_clock_leading_zero_uses_time_surface() -> None:
     text = "07시 05분"
     output = transform_with_trace(text)
     time_claims = [
         claim for claim in output.trace.claim_logs if claim.owner == "time"
     ]
 
-    assert output.normalized_text == text
+    assert output.normalized_text == "일곱 시 오분"
     assert [(claim.span.start, claim.span.end) for claim in time_claims] == [
         (0, 2),
         (4, 6),
     ]
     assert all(
-        claim.surface_type == "TIME_PRESERVE_SURFACE"
-        and claim.reason == "leading_zero_clock_hour_suffix_preserve"
+        claim.surface_type == "TIME_SURFACE"
+        and claim.reason
+        in {"time_hour_korean_context", "time_minute_korean_context"}
         for claim in time_claims
     )
     assert not any(claim.owner == "number" for claim in output.trace.claim_logs)

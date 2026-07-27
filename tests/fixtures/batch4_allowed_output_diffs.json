@@ -11,8 +11,8 @@
     {
       "decision_id": "interaction-middle-dot-time-tail-guard",
       "input": "01·09시와 09시",
-      "expected": "01·09시와 09시",
-      "owner_contract": "leading-zero suffix-clock preserve blocks partial middle-dot and standalone hour rewrites"
+      "expected": "01·09시와 아홉 시",
+      "owner_contract": "the mixed middle-dot time tail preserves while the independent suffix hour normalizes"
     },
     {
       "decision_id": "interaction-middle-dot-unit-tail-guard",

@@ -5,7 +5,11 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_fraction_text, read_number_text
+from engine.span_engine.numeric_reading import (
+    read_fraction_text,
+    read_number_text,
+    read_sino_time_suffix_number_text,
+)
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
@@ -224,10 +228,13 @@ def _duration_amount_reading(raw: str, unit: str) -> str | None:
     if "/" in raw:
         numerator, denominator = raw.split("/", 1)
         return read_fraction_text(numerator, denominator)
+    if unit == "분":
+        reading = read_sino_time_suffix_number_text(raw)
+        if reading is not None and "." in raw:
+            return f"{reading} "
+        return reading
     if "." in raw or "," in raw:
         reading = read_number_text(raw)
-        if reading is not None and unit == "분" and "." in raw:
-            return f"{reading} "
         return reading
     if len(raw) > 1 and raw.startswith("0"):
         if len(raw) == 2 and int(raw) > 0:

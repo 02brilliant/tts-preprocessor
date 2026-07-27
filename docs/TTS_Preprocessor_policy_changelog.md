@@ -2,6 +2,32 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Restricted specialized `시` and `시간` number readings to attached markers.
+  A horizontal space before either marker delegates the numeric core to
+  ordinary number policy: `3 시 -> 삼 시`, `3 시간 -> 삼 시간`, and
+  `09 시 -> 09 시`. Attached suffix-clock zero is now valid:
+  `0시` and `00시` both read `영 시`. Attached `시` otherwise keeps the
+  native `1..12`, Sino `13..24`, and out-of-range preserve rules; attached
+  `시간` keeps its separate duration policy.
+- Superseded the earlier Batch 2 suffix-clock leading-zero preserve decision
+  only for registered suffix-time `시`/`분`/`초`. These owners now remove
+  integer-part leading zeros locally when their spacing gate admits the
+  surface. Attached `시` uses its `0..24`
+  clock-hour range and native/Sino split; `분`/`초` share one Sino reader
+  without a digit-count or `00..59` limit. Canonical examples include
+  `09시 -> 아홉 시`, `23분045초 -> 이십삼분 사십오초`, and
+  `123분545초 -> 백이십삼분 오백사십오초`. Other leading-zero
+  identifiers, counters, units, currency, and malformed/unsafe surfaces retain
+  their existing atomic preserve policy; `시간` remains a separate duration
+  rule.
+- Extended suffix-clock ownership to compact and mixed-horizontal-spacing
+  `N시N분`, `N시N분N초`, and `N분N초` compounds. The time owner now claims all
+  numeric cores in the complete structure before generic suffix fallback,
+  inserts a generated boundary space only where source spacing is absent, and
+  keeps the clock-hour and Sino minute/second reading split while applying the
+  registered suffix-time leading-zero rule above. Unsafe-tail and
+  protected-context policy remain unchanged. Minute/second amounts reuse the
+  standalone suffix reading without a `00..59` clock limit.
 - Unified successfully claimed colon-time hour rendering with the existing
   clock-hour mapping: `00` reads `영시`, `01..12` use native Korean forms, and
   `13..24` use Sino-Korean forms. This corrects `02..09` strong leading-zero
@@ -55,8 +81,9 @@
 - Canonical regression sentence now covers `다우존스30`, ordinary dotted decimals, `5만1839.26`, `2만5508.07`, `5극3특`, `5극 3특`, and the atomic-preserve bare `3대` owner.
 
 - Promoted four explicit span-default outputs to canonical policy: preserve the
-  full leading-zero counter surface (`01명`) and leading-zero suffix clock-hour
-  surface (`09시`), attach an immediate approximate `여` to a compact
+  full leading-zero counter surface (`01명`) and, at that time, the
+  leading-zero suffix clock-hour surface (`09시`; superseded by the current
+  suffix-time override), attach an immediate approximate `여` to a compact
   large-unit reading (`1만3천여 명 -> 일만삼천여 명`), and read both sides of
   a spaced middle-dot independently while preserving its boundary
   (`123 · 456 -> 백이십삼 · 사백오십육`).
@@ -669,7 +696,9 @@ Allowed output diffs:
 - Identifier numeric payloads preserve, while a registered acronym and independent date owner may still transform.
 - Leading-zero counter surfaces preserve instead of selecting native/hybrid counter reading.
 - Unit and currency owners full-claim invalid leading-zero amounts as preserve and block partial numeric fallback.
-- Suffix-clock `09시` and `07시 05분` use `TIME_PRESERVE_SURFACE` and retain their original bytes and spacing.
+- Historical Batch 2 decision: suffix-clock `09시` and `07시 05분` used
+  `TIME_PRESERVE_SURFACE`. This item is superseded by the current registered
+  suffix-time leading-zero override above.
 - Registered date marker and phone owners remain narrow exceptions to the preserve matrix.
 - No runtime implementation or normal output changed in this batch.
 - The 14 resolved rows moved from the deferred historical audit into owning policy tests and the Batch 2 stable fixture.

@@ -110,15 +110,20 @@ def test_ambiguous_time_like_with_time_context_reads_as_time(text: str, expected
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected"),
     [
-        "09시",
-        "09시다",
-        "07시 05분",
+        ("09시", "아홉 시"),
+        ("09시다", "아홉 시다"),
+        ("07시 05분", "일곱 시 오분"),
+        ("0시", "영 시"),
+        ("00시", "영 시"),
+        ("09 시", "09 시"),
     ],
 )
-def test_leading_zero_suffix_clock_hour_remains_preserved(text: str) -> None:
-    assert prod(text) == text
+def test_leading_zero_suffix_clock_uses_suffix_time_policy(
+    text: str, expected: str
+) -> None:
+    assert prod(text) == expected
 
 
 @pytest.mark.parametrize(

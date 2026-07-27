@@ -5,7 +5,10 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.counter import SUPPORTED_COUNTERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_decimal_text
+from engine.span_engine.numeric_reading import (
+    read_decimal_text,
+    read_sino_time_suffix_number_text,
+)
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 from engine.span_engine.span_guards import (
@@ -78,10 +81,7 @@ def scan_decimal_registered_suffix_candidates(
             continue
         if not _valid_left_boundary(raw_text, decimal_span.start):
             continue
-        reading = read_decimal_text(match.group(0))
-        if reading is None:
-            continue
-        candidate = _candidate_at_suffix(raw_text, decimal_span, reading)
+        candidate = _candidate_at_suffix(raw_text, decimal_span)
         if candidate is not None:
             candidates.append(candidate)
     return candidates
@@ -97,12 +97,20 @@ def parse_decimal_registered_suffix_candidate(
 
 
 def _candidate_at_suffix(
-    raw_text: str, decimal_span: SourceSpan, reading: str
+    raw_text: str, decimal_span: SourceSpan
 ) -> SurfaceCandidate | None:
     suffix_start = decimal_span.end
     for suffix in _ORDERED_SUFFIXES:
         if not raw_text.startswith(suffix, suffix_start):
             continue
+        raw_number = raw_text[decimal_span.start : decimal_span.end]
+        reading = (
+            read_sino_time_suffix_number_text(raw_number)
+            if suffix in {"분", "초"}
+            else read_decimal_text(raw_number)
+        )
+        if reading is None:
+            return None
         suffix_end = suffix_start + len(suffix)
         if not _suffix_boundary_is_safe(raw_text, suffix_end):
             return _preserve_candidate(
@@ -170,9 +178,12 @@ def _scan_malformed_decimal_suffix_preserves(
             index = numeric_end
             continue
         suffix_start, suffix_end = suffix
-        if read_decimal_text(raw_number) is not None and _suffix_boundary_is_safe(
-            raw_text, suffix_end
-        ):
+        reading = (
+            read_sino_time_suffix_number_text(raw_number)
+            if raw_text[suffix_start:suffix_end] in {"분", "초"}
+            else read_decimal_text(raw_number)
+        )
+        if reading is not None and _suffix_boundary_is_safe(raw_text, suffix_end):
             index = numeric_end
             continue
         candidates.append(

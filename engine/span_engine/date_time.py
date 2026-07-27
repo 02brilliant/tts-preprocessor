@@ -8,6 +8,7 @@ from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.delimiters import COLON_LIKE_DELIMITERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate, TraceLogEntry
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.numeric_reading import read_sino_time_suffix_number_text
 from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
@@ -26,8 +27,19 @@ _ANY_COLON_TIME_RE = re.compile(
     rf"(?<![A-Za-z0-9])\d{{1,2}}[{_COLON_LIKE_RE_CLASS}]\d{{2}}"
     rf"(?:[{_COLON_LIKE_RE_CLASS}]\d{{2}})?(?![A-Za-z0-9])"
 )
+_KOREAN_SUFFIX_INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+_KOREAN_SUFFIX_NUMBER_RE = rf"(?:{_KOREAN_SUFFIX_INTEGER_RE})(?:\.\d+)?"
 _KOREAN_TIME_RE = re.compile(
-    r"(?<![A-Za-z0-9가-힣])(\d{1,2})시(?!간)(?:\s+(\d{1,2})분(?:\s+(\d{1,2})초)?)?"
+    rf"(?<![A-Za-z0-9가-힣])(\d+)시(?!간)"
+    rf"(?:[ \t]*({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*분"
+    rf"(?:[ \t]*({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*초)?)?"
+)
+_KOREAN_MINUTE_SECOND_RE = re.compile(
+    rf"(?<![A-Za-z0-9가-힣])({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*분"
+    rf"[ \t]*({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*초"
+)
+_KOREAN_MINUTE_OR_SECOND_RE = re.compile(
+    rf"(?<![A-Za-z0-9가-힣])({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*(?:분|초)"
 )
 
 TIME_PREFIXES = ("오전", "오후", "새벽", "아침", "정오", "밤", "저녁", "AM", "PM", "am", "pm")
@@ -36,7 +48,9 @@ KOREAN_TIME_SAFE_TAILS = tuple(
     sorted(
         (
             "이었다",
+            "이었고",
             "이라면",
+            "이지만",
             "입니다",
             "에는",
             "에서",
@@ -44,8 +58,11 @@ KOREAN_TIME_SAFE_TAILS = tuple(
             "이라고",
             "인데",
             "였다",
+            "였고",
             "이다",
             "이면",
+            "이며",
+            "이고",
             "면",
             "라면",
             "라고",
@@ -58,6 +75,7 @@ KOREAN_TIME_SAFE_TAILS = tuple(
             "경",
             "쯤",
             "정각",
+            "다",
             "은",
             "는",
             "이",
@@ -325,8 +343,27 @@ def scan_time_candidates(
             )
         )
 
-    for match in _KOREAN_TIME_RE.finditer(raw_text):
+    korean_time_matches = list(_KOREAN_TIME_RE.finditer(raw_text))
+    korean_minute_second_matches = list(
+        _KOREAN_MINUTE_SECOND_RE.finditer(raw_text)
+    )
+    compound_spans = [
+        SourceSpan(match.start(), match.end())
+        for match in (*korean_time_matches, *korean_minute_second_matches)
+    ]
+    candidates.extend(
+        _unsafe_korean_suffix_amount_candidates(raw_text, compound_spans)
+    )
+    for match in korean_time_matches:
         candidates.extend(_korean_time_candidates(raw_text, match))
+    for match in korean_minute_second_matches:
+        if any(
+            time_match.start() <= match.start()
+            and match.end() <= time_match.end()
+            for time_match in korean_time_matches
+        ):
+            continue
+        candidates.extend(_korean_minute_second_candidates(raw_text, match))
     return candidates
 
 
@@ -383,7 +420,7 @@ def is_valid_korean_clock_time(
 ) -> bool:
     if not isinstance(hour, int):
         raise TypeError("hour must be int")
-    if hour < 1 or hour > 24:
+    if hour < 0 or hour > 24:
         return False
     if minute is not None and (not isinstance(minute, int) or minute < 0 or minute > 59):
         return False
@@ -414,6 +451,8 @@ def time_number_reading(hour: int, minute: int, second: int | None = None) -> st
 def clock_hour_reading(hour: int) -> str | None:
     if not isinstance(hour, int):
         raise TypeError("hour must be int")
+    if hour == 0:
+        return "영"
     if 1 <= hour <= 12:
         return native_number_under_100(hour)
     if 13 <= hour <= 24:
@@ -745,19 +784,39 @@ def _korean_time_candidates(
     raw_text: str, match: re.Match[str]
 ) -> list[SurfaceCandidate]:
     hour_text = match.group(1)
-    if len(hour_text) == 2 and hour_text.startswith("0"):
+    normalized_hour_text = hour_text.lstrip("0") or "0"
+    hour = (
+        int(normalized_hour_text)
+        if len(normalized_hour_text) <= 2
+        else 25
+    )
+    minute_raw = match.group(2)
+    second_raw = match.group(3)
+    minute_reading = (
+        _korean_minute_second_reading(minute_raw)
+        if minute_raw is not None
+        else None
+    )
+    second_reading = (
+        _korean_minute_second_reading(second_raw)
+        if second_raw is not None
+        else None
+    )
+    if (minute_raw is not None and minute_reading is None) or (
+        second_raw is not None and second_reading is None
+    ):
         return _preserve_numeric_groups(
-            match, "leading_zero_clock_hour_suffix_preserve"
+            match, "invalid_korean_time_suffix_numeric_preserve"
         )
-
-    hour = int(hour_text)
-    minute = int(match.group(2)) if match.group(2) is not None else None
-    second = int(match.group(3)) if match.group(3) is not None else None
     span = SourceSpan(match.start(), match.end())
-    if not is_valid_korean_clock_time(hour, minute, second):
+    if not is_valid_korean_clock_time(hour):
         return _preserve_numeric_groups(match, "invalid_korean_time_preserve")
     if not _valid_korean_time_boundary(raw_text, span):
-        if minute is None and second is None and _starts_with_time_title_suffix(raw_text, span.end):
+        if (
+            minute_raw is None
+            and second_raw is None
+            and _starts_with_time_title_suffix(raw_text, span.end)
+        ):
             return [
                 _numeric_marker_candidate(
                     match,
@@ -780,26 +839,163 @@ def _korean_time_candidates(
             hour,
             owner="time",
             reading=f"{clock_hour_reading(hour)} ",
+            core_span=SourceSpan(
+                match.start(1), _unit_start_after_group(match, 1, "시")
+            ),
         )
     ]
-    if minute is not None:
-        if minute > 59:
-            return None
+    if minute_raw is not None:
+        assert minute_reading is not None
         candidates.append(
-            _numeric_marker_candidate(match, 2, "time_minute_korean_context", minute, owner="time")
+            _numeric_marker_candidate(
+                match,
+                2,
+                "time_minute_korean_context",
+                minute_raw,
+                owner="time",
+                reading=(
+                    f"{_generated_component_separator(match, 1, 2, '시')}"
+                    f"{minute_reading}"
+                ),
+            )
         )
-    if second is not None:
-        if second > 59:
-            return None
+    if second_raw is not None:
+        assert second_reading is not None
         candidates.append(
-            _numeric_marker_candidate(match, 3, "time_second_korean_context", second, owner="time")
+            _numeric_marker_candidate(
+                match,
+                3,
+                "time_second_korean_context",
+                second_raw,
+                owner="time",
+                reading=(
+                    f"{_generated_component_separator(match, 2, 3, '분')}"
+                    f"{second_reading}"
+                ),
+            )
         )
     return candidates
 
 
+def _unsafe_korean_suffix_amount_candidates(
+    raw_text: str, compound_spans: list[SourceSpan]
+) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for match in _KOREAN_MINUTE_OR_SECOND_RE.finditer(raw_text):
+        span = SourceSpan(match.start(), match.end())
+        if any(
+            compound.start <= span.start and span.end <= compound.end
+            for compound in compound_spans
+        ):
+            continue
+        if _is_existing_duration_fraction_or_negative(raw_text, span):
+            continue
+        if _valid_korean_suffix_amount_boundary(raw_text, span):
+            continue
+        preserve_span = SourceSpan(
+            span.start, _korean_suffix_like_token_end(raw_text, span.end)
+        )
+        candidates.append(
+            SurfaceCandidate(
+                core_span=preserve_span,
+                full_span=preserve_span,
+                owner="preserve",
+                surface_type="TIME_PRESERVE_SURFACE",
+                reason="unsafe_korean_minute_second_suffix_preserve",
+            )
+        )
+    return candidates
+
+
+def _is_existing_duration_fraction_or_negative(
+    raw_text: str, span: SourceSpan
+) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    if prev_char in {"~", "∼", "～", "〜"}:
+        return span.start >= 2 and raw_text[span.start - 2].isdigit()
+    if not raw_text.startswith("분", span.end - 1):
+        return False
+    if prev_char == "-":
+        return True
+    if prev_char != "/" or span.start < 2:
+        return False
+    numerator_end = span.start - 1
+    numerator_start = numerator_end
+    while numerator_start > 0 and raw_text[numerator_start - 1].isdigit():
+        numerator_start -= 1
+    return numerator_start < numerator_end
+
+
+def _korean_minute_second_candidates(
+    raw_text: str, match: re.Match[str]
+) -> list[SurfaceCandidate]:
+    minute_raw = match.group(1)
+    second_raw = match.group(2)
+    minute_reading = _korean_minute_second_reading(minute_raw)
+    second_reading = _korean_minute_second_reading(second_raw)
+    span = SourceSpan(match.start(), match.end())
+    if minute_reading is None or second_reading is None:
+        return _preserve_numeric_groups(
+            match, "invalid_korean_minute_second_preserve"
+        )
+    if not _valid_korean_time_boundary(raw_text, span):
+        return _preserve_numeric_groups(
+            match, "attached_korean_minute_second_preserve"
+        )
+    return [
+        _numeric_marker_candidate(
+            match,
+            1,
+            "time_minute_korean_compound",
+            minute_raw,
+            owner="time",
+            reading=minute_reading,
+        ),
+        _numeric_marker_candidate(
+            match,
+            2,
+            "time_second_korean_compound",
+            second_raw,
+            owner="time",
+            reading=(
+                f"{_generated_component_separator(match, 1, 2, '분')}"
+                f"{second_reading}"
+            ),
+        ),
+    ]
+
+
+def _korean_minute_second_reading(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    return read_sino_time_suffix_number_text(raw)
+
+
+def _generated_component_separator(
+    match: re.Match[str],
+    previous_group: int,
+    current_group: int,
+    previous_unit: str,
+) -> str:
+    previous_marker_end = (
+        _unit_start_after_group(match, previous_group, previous_unit)
+        + len(previous_unit)
+    )
+    return " " if match.start(current_group) == previous_marker_end else ""
+
+
+def _unit_start_after_group(
+    match: re.Match[str], group: int, unit: str
+) -> int:
+    unit_start = match.string.find(unit, match.end(group), match.end())
+    if unit_start < 0:
+        raise ValueError(f"missing {unit!r} marker after regex group {group}")
+    return unit_start
+
+
 def _preserve_numeric_groups(match: re.Match[str], reason: str) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
-    for group in (1, 2, 3):
+    for group in range(1, match.re.groups + 1):
         if match.group(group) is None:
             continue
         span = SourceSpan(match.start(group), match.end(group))
@@ -821,18 +1017,23 @@ def _numeric_marker_candidate(
     match: re.Match[str],
     group: int,
     reason: str,
-    value: int,
+    value: int | str,
     owner: str = "date",
     reading: str | None = None,
+    core_span: SourceSpan | None = None,
 ) -> SurfaceCandidate:
-    span = SourceSpan(match.start(group), match.end(group))
+    span = core_span or SourceSpan(match.start(group), match.end(group))
+    if reading is None:
+        if not isinstance(value, int):
+            raise TypeError("non-integer marker values require an explicit reading")
+        reading = number_to_korean_under_10000(value)
     return SurfaceCandidate(
         core_span=span,
         full_span=SourceSpan(match.start(), match.end()),
         owner=owner,
         surface_type="DATE_SURFACE" if owner == "date" else "TIME_SURFACE",
         reason=reason,
-        metadata={"value": value, "reading": reading or number_to_korean_under_10000(value)},
+        metadata={"value": value, "reading": reading},
     )
 
 
@@ -905,7 +1106,19 @@ def _valid_korean_date_boundary(raw_text: str, span: SourceSpan) -> bool:
 def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
     prev_char = raw_text[span.start - 1] if span.start > 0 else None
     next_char = raw_text[span.end] if span.end < len(raw_text) else None
-    if prev_char in {"~", "∼", "～", "〜", "-", "/", "."}:
+    if prev_char in {
+        "~",
+        "∼",
+        "～",
+        "〜",
+        "-",
+        "+",
+        "/",
+        ".",
+        ":",
+        "_",
+        "·",
+    }:
         return False
     if prev_char is not None and (prev_char.isascii() and prev_char.isalnum()):
         return False
@@ -913,12 +1126,113 @@ def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
         return False
     if next_char is None:
         return True
-    if next_char.isascii() and next_char.isalnum():
-        return False
+    if next_char == "/":
+        return is_sentence_final_slash_boundary(raw_text, span.end)
+    if next_char.isascii():
+        if next_char.isalnum() or next_char in {"+", "-", "_"}:
+            return False
+        if (
+            next_char == "."
+            and span.end + 1 < len(raw_text)
+            and raw_text[span.end + 1].isdigit()
+        ):
+            return False
     if "\uac00" <= next_char <= "\ud7a3":
         next_text = raw_text[span.end :]
         return _has_safe_korean_time_tail(next_text)
     return True
+
+
+def _valid_korean_suffix_amount_boundary(
+    raw_text: str, span: SourceSpan
+) -> bool:
+    prev_char = raw_text[span.start - 1] if span.start > 0 else None
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
+    if prev_char is not None:
+        if prev_char.isascii() and prev_char.isalnum():
+            return False
+        if "\uac00" <= prev_char <= "\ud7a3":
+            return False
+        if prev_char in {
+            "~",
+            "∼",
+            "～",
+            "〜",
+            "-",
+            "+",
+            "/",
+            ".",
+            ":",
+            "_",
+            "·",
+        }:
+            return False
+    if next_char is None or next_char.isspace():
+        return True
+    if next_char == "/":
+        return is_sentence_final_slash_boundary(raw_text, span.end)
+    if next_char in {
+        ",",
+        "!",
+        "?",
+        ";",
+        ":",
+        ")",
+        "]",
+        "}",
+        "。",
+        "，",
+        "！",
+        "？",
+    }:
+        return True
+    if next_char == ".":
+        return not (
+            span.end + 1 < len(raw_text)
+            and raw_text[span.end + 1].isdigit()
+        )
+    if next_char.isascii():
+        return False
+    if "\uac00" <= next_char <= "\ud7a3":
+        return _has_safe_korean_duration_suffix_tail(raw_text[span.end :])
+    return True
+
+
+def _has_safe_korean_duration_suffix_tail(next_text: str) -> bool:
+    return _has_safe_korean_time_tail(next_text) or any(
+        next_text.startswith(tail) for tail in ("간", "씩", "짜리")
+    )
+
+
+def _korean_suffix_like_token_end(raw_text: str, start: int) -> int:
+    index = start
+    while index < len(raw_text):
+        char = raw_text[index]
+        if char.isspace() or char in {
+            ",",
+            "!",
+            "?",
+            ";",
+            ":",
+            ")",
+            "]",
+            "}",
+            "。",
+            "，",
+            "！",
+            "？",
+        }:
+            break
+        if char == "." and (
+            index + 1 >= len(raw_text)
+            or (
+                not raw_text[index + 1].isdigit()
+                and raw_text[index + 1] != "."
+            )
+        ):
+            break
+        index += 1
+    return index
 
 
 def _has_safe_korean_time_tail(next_text: str) -> bool:

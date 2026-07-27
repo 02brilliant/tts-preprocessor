@@ -22,6 +22,8 @@ from engine.span_engine import transform
         ("22시", "이십이 시"),
         ("23시", "이십삼 시"),
         ("24시", "이십사 시"),
+        ("0시", "영 시"),
+        ("00시", "영 시"),
     ],
 )
 def test_clock_hour_suffix_reading(text: str, expected: str) -> None:
@@ -61,6 +63,25 @@ def test_clock_hour_with_minute_reading(text: str, expected: str) -> None:
     ],
 )
 def test_duration_hour_suffix_reading(text: str, expected: str) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1 시", "일 시"),
+        ("3 시", "삼 시"),
+        ("09 시", "09 시"),
+        ("13 시", "십삼 시"),
+        ("1 시간", "일 시간"),
+        ("3 시간", "삼 시간"),
+        ("09 시간", "09 시간"),
+        ("13 시간", "십삼 시간"),
+    ],
+)
+def test_spaced_clock_and_duration_markers_use_ordinary_number_reading(
+    text: str, expected: str
+) -> None:
     assert transform(text) == expected
 
 

@@ -1,6 +1,6 @@
 {
   "batch_id": "policy-alignment-batch-2",
-  "description": "Batch 2 leading-zero and owner-override contract. All audited rows promote the current span output without a runtime output transition.",
+  "description": "Batch 2 leading-zero and owner-override contract, with the later registered 시/분/초 leading-zero override applied to current expectations.",
   "stable_decisions": [
     {
       "decision_id": "digit-mode-leading-zero-003",
@@ -35,8 +35,8 @@
     {
       "decision_id": "interaction-leading-zero-bare-time-override",
       "input": "01 09시 07시 05분",
-      "expected": "01 09시 07시 05분",
-      "owner_contract": "standalone and suffix-clock leading-zero surfaces preserve"
+      "expected": "01 아홉 시 일곱 시 오분",
+      "owner_contract": "standalone leading-zero preserves while registered suffix-time owners normalize locally"
     },
     {
       "decision_id": "interaction-phone-digit-mode-plus-counter-override",
@@ -59,8 +59,8 @@
     {
       "decision_id": "override-time-hour-minute-beats-leading-zero",
       "input": "07시 05분",
-      "expected": "07시 05분",
-      "owner_contract": "suffix-clock owner preserves leading-zero hour-minute surface"
+      "expected": "일곱 시 오분",
+      "owner_contract": "suffix-clock owner normalizes leading-zero hour and minute cores"
     },
     {
       "decision_id": "override-unit-beats-leading-zero",
@@ -83,8 +83,8 @@
     {
       "decision_id": "regression-leading-zero-time-override",
       "input": "09시",
-      "expected": "09시",
-      "owner_contract": "suffix-clock owner preserves a leading-zero hour surface"
+      "expected": "아홉 시",
+      "owner_contract": "suffix-clock owner removes leading zeros and applies the existing clock-hour reading"
     }
   ],
   "allowed_diffs": []

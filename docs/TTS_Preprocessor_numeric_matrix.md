@@ -139,13 +139,39 @@ Current standalone invalid/malformed forms:
 | unit | integer, decimal, comma integer/decimal for supported unit policy; owner-local meter aliases include `m` and fullwidth Latin `ｍ`; a registered ASCII-letter unit immediately followed by `^2` or `^3` uses the caret-power owner | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes, inheriting the base unit's decimal eligibility | yes for allowed unit matrix | number-to-unit spacing remains the base unit policy; unit-to-`^2`/`^3` must have no space | malformed numeric+unit follows its existing path; caret power is licensed only at end-of-input or before whitespace/Hangul, and a digit/ASCII-letter tail does not use power reading | `7m^2 -> 칠 제곱미터`, `7m^3 -> 칠 세제곱미터`; invalid boundaries retain their pre-Batch-1 behavior |
 | counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun, e.g. `6400명`, `6,400명`, `6천400명`, `1척`; attached `N대` below 40 requires the registered direct-noun, narrow continuation, or bounded topic/quantity context, while valid `N대` at 40+ needs no semantic context | no arithmetic sign semantics | yes through the no-space registered decimal suffix owner; attached decimal `N.N대` uses the same context/threshold gate | yes for valid integer/comma integer; mixed compact core must parse fully | integer counter owner allows no space or one ASCII space before counter generally; source-attached `N대` is gated; decimal registered suffix owner requires no space before suffix and renders one generated space | unsafe mixed counter tails preserve and broad internal digit fallback is blocked, e.g. `6천400명abc`, `6천400명/log`, `4.3명abc`, `1척abc`, `A1척`; below-40 ambiguous attached `N대` and `N.N대` preserve atomically | decimal counter suffixes use ordinary decimal/Sino reading; integer counters retain native/hybrid/Sino rules; `자동차 3대 -> 자동차 세 대`, `자동차는 모두 3대 -> 자동차는 모두 세 대`, `40대 -> 사십 대`, but bare `3대` and `1.5대` preserve |
 | multiplier | unsigned integer/comma integer and unsigned decimal/comma decimal followed by Korean multiplier noun `배`, e.g. `3배`, `3 배`, `1.5배`, `1,000.5 배` | no signed multiplier in this phase | yes | yes for valid comma integer/decimal | no space or one ASCII space before `배`; renders one generated space before original `배` | malformed/signed forms are not claimed by multiplier in this phase; protected/code-like contexts preserve first | decimal uses ordinary Sino decimal reading; integer `1..39` uses native/hybrid counter-style reading and `40+` uses Sino |
-| duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | decimal duration/time suffixes use ordinary decimal/Sino reading, e.g. `1.5분 -> 일쩜오 분`, `4.5주 -> 사쩜오 주` |
+| duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | `분`/`초` share the suffix-time Sino reader and normalize only their integer-part leading zeros, e.g. `01.5분 -> 일쩜오 분`; other decimal duration suffixes retain ordinary reading, e.g. `4.5주 -> 사쩜오 주` |
 
 Leading-zero owner decisions are explicit exceptions to ordinary owner parsing.
 A leading-zero counter such as `01명` preserves the complete surface; it does
-not become `한 명`. A leading-zero suffix clock-hour such as `09시` or
-`07시 05분` also preserves the complete time surface. Colon time remains a
-separate owner, so `09:30 -> 아홉시 삼십분`.
+not become `한 명`. Registered suffix-time owners remove leading zeros only
+inside numeric cores they validly claim. The clock-hour owner requires attached
+`N시`; minute/second keep their existing spacing policy. Thus
+`00시 -> 영 시`, `09시 -> 아홉 시`,
+`07시 05분 -> 일곱 시 오분`, and
+`23분045초 -> 이십삼분 사십오초`. Colon time remains a separate owner, so
+`09:30 -> 아홉시 삼십분`.
+
+Whitespace between a numeric core and `시` or `시간` disables the specialized
+clock/duration reading for that marker. The numeric core follows ordinary
+number policy: `3 시 -> 삼 시`, `3 시간 -> 삼 시간`, and ordinary
+leading-zero preserve keeps `09 시 -> 09 시` and `09 시간 -> 09 시간`.
+
+Suffix-clock compounds accept compact, spaced, and mixed horizontal spacing:
+`11시23분`, `11시 23분`, `11시23분45초`, `11시 23분45초`,
+`11시23분 45초`, and `11시 23분 45초` are one structured time surface.
+The time owner uses the existing clock-hour mapping for `N시`, the existing
+Sino-Korean reading for `N분`/`N초`, and generates one boundary space only
+where the source omitted it. `23분45초` and `23분 45초` use the same
+minute-second compound path. Minute/second suffix amounts share one
+Sino-Korean reader and are not restricted by digit count or the `00..59`
+clock range: `11시005분 -> 열한 시 오분`,
+`23분045초 -> 이십삼분 사십오초`, and
+`123분545초 -> 백이십삼분 오백사십오초`. The attached hour owner removes
+leading zeros before applying its `0..24` range; `00시 -> 영 시` and
+`09시 -> 아홉 시`, while `99시` preserves. Invalid clock hours, malformed numeric cores,
+protected/code-like contexts, and unsafe tails preserve the full surface
+without allowing an internal `N시`, `N분`, or `N초` to re-enter through a
+generic fallback.
 
 Compact structured large-unit integer cores reuse the large-unit parser in the
 counter owner when followed by registered `개` or longest-match `개월`. The
@@ -170,7 +196,7 @@ Batch 2 fixes the broader leading-zero owner matrix as follows:
 | identifier payload | `ID: 00123 -> 아이디: 00123` | registered acronym may transform; colon and numeric payload preserve |
 | counter | `01명 -> 01명` | counter does not reinterpret a multi-digit leading-zero amount |
 | unit | `03kg -> 03kg` | unit contamination owner full-claims preserve; no internal number fallback |
-| suffix clock | `09시 -> 09시`, `07시 05분 -> 07시 05분` | time owner emits `TIME_PRESERVE_SURFACE` for each leading-zero numeric group |
+| suffix time | `00시 -> 영 시`, `09시 -> 아홉 시`, `09 시 -> 09 시`, `07시 05분 -> 일곱 시 오분`, `23분045초 -> 이십삼분 사십오초` | attached `시` applies its `0..24` clock range; whitespace before `시`/`시간` delegates to ordinary numeric policy; `분`/`초` retain their existing spacing and common Sino-reader rules |
 | currency | `₩01,000 -> ₩01,000` | currency owner full-claims invalid leading-zero amount as preserve |
 | registered exceptions | `01월 -> 일월`, `03일 -> 삼일`, `010-1234-5678 -> 공일공 일이삼사 오육칠팔` | date markers and phone blocks keep their narrow owners |
 

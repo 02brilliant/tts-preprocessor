@@ -74,7 +74,7 @@ def test_batch4_contiguous_leading_zero_middle_dot_matrix(
 def test_batch4_suffix_owner_guards_do_not_leak_middle_dot_readings() -> None:
     time_text = "01·09시와 09시"
     time_output = transform_with_trace(time_text)
-    assert time_output.normalized_text == time_text
+    assert time_output.normalized_text == "01·09시와 아홉 시"
     assert not any(
         claim.owner == "middle_dot_numeric"
         for claim in time_output.trace.claim_logs
@@ -83,8 +83,8 @@ def test_batch4_suffix_owner_guards_do_not_leak_middle_dot_readings() -> None:
         (claim.owner, claim.surface_type, claim.reason)
         for claim in time_output.trace.claim_logs
     ] == [
-        ("time", "TIME_PRESERVE_SURFACE", "leading_zero_clock_hour_suffix_preserve"),
-        ("time", "TIME_PRESERVE_SURFACE", "leading_zero_clock_hour_suffix_preserve"),
+        ("time", "TIME_PRESERVE_SURFACE", "attached_korean_time_preserve"),
+        ("time", "TIME_SURFACE", "time_hour_korean_context"),
     ]
 
     unit_text = "12·003kg와 03kg"

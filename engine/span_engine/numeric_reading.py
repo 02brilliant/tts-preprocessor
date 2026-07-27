@@ -142,6 +142,39 @@ def read_number_text(text: str) -> str | None:
     return read_integer_text(text)
 
 
+def read_sino_time_suffix_number_text(text: str) -> str | None:
+    """Read a ``분``/``초`` amount after removing integer leading zeros.
+
+    This is intentionally narrower than :func:`read_number_text`.  Only time
+    suffix owners may opt into this normalization; ordinary numbers,
+    identifiers, counters, units, and currency keep their existing
+    leading-zero policy.
+    """
+    if not isinstance(text, str):
+        raise TypeError("text must be str")
+    integer_part, dot, fractional_part = text.partition(".")
+    if dot and (
+        not fractional_part
+        or not fractional_part.isascii()
+        or not fractional_part.isdigit()
+    ):
+        return None
+    if _COMMA_INTEGER_RE.fullmatch(integer_part):
+        normalized = integer_part.replace(",", "")
+    elif _PLAIN_INTEGER_RE.fullmatch(integer_part):
+        normalized = integer_part
+    else:
+        return None
+    normalized = normalized.lstrip("0") or "0"
+    try:
+        integer_reading = read_integer_value(int(normalized))
+    except ValueError:
+        return None
+    if not dot:
+        return integer_reading
+    return f"{integer_reading}쩜{read_decimal_fraction_digits(fractional_part)}"
+
+
 def read_fraction_text(numerator: str, denominator: str) -> str | None:
     numerator_normalized = normalize_integer_text(numerator)
     denominator_normalized = normalize_integer_text(denominator)
@@ -181,6 +214,7 @@ __all__ = [
     "read_integer_text",
     "read_integer_value",
     "read_number_text",
+    "read_sino_time_suffix_number_text",
     "read_spaced_integer_text",
     "read_spaced_integer_value",
 ]

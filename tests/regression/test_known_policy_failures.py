@@ -116,12 +116,12 @@ REGRESSION_CASES = [
         classification="override",
     ),
     TextCase(
-        case_id="regression-leading-zero-time-preserve",
+        case_id="regression-leading-zero-time-override",
         text="09시",
-        expected="09시",
-        rule="regression / suffix clock preserve",
-        reason="A suffix-clock token with a two-digit leading-zero hour preserves exactly.",
-        classification="preserve",
+        expected="아홉 시",
+        rule="regression / suffix clock override",
+        reason="The suffix-clock owner removes leading zeros before applying its existing clock-hour reading.",
+        classification="override",
     ),
     TextCase(
         case_id="regression-leading-zero-counter-preserve",

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from engine.span_engine.models import RenderPiece, SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_spaced_integer_value
+from engine.span_engine.numeric_reading import (
+    read_sino_time_suffix_number_text,
+    read_spaced_integer_value,
+)
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.large_unit import (
     parse_large_unit_integer_core_at,
@@ -98,7 +101,8 @@ COUNTERS_BY_LENGTH = sorted(SUPPORTED_COUNTERS, key=len, reverse=True)
 SPACELESS_COUNTERS = frozenset(
     {"년", "월", "일", "분", "초", "개월", "도", "학년", "학기"}
 )
-LEADING_ZERO_OVERRIDE_COUNTERS = frozenset({"월", "일", "분", "초"})
+LEADING_ZERO_OVERRIDE_COUNTERS = frozenset({"월", "일"})
+SINO_TIME_SUFFIX_COUNTERS = frozenset({"분", "초"})
 EMERGENCY_AMBIGUOUS_NUMBERS = frozenset({"112", "119"})
 EMERGENCY_COUNTER_FALLBACKS = frozenset({("112", "명"), ("119", "건")})
 PUBLIC_NUMBER_AMBIGUOUS_NUMBERS = frozenset(
@@ -209,6 +213,11 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
     normalized_number = raw_number.replace(",", "")
     if not _is_valid_integer(raw_number) or not is_supported_counter(counter):
         return None
+    if counter in SINO_TIME_SUFFIX_COUNTERS:
+        reading = read_sino_time_suffix_number_text(raw_number)
+        if reading is None:
+            return None
+        return reading
     if _has_unsupported_leading_zero(normalized_number, counter):
         return None
 
@@ -293,6 +302,8 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
         has_space_before_counter = counter_start != number_end
         for counter in COUNTERS_BY_LENGTH:
             if not raw_text.startswith(counter, counter_start):
+                continue
+            if counter == "시간" and has_space_before_counter:
                 continue
             counter_end = counter_start + len(counter)
             reading = (

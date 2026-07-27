@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from engine.span_engine.counter import SUPPORTED_COUNTERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_number_text
+from engine.span_engine.numeric_reading import (
+    read_number_text,
+    read_sino_time_suffix_number_text,
+)
 
 ORDINAL_ONLY_SUFFIXES = frozenset({"차", "과"})
 PREFIXED_ORDINAL_EXCLUDED_SUFFIXES = frozenset({"쪽", "부"})
@@ -55,7 +58,11 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
             )
             if not _valid_boundary(raw_text, boundary_start, suffix_end):
                 continue
-            reading = read_number_text(number)
+            reading = (
+                read_sino_time_suffix_number_text(number)
+                if ordinal_prefix_span is None and suffix in {"분", "초"}
+                else read_number_text(number)
+            )
             if reading is None:
                 continue
             if ordinal_prefix_span is not None:
