@@ -52,6 +52,7 @@ from LLM.prompt_template import (
     build_speech_prompt,
 )
 from LLM.response_validation import (
+    LLMStageContractError,
     validate_prosody_response,
     validate_speech_response,
 )
@@ -190,6 +191,15 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         raise HTTPException(status_code=504, detail=str(exc)) from exc
     except (LLMConnectionError, LLMUpstreamHTTPError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except LLMStageContractError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": str(exc),
+                "stage": exc.stage,
+                f"{exc.stage}_text": exc.output_text,
+            },
+        ) from exc
     except LLMResponseError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except GeminiTimeoutError as exc:

@@ -23,6 +23,8 @@
       --stage-2-text: #0969da;
       --stage-3-bg: #f0e7ff;
       --stage-3-text: #8250df;
+      --violation-bg: #fff1c2;
+      --violation-text: #8a4b08;
     }
 
     * {
@@ -199,6 +201,11 @@
       border: 1px solid #cc0000;
     }
 
+    .legend-violation {
+      background: var(--violation-bg);
+      border: 2px solid var(--violation-text);
+    }
+
     .pipeline-results {
       display: grid;
       gap: 24px;
@@ -311,6 +318,20 @@
       opacity: 0.82;
     }
 
+    .diff-contract-violation {
+      padding: 1px 3px;
+      border: 2px solid var(--violation-text);
+      border-radius: 4px;
+      background: var(--violation-bg);
+      color: var(--violation-text);
+      font-weight: 800;
+    }
+
+    .diff-contract-violation-deleted {
+      border: 2px solid var(--violation-text);
+      box-shadow: 0 0 0 1px var(--violation-bg);
+    }
+
     .error-box {
       display: none;
       margin-top: 10px;
@@ -415,6 +436,7 @@
         <span class="legend-item"><span class="legend-swatch legend-stage-2"></span>2단계 변경</span>
         <span class="legend-item"><span class="legend-swatch legend-stage-3"></span>3단계 변경</span>
         <span class="legend-item"><span class="legend-swatch legend-deleted"></span>삭제된 원본</span>
+        <span class="legend-item"><span class="legend-swatch legend-violation"></span>LLM 계약 위반</span>
       </div>
 
       <div class="pipeline-results">
@@ -580,8 +602,17 @@
       const response = await fetch(url, options);
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const detail = typeof data.detail === "string" ? data.detail : fallbackMessage;
-        throw new Error(detail);
+        const detail = data.detail;
+        const message = typeof detail === "string"
+          ? detail
+          : detail && typeof detail.message === "string"
+            ? detail.message
+            : fallbackMessage;
+        const error = new Error(message);
+        if (detail && typeof detail === "object") {
+          error.contractDetail = detail;
+        }
+        throw error;
       }
       return data;
     }
@@ -667,11 +698,40 @@
           `전체 응답시간: ${formatDuration(performance.now() - startedAt)}${upstreamTiming}`;
         return data[outputField];
       } catch (error) {
+        const contractOutput = error instanceof Error
+          && error.contractDetail
+          && error.contractDetail.stage === stageName
+          && typeof error.contractDetail[outputField] === "string"
+          ? error.contractDetail[outputField]
+          : null;
+        if (contractOutput !== null) {
+          error.stageOutput = contractOutput;
+          if (stageName === "prosody") {
+            PipelineDiff.renderProsodyContractViolation(
+              inputText,
+              contractOutput,
+              stage.output,
+              stage.diffs[0],
+            );
+          } else {
+            PipelineDiff.renderSpeechContractViolation(
+              inputText,
+              contractOutput,
+              stage.output,
+              stage.diffs[0],
+            );
+          }
+        }
         showStageError(
           stageNumber,
           error,
           `${stageNumber}단계 처리 중 알 수 없는 오류가 발생했습니다.`,
         );
+        if (contractOutput !== null) {
+          stage.error.textContent += stageName === "prosody"
+            ? "\nLLM 원출력을 표시했습니다. 주황색 테두리는 허용되지 않은 수정이며, 삭제된 원문은 빨간색 취소선으로 표시됩니다."
+            : "\nLLM 원출력을 표시했습니다. 주황색 테두리는 변경된 공백·줄바꿈·쉼표·고정 문장부호이며, 입력에서 사라진 구조는 주황 테두리와 빨간색 취소선으로 표시됩니다.";
+        }
         stage.timing.textContent =
           `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
         throw error;
@@ -722,7 +782,23 @@
           stage2Ledgers.stage2,
           stageElements[2].diffs[1],
         );
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof Error
+          && typeof error.stageOutput === "string"
+        ) {
+          const invalidStage2Ledgers = PipelineDiff.buildPipelineLedgers(
+            originalText,
+            normalizedText,
+            error.stageOutput,
+            error.stageOutput,
+          );
+          PipelineDiff.renderCumulativeDiff(
+            originalText,
+            invalidStage2Ledgers.stage2,
+            stageElements[2].diffs[1],
+          );
+        }
         pipelineStatusEl.textContent = "2단계 실패로 3단계를 실행하지 않았습니다.";
         pipelineStatusEl.className = "status error";
         setBusy(false);
@@ -750,7 +826,23 @@
         );
         pipelineStatusEl.textContent = "3단계 처리가 완료되었습니다.";
         pipelineStatusEl.className = "status";
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof Error
+          && typeof error.stageOutput === "string"
+        ) {
+          const invalidStage3Ledgers = PipelineDiff.buildPipelineLedgers(
+            originalText,
+            normalizedText,
+            prosodyText,
+            error.stageOutput,
+          );
+          PipelineDiff.renderCumulativeDiff(
+            originalText,
+            invalidStage3Ledgers.stage3,
+            stageElements[3].diffs[1],
+          );
+        }
         pipelineStatusEl.textContent =
           "3단계 처리에 실패했습니다. 1·2단계 결과는 유지됩니다.";
         pipelineStatusEl.className = "status error";

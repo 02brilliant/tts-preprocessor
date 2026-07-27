@@ -213,7 +213,14 @@ def test_invalid_prosody_response_maps_to_bad_gateway(monkeypatch) -> None:
         )
 
     assert exc_info.value.status_code == 502
-    assert "changed existing text" in exc_info.value.detail
+    assert exc_info.value.detail == {
+        "message": (
+            "LLM prosody response changed existing text or added "
+            "a character other than comma or ASCII space."
+        ),
+        "stage": "prosody",
+        "prosody_text": "다른 원고",
+    }
 
 
 def test_missing_gemini_configuration_is_gemini_only_error(monkeypatch) -> None:

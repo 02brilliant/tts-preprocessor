@@ -3,6 +3,8 @@
 
   const MAX_LCS_CELLS = 4_000_000;
   const SPACE_SYMBOL = "\u2423";
+  const SPEECH_STRUCTURE_CHARACTER_RE =
+    /^[\s,，.。!?！？:：;；()（）[\]{}"'“”‘’…—–]$/u;
 
   function escapeHtml(text) {
     return text
@@ -205,6 +207,56 @@
     return parts;
   }
 
+  function prosodyContractParts(sourceText, targetText, includeDeletions) {
+    const parts = [];
+    for (const op of sequenceOps(sourceText, targetText)) {
+      if (op.op === "eq") {
+        appendPart(parts, { value: op.value, type: "unchanged", stage: 0 });
+      } else if (op.op === "del") {
+        if (includeDeletions) {
+          appendPart(parts, { value: op.value, type: "deleted", stage: 0 });
+        }
+      } else if (op.value === "," || op.value === " ") {
+        appendPart(parts, insertedPart(op.value, 2));
+      } else {
+        appendPart(parts, {
+          value: op.value,
+          type: "contract_violation",
+          stage: 2,
+        });
+      }
+    }
+    return parts;
+  }
+
+  function speechContractParts(sourceText, targetText, includeDeletions) {
+    const parts = [];
+    for (const op of sequenceOps(sourceText, targetText)) {
+      if (op.op === "eq") {
+        appendPart(parts, { value: op.value, type: "unchanged", stage: 0 });
+      } else if (op.op === "del") {
+        if (includeDeletions) {
+          appendPart(parts, {
+            value: op.value,
+            type: SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)
+              ? "contract_violation_deleted"
+              : "deleted",
+            stage: 0,
+          });
+        }
+      } else if (SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)) {
+        appendPart(parts, {
+          value: op.value,
+          type: "contract_violation",
+          stage: 3,
+        });
+      } else {
+        appendPart(parts, insertedPart(op.value, 3));
+      }
+    }
+    return parts;
+  }
+
   function cumulativeParts(originalText, finalLedger) {
     const sourceCharacters = Array.from(originalText);
     const parts = [];
@@ -253,6 +305,13 @@
     );
   }
 
+  function visualizeViolationWhitespace(text) {
+    return visualizeSpaces(text)
+      .replaceAll("\t", "⇥")
+      .replaceAll("\r", "␍")
+      .replaceAll("\n", "↵\n");
+  }
+
   function renderParts(parts) {
     return parts.map((part) => {
       const safeValue = escapeHtml(part.value);
@@ -261,6 +320,20 @@
       }
       if (part.type === "deleted") {
         return `<span class="diff-del">${visualizeSpaces(safeValue)}</span>`;
+      }
+      if (part.type === "contract_violation_deleted") {
+        return (
+          '<span class="diff-del diff-contract-violation-deleted" '
+          + 'title="LLM 계약을 위반해 삭제된 입력 구조">'
+          + `${visualizeViolationWhitespace(safeValue)}</span>`
+        );
+      }
+      if (part.type === "contract_violation") {
+        return (
+          '<span class="diff-contract-violation" '
+          + 'title="LLM 단계 계약 위반 변경">'
+          + `${visualizeViolationWhitespace(safeValue)}</span>`
+        );
       }
       if (part.type === "paragraph_tag") {
         return (
@@ -295,15 +368,47 @@
     );
   }
 
+  function renderProsodyContractViolation(
+    sourceText,
+    outputText,
+    outputElement,
+    diffElement,
+  ) {
+    outputElement.innerHTML = renderParts(
+      prosodyContractParts(sourceText, outputText, false),
+    );
+    diffElement.innerHTML = renderParts(
+      prosodyContractParts(sourceText, outputText, true),
+    );
+  }
+
+  function renderSpeechContractViolation(
+    sourceText,
+    outputText,
+    outputElement,
+    diffElement,
+  ) {
+    outputElement.innerHTML = renderParts(
+      speechContractParts(sourceText, outputText, false),
+    );
+    diffElement.innerHTML = renderParts(
+      speechContractParts(sourceText, outputText, true),
+    );
+  }
+
   const api = {
     adjacentParts,
     buildPipelineLedgers,
     cumulativeParts,
     escapeHtml,
+    prosodyContractParts,
     renderAdjacentDiff,
     renderCumulativeDiff,
     renderParts,
+    renderProsodyContractViolation,
+    renderSpeechContractViolation,
     sequenceOps,
+    speechContractParts,
   };
 
   globalScope.PipelineDiff = api;

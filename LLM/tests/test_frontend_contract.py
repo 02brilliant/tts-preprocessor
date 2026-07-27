@@ -37,8 +37,9 @@ def test_frontend_runs_rule_prosody_and_speech_serially() -> None:
     assert 'runLLMStage("speech", prosodyText, selectedModel)' in web
     assert "normalizedText = await runRuleStage(originalText)" in web
     assert "Promise.allSettled" not in web
-    assert "if (stageName === \"prosody\"" not in web
     assert '[inputField]: inputText' in web
+    assert 'if (stageName === "prosody")' in web
+    assert "renderProsodyContractViolation" in web
     assert "2단계 실패로 3단계를 실행하지 않았습니다." in web
     assert "1·2단계 결과는 유지됩니다." in web
 
@@ -58,6 +59,27 @@ def test_frontend_has_stage_colors_legend_and_provenance_rendering() -> None:
     assert "diff-comma" in diff_source
     assert "MAX_LCS_CELLS" in diff_source
     assert "escapeHtml" in diff_source
+    assert ".diff-contract-violation" in web
+    assert "legend-violation" in web
+    assert "renderProsodyContractViolation" in web
+    assert "renderSpeechContractViolation" in web
+    assert "prosodyContractParts" in diff_source
+    assert "speechContractParts" in diff_source
+    assert 'type: "contract_violation"' in diff_source
+    assert '"contract_violation_deleted"' in diff_source
+
+
+def test_frontend_preserves_contract_violating_llm_output() -> None:
+    web = Path("web/index.html").read_text(encoding="utf-8")
+
+    assert "error.contractDetail = detail" in web
+    assert "error.stageOutput = contractOutput" in web
+    assert "LLM 원출력을 표시했습니다." in web
+    assert "변경된 공백·줄바꿈·쉼표·고정 문장부호" in web
+    assert "PipelineDiff.renderSpeechContractViolation" in web
+    assert "invalidStage2Ledgers" in web
+    assert "invalidStage3Ledgers" in web
+    assert "2단계 실패로 3단계를 실행하지 않았습니다." in web
 
 
 def test_existing_download_contract_remains() -> None:
