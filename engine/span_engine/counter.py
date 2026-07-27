@@ -32,6 +32,10 @@ HYBRID_THRESHOLD_39_COUNTERS = frozenset(
         "그루",
         "송이",
         "자루",
+        "자녀",
+        "자리",
+        "자릿수",
+        "자매",
         "알",
         "벌",
         "켤레",
@@ -68,6 +72,13 @@ HYBRID_THRESHOLD_39_COUNTERS = frozenset(
         "항목",
         "사례",
         "척",
+        "냥",
+        "되",
+        "섬",
+        "돈",
+        "말",
+        "발",
+        "푼",
     }
 )
 
@@ -99,7 +110,7 @@ SUPPORTED_COUNTERS = NATIVE_COUNTERS | HYBRID_COUNTERS | SINO_COUNTERS
 COUNTERS_BY_LENGTH = sorted(SUPPORTED_COUNTERS, key=len, reverse=True)
 
 SPACELESS_COUNTERS = frozenset(
-    {"년", "월", "일", "분", "초", "개월", "도", "학년", "학기"}
+    {"년", "월", "일", "분", "초", "개월", "도", "학년", "학기", "냥"}
 )
 LEADING_ZERO_OVERRIDE_COUNTERS = frozenset({"월", "일"})
 SINO_TIME_SUFFIX_COUNTERS = frozenset({"분", "초"})
@@ -133,6 +144,52 @@ _NATIVE_TENS = {
 }
 _PREV_BLOCKERS = frozenset("+-.,~:/")
 _LARGE_UNIT_COUNTER_COLLISION_COUNTERS = frozenset({"개", "개월"})
+_LONG_CHARACTER_COUNTERS = frozenset({"자녀", "자루", "자리", "자릿수", "자매"})
+INTEGER_ONLY_SPECIAL_DETERMINER_UNITS = frozenset(
+    {"냥", "되", "섬", "자", "돈", "말", "발", "푼"}
+)
+_SPECIAL_DETERMINER_COUNTER_READINGS = {
+    "냥": {3: "석", 4: "넉"},
+    "되": {3: "석", 4: "넉"},
+    "섬": {3: "석", 4: "넉"},
+    "자": {3: "석", 4: "넉"},
+    "돈": {3: "서", 4: "너"},
+    "말": {3: "서", 4: "너"},
+    "발": {3: "서", 4: "너"},
+    "푼": {3: "서", 4: "너"},
+}
+_STRICT_SPECIAL_DETERMINER_COUNTERS = (
+    (INTEGER_ONLY_SPECIAL_DETERMINER_UNITS - {"냥"}) & SUPPORTED_COUNTERS
+)
+_SPECIAL_DETERMINER_CONTEXT_ANCHORS = {
+    "냥": frozenset({"금", "은", "무게", "중량", "화폐", "가격"}),
+    "되": frozenset({"쌀", "보리", "콩", "곡식", "곡물", "수확", "부피"}),
+    "섬": frozenset({"쌀", "보리", "콩", "곡식", "곡물", "수확", "부피"}),
+    "자": frozenset({"길이", "거리", "폭", "너비", "높이", "깊이", "천", "비단"}),
+    "돈": frozenset({"금", "은", "무게", "중량", "화폐", "가격"}),
+    "말": frozenset({"쌀", "보리", "콩", "곡식", "곡물", "수확", "부피"}),
+    "발": frozenset({"길이", "거리", "폭", "너비", "높이", "깊이", "천", "비단"}),
+    "푼": frozenset({"금", "은", "무게", "중량", "화폐", "가격"}),
+}
+_CHARACTER_COUNT_PREFIX_ANCHORS = frozenset(
+    {"비밀번호", "아이디", "한글", "영문", "문자", "앞", "뒤", "입력", "제한"}
+)
+_CHARACTER_COUNT_SUFFIX_ANCHORS = frozenset({"이내", "이상", "입력", "제한"})
+_CHARACTER_LENGTH_PREFIX_ANCHORS = frozenset(
+    {"길이", "폭", "너비", "높이", "깊이", "천", "비단"}
+)
+_CHARACTER_CONTEXT_PARTICLES = (
+    "으로",
+    "에서",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "로",
+)
 _LARGE_UNIT_COUNTER_ATTACHED_TAILS = (
     "였습니다",
     "이었습니다",
@@ -250,7 +307,8 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
             if counter in HYBRID_THRESHOLD_39_COUNTERS
             else DEFAULT_HYBRID_COUNTER_THRESHOLD
         )
-        reading = (
+        special_reading = special_determiner_reading(value, counter)
+        reading = special_reading or (
             native_number_under_100(value)
             if 1 <= value <= threshold
             else _sino(value)
@@ -277,6 +335,14 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
         large_unit_core = parse_large_unit_integer_core_at(raw_text, number_start)
         small_unit_core = parse_mixed_integer_core_at(raw_text, number_start)
         plain_number_end = _consume_integer(raw_text, number_start)
+        if plain_number_end is not None:
+            character_candidate = _character_ja_candidate(
+                raw_text, number_start, plain_number_end
+            )
+            if character_candidate is not None:
+                candidates.append(character_candidate)
+                index = plain_number_end
+                continue
         prefer_plain_counter = (
             plain_number_end is not None
             and _has_registered_counter_at(raw_text, plain_number_end)
@@ -323,6 +389,18 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             if _has_supported_counter_prefix_tail(raw_text, counter_start, counter_end):
                 break
             if _has_supported_counter_unsafe_tail(raw_text, counter_end):
+                break
+            if (
+                counter in _STRICT_SPECIAL_DETERMINER_COUNTERS
+                and not _has_clear_special_determiner_context(
+                    raw_text, number_start, counter_end, counter
+                )
+            ):
+                break
+            if (
+                counter in _STRICT_SPECIAL_DETERMINER_COUNTERS
+                and _has_strict_special_determiner_tail(raw_text, counter_end)
+            ):
                 break
             if mixed_core is not None and _has_mixed_counter_path_tail(
                 raw_text, counter_end
@@ -416,6 +494,253 @@ def _has_registered_counter_at(raw_text: str, number_end: int) -> bool:
 def _has_supported_counter_unsafe_tail(raw_text: str, counter_end: int) -> bool:
     next_char = raw_text[counter_end] if counter_end < len(raw_text) else None
     return next_char is not None and next_char.isascii() and next_char.isalnum()
+
+
+def _has_strict_special_determiner_tail(raw_text: str, counter_end: int) -> bool:
+    if counter_end >= len(raw_text):
+        return False
+    next_char = raw_text[counter_end]
+    return not (next_char.isspace() or next_char in ",.!?)]};:")
+
+
+def _character_ja_candidate(
+    raw_text: str, number_start: int, number_end: int
+) -> SurfaceCandidate | None:
+    if number_end >= len(raw_text) or raw_text[number_end] != "자":
+        return None
+    if any(
+        raw_text.startswith(counter, number_end)
+        for counter in _LONG_CHARACTER_COUNTERS
+    ):
+        return None
+
+    raw_number = raw_text[number_start:number_end]
+    normalized_number = raw_number.replace(",", "")
+    if (
+        not _is_valid_integer(raw_number)
+        or _has_unsupported_leading_zero(normalized_number, "자")
+    ):
+        return None
+    value = int(normalized_number)
+    counter_end = number_end + 1
+    if _has_supported_counter_unsafe_tail(raw_text, counter_end):
+        return None
+
+    left = raw_text[:number_start]
+    right = raw_text[counter_end:]
+    je_prefix = _has_bounded_je_prefix(raw_text, number_start)
+    name_context = _has_name_context(left)
+    count_context = _has_character_context(
+        left,
+        right,
+        _CHARACTER_COUNT_PREFIX_ANCHORS,
+        _CHARACTER_COUNT_SUFFIX_ANCHORS,
+    )
+    length_context = _has_character_context(
+        left,
+        right,
+        _CHARACTER_LENGTH_PREFIX_ANCHORS,
+        frozenset(),
+    )
+    if not (je_prefix or name_context or count_context or length_context):
+        prev_char = raw_text[number_start - 1] if number_start > 0 else None
+        if prev_char is not None and (
+            prev_char.isascii() and prev_char.isalnum()
+            or _is_complete_hangul(prev_char)
+            or prev_char in _PREV_BLOCKERS
+        ):
+            return None
+
+    if name_context:
+        reading = _name_character_count_reading(value)
+        reason = "name_character_count_context"
+        if reading is not None and left.endswith("이름"):
+            reading = f" {reading}"
+    elif count_context:
+        reading = _hybrid_character_count_reading(value)
+        reason = "character_count_context"
+        if reading is not None and _has_attached_character_prefix(
+            left, _CHARACTER_COUNT_PREFIX_ANCHORS
+        ):
+            reading = f" {reading}"
+    elif length_context:
+        reading = _length_character_unit_reading(value)
+        reason = "traditional_character_length_context"
+        if reading is not None and _has_attached_character_prefix(
+            left, _CHARACTER_LENGTH_PREFIX_ANCHORS
+        ):
+            reading = f" {reading}"
+    else:
+        reading = _sino_or_large_integer_reading(value)
+        reason = "general_character_ja_sino"
+    if reading is None:
+        return None
+
+    number_span = SourceSpan(number_start, number_end)
+    counter_span = SourceSpan(number_end, counter_end)
+    return SurfaceCandidate(
+        core_span=number_span,
+        full_span=SourceSpan(number_start, counter_end),
+        owner="counter_noun",
+        surface_type="COUNTER_SURFACE",
+        suffix_spans=[counter_span],
+        reason=reason,
+        metadata={
+            "raw_number": raw_number,
+            "counter": "자",
+            "counter_mode": (
+                "sino_only"
+                if reason == "general_character_ja_sino"
+                else "hybrid"
+            ),
+            "counter_span": counter_span,
+            "reading": reading,
+            "numeric_span": number_span,
+            "numeric_core_kind": "arabic_integer",
+            "full_counter_claim": False,
+        },
+    )
+
+
+def _has_name_context(left: str) -> bool:
+    return left.endswith("이름") or left.endswith("이름 ")
+
+
+def _has_character_context(
+    left: str,
+    right: str,
+    prefix_anchors: frozenset[str],
+    suffix_anchors: frozenset[str],
+) -> bool:
+    left_context = left.rstrip()
+    for anchor in prefix_anchors:
+        if left_context.endswith(anchor):
+            return True
+        if any(
+            left_context.endswith(f"{anchor}{particle}")
+            for particle in _CHARACTER_CONTEXT_PARTICLES
+        ):
+            return True
+    right_context = right.lstrip()
+    return any(right_context.startswith(anchor) for anchor in suffix_anchors)
+
+
+def _has_attached_character_prefix(
+    left: str, prefix_anchors: frozenset[str]
+) -> bool:
+    for anchor in prefix_anchors:
+        if left.endswith(anchor):
+            return True
+        if any(
+            left.endswith(f"{anchor}{particle}")
+            for particle in _CHARACTER_CONTEXT_PARTICLES
+        ):
+            return True
+    return False
+
+
+def _has_clear_special_determiner_context(
+    raw_text: str, number_start: int, counter_end: int, counter: str
+) -> bool:
+    anchors = _SPECIAL_DETERMINER_CONTEXT_ANCHORS[counter]
+    return any(
+        _has_bounded_context_anchor(
+            raw_text,
+            anchor,
+            max(0, number_start - 12),
+            number_start,
+        )
+        or _has_bounded_context_anchor(
+            raw_text,
+            anchor,
+            counter_end,
+            min(len(raw_text), counter_end + 12),
+        )
+        for anchor in anchors
+    )
+
+
+def _has_bounded_context_anchor(
+    raw_text: str, anchor: str, window_start: int, window_end: int
+) -> bool:
+    position = raw_text.find(anchor, window_start, window_end)
+    while position != -1:
+        anchor_end = position + len(anchor)
+        prev_char = raw_text[position - 1] if position > 0 else None
+        left_boundary = prev_char is None or not _is_complete_hangul(prev_char)
+        right_boundary = (
+            anchor_end >= len(raw_text)
+            or not _is_complete_hangul(raw_text[anchor_end])
+            or any(
+                raw_text.startswith(particle, anchor_end)
+                and (
+                    anchor_end + len(particle) >= len(raw_text)
+                    or not _is_complete_hangul(
+                        raw_text[anchor_end + len(particle)]
+                    )
+                )
+                for particle in _CHARACTER_CONTEXT_PARTICLES
+            )
+        )
+        if left_boundary and right_boundary:
+            return True
+        position = raw_text.find(anchor, position + 1, window_end)
+    return False
+
+
+def _name_character_count_reading(value: int) -> str | None:
+    if value == 3:
+        return "석 "
+    if value == 4:
+        return "넉 "
+    return _hybrid_character_count_reading(value)
+
+
+def _length_character_unit_reading(value: int) -> str | None:
+    special_reading = special_determiner_reading(value, "자")
+    if special_reading is not None:
+        return f"{special_reading} "
+    return _hybrid_character_count_reading(value)
+
+
+def _hybrid_character_count_reading(value: int) -> str | None:
+    reading = (
+        native_number_under_100(value)
+        if 1 <= value <= HYBRID_COUNTER_THRESHOLD
+        else _sino_or_large_integer_reading(value)
+    )
+    return f"{reading} " if reading is not None else None
+
+
+def _sino_or_large_integer_reading(value: int) -> str | None:
+    if value < 100:
+        return _sino(value)
+    try:
+        return read_spaced_integer_value(value)
+    except ValueError:
+        return None
+
+
+def _has_bounded_je_prefix(raw_text: str, number_start: int) -> bool:
+    if number_start > 0 and raw_text[number_start - 1] == "제":
+        prefix_start = number_start - 1
+    elif (
+        number_start > 1
+        and raw_text[number_start - 1] == " "
+        and raw_text[number_start - 2] == "제"
+    ):
+        prefix_start = number_start - 2
+    else:
+        return False
+    return prefix_start == 0 or raw_text[prefix_start - 1].isspace()
+
+
+def special_determiner_reading(value: int, counter: str) -> str | None:
+    if not isinstance(value, int):
+        raise TypeError("value must be int")
+    if not isinstance(counter, str):
+        raise TypeError("counter must be str")
+    return _SPECIAL_DETERMINER_COUNTER_READINGS.get(counter, {}).get(value)
 
 
 def _has_mixed_counter_path_tail(raw_text: str, counter_end: int) -> bool:
@@ -634,6 +959,7 @@ __all__ = [
     "HYBRID_THRESHOLD_39_COUNTERS",
     "HYBRID_COUNTERS",
     "HYBRID_COUNTER_THRESHOLD",
+    "INTEGER_ONLY_SPECIAL_DETERMINER_UNITS",
     "DEFAULT_HYBRID_COUNTER_THRESHOLD",
     "NATIVE_COUNTERS",
     "NATIVE_ONLY_1_TO_99_COUNTERS",
@@ -650,4 +976,5 @@ __all__ = [
     "native_number_under_100",
     "parse_counter_candidate",
     "scan_counter_candidates",
+    "special_determiner_reading",
 ]

@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 
 from engine.span_engine.brackets import BracketRange
-from engine.span_engine.counter import COUNTERS_BY_LENGTH
+from engine.span_engine.counter import (
+    COUNTERS_BY_LENGTH,
+    INTEGER_ONLY_SPECIAL_DETERMINER_UNITS,
+)
 from engine.span_engine.delimiters import (
     COLON_LIKE_DELIMITERS,
     RANGE_LIKE_DELIMITERS,
@@ -231,6 +234,8 @@ def _decimal_counter_preserve_candidate(
     raw_text: str, decimal_span: SourceSpan
 ) -> SurfaceCandidate | None:
     for counter in COUNTERS_BY_LENGTH:
+        if counter in INTEGER_ONLY_SPECIAL_DETERMINER_UNITS:
+            continue
         if not raw_text.startswith(counter, decimal_span.end):
             continue
         counter_end = decimal_span.end + len(counter)

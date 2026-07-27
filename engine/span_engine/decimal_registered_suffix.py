@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 
 from engine.span_engine.brackets import BracketRange
-from engine.span_engine.counter import SUPPORTED_COUNTERS
+from engine.span_engine.counter import (
+    INTEGER_ONLY_SPECIAL_DETERMINER_UNITS,
+    SUPPORTED_COUNTERS,
+)
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import (
     read_decimal_text,
@@ -22,7 +25,7 @@ REGISTERED_DECIMAL_SUFFIXES = (
     frozenset(SUPPORTED_COUNTERS)
     | frozenset(NUMERIC_SUFFIXES)
     | _APPROVED_DURATION_SUFFIXES
-)
+) - INTEGER_ONLY_SPECIAL_DETERMINER_UNITS
 _ORDERED_SUFFIXES = sorted(REGISTERED_DECIMAL_SUFFIXES, key=len, reverse=True)
 _PREV_BLOCKERS = frozenset("+-.,~:/_")
 _SAFE_RIGHT_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", ")", "]", "}"})

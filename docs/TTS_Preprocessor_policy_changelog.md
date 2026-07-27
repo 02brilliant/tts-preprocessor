@@ -2,6 +2,23 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Added longest-first hybrid counters `자녀`, `자리`, `자릿수`, and `자매`
+  while retaining the existing `자루` policy. Values 1..39 use native/hybrid
+  readings and 40+ use Sino readings.
+- Kept `제N자` / `제 N자` out of the prefixed ordinal reading owner. They
+  reuse the general Sino `N자` route and preserve the source gap before the
+  number (`제3자 -> 제삼자`, `제 3자 -> 제 삼자`).
+- Added contextual `N자` routing: name length uses `한/두/석/넉` only for
+  exact 1..4 and ordinary hybrid forms for 13/14; password/ID/Korean/English
+  character-count contexts use ordinary hybrid forms such as `세/네`; an
+  independent `N자` remains attached Sino (`3자 회담 -> 삼자 회담`).
+- Registered the traditional special determiners `냥·되·섬·자` with
+  `3=석, 4=넉` and `돈·말·발·푼` with `3=서, 4=너`. Except for
+  self-identifying `N냥`, collision-prone surfaces require bounded
+  gold/weight, grain/volume, or length context, so ordinary lexical uses such
+  as `4발표` and `3말했다` do not receive the special form. These additions
+  are integer-only and do not expand the registered decimal-suffix policy.
+  Attached `N냥` remains attached (`금요일 3냥 -> 금요일 석냥`).
 - Extended the live case-sensitive SI unit pairs with `mW/MW`, `mV/MV`,
   `mPa/MPa`, and `mHz/MHz`. Lowercase `m` renders `밀리`, uppercase `M`
   renders `메가`, and valid integer/comma/decimal plus optional one-space

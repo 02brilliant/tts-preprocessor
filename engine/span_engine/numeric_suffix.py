@@ -8,7 +8,10 @@ from engine.span_engine.numeric_reading import (
 )
 
 ORDINAL_ONLY_SUFFIXES = frozenset({"차", "과"})
-PREFIXED_ORDINAL_EXCLUDED_SUFFIXES = frozenset({"쪽", "부"})
+PREFIXED_ORDINAL_EXCLUDED_SUFFIXES = frozenset(
+    {"쪽", "부", "냥", "되", "섬", "돈", "말", "발", "푼"}
+)
+PREFIXED_SUFFIXES_DEFERRED_TO_GENERIC_NUMBER = frozenset({"자"})
 ORDINAL_SUFFIXES = (
     frozenset(SUPPORTED_COUNTERS) | ORDINAL_ONLY_SUFFIXES
 ) - PREFIXED_ORDINAL_EXCLUDED_SUFFIXES
@@ -99,8 +102,13 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 )
             )
             break
-        if ordinal_prefix_span is not None and not _has_candidate_at(
-            candidates, ordinal_prefix_span.start
+        if (
+            ordinal_prefix_span is not None
+            and not _has_candidate_at(candidates, ordinal_prefix_span.start)
+            and not any(
+                raw_text.startswith(suffix, number_end)
+                for suffix in PREFIXED_SUFFIXES_DEFERRED_TO_GENERIC_NUMBER
+            )
         ):
             preserve_end = _prefixed_ordinal_like_token_end(raw_text, number_start)
             if preserve_end is not None:
