@@ -45,6 +45,7 @@ from engine.span_engine.managed_numeric_code import (
     parse_managed_acronym_numeric_code_candidate,
 )
 from engine.span_engine.middle_dot import parse_middle_dot_candidate
+from engine.span_engine.mixed_integer import parse_mixed_integer_candidate
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.multiplier import (
     multiplier_render_pieces,
@@ -150,6 +151,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_event_candidate(raw_text, candidate)
     elif candidate.owner == "middle_dot_numeric":
         reading = parse_middle_dot_candidate(raw_text, candidate)
+    elif candidate.owner in {"mixed_integer_atomic", "mixed_decimal_atomic"}:
+        return parse_mixed_integer_candidate(raw_text, candidate)
     elif candidate.owner == "ph":
         reading = parse_ph_candidate(raw_text, candidate)
     elif candidate.owner == "percent_point":

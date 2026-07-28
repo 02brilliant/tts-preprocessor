@@ -811,7 +811,14 @@ def _korean_time_candidates(
     span = SourceSpan(match.start(), match.end())
     if not is_valid_korean_clock_time(hour):
         return _preserve_numeric_groups(match, "invalid_korean_time_preserve")
-    if not _valid_korean_time_boundary(raw_text, span):
+    valid_boundary = _valid_korean_time_boundary(raw_text, span)
+    if (
+        not valid_boundary
+        and minute_raw is not None
+        and _has_structured_time_approximate_tail(raw_text, span.end)
+    ):
+        valid_boundary = True
+    if not valid_boundary:
         if (
             minute_raw is None
             and second_raw is None
@@ -938,7 +945,13 @@ def _korean_minute_second_candidates(
         return _preserve_numeric_groups(
             match, "invalid_korean_minute_second_preserve"
         )
-    if not _valid_korean_time_boundary(raw_text, span):
+    valid_boundary = _valid_korean_time_boundary(raw_text, span)
+    if (
+        not valid_boundary
+        and _has_structured_time_approximate_tail(raw_text, span.end)
+    ):
+        valid_boundary = True
+    if not valid_boundary:
         return _preserve_numeric_groups(
             match, "attached_korean_minute_second_preserve"
         )
@@ -1202,6 +1215,22 @@ def _has_safe_korean_duration_suffix_tail(next_text: str) -> bool:
     return _has_safe_korean_time_tail(next_text) or any(
         next_text.startswith(tail) for tail in ("간", "씩", "짜리")
     )
+
+
+def _has_structured_time_approximate_tail(raw_text: str, start: int) -> bool:
+    if not raw_text.startswith("께", start):
+        return False
+    end = start + 1
+    if end >= len(raw_text):
+        return True
+    next_char = raw_text[end]
+    if next_char.isspace():
+        return True
+    if next_char in {".", ",", "!", "?", ";", ":", "。", "，", "！", "？"}:
+        return True
+    if next_char == "/":
+        return is_sentence_final_slash_boundary(raw_text, end)
+    return False
 
 
 def _korean_suffix_like_token_end(raw_text: str, start: int) -> int:

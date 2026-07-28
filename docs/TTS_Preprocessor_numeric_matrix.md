@@ -140,6 +140,8 @@ Current standalone invalid/malformed forms:
 | counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun; longest-first character counters include `자녀`, `자루`, `자리`, `자릿수`, `자매`; name and explicit character-count `N자` are contextual hybrid, while general `N자` is Sino; `제N자` has no separate reading owner and reuses that general route; attached `N대` below 40 keeps its context gate | no arithmetic sign semantics | yes through the no-space registered decimal suffix owner, but the new `자` and traditional special-determiner policies are integer-only | yes for valid integer/comma integer; mixed compact core must parse fully | long character counters and contextual character counts render one space before the noun; general `N자` keeps `자` attached and preserves any source gap before the number, so `제3자 -> 제삼자`, `제 3자 -> 제 삼자`; attached `N냥` renders attached (`3냥 -> 석냥`) while spaced `N 냥` preserves its gap | unsafe mixed counter tails preserve; `제N 자`, leading-zero, ASCII/code-like/protected surfaces do not enter the specialized owner; `냥` needs no semantic anchor, while ambiguous `되·섬·돈·말·발·푼` require bounded semantic anchors before special determiner forms apply | `3자녀 -> 세 자녀`, `이름 3자 -> 이름 석 자`, `한글 3자 이내 -> 한글 세 자 이내`, `3자 회담 -> 삼자 회담`, `금요일 3냥 -> 금요일 석냥`; clear traditional-unit contexts use `석/넉` or `서/너` |
 | multiplier | unsigned integer/comma integer and unsigned decimal/comma decimal followed by Korean multiplier noun `배`, e.g. `3배`, `3 배`, `1.5배`, `1,000.5 배` | no signed multiplier in this phase | yes | yes for valid comma integer/decimal | no space or one ASCII space before `배`; renders one generated space before original `배` | malformed/signed forms are not claimed by multiplier in this phase; protected/code-like contexts preserve first | decimal uses ordinary Sino decimal reading; integer `1..39` uses native/hybrid counter-style reading and `40+` uses Sino |
 | duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | `분`/`초` share the suffix-time Sino reader and normalize only their integer-part leading zeros, e.g. `01.5분 -> 일쩜오 분`; other decimal duration suffixes retain ordinary reading, e.g. `4.5주 -> 사쩜오 주` |
+| mixed integer atomic | complete valid Arabic-Hangul integer core using `십/백/천/만/억/조/경`, after more-specific owners; a trailing Arabic block must be a positive value smaller than its immediately preceding small unit | no sign | no | valid comma blocks only where the shared integer parser accepts them | preserves source adjacency to safe Korean prose and sentence punctuation; registered counter/currency suffix owners retain priority and their spacing | ASCII identifier/code/URL/path/protected surfaces, prefixed ordinal-like forms, leading zero, malformed/repeated unit order, oversized trailing Arabic block, and partial numeric residue preserve | numeric blocks use Sino reading and original Korean unit characters retain provenance: `6천400 -> 육천사백`, `1천2백3십4 -> 일천이백삼십사`, `값은3천만5천이다 -> 값은삼천만오천이다`; `6천400명` keeps the existing counter owner |
+| mixed decimal atomic | complete valid mixed integer core ending in an Arabic block, followed by `.` and one or more fractional digits | no sign | yes; ordinary positional fraction reading | inherited from the integer core | preserves source adjacency to safe Korean prose and sentence punctuation | generic decimal cannot claim only the trailing fragment; malformed/repeated dots, protected/code-like surfaces, unsafe ASCII tails, and invalid mixed integer cores preserve | full consume before generic decimal: `5천830.13 -> 오천팔백삼십쩜일삼`; Arabic blocks and decimal reading are generated while Korean numeric units retain original provenance |
 
 Leading-zero owner decisions are explicit exceptions to ordinary owner parsing.
 A leading-zero counter such as `01명` preserves the complete surface; it does
@@ -172,6 +174,33 @@ leading zeros before applying its `0..24` range; `00시 -> 영 시` and
 protected/code-like contexts, and unsafe tails preserve the full surface
 without allowing an internal `N시`, `N분`, or `N초` to re-enter through a
 generic fallback.
+
+The approximate tail `께` is admitted only when the time owner has already
+full-consumed `N시 N분`, `N분 N초`, or `N시 N분 N초`. It is not a broad safe
+tail for bare `N분` or hour-only `N시`: `오전 9시 6분께 -> 오전 아홉 시
+육분께`, `5분 15초께 -> 오분 십오초께`, while `6분께` and `9시께`
+preserve. Honorific-person readings such as `6분께 -> 여섯 분께` remain out
+of scope.
+
+After registered suffix owners, `mixed_integer_atomic` full-claims valid mixed
+integer cores missed by the narrower large-unit boundary. It reuses the shared
+small/large-unit parsers, accepts safe attached Korean prose and sentence
+punctuation, and renders each Arabic block as generated Sino reading while
+retaining original Korean unit provenance. Canonical examples are `6천400 ->
+육천사백`, `1천2백3십4 -> 일천이백삼십사`, `2만3천 -> 이만삼천`,
+`3천만5천 -> 삼천만오천`, and `금액은6천원이다 -> 금액은육천 원이다`.
+A trailing Arabic block must be positive and smaller than the immediately
+preceding `천/백/십`, so `5천830` is valid while `5천8300` preserves.
+ASCII identifiers, protected contexts, leading-zero or malformed unit order,
+prefixed ordinals, oversized trailing blocks, and partial numeric residue
+preserve.
+
+`mixed_decimal_atomic` full-claims an ordinary decimal attached to a valid
+mixed integer ending in an Arabic block before the generic decimal fallback.
+It reuses the integer reading and the ordinary positional fractional reading:
+`5천830.13 -> 오천팔백삼십쩜일삼`. Invalid or code-like mixed decimal
+tokens receive an atomic preserve claim, so the trailing `830.13` fragment
+cannot be converted independently while a leading Arabic block remains.
 
 Compact structured large-unit integer cores reuse the large-unit parser in the
 counter owner when followed by registered `개` or longest-match `개월`. The

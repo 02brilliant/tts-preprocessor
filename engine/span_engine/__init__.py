@@ -162,6 +162,10 @@ from engine.span_engine.large_unit import (
     parse_large_unit_candidate,
     scan_large_unit_candidates,
 )
+from engine.span_engine.mixed_integer import (
+    parse_mixed_integer_candidate,
+    scan_mixed_integer_candidates,
+)
 from engine.span_engine.multiplier import (
     multiplier_number_reading,
     multiplier_render_pieces,
@@ -325,6 +329,7 @@ __all__ = [
     "parse_range_with_unit_candidate",
     "parse_jamo_candidate",
     "parse_large_unit_candidate",
+    "parse_mixed_integer_candidate",
     "parse_multiplier_candidate",
     "parse_signed_candidate",
     "parse_signed_numeric",
@@ -333,6 +338,7 @@ __all__ = [
     "scan_date_candidates",
     "scan_jamo_candidates",
     "scan_large_unit_candidates",
+    "scan_mixed_integer_candidates",
     "scan_multiplier_candidates",
     "scan_range_candidates",
     "scan_signed_degree_candidates",

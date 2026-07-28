@@ -2,6 +2,27 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+- Allowed the approximate tail `께` only after a complete structured suffix
+  clock containing minutes: `N시 N분`, `N분 N초`, or `N시 N분 N초`.
+  Bare `N분께` and hour-only `N시께` remain preserve-first, and no
+  honorific-person `N분` reading was added.
+- Added `mixed_integer_atomic` as the fallback owner for complete valid
+  Arabic-Hangul integer cores such as `6천5백`, `6천400`,
+  `1천2백3십4`, `2만3천`, and `3천만5천`.
+  Registered counter/currency suffix ownership still wins first. Safe attached
+  Korean prose and sentence-punctuation boundaries are admitted. A trailing
+  Arabic block is valid only when positive and smaller than its immediately
+  preceding small unit; oversized blocks preserve instead of being
+  reinterpreted. ASCII identifiers, URL/path/code protection, prefixed
+  ordinals, leading-zero cores, malformed unit order, and partial numeric
+  residue remain preserve-first.
+- Added `mixed_decimal_atomic` ahead of generic decimal fallback so a valid
+  mixed integer plus ordinary fractional part is consumed as one surface:
+  `5천830.13 -> 오천팔백삼십쩜일삼`. This prevents generic decimal from
+  converting only `830.13`. Fractional digits reuse the existing positional
+  `쩜` reading, and original Korean numeric-unit provenance is retained.
+  Invalid, leading-zero, or code-like mixed decimal tokens receive an atomic
+  preserve claim to block the same partial fallback.
 - Added longest-first hybrid counters `자녀`, `자리`, `자릿수`, and `자매`
   while retaining the existing `자루` policy. Values 1..39 use native/hybrid
   readings and 40+ use Sino readings.

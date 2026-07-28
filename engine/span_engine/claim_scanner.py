@@ -51,6 +51,7 @@ from engine.span_engine.emergency import scan_emergency_candidates
 from engine.span_engine.event import scan_event_candidates
 from engine.span_engine.fraction import scan_fraction_candidates
 from engine.span_engine.middle_dot import scan_middle_dot_candidates
+from engine.span_engine.mixed_integer import scan_mixed_integer_candidates
 from engine.span_engine.multiplier import scan_multiplier_candidates
 from engine.span_engine.numeric_dae import (
     scan_ambiguous_numeric_dae_preserve_candidates,
@@ -252,10 +253,13 @@ CLAIM_ORDER_DOC = (
     "contextual_numeric_dae",
     "ambiguous_numeric_dae_preserve",
     "invalid_signed_numeric_preserve",
+    "invalid_mixed_decimal_preserve",
+    "mixed_decimal_atomic",
     "decimal",
     "middle_dot_numeric",
     "public_number",
     "counter_noun",
+    "mixed_integer_atomic",
     "jamo",
     "administrative_suffix",
     "korean_numeric_chain",
@@ -323,6 +327,22 @@ def claim_surfaces(
         for candidate in counter_candidates
         if candidate not in contextual_dae_counter_candidates
         and candidate not in large_unit_counter_candidates
+    ]
+    mixed_numeric_candidates = scan_mixed_integer_candidates(raw_text)
+    mixed_decimal_candidates = [
+        candidate
+        for candidate in mixed_numeric_candidates
+        if candidate.owner == "mixed_decimal_atomic"
+    ]
+    mixed_decimal_preserve_candidates = [
+        candidate
+        for candidate in mixed_numeric_candidates
+        if candidate.surface_type == "INVALID_MIXED_DECIMAL_PRESERVE_SURFACE"
+    ]
+    mixed_integer_candidates = [
+        candidate
+        for candidate in mixed_numeric_candidates
+        if candidate.owner == "mixed_integer_atomic"
     ]
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
@@ -407,12 +427,15 @@ def claim_surfaces(
         )
     )
 
+    candidates.extend(_claim_scanned_candidates(mixed_decimal_preserve_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(mixed_decimal_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_malformed_dotted_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_middle_dot_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
 
     candidates.extend(_claim_scanned_candidates(scan_public_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(remaining_counter_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(mixed_integer_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(unsafe_korean_chain_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_jamo_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_administrative_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))

@@ -500,6 +500,12 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
 
         number_end = _consume_comma_integer(raw_text, index)
         if number_end == index:
+            # A comma immediately after an otherwise valid digit block can be
+            # sentence punctuation rather than an incomplete thousands group.
+            # Boundary validation decides which case applies after the complete
+            # mixed core has been parsed.
+            number_end = _consume_digits(raw_text, index)
+        if number_end == index:
             break
         number_text = raw_text[index:number_end]
         if len(number_text) > 1 and number_text.startswith("0"):
@@ -531,6 +537,12 @@ def _parse_small_group(raw_text: str, start: int) -> _SmallGroupParse | None:
         break
 
     if index == start or not parts:
+        return None
+    if (
+        final_bare_value is not None
+        and saw_small_unit
+        and not 0 < final_bare_value < (10 ** previous_small_order)
+    ):
         return None
     return _SmallGroupParse(
         end=index,

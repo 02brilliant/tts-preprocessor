@@ -10,6 +10,7 @@ from engine.span_engine.large_unit import (
     parse_large_unit_integer_core_at,
     parse_mixed_integer_core_at,
 )
+from engine.span_engine.mixed_integer import is_safe_mixed_integer_left_boundary
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
@@ -384,7 +385,12 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             number_span = SourceSpan(number_start, number_end)
             counter_span = SourceSpan(counter_start, counter_end)
             full_span = SourceSpan(number_start, counter_end)
-            if not _valid_boundary(raw_text, number_span, counter_span):
+            if not _valid_boundary(
+                raw_text,
+                number_span,
+                counter_span,
+                allow_attached_korean_left=mixed_core is not None,
+            ):
                 break
             if _has_supported_counter_prefix_tail(raw_text, counter_start, counter_end):
                 break
@@ -931,7 +937,11 @@ def _is_valid_integer(text: str) -> bool:
 
 
 def _valid_boundary(
-    raw_text: str, number_span: SourceSpan, counter_span: SourceSpan
+    raw_text: str,
+    number_span: SourceSpan,
+    counter_span: SourceSpan,
+    *,
+    allow_attached_korean_left: bool = False,
 ) -> bool:
     prev_char = raw_text[number_span.start - 1] if number_span.start > 0 else None
     next_char = raw_text[counter_span.end] if counter_span.end < len(raw_text) else None
@@ -939,7 +949,10 @@ def _valid_boundary(
         if prev_char.isascii() and prev_char.isalnum():
             return False
         if _is_complete_hangul(prev_char):
-            return False
+            if not allow_attached_korean_left:
+                return False
+            if not is_safe_mixed_integer_left_boundary(raw_text, number_span.start):
+                return False
         if prev_char in _PREV_BLOCKERS:
             return False
     if next_char is None:

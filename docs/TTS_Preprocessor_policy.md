@@ -3186,10 +3186,13 @@ currency owner.
 | 39a | threshold or explicit contextual numeric `대` | `40대`, `차량 3대`, `자동차는 모두 3대` | `counter_noun`, `decimal_registered_suffix` |
 | 39b | ambiguous attached numeric `대` atomic preserve | `3대`, `20대가`, `1.5대` | `ambiguous_numeric_dae_preserve` |
 | 39c | invalid/unsupported direct-sign atomic preserve | `+01`, `++1`, `+3대` | `invalid_signed_numeric_preserve` |
+| 39c-1 | invalid/code-like mixed decimal atomic preserve | `A5천830.13`, `01천830.13` | `preserve` |
+| 39d | mixed Arabic-Hangul decimal atomic | `5천830.13` | `mixed_decimal_atomic` |
 | 40 | decimal fallback | `12.3`, `7.25` | `decimal` |
 | 41 | middle-dot numeric fallback | `12·3`, `7·25`, `1·2·3` | `middle_dot_numeric` |
 | 42 | public number | `국민콜 110에`, `1339는` | `public_number` |
 | 43 | counter noun | `21명`, `112명`, `119건` | `counter_noun` |
+| 43a | mixed Arabic-Hangul integer atomic | `5천830`, `1천2백3십4` | `mixed_integer_atomic` |
 | 44 | phone | `123-456-7890` | `phone` |
 | 45 | hyphen digit blocks | `12-34-56`, `1-1-9` | `hyphen_digit_blocks` |
 | 46 | JAMO surface | `ㄱ`, `ㄱㄴㄷ` | `jamo` |
@@ -3309,10 +3312,13 @@ CLAIM_ORDER = [
     special_unit_claim,
     simple_unit_claim,
     numeric_suffix_claim,
+    invalid_mixed_decimal_preserve_claim,
+    mixed_decimal_claim,
     decimal_claim,
     middle_dot_numeric_claim,
     public_number_claim,
     counter_claim,
+    mixed_integer_claim,
     phone_claim,
     hyphen_digit_blocks_claim,
     jamo_claim,
@@ -4985,18 +4991,17 @@ Counter 100+ Sino policy:
 - No tail-native reading is applied for `100+` counter values.
 - Large counter numbers follow the large-number group spacing policy first; the counter literal is then appended with one space unless that counter is explicitly spaceless.
 
-Mixed Korean-Arabic numeric cores such as `6천400` may be claimed by the
-counter owner only when the full numeric core can be parsed without value
-reinterpretation and is followed by a registered counter noun such as `명`.
-The owner must full-claim the numeric core and counter suffix, rendering the
-numeric reading plus the original counter noun according to counter spacing
-policy. Partial output such as `육천400명` is forbidden. Standalone compact
-mixed cores without a registered suffix remain preserve-first in this policy
-phase; they must not be internally rewritten by the broad number fallback.
+Mixed Korean-Arabic numeric cores such as `6천400` are parsed as one complete
+numeric core when every trailing Arabic block is smaller than the immediately
+preceding Korean unit. A registered counter noun such as `명` retains the
+counter owner's priority and spacing policy. Without a registered suffix,
+`mixed_integer_atomic` renders the same complete Sino-Korean reading. Partial
+output such as `육천400명` or `6천사백` is forbidden.
 
 ```text
 6천400명 -> 육천사백 명
-6천400 -> 6천400
+6천400 -> 육천사백
+5천830 -> 오천팔백삼십
 6천400명abc -> 6천400명abc
 ```
 
@@ -10904,7 +10909,19 @@ boundary로 추가한다. 이미 있는 horizontal whitespace는 원문대로 �
 11시 23분 45초 -> 열한 시 이십삼분 사십오초
 23분45초 -> 이십삼분 사십오초
 23분 45초 -> 이십삼분 사십오초
+오전 9시 6분께 -> 오전 아홉 시 육분께
+5분 15초께 -> 오분 십오초께
+9시 5분 15초께 -> 아홉 시 오분 십오초께
 ```
+
+Approximate tail `께`는 임의 `N분` 또는 `N시`의 broad safe-tail이 아니다.
+`N시 N분`, `N분 N초`, `N시 N분 N초` 중 하나가 full-consume된 경우에만
+structured time owner가 마지막 `분` 또는 `초` 뒤의 `께`를 허용한다.
+따라서 `6분께`, `6분께서`, `9시께`는 현재 preserve하며, 이번 정책은
+`6분께 -> 여섯 분께`와 같은 존칭 인원 counter 읽기를 추가하지 않는다.
+`께` 뒤에는 end, whitespace, sentence punctuation 또는 기존
+sentence-final slash boundary가 와야 하며, 임의 한글·ASCII continuation은
+허용하지 않는다.
 
 붙임형 `N시`는 clock-hour policy를 따른다. 유효 범위는 `0..24`다.
 `0`은 `영`, `1..12`는 고유어 clock-hour form, `13..24`는 한자어
@@ -11019,6 +11036,71 @@ counter owner가 claim하지 않고 일반 숫자 읽기로 넘긴다.
 120점 -> 백이십 점
 8곳 -> 여덟 곳
 ```
+
+### 37.2.1 Mixed Arabic-Hangul integer fallback
+
+`mixed_integer_atomic` owner는 더 구체적인 large-unit, counter, currency,
+date/time, unit, range 및 protected owner가 선점하지 않은 valid
+Arabic-Hangul integer core를 전체 claim한다. 기존
+`parse_large_unit_integer_core_at`과 `parse_mixed_integer_core_at`의
+완전 파싱 결과만 재사용하며, 앞 digit 하나만 generic number fallback으로
+부분 변환하지 않는다.
+
+지원 예:
+
+```text
+6천 -> 육천
+6천5백 -> 육천오백
+6천400 -> 육천사백
+5천830 -> 오천팔백삼십
+1천2백3십 -> 일천이백삼십
+1천2백3십4 -> 일천이백삼십사
+2만3천 -> 이만삼천
+3천만5천 -> 삼천만오천
+값은3천만5천이다 -> 값은삼천만오천이다
+금액은6천5백원이다 -> 금액은육천오백 원이다
+```
+
+완성형 한글 prose가 core 앞뒤에 붙어 있어도 valid mixed core의 경계로
+허용한다. 등록 counter/currency suffix가 뒤따르면 기존 counter owner가
+먼저 mixed core와 suffix를 처리하고 기존 suffix spacing을 유지한다.
+따라서 `금액은6천원이다 -> 금액은육천 원이다`이며, 인접한 두 금액
+표면을 임의로 병합하거나 원문에 없던 앞쪽 구분자를 생성하지 않는다.
+후행 Arabic block은 바로 앞의 `천/백/십` 단위보다 작은 양의 정수여야
+한다. 따라서 `5천830`, `5백83`, `5십3`은 valid지만 `5천8300`,
+`5백830`, `5십30`은 값 재해석 위험이 있어 preserve한다.
+
+valid mixed integer core가 Arabic block으로 끝나고 바로 ordinary decimal
+fraction이 이어지면 `mixed_decimal_atomic` owner가 generic decimal보다
+먼저 전체 표면을 claim한다. 정수부는 동일한 mixed-unit reading을,
+소수부는 기존 ordinary decimal의 자리별 `쩜` reading을 사용한다.
+쉼표가 숫자 뒤에서 공백·문장 끝 등 문장부호 경계를 이루면 숫자 core
+밖의 원문 문장부호로 유지한다.
+
+```text
+5천830, -> 오천팔백삼십,
+5천830이고 -> 오천팔백삼십이고
+5천830.13 -> 오천팔백삼십쩜일삼
+```
+
+잘못된 leading zero나 ASCII identifier 경계 때문에 mixed decimal owner가
+거절한 표면은 `INVALID_MIXED_DECIMAL_PRESERVE_SURFACE`가 전체 token을
+선점한다. 따라서 generic decimal이 뒤쪽 `830.13`만 부분 변환하지
+않으며 `A5천830.13`, `01천830.13`, `5천830.13abc`는 원문 보존한다.
+
+다음은 preserve-first다.
+
+- URL, path, email, backtick, square-bracket interior 및 기존 code protection
+- ASCII letter/underscore가 섞인 identifier-like token
+- `01천` 같은 leading-zero core
+- `1천2천` 같은 반복·역순 단위 또는 parser가 끝까지 소비하지 못한 core
+- 바로 앞 Korean unit 이상인 후행 Arabic block (`5천8300`, `5백830`, `5십30`)
+- `제6천원` 같은 prefixed ordinal-like surface
+- 숫자 단위 직후의 numeric residue를 남기는 partial match
+
+숫자 block은 `GENERATED_READING`, 원문의 `십/백/천/만/억/조/경`은
+`ORIGINAL_KOREAN` provenance로 렌더링한다. Mixed decimal의 점과 소수부
+reading도 `GENERATED_READING`으로 기록한다.
 
 ### 37.3 Currency decimal/code coverage
 

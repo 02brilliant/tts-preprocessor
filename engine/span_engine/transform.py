@@ -859,7 +859,12 @@ def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> se
                 consumed.add((unit.span.start, unit.span.end))
                 continue
             if (
-                getattr(surface, "owner", None) == "large_unit_atomic"
+                getattr(surface, "owner", None)
+                in {
+                    "large_unit_atomic",
+                    "mixed_integer_atomic",
+                    "mixed_decimal_atomic",
+                }
                 and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
             ):
                 consumed.add((unit.span.start, unit.span.end))
