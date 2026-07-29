@@ -92,9 +92,9 @@ check_llm_models() {
 
 check_post_llm_transform() {
   local output_file="$1"
-  local payload='{"stage":"prosody","normalized_text":"LLM 배포 확인입니다.","model":"gemma4:e4b"}'
+  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4:e4b"}'
 
-  echo "[check] LLM prosody transform: ${LLM_TRANSFORM_URL}"
+  echo "[check] Integrated LLM transform: ${LLM_TRANSFORM_URL}"
   if ! curl -fsS \
     -X POST "$LLM_TRANSFORM_URL" \
     -H "Content-Type: application/json" \
@@ -104,8 +104,8 @@ check_post_llm_transform() {
     exit 1
   fi
 
-  if ! grep -q '"prosody_text"' "$output_file"; then
-    echo "[FAIL] LLM transform response does not contain prosody_text" >&2
+  if ! grep -q '"speech_text"' "$output_file"; then
+    echo "[FAIL] LLM transform response does not contain speech_text" >&2
     exit 1
   fi
 }

@@ -64,8 +64,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/models.json",
         "LLM/prompt_template.py",
         "LLM/response_validation.py",
-        "LLM/docs/LLM_prompt_prosody.txt",
-        "LLM/docs/LLM_prompt_speech.txt",
+        "LLM/docs/LLM_prompt.txt",
     ):
         target = tmp_path / relative
         if not target.exists():
@@ -251,12 +250,13 @@ def _assert_not_run(events: list[str], *forbidden: str) -> None:
         assert event not in events
 
 
-def test_deploy_excludes_deprecated_single_prompt() -> None:
+def test_deploy_includes_integrated_prompt_only() -> None:
     source = SOURCE_DEPLOY.read_text(encoding="utf-8")
 
-    assert '--exclude="docs/LLM_prompt.txt"' in source
-    assert "LLM/docs/LLM_prompt_prosody.txt" in source
-    assert "LLM/docs/LLM_prompt_speech.txt" in source
+    assert "LLM/docs/LLM_prompt.txt" in source
+    assert "LLM/docs/LLM_prompt_prosody.txt" not in source
+    assert "LLM/docs/LLM_prompt_speech.txt" not in source
+    assert '--exclude="docs/LLM_prompt.txt"' not in source
 
 
 def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:

@@ -262,8 +262,7 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/models.json" \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/response_validation.py" \
-  "$ROOT_DIR/LLM/docs/LLM_prompt_prosody.txt" \
-  "$ROOT_DIR/LLM/docs/LLM_prompt_speech.txt"; do
+  "$ROOT_DIR/LLM/docs/LLM_prompt.txt"; do
   if [[ ! -f "$required_llm_file" || ! -r "$required_llm_file" ]]; then
     echo "[deploy][ERROR] Missing local LLM runtime prerequisite: $required_llm_file" >&2
     exit 1
@@ -371,7 +370,6 @@ rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/web/" "$SSH_TARGET:$REMOTE_APP_DIR/we
 rsync "${RSYNC_COMMON_ARGS[@]}" \
   --exclude="tests/" \
   --exclude="docs/info_Local_LLM_server.txt" \
-  --exclude="docs/LLM_prompt.txt" \
   "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_LLM_DIR/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
 rsync -avz "$LOCAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_binary_entrypoint.py"

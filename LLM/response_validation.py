@@ -6,8 +6,8 @@ from LLM.client import LLMResponseError
 
 
 _LOCK_TOKEN_RE = re.compile(r"<LOCK_\d+>")
-_SPEECH_STRUCTURE_RE = re.compile(
-    r"\s+|[,，.。!?！？:：;；()（）\[\]{}\"'“”‘’…—–]+"
+_STRUCTURE_CHARACTER_RE = re.compile(
+    r"[\s,，.。!?！？:：;；()（）\[\]{}\"'“”‘’…—–]"
 )
 _OUTPUT_WRAPPERS = (
     "```",
@@ -35,62 +35,47 @@ class LLMStageContractError(LLMResponseError):
         self.output_text = output_text
 
 
-def validate_prosody_response(normalized_text: str, prosody_text: str) -> str:
-    """Require an insert-only prosody result without silently repairing it."""
-    if not isinstance(prosody_text, str) or not prosody_text:
-        raise LLMResponseError("LLM prosody response is empty.")
+def validate_response(normalized_text: str, speech_text: str) -> str:
+    """Validate the integrated pronunciation and prosody response."""
+    if not isinstance(speech_text, str) or not speech_text:
+        raise LLMResponseError("LLM response is empty.")
 
+    source_structure = _STRUCTURE_CHARACTER_RE.findall(normalized_text)
     source_index = 0
-    for character in prosody_text:
+    for character in _STRUCTURE_CHARACTER_RE.findall(speech_text):
         if (
-            source_index < len(normalized_text)
-            and character == normalized_text[source_index]
+            source_index < len(source_structure)
+            and character == source_structure[source_index]
         ):
             source_index += 1
             continue
         if character not in {",", " "}:
             raise LLMStageContractError(
-                "LLM prosody response changed existing text or added "
-                "a character other than comma or ASCII space.",
-                stage="prosody",
-                output_text=prosody_text,
+                "LLM response changed existing whitespace, line breaks, "
+                "or fixed punctuation, or added a structural character "
+                "other than comma or ASCII space.",
+                stage="speech",
+                output_text=speech_text,
             )
-
-    if source_index != len(normalized_text):
+    if source_index != len(source_structure):
         raise LLMStageContractError(
-            "LLM prosody response deleted or reordered existing text.",
-            stage="prosody",
-            output_text=prosody_text,
-        )
-    return prosody_text
-
-
-def validate_speech_response(prosody_text: str, speech_text: str) -> str:
-    """Preserve the prosody structure while allowing pronunciation rewrites."""
-    if not isinstance(speech_text, str) or not speech_text:
-        raise LLMResponseError("LLM speech response is empty.")
-
-    source_structure = _SPEECH_STRUCTURE_RE.findall(prosody_text)
-    output_structure = _SPEECH_STRUCTURE_RE.findall(speech_text)
-    if source_structure != output_structure:
-        raise LLMStageContractError(
-            "LLM speech response changed whitespace, line breaks, commas, "
-            "or fixed punctuation.",
+            "LLM response deleted or reordered existing whitespace, "
+            "line breaks, or fixed punctuation.",
             stage="speech",
             output_text=speech_text,
         )
 
-    if _LOCK_TOKEN_RE.findall(prosody_text) != _LOCK_TOKEN_RE.findall(speech_text):
+    if _LOCK_TOKEN_RE.findall(normalized_text) != _LOCK_TOKEN_RE.findall(speech_text):
         raise LLMStageContractError(
-            "LLM speech response changed a locked token.",
+            "LLM response changed a locked token.",
             stage="speech",
             output_text=speech_text,
         )
 
     for wrapper in _OUTPUT_WRAPPERS:
-        if wrapper not in prosody_text and wrapper in speech_text:
+        if wrapper not in normalized_text and wrapper in speech_text:
             raise LLMStageContractError(
-                "LLM speech response added an output wrapper or input tag.",
+                "LLM response added an output wrapper or input tag.",
                 stage="speech",
                 output_text=speech_text,
             )

@@ -7,28 +7,23 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 1. `/api/transform`: 사용자 원고를 패키징된 규칙 엔진에 전달해
    `normalized_text` 생성
-2. `/api/llm/transform`의 `prosody` 단계: `normalized_text`를
-   `docs/LLM_prompt_prosody.txt`에 넣어 `prosody_text` 생성
-3. `/api/llm/transform`의 `speech` 단계: 직전 `prosody_text`를
-   `docs/LLM_prompt_speech.txt`에 넣어 `speech_text` 생성
+2. `/api/llm/transform`: `normalized_text`를 `docs/LLM_prompt.txt`에 넣어
+   읽기·발음·운율이 반영된 최종 `speech_text` 생성
 
-두 LLM 단계는 같은 선택 모델로 직렬 실행한다. 앞 단계가 실패하면 다음 단계를
-호출하지 않는다. 규칙 기반 `normalized_text` 계약과 source-free binary runtime은
-이 통합으로 변경되지 않는다.
+LLM은 선택 모델로 한 번만 호출한다. 규칙 기반 `normalized_text` 계약과
+source-free binary runtime은 이 통합으로 변경되지 않는다.
 
 ## 파일 구성
 
-- `docs/LLM_prompt_prosody.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는
-  2단계 프롬프트
-- `docs/LLM_prompt_speech.txt`: `{{PROSODY_TEXT}}`를 정확히 한 번 포함하는
-  3단계 프롬프트
+- `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
+  읽기·발음·운율 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
-- `response_validation.py`: 단계별 LLM 출력 불변 조건 검증
+- `response_validation.py`: 통합 LLM 출력 불변 조건 검증
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
 
-두 활성 프롬프트는 요청마다 UTF-8로 다시 읽는다. 파일을 수정하면 서버를
-재시작하지 않아도 다음 해당 단계 요청부터 반영된다.
+활성 프롬프트는 요청마다 UTF-8로 다시 읽는다. 파일을 수정하면 서버를
+재시작하지 않아도 다음 요청부터 반영된다.
 
 ## API 계약
 
@@ -38,32 +33,11 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 GET /api/llm/models
 ```
 
-Prosody 요청:
+통합 LLM 요청:
 
 ```json
 {
-  "stage": "prosody",
-  "normalized_text": "규칙 기반 결과",
-  "model": "gemma4:e4b"
-}
-```
-
-응답:
-
-```json
-{
-  "prosody_text": "규칙 기반 결과, ",
-  "model": "gemma4:e4b",
-  "elapsed_ms": 123.456
-}
-```
-
-Speech 요청:
-
-```json
-{
-  "stage": "speech",
-  "prosody_text": "국물은, 따뜻합니다.",
+  "normalized_text": "국물은 좋습니다.",
   "model": "gemma4:e4b"
 }
 ```
@@ -78,17 +52,14 @@ Speech 요청:
 }
 ```
 
-`stage`가 없거나 단계와 입력 필드가 맞지 않는 요청은 거부한다. Prosody 응답은
-입력 문자 보존과 쉼표·ASCII 공백만의 추가를 검증한다. Speech 응답은 공백,
-줄바꿈, 쉼표, 고정 문장부호 및 잠금 토큰 보존을 검증한다. 계약을 위반한 모델
-응답은 조용히 보정하지 않고 upstream 응답 오류로 반환한다. 모델이 비어 있지
-않은 문자열을 반환했으나 단계 계약만 위반한 경우, 오류 `detail`에는 `message`,
-`stage`와 해당 `prosody_text` 또는 `speech_text`가 포함된다. Web 화면은 이
-원출력을 표시하고 계약 위반 변경을 강조하지만 다음 단계는 호출하지 않는다.
-Speech 구조 계약 위반에서는 발음 철자의 허용된 변환과 문제없는 문자는 3단계
-색상으로 표시하고, 변경된 공백·줄바꿈·쉼표·고정 문장부호는 별도의 계약 위반
-색상으로 표시한다. 입력에서 삭제된 구조 문자는 취소선과 계약 위반 테두리를
-함께 표시한다.
+요청은 `normalized_text`만 입력으로 받으며 이전 `stage`와 `prosody_text` 필드는
+거부한다. 응답은 기존 공백·줄바꿈·고정 문장부호와 잠금 토큰을 보존하고,
+운율용 쉼표와 ASCII 공백만 추가할 수 있다. 계약을 위반한 모델 응답은 조용히
+보정하지 않고 upstream 응답 오류로 반환한다. 모델이 비어 있지 않은 문자열을
+반환했으나 계약만 위반한 경우 오류 `detail`에는 `message`, `stage`와
+`speech_text`가 포함된다. Web 화면은 원출력을 표시하고 계약 위반 변경을
+강조한다. 입력에서 삭제된 구조 문자는 취소선과 계약 위반 테두리를 함께
+표시한다.
 
 ## 환경변수
 
@@ -107,7 +78,7 @@ Speech 구조 계약 위반에서는 발음 철자의 허용된 변환과 문제
 
 `bash scripts/deploy_server.sh`는 서버의
 `~/tts-preprocessor/config/llm.env`를 읽을 수 있는지 먼저 확인하고, `LLM/` 런타임
-코드와 두 활성 프롬프트만 `app/LLM/`으로 배포한다. 개발 참고용
+코드와 통합 활성 프롬프트만 `app/LLM/`으로 배포한다. 개발 참고용
 `LLM/docs/info_Local_LLM_server.txt`는 전송하지 않는다.
 
 배포 전에 운영 서버에서 한 번만 다음처럼 환경 파일을 만든다. 값은 운영 환경의
@@ -135,7 +106,7 @@ curl http://127.0.0.1:8010/api/llm/models
 curl http://127.0.0.1:8010/docs
 ```
 
-선택 공급자의 연결 실패는 해당 LLM 단계에만 오류로 반환한다. 기존
+선택 공급자의 연결 실패는 LLM 단계에만 오류로 반환한다. 기존
 `/api/transform` 규칙 기반 전처리와 다른 공급자 설정에는 영향을 주지 않는다.
 
 실제 Gemini 연결을 명시적으로 확인할 때만 환경변수를 주입한 셸에서 다음을
@@ -145,8 +116,8 @@ curl http://127.0.0.1:8010/docs
 PYTHONPATH=. .venv/bin/python LLM/tests/smoke_gemini.py
 ```
 
-이 smoke 검증은 설정된 Gemini 모델마다 Prosody와 Speech 요청을 각각 한 번씩,
-총 두 번 전송하므로 API 사용량이 발생한다. 응답 본문과 API 키는 출력하지 않는다.
+이 smoke 검증은 설정된 Gemini 모델마다 통합 요청을 한 번 전송하므로 API
+사용량이 발생한다. 응답 본문과 API 키는 출력하지 않는다.
 
 ### `Gemini API is disabled` 오류
 

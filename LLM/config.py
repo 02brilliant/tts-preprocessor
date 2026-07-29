@@ -8,12 +8,7 @@ from pathlib import Path
 
 
 MODEL_CONFIG_PATH = Path(__file__).resolve().parent / "models.json"
-PROSODY_PROMPT_PATH = (
-    Path(__file__).resolve().parent / "docs" / "LLM_prompt_prosody.txt"
-)
-SPEECH_PROMPT_PATH = (
-    Path(__file__).resolve().parent / "docs" / "LLM_prompt_speech.txt"
-)
+LLM_PROMPT_PATH = Path(__file__).resolve().parent / "docs" / "LLM_prompt.txt"
 
 
 class ConfigurationError(ValueError):

@@ -5,15 +5,8 @@ import sys
 from LLM.client import LLMClientError
 from LLM.config import ConfigurationError, load_gemini_settings, load_model_config
 from LLM.gemini_client import GeminiClientError, generate_gemini
-from LLM.prompt_template import (
-    PromptTemplateError,
-    build_prosody_prompt,
-    build_speech_prompt,
-)
-from LLM.response_validation import (
-    validate_prosody_response,
-    validate_speech_response,
-)
+from LLM.prompt_template import PromptTemplateError, build_prompt
+from LLM.response_validation import validate_response
 
 
 SMOKE_NORMALIZED_TEXT = "에이아이는 삼 킬로그램 제품을 소개했다."
@@ -32,23 +25,14 @@ def main() -> int:
         if definition.provider != "gemini":
             continue
         try:
-            prosody_result = generate_gemini(
+            result = generate_gemini(
                 model=definition.upstream_model,
-                prompt=build_prosody_prompt(SMOKE_NORMALIZED_TEXT),
+                prompt=build_prompt(SMOKE_NORMALIZED_TEXT),
                 settings=settings,
             )
-            prosody_text = validate_prosody_response(
+            speech_text = validate_response(
                 SMOKE_NORMALIZED_TEXT,
-                prosody_result.text,
-            )
-            speech_result = generate_gemini(
-                model=definition.upstream_model,
-                prompt=build_speech_prompt(prosody_text),
-                settings=settings,
-            )
-            speech_text = validate_speech_response(
-                prosody_text,
-                speech_result.text,
+                result.text,
             )
         except (GeminiClientError, LLMClientError, PromptTemplateError) as exc:
             failed = True
@@ -60,9 +44,8 @@ def main() -> int:
         print(
             "[gemini-smoke][OK] "
             f"model={definition.id} "
-            f"prosody_length={len(prosody_text)} "
             f"speech_length={len(speech_text)} "
-            f"elapsed_ms={prosody_result.elapsed_ms + speech_result.elapsed_ms:.1f}"
+            f"elapsed_ms={result.elapsed_ms:.1f}"
         )
 
     return 1 if failed else 0

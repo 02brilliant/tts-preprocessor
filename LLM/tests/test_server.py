@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 from fastapi import HTTPException
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 import pytest
 
 from api import server as server_module
-from api.server import (
-    LLMProsodyRequest,
-    LLMSpeechRequest,
-    LLMTransformRequest,
-    app,
-)
+from api.server import LLMTransformRequest, app
 from LLM.client import GenerationResult, LLMTimeoutError
 from LLM.gemini_client import GeminiRateLimitError, GeminiServiceDisabledError
 
@@ -27,18 +22,13 @@ def get_endpoint(path: str, method: str):
 
 
 @pytest.fixture(autouse=True)
-def use_valid_stage_prompt_templates(monkeypatch):
-    """Keep routing tests independent from operator-editable prompt files."""
+def use_valid_prompt_template(monkeypatch):
+    """Keep routing tests independent from the operator-editable prompt file."""
 
     monkeypatch.setattr(
         server_module,
-        "build_prosody_prompt",
-        lambda text: f"PROSODY INPUT: {text}",
-    )
-    monkeypatch.setattr(
-        server_module,
-        "build_speech_prompt",
-        lambda text: f"SPEECH INPUT: {text}",
+        "build_prompt",
+        lambda text: f"INTEGRATED INPUT: {text}",
     )
 
 
@@ -61,19 +51,22 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
 @pytest.mark.parametrize(
     "payload",
     (
-        {"normalized_text": "원고", "model": "gemma4:e4b"},
-        {"stage": "prosody", "prosody_text": "원고", "model": "gemma4:e4b"},
+        {"model": "gemma4:e4b"},
         {
-            "stage": "speech",
-            "prosody_text": "원고",
-            "normalized_text": "잘못된 필드",
+            "stage": "prosody",
+            "normalized_text": "원고",
+            "model": "gemma4:e4b",
+        },
+        {
+            "normalized_text": "원고",
+            "prosody_text": "이전 단계",
             "model": "gemma4:e4b",
         },
     ),
 )
-def test_transform_request_requires_stage_specific_fields(payload: dict) -> None:
+def test_transform_request_requires_only_integrated_fields(payload: dict) -> None:
     with pytest.raises(ValidationError):
-        TypeAdapter(LLMTransformRequest).validate_python(payload)
+        LLMTransformRequest.model_validate(payload)
 
 
 def test_transform_rejects_unsupported_model() -> None:
@@ -81,8 +74,7 @@ def test_transform_rejects_unsupported_model() -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMProsodyRequest(
-                stage="prosody",
+            LLMTransformRequest(
                 normalized_text="원고",
                 model="unknown",
             )
@@ -92,7 +84,7 @@ def test_transform_rejects_unsupported_model() -> None:
     assert exc_info.value.detail == "Unsupported LLM model."
 
 
-def test_local_prosody_returns_stage_specific_contract(monkeypatch) -> None:
+def test_local_transform_returns_integrated_contract(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     captured = {}
@@ -101,32 +93,31 @@ def test_local_prosody_returns_stage_specific_contract(monkeypatch) -> None:
         captured["model"] = model
         captured["prompt"] = prompt
         captured["base_url"] = settings.base_url
-        return GenerationResult(text="원고, ", elapsed_ms=1234.5678)
+        return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=1234.5678)
 
     monkeypatch.setattr(server_module, "generate", fake_generate)
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
-        LLMProsodyRequest(
-            stage="prosody",
-            normalized_text="원고",
+        LLMTransformRequest(
+            normalized_text="국물은 좋습니다.",
             model="gemma4:e4b",
         )
     )
 
     assert result == {
-        "prosody_text": "원고, ",
+        "speech_text": "궁무른, 조씀니다.",
         "model": "gemma4:e4b",
         "elapsed_ms": 1234.568,
     }
     assert captured == {
         "model": "gemma4:e4b",
-        "prompt": "PROSODY INPUT: 원고",
+        "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
         "base_url": "http://llm.invalid/api",
     }
 
 
-def test_gemini_speech_routes_to_gemini_client(monkeypatch) -> None:
+def test_gemini_transform_routes_to_gemini_client(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "dummy-gemini-test-key")
     captured = {}
 
@@ -140,9 +131,8 @@ def test_gemini_speech_routes_to_gemini_client(monkeypatch) -> None:
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
-        LLMSpeechRequest(
-            stage="speech",
-            prosody_text="국물은, 좋습니다.",
+        LLMTransformRequest(
+            normalized_text="국물은 좋습니다.",
             model="gemini-3.6-flash",
         )
     )
@@ -154,46 +144,12 @@ def test_gemini_speech_routes_to_gemini_client(monkeypatch) -> None:
     }
     assert captured == {
         "model": "gemini-3.6-flash",
-        "prompt": "SPEECH INPUT: 국물은, 좋습니다.",
+        "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
         "api_key_present": True,
     }
 
 
-def test_two_stages_use_same_model_and_exact_previous_result(monkeypatch) -> None:
-    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
-    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
-    responses = iter(("원고, 다음", "원고, 다음"))
-    captured: list[tuple[str, str]] = []
-
-    def fake_generate(*, model, prompt, settings):
-        captured.append((model, prompt))
-        return GenerationResult(text=next(responses), elapsed_ms=1.0)
-
-    monkeypatch.setattr(server_module, "generate", fake_generate)
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-    prosody = endpoint(
-        LLMProsodyRequest(
-            stage="prosody",
-            normalized_text="원고 다음",
-            model="gemma4:e4b",
-        )
-    )["prosody_text"]
-    speech = endpoint(
-        LLMSpeechRequest(
-            stage="speech",
-            prosody_text=prosody,
-            model="gemma4:e4b",
-        )
-    )["speech_text"]
-
-    assert speech == "원고, 다음"
-    assert captured == [
-        ("gemma4:e4b", "PROSODY INPUT: 원고 다음"),
-        ("gemma4:e4b", "SPEECH INPUT: 원고, 다음"),
-    ]
-
-
-def test_invalid_prosody_response_maps_to_bad_gateway(monkeypatch) -> None:
+def test_contract_violation_maps_to_bad_gateway(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     monkeypatch.setattr(
@@ -205,9 +161,8 @@ def test_invalid_prosody_response_maps_to_bad_gateway(monkeypatch) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMProsodyRequest(
-                stage="prosody",
-                normalized_text="원고",
+            LLMTransformRequest(
+                normalized_text="원고.",
                 model="gemma4:e4b",
             )
         )
@@ -215,11 +170,11 @@ def test_invalid_prosody_response_maps_to_bad_gateway(monkeypatch) -> None:
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == {
         "message": (
-            "LLM prosody response changed existing text or added "
-            "a character other than comma or ASCII space."
+            "LLM response deleted or reordered existing whitespace, "
+            "line breaks, or fixed punctuation."
         ),
-        "stage": "prosody",
-        "prosody_text": "다른 원고",
+        "stage": "speech",
+        "speech_text": "다른 원고",
     }
 
 
@@ -229,9 +184,8 @@ def test_missing_gemini_configuration_is_gemini_only_error(monkeypatch) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMSpeechRequest(
-                stage="speech",
-                prosody_text="원고",
+            LLMTransformRequest(
+                normalized_text="원고",
                 model="gemini-3.5-flash-lite",
             )
         )
@@ -249,8 +203,7 @@ def test_missing_runtime_configuration_is_local_only_error(monkeypatch) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMProsodyRequest(
-                stage="prosody",
+            LLMTransformRequest(
                 normalized_text="원고",
                 model="gemma4:e4b",
             )
@@ -272,8 +225,7 @@ def test_upstream_timeout_maps_to_gateway_timeout(monkeypatch) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMProsodyRequest(
-                stage="prosody",
+            LLMTransformRequest(
                 normalized_text="원고",
                 model="gemma4:e4b",
             )
@@ -296,9 +248,8 @@ def test_gemini_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMSpeechRequest(
-                stage="speech",
-                prosody_text="원고",
+            LLMTransformRequest(
+                normalized_text="원고",
                 model="gemini-3.5-flash",
             )
         )
@@ -323,9 +274,8 @@ def test_gemini_service_disabled_maps_to_service_unavailable(monkeypatch) -> Non
 
     with pytest.raises(HTTPException) as exc_info:
         endpoint(
-            LLMSpeechRequest(
-                stage="speech",
-                prosody_text="원고",
+            LLMTransformRequest(
+                normalized_text="원고",
                 model="gemini-3.5-flash",
             )
         )

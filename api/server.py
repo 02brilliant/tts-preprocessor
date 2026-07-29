@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Literal
 
 import uvicorn
 from fastapi import FastAPI
@@ -11,7 +10,7 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -48,13 +47,11 @@ from LLM.gemini_client import (
 )
 from LLM.prompt_template import (
     PromptTemplateError,
-    build_prosody_prompt,
-    build_speech_prompt,
+    build_prompt,
 )
 from LLM.response_validation import (
     LLMStageContractError,
-    validate_prosody_response,
-    validate_speech_response,
+    validate_response,
 )
 
 app = FastAPI()
@@ -81,26 +78,11 @@ class TransformRequest(BaseModel):
         return value
 
 
-class LLMProsodyRequest(BaseModel):
+class LLMTransformRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    stage: Literal["prosody"]
     normalized_text: str
     model: str | None = None
-
-
-class LLMSpeechRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    stage: Literal["speech"]
-    prosody_text: str
-    model: str | None = None
-
-
-LLMTransformRequest = Annotated[
-    LLMProsodyRequest | LLMSpeechRequest,
-    Field(discriminator="stage"),
-]
 
 
 app.add_middleware(
@@ -165,22 +147,12 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         if model_definition is None:
             raise HTTPException(status_code=400, detail="Unsupported LLM model.")
 
-        if isinstance(req, LLMProsodyRequest):
-            prompt = build_prosody_prompt(req.normalized_text)
-            result = _generate_with_provider(model_definition, prompt)
-            prosody_text = validate_prosody_response(
-                req.normalized_text,
-                result.text,
-            )
-            response = {"prosody_text": prosody_text}
-        else:
-            prompt = build_speech_prompt(req.prosody_text)
-            result = _generate_with_provider(model_definition, prompt)
-            speech_text = validate_speech_response(
-                req.prosody_text,
-                result.text,
-            )
-            response = {"speech_text": speech_text}
+        prompt = build_prompt(req.normalized_text)
+        result = _generate_with_provider(model_definition, prompt)
+        speech_text = validate_response(
+            req.normalized_text,
+            result.text,
+        )
     except HTTPException:
         raise
     except ConfigurationError as exc:
@@ -216,7 +188,8 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
     ) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    return response | {
+    return {
+        "speech_text": speech_text,
         "model": model,
         "elapsed_ms": round(result.elapsed_ms, 3),
     }

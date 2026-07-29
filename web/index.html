@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TTS 3단계 전처리 테스트</title>
+  <title>TTS 2단계 전처리 테스트</title>
   <style>
     :root {
       color-scheme: light;
@@ -21,8 +21,6 @@
       --stage-1-text: #1a7f37;
       --stage-2-bg: #ddf4ff;
       --stage-2-text: #0969da;
-      --stage-3-bg: #f0e7ff;
-      --stage-3-text: #8250df;
       --violation-bg: #fff1c2;
       --violation-text: #8a4b08;
     }
@@ -107,12 +105,51 @@
       outline-offset: 2px;
     }
 
-    .controls {
+    .llm-controls {
       display: grid;
-      grid-template-columns: minmax(240px, 1fr) auto;
-      align-items: end;
-      gap: 16px;
+      grid-template-columns: max-content max-content minmax(240px, 1fr) max-content;
+      align-items: center;
+      gap: 12px;
       margin-top: 18px;
+    }
+
+    .llm-settings-label {
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .llm-toggle {
+      min-width: 72px;
+      padding-inline: 16px;
+      background: #1a7f37;
+    }
+
+    .llm-toggle:hover {
+      background: #116329;
+    }
+
+    .llm-toggle[aria-pressed="false"] {
+      background: #756b61;
+    }
+
+    .llm-toggle[aria-pressed="false"]:hover {
+      background: #564d45;
+    }
+
+    .llm-run-button {
+      white-space: nowrap;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     button {
@@ -154,7 +191,9 @@
     }
 
     .model-status {
-      margin: 8px 0 0;
+      grid-column: 3 / -1;
+      min-height: 20px;
+      margin: -4px 0 0;
     }
 
     .legend {
@@ -189,11 +228,6 @@
     .legend-stage-2 {
       background: var(--stage-2-bg);
       border: 1px solid var(--stage-2-text);
-    }
-
-    .legend-stage-3 {
-      background: var(--stage-3-bg);
-      border: 1px solid var(--stage-3-text);
     }
 
     .legend-deleted {
@@ -278,8 +312,7 @@
     }
 
     .diff-stage-1,
-    .diff-stage-2,
-    .diff-stage-3 {
+    .diff-stage-2 {
       padding: 1px 3px;
       border-radius: 4px;
       font-weight: 750;
@@ -293,11 +326,6 @@
     .diff-stage-2 {
       background: var(--stage-2-bg);
       color: var(--stage-2-text);
-    }
-
-    .diff-stage-3 {
-      background: var(--stage-3-bg);
-      color: var(--stage-3-text);
     }
 
     .diff-comma {
@@ -397,8 +425,22 @@
         padding: 18px;
       }
 
-      .controls {
-        grid-template-columns: 1fr;
+      .llm-controls {
+        grid-template-columns: 1fr auto;
+      }
+
+      .llm-settings-label {
+        grid-column: 1;
+      }
+
+      .llm-toggle {
+        grid-column: 2;
+      }
+
+      #llm-model,
+      .llm-run-button,
+      .model-status {
+        grid-column: 1 / -1;
       }
 
       button {
@@ -410,31 +452,35 @@
 <body>
   <main class="page">
     <section class="panel">
-      <h1>TTS 3단계 전처리 테스트</h1>
+      <h1>TTS 2단계 전처리 테스트</h1>
       <p class="intro">
-        규칙 기반 정규화 결과를 LLM 운율 처리와 최종 발음 처리에 차례로 전달합니다.
+        규칙 기반 정규화 결과를 LLM 통합 읽기·발음·운율 처리에 전달합니다.
         각 누적 Diff의 색상은 마지막으로 해당 표면을 변경한 단계를 나타냅니다.
       </p>
 
       <label for="input">사용자 텍스트(TTS 원고)</label>
       <textarea id="input" placeholder="예: AI는 2025-01-03에 3kg 제품을 69% 할인한다">AI는 2025-01-03에 3kg 제품을 69% 할인한다</textarea>
 
-      <div class="controls">
-        <div>
-          <label for="llm-model">LLM 모델 선택</label>
-          <select id="llm-model" disabled aria-describedby="model-status">
-            <option>모델 목록 불러오는 중...</option>
-          </select>
-          <div id="model-status" class="status model-status" aria-live="polite"></div>
-        </div>
-        <button id="run-button" type="button" disabled>3단계 실행</button>
+      <div class="llm-controls" aria-label="LLM 추가교정 설정">
+        <span class="llm-settings-label">LLM 추가교정 설정</span>
+        <button
+          id="llm-toggle"
+          class="llm-toggle"
+          type="button"
+          aria-pressed="true"
+        >ON</button>
+        <label class="sr-only" for="llm-model">LLM 모델 선택</label>
+        <select id="llm-model" disabled aria-describedby="model-status">
+          <option>모델 목록 불러오는 중...</option>
+        </select>
+        <button id="run-button" class="llm-run-button" type="button" disabled>실행</button>
+        <div id="model-status" class="status model-status" aria-live="polite"></div>
       </div>
       <div id="pipeline-status" class="status" aria-live="polite"></div>
 
       <div class="legend" aria-label="Diff 색상 범례">
         <span class="legend-item"><span class="legend-swatch legend-stage-1"></span>1단계 변경</span>
         <span class="legend-item"><span class="legend-swatch legend-stage-2"></span>2단계 변경</span>
-        <span class="legend-item"><span class="legend-swatch legend-stage-3"></span>3단계 변경</span>
         <span class="legend-item"><span class="legend-swatch legend-deleted"></span>삭제된 원본</span>
         <span class="legend-item"><span class="legend-swatch legend-violation"></span>LLM 계약 위반</span>
       </div>
@@ -461,14 +507,14 @@
 
         <section class="stage-section" aria-labelledby="stage-2-title">
           <div class="stage-heading">
-            <h2 id="stage-2-title">2단계 · LLM Prosody</h2>
+            <h2 id="stage-2-title">2단계 · LLM 통합 읽기·발음·운율 처리</h2>
             <div id="stage-2-timing" class="timing">전체 응답시간: -</div>
           </div>
           <div id="stage-2-status" class="status" aria-live="polite"></div>
           <div id="stage-2-error" class="error-box" role="alert"></div>
           <div class="result-grid">
             <section class="result-box">
-              <h3>출력 원문 · prosody_text</h3>
+              <h3>출력 원문 · speech_text</h3>
               <div id="stage-2-output" class="plain-output"></div>
             </section>
             <section class="result-box">
@@ -482,28 +528,6 @@
           </div>
         </section>
 
-        <section class="stage-section" aria-labelledby="stage-3-title">
-          <div class="stage-heading">
-            <h2 id="stage-3-title">3단계 · LLM 최종 발음 처리</h2>
-            <div id="stage-3-timing" class="timing">전체 응답시간: -</div>
-          </div>
-          <div id="stage-3-status" class="status" aria-live="polite"></div>
-          <div id="stage-3-error" class="error-box" role="alert"></div>
-          <div class="result-grid">
-            <section class="result-box">
-              <h3>출력 원문 · speech_text</h3>
-              <div id="stage-3-output" class="plain-output"></div>
-            </section>
-            <section class="result-box">
-              <h3>2단계 → 3단계 Diff</h3>
-              <div id="stage-3-previous-diff" class="diff-output"></div>
-            </section>
-            <section class="result-box">
-              <h3>원본 → 3단계 누적 Diff</h3>
-              <div id="stage-3-original-diff" class="diff-output"></div>
-            </section>
-          </div>
-        </section>
       </div>
 
       <section class="downloads result-box">
@@ -518,12 +542,15 @@
   <script>
     const inputEl = document.getElementById("input");
     const modelEl = document.getElementById("llm-model");
+    const llmToggleButton = document.getElementById("llm-toggle");
     const modelStatusEl = document.getElementById("model-status");
     const runButton = document.getElementById("run-button");
     const pipelineStatusEl = document.getElementById("pipeline-status");
     const downloadsStatusEl = document.getElementById("downloads-status");
     const downloadsListEl = document.getElementById("downloads-list");
     let modelsLoaded = false;
+    let llmEnabled = true;
+    let pipelineBusy = false;
 
     const stageElements = {
       1: {
@@ -541,16 +568,6 @@
         diffs: [
           document.getElementById("stage-2-previous-diff"),
           document.getElementById("stage-2-original-diff"),
-        ],
-      },
-      3: {
-        status: document.getElementById("stage-3-status"),
-        timing: document.getElementById("stage-3-timing"),
-        error: document.getElementById("stage-3-error"),
-        output: document.getElementById("stage-3-output"),
-        diffs: [
-          document.getElementById("stage-3-previous-diff"),
-          document.getElementById("stage-3-original-diff"),
         ],
       },
     };
@@ -590,11 +607,29 @@
     }
 
     function setBusy(busy) {
-      runButton.disabled = busy || !modelsLoaded;
-      modelEl.disabled = busy || !modelsLoaded;
+      pipelineBusy = busy;
+      runButton.disabled = busy || (llmEnabled && !modelsLoaded);
+      modelEl.disabled = busy || !llmEnabled || !modelsLoaded;
+      llmToggleButton.disabled = busy;
       if (busy) {
-        pipelineStatusEl.textContent = "3단계 파이프라인을 실행하는 중...";
+        pipelineStatusEl.textContent = llmEnabled
+          ? "2단계 파이프라인을 실행하는 중..."
+          : "1단계 규칙 기반 처리를 실행하는 중...";
         pipelineStatusEl.className = "status loading";
+      }
+    }
+
+    function setLLMEnabled(enabled) {
+      llmEnabled = enabled;
+      llmToggleButton.textContent = enabled ? "ON" : "OFF";
+      llmToggleButton.setAttribute("aria-pressed", String(enabled));
+      runButton.disabled = pipelineBusy || (enabled && !modelsLoaded);
+      modelEl.disabled = pipelineBusy || !enabled || !modelsLoaded;
+      if (!pipelineBusy) {
+        pipelineStatusEl.textContent = enabled
+          ? "LLM 추가교정이 켜졌습니다."
+          : "LLM 추가교정이 꺼졌습니다. 1단계 규칙 기반 처리만 실행합니다.";
+        pipelineStatusEl.className = "status";
       }
     }
 
@@ -656,15 +691,10 @@
       }
     }
 
-    async function runLLMStage(stageName, inputText, model) {
-      const stageNumber = stageName === "prosody" ? 2 : 3;
-      const stage = stageElements[stageNumber];
-      const inputField = stageName === "prosody" ? "normalized_text" : "prosody_text";
-      const outputField = stageName === "prosody" ? "prosody_text" : "speech_text";
+    async function runLLMStage(normalizedText, model) {
+      const stage = stageElements[2];
       const startedAt = performance.now();
-      stage.status.textContent = stageName === "prosody"
-        ? "LLM Prosody 처리 중..."
-        : "LLM 최종 발음 처리 중...";
+      stage.status.textContent = "LLM 통합 처리 중...";
       stage.status.className = "status loading";
 
       try {
@@ -674,21 +704,20 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              stage: stageName,
-              [inputField]: inputText,
+              normalized_text: normalizedText,
               model,
             }),
           },
           "LLM API 요청에 실패했습니다.",
         );
-        if (typeof data[outputField] !== "string") {
+        if (typeof data.speech_text !== "string") {
           throw new Error("LLM API 응답 형식이 올바르지 않습니다.");
         }
         if (data.model !== model) {
           throw new Error("LLM API가 선택한 모델과 다른 모델을 반환했습니다.");
         }
 
-        stage.output.textContent = data[outputField];
+        stage.output.textContent = data.speech_text;
         stage.status.textContent = "완료";
         stage.status.className = "status";
         const upstreamTiming = Number.isFinite(data.elapsed_ms)
@@ -696,41 +725,31 @@
           : "";
         stage.timing.textContent =
           `전체 응답시간: ${formatDuration(performance.now() - startedAt)}${upstreamTiming}`;
-        return data[outputField];
+        return data.speech_text;
       } catch (error) {
         const contractOutput = error instanceof Error
           && error.contractDetail
-          && error.contractDetail.stage === stageName
-          && typeof error.contractDetail[outputField] === "string"
-          ? error.contractDetail[outputField]
+          && error.contractDetail.stage === "speech"
+          && typeof error.contractDetail.speech_text === "string"
+          ? error.contractDetail.speech_text
           : null;
         if (contractOutput !== null) {
           error.stageOutput = contractOutput;
-          if (stageName === "prosody") {
-            PipelineDiff.renderProsodyContractViolation(
-              inputText,
-              contractOutput,
-              stage.output,
-              stage.diffs[0],
-            );
-          } else {
-            PipelineDiff.renderSpeechContractViolation(
-              inputText,
-              contractOutput,
-              stage.output,
-              stage.diffs[0],
-            );
-          }
+          PipelineDiff.renderSpeechContractViolation(
+            normalizedText,
+            contractOutput,
+            stage.output,
+            stage.diffs[0],
+          );
         }
         showStageError(
-          stageNumber,
+          2,
           error,
-          `${stageNumber}단계 처리 중 알 수 없는 오류가 발생했습니다.`,
+          "2단계 처리 중 알 수 없는 오류가 발생했습니다.",
         );
         if (contractOutput !== null) {
-          stage.error.textContent += stageName === "prosody"
-            ? "\nLLM 원출력을 표시했습니다. 주황색 테두리는 허용되지 않은 수정이며, 삭제된 원문은 빨간색 취소선으로 표시됩니다."
-            : "\nLLM 원출력을 표시했습니다. 주황색 테두리는 변경된 공백·줄바꿈·쉼표·고정 문장부호이며, 입력에서 사라진 구조는 주황 테두리와 빨간색 취소선으로 표시됩니다.";
+          stage.error.textContent +=
+            "\nLLM 원출력을 표시했습니다. 주황색 테두리는 허용되지 않은 공백·줄바꿈·고정 문장부호 변경이며, 입력에서 사라진 구조는 주황 테두리와 빨간색 취소선으로 표시됩니다.";
         }
         stage.timing.textContent =
           `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
@@ -739,7 +758,7 @@
     }
 
     async function runPipeline() {
-      if (!modelsLoaded || !modelEl.value) {
+      if (llmEnabled && (!modelsLoaded || !modelEl.value)) {
         pipelineStatusEl.textContent = "LLM 모델 목록을 먼저 불러와야 합니다.";
         pipelineStatusEl.className = "status error";
         return;
@@ -748,40 +767,50 @@
       const originalText = inputEl.value;
       const selectedModel = modelEl.value;
       resetStage(1);
-      resetStage(2, "1단계 완료 후 실행됩니다.");
-      resetStage(3, "2단계 완료 후 실행됩니다.");
+      resetStage(
+        2,
+        llmEnabled ? "1단계 완료 후 실행됩니다." : "LLM 추가교정이 꺼져 있습니다.",
+      );
       setBusy(true);
 
       let normalizedText;
       try {
         normalizedText = await runRuleStage(originalText);
       } catch {
-        pipelineStatusEl.textContent = "1단계 실패로 2·3단계를 실행하지 않았습니다.";
+        pipelineStatusEl.textContent = "1단계 실패로 2단계를 실행하지 않았습니다.";
         pipelineStatusEl.className = "status error";
         setBusy(false);
         return;
       }
 
-      let prosodyText;
+      if (!llmEnabled) {
+        pipelineStatusEl.textContent =
+          "1단계 처리가 완료되었습니다. LLM 추가교정은 OFF 상태입니다.";
+        pipelineStatusEl.className = "status";
+        setBusy(false);
+        return;
+      }
+
       try {
-        prosodyText = await runLLMStage("prosody", normalizedText, selectedModel);
-        const stage2Ledgers = PipelineDiff.buildPipelineLedgers(
+        const speechText = await runLLMStage(normalizedText, selectedModel);
+        const ledgers = PipelineDiff.buildPipelineLedgers(
           originalText,
           normalizedText,
-          prosodyText,
-          prosodyText,
+          speechText,
         );
         PipelineDiff.renderAdjacentDiff(
           normalizedText,
-          prosodyText,
+          speechText,
           2,
           stageElements[2].diffs[0],
         );
         PipelineDiff.renderCumulativeDiff(
           originalText,
-          stage2Ledgers.stage2,
+          ledgers.stage2,
           stageElements[2].diffs[1],
         );
+        pipelineStatusEl.textContent = "2단계 처리가 완료되었습니다.";
+        pipelineStatusEl.className = "status";
       } catch (error) {
         if (
           error instanceof Error
@@ -791,7 +820,6 @@
             originalText,
             normalizedText,
             error.stageOutput,
-            error.stageOutput,
           );
           PipelineDiff.renderCumulativeDiff(
             originalText,
@@ -799,52 +827,8 @@
             stageElements[2].diffs[1],
           );
         }
-        pipelineStatusEl.textContent = "2단계 실패로 3단계를 실행하지 않았습니다.";
-        pipelineStatusEl.className = "status error";
-        setBusy(false);
-        return;
-      }
-
-      try {
-        const speechText = await runLLMStage("speech", prosodyText, selectedModel);
-        const ledgers = PipelineDiff.buildPipelineLedgers(
-          originalText,
-          normalizedText,
-          prosodyText,
-          speechText,
-        );
-        PipelineDiff.renderAdjacentDiff(
-          prosodyText,
-          speechText,
-          3,
-          stageElements[3].diffs[0],
-        );
-        PipelineDiff.renderCumulativeDiff(
-          originalText,
-          ledgers.stage3,
-          stageElements[3].diffs[1],
-        );
-        pipelineStatusEl.textContent = "3단계 처리가 완료되었습니다.";
-        pipelineStatusEl.className = "status";
-      } catch (error) {
-        if (
-          error instanceof Error
-          && typeof error.stageOutput === "string"
-        ) {
-          const invalidStage3Ledgers = PipelineDiff.buildPipelineLedgers(
-            originalText,
-            normalizedText,
-            prosodyText,
-            error.stageOutput,
-          );
-          PipelineDiff.renderCumulativeDiff(
-            originalText,
-            invalidStage3Ledgers.stage3,
-            stageElements[3].diffs[1],
-          );
-        }
         pipelineStatusEl.textContent =
-          "3단계 처리에 실패했습니다. 1·2단계 결과는 유지됩니다.";
+          "2단계 처리에 실패했습니다. 1단계 결과는 유지됩니다.";
         pipelineStatusEl.className = "status error";
       } finally {
         setBusy(false);
@@ -971,7 +955,11 @@
           : "";
     }
 
+    llmToggleButton.addEventListener("click", () => {
+      setLLMEnabled(!llmEnabled);
+    });
     runButton.addEventListener("click", runPipeline);
+    setLLMEnabled(true);
     loadLLMModels();
     loadDownloads();
   </script>

@@ -152,12 +152,11 @@
     return nextLedger;
   }
 
-  function buildPipelineLedgers(originalText, normalizedText, prosodyText, speechText) {
+  function buildPipelineLedgers(originalText, normalizedText, speechText) {
     const original = initialLedger(originalText);
     const stage1 = transitionLedger(original, normalizedText, 1);
-    const stage2 = transitionLedger(stage1, prosodyText, 2);
-    const stage3 = transitionLedger(stage2, speechText, 3);
-    return { original, stage1, stage2, stage3 };
+    const stage2 = transitionLedger(stage1, speechText, 2);
+    return { original, stage1, stage2 };
   }
 
   function appendPart(parts, part) {
@@ -207,28 +206,6 @@
     return parts;
   }
 
-  function prosodyContractParts(sourceText, targetText, includeDeletions) {
-    const parts = [];
-    for (const op of sequenceOps(sourceText, targetText)) {
-      if (op.op === "eq") {
-        appendPart(parts, { value: op.value, type: "unchanged", stage: 0 });
-      } else if (op.op === "del") {
-        if (includeDeletions) {
-          appendPart(parts, { value: op.value, type: "deleted", stage: 0 });
-        }
-      } else if (op.value === "," || op.value === " ") {
-        appendPart(parts, insertedPart(op.value, 2));
-      } else {
-        appendPart(parts, {
-          value: op.value,
-          type: "contract_violation",
-          stage: 2,
-        });
-      }
-    }
-    return parts;
-  }
-
   function speechContractParts(sourceText, targetText, includeDeletions) {
     const parts = [];
     for (const op of sequenceOps(sourceText, targetText)) {
@@ -244,14 +221,18 @@
             stage: 0,
           });
         }
-      } else if (SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)) {
+      } else if (
+        SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)
+        && op.value !== ","
+        && op.value !== " "
+      ) {
         appendPart(parts, {
           value: op.value,
           type: "contract_violation",
-          stage: 3,
+          stage: 2,
         });
       } else {
-        appendPart(parts, insertedPart(op.value, 3));
+        appendPart(parts, insertedPart(op.value, 2));
       }
     }
     return parts;
@@ -368,20 +349,6 @@
     );
   }
 
-  function renderProsodyContractViolation(
-    sourceText,
-    outputText,
-    outputElement,
-    diffElement,
-  ) {
-    outputElement.innerHTML = renderParts(
-      prosodyContractParts(sourceText, outputText, false),
-    );
-    diffElement.innerHTML = renderParts(
-      prosodyContractParts(sourceText, outputText, true),
-    );
-  }
-
   function renderSpeechContractViolation(
     sourceText,
     outputText,
@@ -401,11 +368,9 @@
     buildPipelineLedgers,
     cumulativeParts,
     escapeHtml,
-    prosodyContractParts,
     renderAdjacentDiff,
     renderCumulativeDiff,
     renderParts,
-    renderProsodyContractViolation,
     renderSpeechContractViolation,
     sequenceOps,
     speechContractParts,
