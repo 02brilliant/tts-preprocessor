@@ -361,6 +361,36 @@ canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자
 
 ---
 
+## Optional second-stage LLM contract
+
+규칙 기반 `normalized_text`는 후단 LLM의 존재와 무관하게 그대로 TTS에
+전달할 수 있는 독립적인 최종 출력이다. LLM 연결을 위해 marker, decision,
+candidate, `contextual_decision_logs` 또는 다른 hidden metadata를 서비스
+문자열에 추가하지 않는다. `/api/llm/transform`은 지금처럼 순수
+`normalized_text` 문자열과 선택 model만 입력받는다.
+
+후단 LLM은 규칙 엔진이 source-exact로 남긴 숫자+다의 단위를 발견하더라도
+같은 문장과 절의 명사·서술어·수식 관계를 우선하여 native/Sino 읽기를
+선택한다. 규칙 allowlist보다 넓은 자연어 문맥과 일반적인 표준 한국어
+용례를 사용할 수 있다. 여러 의미가 가능하면 가장 자연스러운 하나를
+선택하되 입력의 숫자 값·단위·대상·조사/접사를 바꾸거나 없는 상황을
+만들어서는 안 된다. 정책상 보호 대상이 아닌 숫자와 영문은 최종
+`speech_text`에 원문 표면으로 남기지 않는다.
+
+규칙 엔진이 이미 한글로 확정한 읽기와 spacing은 LLM의 재판정 대상이
+아니다. `오분 뒤`, `삼번 버스`, `제 삼장`, `세 번`, `다섯 분`은
+입력 형태 그대로 유지한다. 새로 확정하는 정상 decimal은 규칙 엔진과
+같은 compact `쩜` Sino reading을 사용하고, 다의 단위의 spacing은 가장
+자연스러운 의미에 맞춘다. malformed, code-like, identifier,
+URL/path/file/JSON, 잠금 구간은 정책상 보호 대상으로 부분 변환 없이
+보존한다.
+
+LLM 프롬프트와 응답에는 분석, 판정 상태, 후보 읽기 또는 내부 log를
+출력하지 않는다. 최종 응답은 `speech_text` 문자열 하나이며, 이 선택적
+후단 계약은 일반 `/api/transform` 결과와 debug 노출 범위를 바꾸지 않는다.
+
+---
+
 ## 0.0 Korean Eligibility / Symbol Alias Integrated Policy
 
 ### 0.0.1 Guard 우선순위 고정

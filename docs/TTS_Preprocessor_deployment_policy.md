@@ -156,6 +156,18 @@ Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose
 that field or any decision marker. `shadow_logs` remains the source-preservation
 validation stream and MUST NOT be repurposed for contextual decisions.
 
+The optional second-stage LLM receives only the ordinary `normalized_text`
+string. Deployment MUST NOT attach `contextual_decision_logs`, candidates,
+decision markers, or other rule-engine metadata to that request. The rule
+endpoint remains independently usable as a final TTS input path.
+
+`LLM/docs/LLM_prompt.txt` is the single active prompt and is deployed with the
+API runtime, independently of the packaged rule binary. Prompt-only policy
+updates therefore require deploying the current `LLM/` runtime files; rebuilding
+the rule binary is neither required nor evidence that the new prompt is live.
+After deployment, the active server must be checked through
+`/api/llm/transform` when provider credentials and model access are available.
+
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is
 optional. It does not replace the canonical semantic regression probes.

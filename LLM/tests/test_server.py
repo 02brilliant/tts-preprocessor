@@ -62,6 +62,11 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
             "prosody_text": "이전 단계",
             "model": "gemma4:e4b",
         },
+        {
+            "normalized_text": "원고",
+            "contextual_decision_logs": [{"decision": "deferred"}],
+            "model": "gemma4:e4b",
+        },
     ),
 )
 def test_transform_request_requires_only_integrated_fields(payload: dict) -> None:

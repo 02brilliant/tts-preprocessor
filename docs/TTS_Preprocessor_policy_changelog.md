@@ -2,6 +2,23 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Context-aware LLM handoff
+
+- 전면 활성화된 규칙 엔진이 의도적으로 남기는 raw 숫자+다의 단위를 후단
+  LLM 프롬프트에 반영했다. 같은 문장/절의 의미 관계를 우선하고 일반적인
+  표준 한국어 용례로 가장 자연스러운 native/Sino 읽기를 선택하도록
+  정렬했다. 정책상 보호 대상이 아닌 숫자와 영문은 최종 `speech_text`에
+  원문 표면으로 남기지 않는다.
+- `분·번·점·조·대·부·동·호·판·단·등·척·장·권·편·층`과 `가지`의
+  의미 대조, compact decimal `쩜`, malformed/protected atomic preserve,
+  기존 canonical spacing을 활성 통합 프롬프트에 반영했다.
+- 규칙 엔진이 확정한 `오분 뒤`, `삼번 버스`, `제 삼장` 등은 LLM이
+  재판정하거나 spacing을 변경하지 않는 고정 결과로 명시했다.
+- 1단계와 2단계 사이에 marker, candidate, decision log 또는 hidden
+  metadata를 추가하지 않았다. LLM 요청은 계속 순수 `normalized_text`
+  문자열만 사용하고, 규칙 출력은 LLM 없이 독립적으로 TTS 입력에 사용할
+  수 있다.
+
 ## Full-activation transition cleanup
 
 - 개선 엔진 전면 적용 후 사용되지 않던 source-debug compatibility
