@@ -586,10 +586,15 @@ The rule is restricted to positive decimal Arabic numbers, `만/억/조`, and KR
 
 Arabic `6월` and `10월` are read as `유월` and `시월` when rendered as date months. Literal Korean `유월` and `십월` are preserved as original Korean text.
 
+Korean marker dates `YYYY년 M월 D일`, `YYYY년 M월`, and `M월 D일` accept either source whitespace or direct attachment between components. Directly attached components receive one generated ASCII space before the following reading while the original `년`, `월`, and `일` markers remain unchanged.
+
 Examples:
 
 - `6월 -> 유월`
 - `10월 -> 시월`
+- `6월19일 -> 유월 십구일`
+- `2026년6월19일 -> 이천이십육년 유월 십구일`
+- `2026년6월 -> 이천이십육년 유월`
 - `2026년 6월 17일 -> 이천이십육년 유월 십칠일`
 - `2026-06-17 -> 이천이십육년 유월 십칠일`
 - `2026/06/17 -> 이천이십육년 유월 십칠일`

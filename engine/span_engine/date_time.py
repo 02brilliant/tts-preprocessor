@@ -13,9 +13,9 @@ from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boun
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
 _SHORT_DOTTED_CODE_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
-_KOREAN_YMD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월\s+(\d{1,2})일")
-_KOREAN_YM_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s+(\d{1,2})월")
-_KOREAN_MD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월\s+(\d{1,2})일")
+_KOREAN_YMD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일")
+_KOREAN_YM_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년\s*(\d{1,2})월")
+_KOREAN_MD_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월\s*(\d{1,2})일")
 _KOREAN_YEAR_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{4})년")
 _KOREAN_MONTH_RE = re.compile(r"(?<![A-Za-z0-9가-힣])(\d{1,2})월")
 
@@ -717,9 +717,19 @@ def _korean_ymd_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | Non
             2,
             "date_korean_year_month_day_gate",
             month,
-            reading=_month_reading(month),
+            reading=_korean_date_component_reading(
+                match, 2, _month_reading(month)
+            ),
         ),
-        _numeric_marker_candidate(match, 3, "date_korean_year_month_day_gate", day),
+        _numeric_marker_candidate(
+            match,
+            3,
+            "date_korean_year_month_day_gate",
+            day,
+            reading=_korean_date_component_reading(
+                match, 3, number_to_korean_under_10000(day)
+            ),
+        ),
     ]
 
 
@@ -735,7 +745,9 @@ def _korean_ym_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None
             2,
             "date_korean_year_month_gate",
             month,
-            reading=_month_reading(month),
+            reading=_korean_date_component_reading(
+                match, 2, _month_reading(month)
+            ),
         ),
     ]
 
@@ -755,7 +767,15 @@ def _korean_md_candidates(match: re.Match[str]) -> list[SurfaceCandidate] | None
             month,
             reading=_month_reading(month),
         ),
-        _numeric_marker_candidate(match, 2, "date_korean_month_day_gate", day),
+        _numeric_marker_candidate(
+            match,
+            2,
+            "date_korean_month_day_gate",
+            day,
+            reading=_korean_date_component_reading(
+                match, 2, number_to_korean_under_10000(day)
+            ),
+        ),
     ]
 
 
@@ -1056,6 +1076,14 @@ def _month_reading(month: int) -> str:
     if month == 10:
         return "시"
     return number_to_korean_under_10000(month)
+
+
+def _korean_date_component_reading(
+    match: re.Match[str], group: int, reading: str
+) -> str:
+    if match.string[match.start(group) - 1].isspace():
+        return reading
+    return f" {reading}"
 
 
 def _valid_separator_date_boundary(raw_text: str, span: SourceSpan) -> bool:

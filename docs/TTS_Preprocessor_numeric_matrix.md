@@ -227,7 +227,7 @@ Batch 2 fixes the broader leading-zero owner matrix as follows:
 | unit | `03kg -> 03kg` | unit contamination owner full-claims preserve; no internal number fallback |
 | suffix time | `00시 -> 영 시`, `09시 -> 아홉 시`, `09 시 -> 09 시`, `07시 05분 -> 일곱 시 오분`, `23분045초 -> 이십삼분 사십오초` | attached `시` applies its `0..24` clock range; whitespace before `시`/`시간` delegates to ordinary numeric policy; `분`/`초` retain their existing spacing and common Sino-reader rules |
 | currency | `₩01,000 -> ₩01,000` | currency owner full-claims invalid leading-zero amount as preserve |
-| registered exceptions | `01월 -> 일월`, `03일 -> 삼일`, `010-1234-5678 -> 공일공 일이삼사 오육칠팔` | date markers and phone blocks keep their narrow owners |
+| registered exceptions | `01월 -> 일월`, `03일 -> 삼일`, `6월19일 -> 유월 십구일`, `010-1234-5678 -> 공일공 일이삼사 오육칠팔` | date markers and phone blocks keep their narrow owners; directly attached Korean date components receive a generated separator space |
 
 ASCII/Hangul identifier tails and protected/code-like contexts do not license
 partial conversion of a leading-zero numeric payload.

@@ -343,6 +343,17 @@
     );
   }
 
+  function renderOutputWithStageChanges(
+    sourceText,
+    targetText,
+    stage,
+    targetElement,
+  ) {
+    const outputParts = adjacentParts(sourceText, targetText, stage)
+      .filter((part) => part.type !== "deleted");
+    targetElement.innerHTML = renderParts(outputParts);
+  }
+
   function renderCumulativeDiff(originalText, ledger, targetElement) {
     targetElement.innerHTML = renderParts(
       cumulativeParts(originalText, ledger),
@@ -370,6 +381,7 @@
     escapeHtml,
     renderAdjacentDiff,
     renderCumulativeDiff,
+    renderOutputWithStageChanges,
     renderParts,
     renderSpeechContractViolation,
     sequenceOps,

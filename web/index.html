@@ -495,6 +495,10 @@
           <div id="stage-1-error" class="error-box" role="alert"></div>
           <div class="result-grid">
             <section class="result-box">
+              <h3>입력 원문 · 사용자 텍스트</h3>
+              <div id="stage-1-input" class="plain-output"></div>
+            </section>
+            <section class="result-box">
               <h3>출력 원문 · normalized_text</h3>
               <div id="stage-1-output" class="plain-output"></div>
             </section>
@@ -531,7 +535,7 @@
       </div>
 
       <section class="downloads result-box">
-        <h2>다운로드 가능한 실행모듈</h2>
+        <h2>1단계 '규칙 기반 발음교정' 실행모듈 다운로드</h2>
         <div id="downloads-status" class="status" aria-live="polite"></div>
         <div id="downloads-list" class="downloads-list"></div>
       </section>
@@ -557,6 +561,7 @@
         status: document.getElementById("stage-1-status"),
         timing: document.getElementById("stage-1-timing"),
         error: document.getElementById("stage-1-error"),
+        input: document.getElementById("stage-1-input"),
         output: document.getElementById("stage-1-output"),
         diffs: [document.getElementById("stage-1-diff")],
       },
@@ -586,6 +591,7 @@
       const stage = stageElements[stageNumber];
       stage.error.style.display = "none";
       stage.error.textContent = "";
+      if (stage.input) stage.input.textContent = "";
       stage.output.textContent = "";
       stage.diffs.forEach((element) => { element.textContent = ""; });
       stage.status.textContent = message;
@@ -655,6 +661,7 @@
     async function runRuleStage(originalText) {
       const stage = stageElements[1];
       const startedAt = performance.now();
+      stage.input.textContent = originalText;
       stage.status.textContent = "규칙 기반 처리 중...";
       stage.status.className = "status loading";
 
@@ -672,7 +679,12 @@
           throw new Error("규칙 기반 API 응답 형식이 올바르지 않습니다.");
         }
 
-        stage.output.textContent = data.normalized_text;
+        PipelineDiff.renderOutputWithStageChanges(
+          originalText,
+          data.normalized_text,
+          1,
+          stage.output,
+        );
         PipelineDiff.renderAdjacentDiff(
           originalText,
           data.normalized_text,
@@ -717,7 +729,12 @@
           throw new Error("LLM API가 선택한 모델과 다른 모델을 반환했습니다.");
         }
 
-        stage.output.textContent = data.speech_text;
+        PipelineDiff.renderOutputWithStageChanges(
+          normalizedText,
+          data.speech_text,
+          2,
+          stage.output,
+        );
         stage.status.textContent = "완료";
         stage.status.className = "status";
         const upstreamTiming = Number.isFinite(data.elapsed_ms)
@@ -855,12 +872,15 @@
           throw new Error("LLM 모델 목록 응답 형식이 올바르지 않습니다.");
         }
 
+        const preferredModel = data.models.includes("gemma4:31b")
+          ? "gemma4:31b"
+          : data.default_model;
         modelEl.replaceChildren(
           ...data.models.map((model) => {
             const option = document.createElement("option");
             option.value = model;
             option.textContent = model;
-            option.selected = model === data.default_model;
+            option.selected = model === preferredModel;
             return option;
           }),
         );
