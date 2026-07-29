@@ -122,7 +122,39 @@ scripts/probes/run_semantic_probes.py
 
 Feature expectations live in the probe files consumed by that runner and the
 related policy/regression tests, not in release or deployment shell scripts.
+Deployment MUST transfer the complete `scripts/probes/` directory as one
+canonical probe set; maintaining a second filename allowlist in the deployment
+script is forbidden because it can omit a newly registered core probe.
 Remote deployment uses binary-only probes and MUST NOT use a source fallback.
+
+## Retired transition surfaces
+
+Full activation has one production binary path and one mode-less source
+facade. The following transition surfaces are removed and MUST NOT be
+reintroduced:
+
+- source debug fallback for packaged binaries without `--include-debug`
+- adapter-level rollout/payload wrappers and ignored prosody switches
+- ignored positional version arguments in local release/package scripts
+- dual-run or shadow-mode output selection
+
+An executable that lacks the current debug contract is stale and MUST fail
+validation so that it can be rebuilt. The API runtime MUST NOT import
+`engine.*` as a fallback. `engine.span_engine.shadow` remains in use solely for
+source-preservation validation; it is not a rollout mechanism.
+
+After the server starts, deployment MUST run the same core suite through the
+live API before deleting temporary `buildsrc`. This API gate verifies that the
+running process actually selected the just-published
+`TTS_PREPROCESSOR_BINARY`; download checks and a single wiring canary are not
+sufficient to detect a stale executable. A live API semantic failure retains
+the temporary probe/build sources for diagnosis and fails the deployment.
+
+The packaged binary's `--include-debug` payload and API
+`include_debug=true` payload may expose `trace.contextual_decision_logs`.
+Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose
+that field or any decision marker. `shadow_logs` remains the source-preservation
+validation stream and MUST NOT be repurposed for contextual decisions.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

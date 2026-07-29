@@ -226,10 +226,18 @@ def test_signed_counter_support_is_not_expanded(text: str) -> None:
     assert transform(text) == text
     debug = transform_debug(text)["debug"]
     claims = debug["trace"]["claim_logs"]
-    assert any(
-        claim["reason"] == "invalid_or_unsupported_signed_numeric_surface_preserve"
-        for claim in claims
-    )
+    if text.endswith("대"):
+        assert any(
+            claim["owner"] == "contextual_number_unit"
+            and claim["reason"] == "contextual_number_unit_deferred"
+            for claim in claims
+        )
+    else:
+        assert any(
+            claim["reason"]
+            == "invalid_or_unsupported_signed_numeric_surface_preserve"
+            for claim in claims
+        )
     assert not any(
         claim["owner"] in {"signed_number", "counter_noun", "ambiguous_numeric_dae_preserve"}
         for claim in claims

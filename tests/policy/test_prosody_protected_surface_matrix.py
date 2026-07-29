@@ -133,9 +133,9 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-large-unit-subject",
         text="그리고 1조가 넘는다",
-        expected="그리고, 일조가 넘는다",
-        rule="prosody / leading connector + large-unit atomic parse",
-        reason="Prosody may add only the leading connector comma while preserving atomic large-unit outputs with particles.",
+        expected="그리고, 1조가 넘는다",
+        rule="prosody / leading connector + contextual number-unit defer",
+        reason="Prosody may add only the leading connector comma while the ambiguous 조 surface remains source-exact.",
         classification="prosody",
     ),
     TextCase(

@@ -147,11 +147,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         description="Package an already-built TTS preprocessor binary."
     )
     parser.add_argument(
-        "ignored_version",
-        nargs="?",
-        help="Deprecated compatibility argument; ignored.",
-    )
-    parser.add_argument(
         "--binary",
         type=Path,
         default=DEFAULT_BINARY_PATH,

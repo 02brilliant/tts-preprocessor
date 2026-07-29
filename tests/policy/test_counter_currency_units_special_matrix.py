@@ -16,16 +16,16 @@ POLICY_CASES = [
     TextCase(
         case_id="counter-hybrid-22-gwon",
         text="22권",
-        expected="스물두 권",
-        rule="counter noun / positive",
-        reason="권 is hybrid-safe, so 22 should use the native bounded-range form.",
+        expected="22권",
+        rule="contextual number-unit / deferred",
+        reason="Bare 권 can be a book count or volume number, so the complete surface is deferred.",
     ),
     TextCase(
         case_id="counter-hybrid-23-jang",
         text="23장",
-        expected="스물세 장",
-        rule="counter noun / positive",
-        reason="장 is hybrid-safe and must use the native form inside the safe range.",
+        expected="23장",
+        rule="contextual number-unit / deferred",
+        reason="Bare 장 can be a sheet count or chapter number, so the complete surface is deferred.",
     ),
     TextCase(
         case_id="counter-hybrid-20-special-smu",
@@ -65,9 +65,9 @@ POLICY_CASES = [
     TextCase(
         case_id="counter-nonhybrid-floor-remains-sino",
         text="21층",
-        expected="이십일 층",
-        rule="counter noun / negative",
-        reason="층 is sino-only and must not pick up the hybrid-safe native policy.",
+        expected="21층",
+        rule="contextual number-unit / deferred",
+        reason="Bare 층 lacks an exact location anchor and must remain source-exact.",
     ),
     TextCase(
         case_id="counter-nonhybrid-won-remains-sino",
@@ -420,9 +420,9 @@ POLICY_CASES = [
     TextCase(
         case_id="special-emergency-context-but-disallowed-tail",
         text="긴급 신고는 112번으로 한다",
-        expected="긴급 신고는 백십이번으로 한다",
-        rule="emergency number / disallowed suffix",
-        reason="Even with emergency context, 번 is not an allowed emergency tail so the token must fall back to the general reading.",
+        expected="긴급 신고는 112번으로 한다",
+        rule="contextual number-unit / deferred",
+        reason="An emergency keyword does not authorize an unsupported tail, and the ambiguous 번 surface cannot reenter ordinary number fallback.",
     ),
 ]
 

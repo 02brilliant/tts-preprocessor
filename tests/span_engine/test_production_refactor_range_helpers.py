@@ -27,7 +27,7 @@ def test_p2_numeric_sign_rendering_characterization(
 ) -> None:
     parsed = parse_numeric_delimited_number(raw)
     assert parsed is not None
-    assert parsed.sign == expected_sign
+    assert parsed.sign_surface == expected_sign
     assert render_numeric_delimited_number(parsed) == expected
 
 

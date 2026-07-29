@@ -12,7 +12,7 @@ requirements, which surfaces are conditional, and which surfaces remain pending,
 future-only, or historical-only.
 
 This document by itself does not change production code. Any `current` entry
-missing from `span_default` is a production drift item.
+missing from current production is a production drift item.
 
 ## 2. Relationship to Canonical Policy
 
@@ -76,12 +76,12 @@ A no-Hangul input may enter the core transform only when the entire input is com
 
 | Status | Meaning |
 |---|---|
-| `current` | Canonical fixed dictionary entry that `span_default` production must apply. |
+| `current` | Canonical fixed dictionary entry that current production must apply. |
 | `current_with_condition` | Canonical behavior, but only under a whitelist, context, gate, suffix, or full-claim condition. |
 | `pending_policy_decision` | Mentioned in policy or historical code, but current production status is not decided. |
 | `conflict` | Reading or ownership conflicts exist inside policy, between policy and span, or between historical and span. |
 | `future_candidate` | Candidate for future support; not a current production contract. |
-| `historical_only_or_deprecated` | Present in historical data or historical policy, but not current `span_default` target behavior. |
+| `historical_only_or_deprecated` | Present in historical data or historical policy, but not current production target behavior. |
 
 ## 6. Current Managed Dictionary Entries
 
@@ -287,7 +287,7 @@ Implementation must keep these boundaries:
 - `engine/span_engine/lexicon.py` or an equivalent span-owned registry must be
   the production source for current managed dictionary entries.
 - Historical dictionary snapshots are not sufficient production
-  coverage for `span_default`.
+  coverage for current production.
 - Current managed dictionary entries must claim before uppercase acronym
   fallback.
 - Conditional entries must be implemented by their explicit owner/gate, not by

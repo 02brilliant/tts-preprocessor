@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import re
 
-from engine.span_engine.counter import SPACELESS_COUNTERS
-from engine.span_engine.counter import native_number_under_100
+from engine.span_engine.counter import (
+    SPACELESS_COUNTERS,
+    counter_number_reading,
+    native_number_under_100,
+)
 from engine.span_engine.date_time import (
     TIME_POSTPOSITIONS,
     clock_hour_reading,
@@ -37,7 +40,23 @@ DATE_TIME_SHARED_SUFFIXES = frozenset({"년", "월", "일", "시", "분", "초"}
 DURATION_SHARED_SUFFIXES = frozenset({"시간"})
 PAGE_DOCUMENT_SUFFIXES = frozenset({"쪽", "장"})
 KOREAN_RANGE_SUFFIXES = frozenset(
-    {"월", "일", "년", "층", "호", "동", "원", "도", "시", "분", "초", "시간", "쪽", "장"}
+    {
+        "월",
+        "일",
+        "년",
+        "층",
+        "호",
+        "동",
+        "원",
+        "도",
+        "시",
+        "분",
+        "초",
+        "시간",
+        "쪽",
+        "장",
+        "가지",
+    }
 )
 HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS = {
     "장": "장",
@@ -46,6 +65,7 @@ HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS = {
     "명": "명",
     "분": "분",
     "원": "원",
+    "가지": "가지",
 }
 _SPACED_KOREAN_SUFFIXES = KOREAN_RANGE_SUFFIXES - SPACELESS_COUNTERS
 _UNITS_BY_LENGTH = sorted(
@@ -678,6 +698,14 @@ def _hyphen_korean_suffix_candidate(
         if not _valid_after_korean_suffix(raw_text, suffix_span):
             return None
         core_end = suffix_start if suffix_start != right_end else right_end
+        reading = (
+            _gaji_range_reading(left.raw, right.raw)
+            if suffix == "가지"
+            else _range_reading(
+                left, right, range_zero_style=is_tilde_like(delimiter)
+            )
+            + " "
+        )
         return SurfaceCandidate(
             core_span=SourceSpan(left_start, core_end),
             full_span=SourceSpan(left_start, suffix_span.end),
@@ -691,10 +719,7 @@ def _hyphen_korean_suffix_candidate(
                 "suffix": suffix,
                 "suffix_reading": suffix_reading,
                 "suffix_span": suffix_span,
-                "reading": _range_reading(
-                    left, right, range_zero_style=is_tilde_like(delimiter)
-                )
-                + " ",
+                "reading": reading,
             },
         )
     return None
@@ -748,6 +773,8 @@ def _korean_suffix_candidate(
             reading = _range_shared_suffix_reading(left, right, suffix)
         elif suffix in DURATION_SHARED_SUFFIXES:
             reading = _range_duration_suffix_reading(left, right, suffix)
+        elif suffix == "가지":
+            reading = _gaji_range_reading(left, right)
         else:
             reading = _range_reading(left, right)
         if (
@@ -834,6 +861,14 @@ def _range_duration_suffix_reading(left: str, right: str, suffix: str) -> str:
     left_reading = _duration_hour_prefix_reading(left)
     right_reading = _duration_hour_prefix_reading(right)
     return f"{left_reading} {suffix}에서 {right_reading} "
+
+
+def _gaji_range_reading(left: str, right: str) -> str:
+    left_reading = counter_number_reading(left, "가지")
+    right_reading = counter_number_reading(right, "가지")
+    if left_reading is None or right_reading is None:
+        return _range_reading(left, right) + " "
+    return f"{left_reading}가지에서 {right_reading}"
 
 
 def _numeric_like_reading_with_suffix(raw: str, suffix: str) -> str:
@@ -1149,8 +1184,8 @@ def _valid_hyphen_range_numbers(
 def _is_signed_numeric_delimited_pair(
     left: NumericDelimitedNumber | None, right: NumericDelimitedNumber | None
 ) -> bool:
-    return (left is not None and left.sign is not None) or (
-        right is not None and right.sign is not None
+    return (left is not None and left.sign_surface is not None) or (
+        right is not None and right.sign_surface is not None
     )
 
 
@@ -1317,7 +1352,7 @@ def _is_time_like_colon_pair(
         return False
     if "," in left.raw or "," in right.raw:
         return False
-    if right.sign is not None:
+    if right.sign_surface is not None:
         return False
     if len(right.raw) != 2 or not right.raw.isdigit():
         return False

@@ -4,21 +4,17 @@ import re
 
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.sign_aliases import SIGNED_NUMERIC_SIGN_ALIASES
+from engine.span_engine.signed_numeric import (
+    parse_signed_numeric_core,
+    render_signed_numeric,
+)
 
-_PH_RE = re.compile(r"pH\s*\d+(?:\.\d+)?")
-_DIGIT_READINGS = {
-    "0": "영",
-    "1": "일",
-    "2": "이",
-    "3": "삼",
-    "4": "사",
-    "5": "오",
-    "6": "육",
-    "7": "칠",
-    "8": "팔",
-    "9": "구",
-}
+_SIGN_PATTERN = re.escape("".join(sorted(SIGNED_NUMERIC_SIGN_ALIASES)))
+_PH_RE = re.compile(
+    rf"pH\s*(?P<number>[{_SIGN_PATTERN}]?"
+    rf"(?:\d{{1,3}}(?:,\d{{3}})+|\d+)(?:\.\d+)?)"
+)
 
 
 def scan_ph_candidates(
@@ -48,7 +44,10 @@ def scan_ph_candidates(
                 owner="ph",
                 surface_type="PH_SURFACE",
                 reason="ph_numeric_full_consume",
-                metadata={"reading": _reading(match.group(0))},
+                metadata={
+                    "reading": _reading(match.group(0)),
+                    **_signed_contract_metadata(match.group("number")),
+                },
             )
         )
     return candidates
@@ -63,15 +62,24 @@ def parse_ph_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None
 
 def _reading(raw: str) -> str:
     number = raw[2:].strip()
-    return f"피에이치 {_number_reading(number)}"
+    core = parse_signed_numeric_core(number)
+    if core is None:
+        raise ValueError("invalid pH numeric surface")
+    number_reading = render_signed_numeric(core)
+    if number_reading is None:
+        raise ValueError("unsupported pH numeric sign")
+    return f"피에이치 {number_reading}"
 
 
-def _number_reading(number: str) -> str:
-    integer_part, dot, fraction_part = number.partition(".")
-    integer = number_to_korean_under_10000(int(integer_part))
-    if not dot:
-        return integer
-    return f"{integer}쩜{''.join(_DIGIT_READINGS[digit] for digit in fraction_part)}"
+def _signed_contract_metadata(number: str) -> dict[str, object]:
+    core = parse_signed_numeric_core(number)
+    if core is None:
+        return {}
+    return {
+        "sign_profile": "default",
+        "numeric_form": core.numeric_form,
+        "sign_surface": core.sign_surface,
+    }
 
 
 def _valid_ph_boundary(raw_text: str, span: SourceSpan) -> bool:
@@ -95,7 +103,11 @@ def _ph_like_token_end(raw_text: str, start: int) -> int:
         if char.isascii() and char.isalnum():
             index += 1
             continue
-        if char == ".":
+        if char in {".", ","} and index + 1 < len(raw_text) and (
+            raw_text[index + 1].isascii()
+            and raw_text[index + 1].isalnum()
+            or raw_text[index + 1] in {".", ","}
+        ):
             index += 1
             continue
         break

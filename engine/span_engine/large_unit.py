@@ -17,6 +17,9 @@ LARGE_UNIT_ATOMIC_INVENTORY = frozenset({"만", "억", "조", "경"})
 _AMBIGUOUS_SUFFIX_PREFIXES = ("개",)
 _PREV_BLOCKERS = frozenset("+-.,~:/_")
 _NEXT_BLOCKERS = frozenset("+-.,~:/_")
+_UNSAFE_FOLLOWING_DELIMITERS = frozenset(
+    {"–", "—", "−", "－", "＋", "·"}
+)
 _SAFE_RIGHT_PUNCTUATION = frozenset(",.!?)]};:")
 _LARGE_UNIT_SIGNS = frozenset({"+", "-"})
 _SMALL_UNITS = {"천": 1000, "백": 100, "십": 10}
@@ -100,6 +103,23 @@ def scan_large_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
             if not _valid_boundaries(
                 raw_text, parsed.core_span, raw_text[parsed.suffix_span.start]
             ):
+                if (
+                    parsed.core_span.end < len(raw_text)
+                    and raw_text[parsed.core_span.end]
+                    in _UNSAFE_FOLLOWING_DELIMITERS
+                ):
+                    span = parsed.core_span
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=span,
+                            full_span=span,
+                            owner="preserve",
+                            surface_type="INVALID_LARGE_UNIT_DELIMITER_PRESERVE_SURFACE",
+                            reason="large_unit_unapproved_delimiter_preserve",
+                        )
+                    )
+                    index = span.end
+                    continue
                 preserve = _large_unit_like_preserve_candidate(raw_text, index)
                 if preserve is not None:
                     key = (preserve.core_span.start, preserve.core_span.end)
@@ -992,6 +1012,8 @@ def _valid_boundaries(raw_text: str, core_span: SourceSpan, unit_char: str) -> b
     if next_char in _SAFE_RIGHT_PUNCTUATION:
         return True
     if next_char in _NEXT_BLOCKERS:
+        return False
+    if next_char in _UNSAFE_FOLLOWING_DELIMITERS:
         return False
     if next_char == unit_char:
         return False

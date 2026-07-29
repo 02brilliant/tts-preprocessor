@@ -47,8 +47,8 @@ def test_phase16d_signed_number_updates_former_admin_suffix_preserve(
     [
         ("3가 맞다", "삼가 맞다"),
         ("12로 나누다", "십이로 나누다"),
-        ("21호", "이십일 호"),
-        ("101동", "백일 동"),
+        ("21호", "21호"),
+        ("101동", "101동"),
     ],
 )
 def test_phase17c_admin_suffix_conflict_cases_keep_existing_owner_behavior(

@@ -145,15 +145,15 @@ def test_ampersand_acronym_markdown_fence_is_protected() -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("39대", "39대", "ambiguous_numeric_dae_preserve"),
+        ("39대", "39대", "contextual_number_unit"),
         ("40대", "사십 대", "counter_noun"),
         ("41대", "사십일 대", "counter_noun"),
-        ("39.9대", "39.9대", "ambiguous_numeric_dae_preserve"),
-        ("40.0대", "사십쩜영 대", "decimal_registered_suffix"),
-        ("40.5대", "사십쩜오 대", "decimal_registered_suffix"),
+        ("39.9대", "39.9대", "contextual_number_unit"),
+        ("40.0대", "40.0대", "contextual_number_unit"),
+        ("40.5대", "40.5대", "contextual_number_unit"),
         ("1,000대", "천 대", "counter_noun"),
         ("6,700대,", "육천칠백 대,", "counter_noun"),
-        ("40대 남성", "사십 대 남성", "counter_noun"),
+        ("40대 남성", "사십 대 남성", "contextual_number_unit"),
         ("100대 명소", "백 대 명소", "counter_noun"),
     ],
 )
@@ -162,7 +162,7 @@ def test_numeric_dae_threshold_boundary(
 ) -> None:
     assert transform(text) == expected
     claim = next(claim for claim in _claims(text) if claim.owner == owner)
-    if owner != "ambiguous_numeric_dae_preserve":
+    if owner == "counter_noun":
         assert claim.reason == "dae_counter_sino_threshold_40_plus"
 
 
@@ -172,22 +172,22 @@ def test_numeric_dae_threshold_boundary(
         (
             "자동차 3대",
             "자동차 세 대",
-            "dae_counter_registered_noun_direct_context",
+            "contextual_number_unit_confirmed",
         ),
         (
             "자동차는 모두 3대",
             "자동차는 모두 세 대",
-            "dae_counter_registered_noun_topic_quantity_context",
+            "contextual_number_unit_confirmed",
         ),
         (
             "차량은 총 5대",
             "차량은 총 다섯 대",
-            "dae_counter_registered_noun_topic_quantity_context",
+            "contextual_number_unit_confirmed",
         ),
         (
             "자동차 39.9대",
             "자동차 삼십구쩜구 대",
-            "dae_counter_registered_noun_direct_context",
+            "contextual_number_unit_confirmed",
         ),
     ],
 )
@@ -195,29 +195,25 @@ def test_numeric_dae_under_40_requires_registered_quantity_context(
     text: str, expected: str, reason: str
 ) -> None:
     assert transform(text) == expected
-    claim = next(
-        claim
-        for claim in _claims(text)
-        if claim.owner in {"counter_noun", "decimal_registered_suffix"}
-    )
+    claim = next(claim for claim in _claims(text) if claim.owner == "contextual_number_unit")
     assert claim.reason == reason
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected"),
     [
-        "가족은 모두 3대",
-        "20대 남성",
-        "5대 과제",
-        "가족 3대",
-        "가업을 3대째 이어 왔다",
+        ("가족은 모두 3대", "가족은 모두 3대"),
+        ("20대 남성", "이십 대 남성"),
+        ("5대 과제", "5대 과제"),
+        ("가족 3대", "가족 삼 대"),
+        ("가업을 3대째 이어 왔다", "가업을 삼 대째 이어 왔다"),
     ],
 )
-def test_numeric_dae_under_40_ambiguous_contexts_remain_preserved(text: str) -> None:
-    assert transform(text) == text
-    assert any(
-        claim.owner == "ambiguous_numeric_dae_preserve" for claim in _claims(text)
-    )
+def test_numeric_dae_under_40_contextual_decisions(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+    assert any(claim.owner == "contextual_number_unit" for claim in _claims(text))
 
 
 @pytest.mark.parametrize(
@@ -227,9 +223,9 @@ def test_numeric_dae_under_40_ambiguous_contexts_remain_preserved(text: str) -> 
         ("40대3", "사십대삼", "korean_da_score_pair"),
         ("경기는 2대 1", "경기는 이 대 일", "korean_da_score_pair"),
         ("점수 2대1", "점수 이대일", "korean_da_score_pair"),
-        ("+40대", "+40대", "preserve"),
-        ("-40대", "-40대", "preserve"),
-        ("040대", "040대", "ambiguous_numeric_dae_preserve"),
+        ("+40대", "+40대", "contextual_number_unit"),
+        ("-40대", "-40대", "contextual_number_unit"),
+        ("040대", "040대", "contextual_number_unit"),
     ],
 )
 def test_numeric_dae_structural_owners_and_invalid_forms_keep_precedence(
@@ -251,6 +247,7 @@ def test_spaced_threshold_dae_precedes_contextless_independent_pair() -> None:
 @pytest.mark.parametrize("text", ["4,0대", "1,00대"])
 def test_malformed_comma_numeric_dae_is_not_partially_read(text: str) -> None:
     assert transform(text) == text
+    assert any(claim.owner == "contextual_number_unit" for claim in _claims(text))
     assert not any(
         claim.owner in {"counter_noun", "decimal_registered_suffix"}
         for claim in _claims(text)
@@ -302,8 +299,8 @@ def test_required_numeric_dae_sentence_uses_counter_and_quantity_sequence() -> N
     assert transform(text) == expected
     claims = _claims(text)
     assert any(
-        claim.owner == "counter_noun"
-        and claim.reason == "dae_counter_sino_threshold_40_plus"
+        claim.owner == "contextual_number_unit"
+        and claim.reason == "contextual_number_unit_confirmed"
         for claim in claims
     )
     assert any(

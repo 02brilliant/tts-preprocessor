@@ -8,6 +8,9 @@ from engine.span_engine.compound_unit import (
     parse_compound_exact_unit_candidate,
     parse_compound_slash_unit_candidate,
 )
+from engine.span_engine.contextual_number_unit import (
+    parse_contextual_number_unit_candidate,
+)
 from engine.span_engine.code_separator import (
     parse_mixed_alnum_code_separator_candidate,
     parse_spaced_hyphen_numeric_candidate,
@@ -62,7 +65,10 @@ from engine.span_engine.public_number import parse_public_number_candidate
 from engine.span_engine.phone import phone_reading
 from engine.span_engine.range import parse_range_candidate
 from engine.span_engine.signed import parse_signed_candidate
-from engine.span_engine.units import parse_unit_candidate
+from engine.span_engine.units import (
+    parse_caret_literal_unit_candidate,
+    parse_unit_candidate,
+)
 
 
 _SURFACE_TRACE_METADATA_KEYS = (
@@ -180,8 +186,12 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_spaced_hyphen_numeric_candidate(raw_text, candidate)
     elif candidate.owner in {"caret_power_unit", "simple_unit", "special_unit"}:
         reading = parse_unit_candidate(raw_text, candidate)
+    elif candidate.owner == "caret_literal_unit":
+        return parse_caret_literal_unit_candidate(raw_text, candidate)
     elif candidate.owner == "numeric_suffix":
         reading = parse_numeric_suffix_candidate(raw_text, candidate)
+    elif candidate.owner == "contextual_number_unit":
+        return parse_contextual_number_unit_candidate(raw_text, candidate)
     elif candidate.owner == "counter_noun":
         if candidate.metadata.get("full_counter_claim") is True:
             return _make_counter_surface(raw_text, candidate, raw)

@@ -17,6 +17,7 @@ from engine.span_engine.brackets import (
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
 from engine.span_engine.claim_scanner import claim_surfaces
 from engine.span_engine.date_time import build_time_gate_logs
+from engine.span_engine.contextual_number_unit import build_contextual_decision_logs
 from engine.span_engine.emergency import build_emergency_gate_logs
 from engine.span_engine.event import build_event_gate_logs
 from engine.span_engine.language_gate import (
@@ -683,6 +684,9 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
             metadata={"shadow_type": unit.kind},
         )
         for unit in shadow
+    )
+    trace.contextual_decision_logs.extend(
+        build_contextual_decision_logs(candidates, normalized_text)
     )
     trace.render_logs.append(
         TraceLogEntry(

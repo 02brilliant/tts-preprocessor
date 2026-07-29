@@ -12,7 +12,7 @@ from engine.main import transform
 
 
 GOLDEN_CORPUS_PATH = (
-    Path(__file__).resolve().parents[1] / "fixtures" / "span_default_golden.jsonl"
+    Path(__file__).resolve().parents[1] / "fixtures" / "production_golden.jsonl"
 )
 
 

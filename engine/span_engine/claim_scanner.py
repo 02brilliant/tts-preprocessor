@@ -18,6 +18,12 @@ from engine.span_engine.counter import (
     is_emergency_ambiguous_number,
     scan_counter_candidates,
 )
+from engine.span_engine.contextual_number_unit import (
+    scan_contextual_large_unit_collision_candidates,
+    scan_contextual_large_unit_malformed_candidates,
+    scan_contextual_non_large_unit_malformed_candidates,
+    scan_contextual_number_unit_candidates,
+)
 from engine.span_engine.administrative import (
     is_unsafe_admin_like_number_tail,
     scan_administrative_suffix_candidates,
@@ -98,6 +104,7 @@ from engine.span_engine.signed import (
 from engine.span_engine.span_guards import span_overlaps_excluded_ranges
 from engine.span_engine.units import (
     scan_caret_power_unit_candidates,
+    scan_caret_literal_unit_candidates,
     scan_simple_unit_candidates,
     scan_special_unit_candidates,
     scan_unit_contamination_preserve_candidates,
@@ -216,6 +223,8 @@ CLAIM_ORDER_DOC = (
     "two_block_hyphen_code",
     "mixed_alnum_code_separator",
     "acronym_fallback",
+    "contextual_malformed_number_unit",
+    "contextual_large_unit_collision",
     "large_unit_atomic",
     "currency",
     "date",
@@ -235,6 +244,7 @@ CLAIM_ORDER_DOC = (
     "percent_point",
     "duration",
     "multiplier",
+    "caret_literal_unit",
     "unit_contamination_preserve",
     "caret_power_unit",
     "basic_arithmetic_expression",
@@ -242,12 +252,13 @@ CLAIM_ORDER_DOC = (
     "fraction",
     "signed_temperature",
     "signed_degree",
-    "signed_number",
     "ph",
+    "signed_number",
     "compound_slash_unit",
     "compound_exact_unit",
     "special_unit",
     "simple_unit",
+    "contextual_number_unit",
     "decimal_registered_suffix",
     "numeric_suffix",
     "contextual_numeric_dae",
@@ -365,6 +376,8 @@ def claim_surfaces(
             simple_unit_candidates,
         )
     )
+    candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_collision_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
@@ -383,8 +396,10 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_range_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_hyphen_digit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_percent_point_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_contextual_non_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_duration_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_multiplier_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_caret_literal_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(unit_contamination_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_caret_power_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(
@@ -406,12 +421,13 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_fraction_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_signed_temperature_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_signed_degree_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ph_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(compound_slash_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(simple_unit_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_contextual_number_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))

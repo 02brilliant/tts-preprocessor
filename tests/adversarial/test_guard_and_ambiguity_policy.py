@@ -88,16 +88,16 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="adversarial-emergency-disallowed-suffix-ho",
         text="119호",
-        expected="백십구호",
-        rule="emergency number / disallowed suffix",
-        reason="호 is not an allowed emergency tail, so the token must fall back to the general number reading.",
+        expected="119호",
+        rule="contextual number-unit / deferred identifier",
+        reason="호 is not an allowed emergency tail and has no identifier anchor, so the complete surface is deferred.",
     ),
     TextCase(
         case_id="adversarial-emergency-disallowed-suffix-beon",
         text="112번",
-        expected="백십이번",
-        rule="emergency number / disallowed suffix",
-        reason="번 is not an allowed emergency tail, so 112 must normalize as a general number, not an emergency number.",
+        expected="112번",
+        rule="contextual number-unit / deferred identifier",
+        reason="번 is not an allowed emergency tail and has no identifier or occurrence anchor, so the complete surface is deferred.",
     ),
     TextCase(
         case_id="adversarial-embedded-emergency-token",

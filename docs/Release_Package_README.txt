@@ -46,7 +46,7 @@ TTS 엔진에서 자연스럽게 읽히도록 변환하는 역할을 합니다.
 - 범위 / 비율 / 온도 / 퍼센트 / 전화번호 변환
 - 보호 구간 보존
 - 쉼표 추가 삽입 (leading-connector comma adapter, insert-only)
-- 문단 분리 (production span_default: comma·bracket filter 후 split_paragraphs로 보수적 줄바꿈)
+- 문단 분리 (current production: comma·bracket filter 후 split_paragraphs로 보수적 줄바꿈)
 
 예:
 

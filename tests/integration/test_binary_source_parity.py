@@ -20,7 +20,7 @@ pytestmark = pytest.mark.binary_runtime
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BUILD_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
 RUNTIME_BINARY = ROOT_DIR / "dist" / "tts_preprocessor"
-GOLDEN_CORPUS_PATH = ROOT_DIR / "tests" / "fixtures" / "span_default_golden.jsonl"
+GOLDEN_CORPUS_PATH = ROOT_DIR / "tests" / "fixtures" / "production_golden.jsonl"
 
 BATCH1_FIXTURE_PATH = ROOT_DIR / "tests" / "fixtures" / "batch1_allowed_output_diffs.json"
 BATCH2_FIXTURE_PATH = ROOT_DIR / "tests" / "fixtures" / "batch2_allowed_output_diffs.json"
@@ -316,7 +316,7 @@ def test_binary_matches_batch6_to_batch8_output_contract(
 
 
 @pytest.mark.parametrize("case", GOLDEN_CASES, ids=lambda case: "golden-" + case["id"])
-def test_binary_matches_fixed_span_default_snapshot(
+def test_binary_matches_fixed_production_snapshot(
     runtime_binary_path: Path,
     case: dict,
 ) -> None:
@@ -324,7 +324,7 @@ def test_binary_matches_fixed_span_default_snapshot(
 
 
 @pytest.mark.parametrize("case", GOLDEN_CASES, ids=lambda case: "golden-" + case["id"])
-def test_api_matches_fixed_span_default_snapshot(
+def test_api_matches_fixed_production_snapshot(
     runtime_binary_path: Path,
     case: dict,
     monkeypatch: pytest.MonkeyPatch,

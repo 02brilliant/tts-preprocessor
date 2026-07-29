@@ -544,7 +544,7 @@ def test_colon_semantic_pair_with_approved_context_reads_as_dae_relation() -> No
         ("제 3명", "제 삼명"),
         ("제 5살", "제 오살"),
         ("3명", "세 명"),
-        ("12권", "열두 권"),
+        ("12권", "12권"),
         ("제12권", "제 십이권"),
     ],
 )

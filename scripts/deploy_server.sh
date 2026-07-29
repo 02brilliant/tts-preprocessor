@@ -12,6 +12,7 @@ WINDOWS_UPLOAD_SCRIPT="$ROOT_DIR/scripts/upload_desktop_packages.sh"
 START_SERVER_SCRIPT="$ROOT_DIR/scripts/start_server.sh"
 STOP_SERVER_SCRIPT="$ROOT_DIR/scripts/stop_server.sh"
 CHECK_SERVER_SCRIPT="$ROOT_DIR/scripts/check_server.sh"
+LOCAL_SEMANTIC_PROBES_DIR="$ROOT_DIR/scripts/probes"
 LOCAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor.spec"
 LOCAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_binary_entrypoint.py"
 LOCAL_README_TEMPLATE_PATH="$ROOT_DIR/docs/Release_Package_README.txt"
@@ -196,6 +197,32 @@ bash "$remote_base_dir/scripts/start_server.sh"
 REMOTE
 }
 
+run_remote_api_semantic_probes() {
+  ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_BASE_DIR" <<'REMOTE'
+set -euo pipefail
+remote_base_dir="$1"
+case "$remote_base_dir" in
+  "~/"*) remote_base_dir="$HOME/${remote_base_dir#\~/}" ;;
+esac
+runtime_python="$remote_base_dir/.venv/bin/python"
+semantic_probe_runner="$remote_base_dir/buildsrc/scripts/probes/run_semantic_probes.py"
+
+[[ -x "$runtime_python" ]] || {
+  echo "[deploy][ERROR] Missing API probe Python: $runtime_python" >&2
+  exit 1
+}
+[[ -f "$semantic_probe_runner" ]] || {
+  echo "[deploy][ERROR] Missing API semantic probe runner: $semantic_probe_runner" >&2
+  exit 1
+}
+
+"$runtime_python" "$semantic_probe_runner" \
+  --suite core \
+  --runtime api \
+  --api http://127.0.0.1:8010
+REMOTE
+}
+
 install_remote_server_scripts() {
   ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_BASE_DIR" <<'REMOTE'
 set -euo pipefail
@@ -268,6 +295,11 @@ for required_llm_file in \
     exit 1
   fi
 done
+
+if [[ ! -d "$LOCAL_SEMANTIC_PROBES_DIR" ]]; then
+  echo "[deploy][ERROR] Missing local semantic probe directory: $LOCAL_SEMANTIC_PROBES_DIR" >&2
+  exit 1
+fi
 
 if [[ ! -x "$PROJECT_PYTHON" || ! -x "$PROJECT_PYINSTALLER" ]]; then
   echo "[deploy][ERROR] Project Python and PyInstaller must be executable." >&2
@@ -377,18 +409,9 @@ rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocesso
 rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_BUILD_SRC_DOCS_DIR/Release_Package_README.txt"
-for probe_file in \
-  __init__.py \
-  runtime_matrix.py \
-  run_semantic_probes.py \
-  decimal_fractional_zero.py \
-  colon_time_like_policy.py \
-  large_unit_numeric_surface.py \
-  json_like_protected_spans.py; do
-  rsync -avz \
-    "$ROOT_DIR/scripts/probes/$probe_file" \
-    "$SSH_TARGET:$REMOTE_BUILD_SRC_PROBES_DIR/$probe_file"
-done
+rsync "${RSYNC_COMMON_ARGS[@]}" \
+  "$LOCAL_SEMANTIC_PROBES_DIR/" \
+  "$SSH_TARGET:$REMOTE_BUILD_SRC_PROBES_DIR/"
 rsync -avz "$REMOTE_BUILD_SCRIPT" "$SSH_TARGET:$REMOTE_SCRIPTS_DIR/build_remote_package.sh"
 rsync -avz \
   "$START_SERVER_SCRIPT" \
@@ -555,6 +578,14 @@ if ! bash "$CHECK_SERVER_SCRIPT"; then
   echo "[deploy][ERROR] Deployment artifacts were published and the server was started," >&2
   echo "[deploy][ERROR] but final verification failed." >&2
   echo "[deploy][ERROR] Review the server and rerun the full deployment if necessary." >&2
+  exit 1
+fi
+
+echo "[deploy] Running the canonical core semantic probes through the live API..."
+if ! run_remote_api_semantic_probes; then
+  echo "[deploy][ERROR] The live API does not match the verified published binary semantics." >&2
+  echo "[deploy][ERROR] Temporary build sources were retained for diagnosis." >&2
+  echo "[deploy][ERROR] Inspect TTS_PREPROCESSOR_BINARY and rerun the full deployment." >&2
   exit 1
 fi
 

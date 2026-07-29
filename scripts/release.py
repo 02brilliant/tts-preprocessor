@@ -79,8 +79,8 @@ def run_build() -> subprocess.CompletedProcess[str]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) > 2:
-        print("Usage: python scripts/release.py [ignored-version]", file=sys.stderr)
+    if len(argv) != 1:
+        print("Usage: python scripts/release.py", file=sys.stderr)
         return 1
 
     if platform.system() != "Linux":

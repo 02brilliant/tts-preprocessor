@@ -2,6 +2,121 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Full-activation transition cleanup
+
+- 개선 엔진 전면 적용 후 사용되지 않던 source-debug compatibility
+  fallback을 제거했다. packaged binary가 `--include-debug`를 지원하지
+  않으면 source import로 우회하지 않고 stale binary 오류를 그대로 내며,
+  배포 semantic gate에서 재빌드 대상으로 처리한다.
+- production adapter에서 무시되던 `enable_prosody`와 런타임 호출자가
+  없던 `transform_payload` wrapper를 제거했다. 현행 내부 facade는
+  `transform_for_production(text, debug=False)` 하나다.
+- counter threshold와 signed numeric core에 남아 있던 내부 backward
+  alias를 제거하고 현행 이름인 `HYBRID_THRESHOLD_39_COUNTERS`,
+  `sign_surface`를 직접 사용하도록 정렬했다.
+- local Linux package/release CLI의 무시되는 version positional argument와
+  비어 있던 legacy expectation audit fixture를 제거했다.
+- rollout/shadow-mode 단계별 중복 테스트는 삭제하고 mode-less facade,
+  stale-binary failure, API rollout-field rejection을
+  `test_production_facade_isolation.py`의 현행 계약으로 통합했다.
+- `engine.span_engine.shadow`, `ShadowUnit`, `shadow_logs`는 삭제하지
+  않았다. 이 경로는 구·신 엔진 dual-run이 아니라 원문 source-span
+  preservation 검증에 현재도 사용되는 safety invariant다.
+
+## Live API semantic deployment gate
+
+- 운영 API의 debug 결과에 새 `contextual_number_unit` owner와
+  `contextual_decision_logs`가 없고 이전 owner만 관찰된 사례를 배포
+  산출물 불일치로 판정했다. 동일 입력은 source runtime에서 canonical
+  결과를 반환하므로 숫자·문맥 판정 구현 결함이 아니다.
+- 배포 스크립트의 개별 probe 파일 allowlist를 제거하고
+  `scripts/probes/` 전체를 canonical set으로 전송한다. 새 core probe가
+  runner에는 등록되었지만 원격 buildsrc에는 누락되는 drift를 차단한다.
+- dist/staging/published binary core probe에 더해 서버 시작 후 live API
+  core probe를 cleanup 전 필수 gate로 추가했다. 이 단계는 실행 중인 API가
+  방금 publish한 `TTS_PREPROCESSOR_BINARY`를 실제로 사용하며 source와
+  동일한 문맥형·소수 canonical을 반환하는지 검증한다.
+- 관찰된 비분리 공백 포함 혼합 문장을 canonical contextual probe로
+  고정하여 native/Sino 의미 분리와 decimal 읽기를 한 요청에서 검증한다.
+- score exact anchor에 허용된 조사가 결합된 `평점은 3점이었다`도
+  `평점은 삼 점이었다`로 확정한다. anchor는 여전히 등록된 `평점`이고
+  조사 철자는 변경하지 않는다.
+
+## Decimal number-unit coverage and caret atomicity
+
+- 기존 compact `쩜`과 source-exact fractional digit/trailing-zero canonical은
+  그대로 유지한다. `이쩜 삼오` 같은 새 decimal 간격은 도입하지 않는다.
+- valid decimal은 등록 simple/special unit, exact compound unit
+  `Mbps·Gbps·rpm·fps·ppm·ppb·dBi`, 등록 counter, 승인된 contextual
+  exact anchor에서 Sino decimal로 읽는다. `kHz`, `KB`, plain
+  `10000.5kg`의 누락된 decimal eligibility를 공통 numeric reader 범위에
+  맞췄다.
+- contextual integer의 native/Sino 의미 판정은 유지하되 decimal 숫자
+  자체는 Sino로 고정한다. 의미에 따라 attachment/spacing이 달라지는
+  `번·부·단·등` 등은 exact anchor gate를 계속 사용하고 bare decimal은
+  유보한다. `1.5가지`, `총 2.35번`, `책 2.35권`, `영화 2.35편`,
+  `2.35층 회의실`을 새 canonical로 확정했다.
+- valid decimal counter/contextual surface는 직접 붙은 `+`와 owner-local
+  minus alias를 부호·숫자·단위 전체 claim 안에서
+  `플러스`/`마이너스`로 읽는다. signed integer counter의
+  UNSIGNED_ONLY 정책은 유지한다. `쯤·정도·꼴·당`은 exact attached
+  decimal-counter tail로 허용한다.
+- pH는 signed/unsigned valid integer, decimal, comma-decimal을 전체
+  claim하고 문장 끝 마침표를 punctuation으로 분리한다. malformed
+  comma/repeated-dot는 pH token 전체를 보존하여 부분 숫자 변환을 막는다.
+- caret power 자동 registry 생성을 제거하고 natural exact length-unit
+  allowlist `mm·cm·km·m`의 `^2`/`^3`만 읽는다. 비승인
+  `alphabetic-unit^exponent` literal은 보존하면서 앞의 독립적인 valid
+  numeric core만 읽고, exponent-only fallback은 차단한다.
+- large-unit 뒤 비승인 delimiter `–—−－＋·`와 malformed caret numeric
+  surface는 부분 변환 없이 원자적으로 보존한다.
+
+## Contextual number-unit default activation
+
+- 문맥형 숫자+단위 판정을 기본 mode-less transform에 즉시 활성화하기로
+  결정했다. LLM OFF에서도 모호한 surface의 raw 숫자가 남을 수 있으며,
+  별도 compatibility/rollout mode와 API rollout field는 도입하지 않는다.
+- 내부 결과를 `confirmed`, `deferred`, `absolute_preserve`,
+  `not_applicable`의 네 typed outcome으로 구분한다. confirmed/deferred
+  claim은 모두 terminal이며 generic numeric suffix/counter/number
+  fallback 재진입을 차단한다.
+- 원문 preservation 검증용 `shadow_logs`의 의미는 유지한다. 의미 판정은
+  별도의 debug-only `contextual_decision_logs`로 기록하며 일반 서비스
+  문자열에는 판정, 후보, marker를 삽입하지 않는다.
+- 기존 구체 owner와 renderer/spacing canonical을 우선한다. 보호 구간,
+  날짜·시간·전화·통화·범위·분수·점수 관계·측정 단위 owner는 새
+  contextual owner보다 먼저 claim한다.
+- 첫 기능 owner로 `가지`를 추가했다. 1~99 native, 0/100+ Sino 정책과
+  항상 한 칸인 counter spacing을 기존 renderer로 구현했다. 이후 valid
+  decimal과 signed decimal은 위 decimal coverage 정책으로 확장했으며,
+  signed integer/leading-zero/malformed/alphanumeric/ordinal 표면은
+  계속 원자적으로 유보한다. 범위 owner는
+  `3~4가지 -> 세 가지에서 네 가지`를 먼저 full-claim한다.
+- `분`, `번`, `점`, `조`를 exact local anchor 기반 owner로 분리했다.
+  특정 시간/소수 점수/금액·large-unit owner는 계속 먼저이며,
+  사람 높임 수량·횟수·물품 수량·그룹 수량만 기존 native renderer로
+  확정한다. bare/ambiguous와 unsupported numeric forms는 기본 출력에서
+  source-exact로 남고 generic fallback 재진입을 차단한다.
+- 기존의 모든 bare `N분`, `N번`, `N점`, 조사 결합 `N조`를 일괄
+  Sino/native로 읽던 기대값은 supersede했다. 이는 즉시 유보 활성화에
+  따른 승인된 canonical 변경이다.
+- `대`는 기존 점수 관계와 `제N대`를 보존한 채 중앙 기계 registry,
+  세대 exact noun/`째`, 10의 배수 연령대 exact noun을 분리했다.
+  `3대 과제` 같은 초기 검토 주요 항목과 확장 검토 기계 명사는 제외했다.
+  기존 unsigned integer 40+ threshold는 유지한다. 이후 exact anchor의
+  valid decimal/signed decimal만 위 decimal coverage로 확장했고,
+  signed integer/bare decimal/leading-zero/malformed/alphanumeric `대`는
+  contextual deferred claim으로 유지한다.
+- `부·동·호·판·단·등·척`을 문서/주소/등급 contextual batch로
+  활성화했다. 순서·식별·등급·길이와 실제 복사본·건물·가구·경기·적층·
+  조명·선박 수량을 exact noun/suffix/action 구조에서만 분리한다.
+  bare 또는 한쪽 anchor만 있는 표현은 source-exact deferred claim이며,
+  기존 주소·서수·범위 owner와 각 단위의 기존 spacing canonical이 우선한다.
+- `장·권·편·층`을 수량/구조번호 충돌 batch로 활성화했다. 물품·책·작품
+  direct noun과 장/권의 고정 번호 구조를 분리하고, `층`은 조사
+  `에·에서`, `지하`, 등록 위치 명사에서만 location을 확정한다.
+  이동·개수 가능성이 겹치는 층 표현과 모든 bare 표현은 유보한다.
+
 - Allowed the approximate tail `께` only after a complete structured suffix
   clock containing minutes: `N시 N분`, `N분 N초`, or `N시 N분 N초`.
   Bare `N분께` and hour-only `N시께` remain preserve-first, and no
@@ -741,7 +856,9 @@ Canonical tests must cover:
   `0:00 -> 영시`, `24:00 -> 이십사시`.
 - Changed only the declared spaced-hyphen multi-block output by retaining its
   exact source separator: `1 - 2 - 3 -> 일 - 이 - 삼`.
-- Added registry-backed caret power for numeric-prefix ASCII-letter units:
+- Added caret power for numeric-prefix ASCII-letter units. The later decimal
+  coverage/caret atomicity decision narrows this to the natural exact
+  `mm·cm·km·m` allowlist:
   `^2 -> 제곱<단위>`, `^3 -> 세제곱<단위>`.
 - Caret power requires no gap between unit and exponent, and the exponent must
   end the input or be followed by whitespace/Hangul. Numeric/ASCII-letter tails

@@ -5,7 +5,7 @@ import pytest
 from engine.main import transform
 
 
-def _span_default(text: str) -> str:
+def _production_transform(text: str) -> str:
     result = transform(text)
     normalized = getattr(result, "normalized_text", result)
     assert isinstance(normalized, str)
@@ -30,7 +30,7 @@ def _span_default(text: str) -> str:
 def test_decimal_numeric_core_uses_registered_compound_template(
     source: str, expected: str
 ) -> None:
-    assert _span_default(source) == expected
+    assert _production_transform(source) == expected
 
 
 @pytest.mark.parametrize(
@@ -47,7 +47,7 @@ def test_decimal_numeric_core_uses_registered_compound_template(
 def test_existing_integer_decimal_and_alias_templates_remain_authoritative(
     source: str, expected: str
 ) -> None:
-    assert _span_default(source) == expected
+    assert _production_transform(source) == expected
 
 
 @pytest.mark.parametrize(
@@ -64,7 +64,7 @@ def test_existing_integer_decimal_and_alias_templates_remain_authoritative(
     ],
 )
 def test_malformed_or_unregistered_slash_surfaces_preserve(source: str) -> None:
-    assert _span_default(source) == source
+    assert _production_transform(source) == source
 
 
 @pytest.mark.parametrize(
@@ -88,4 +88,4 @@ def test_slash_conflicts_and_protected_contexts_are_preserved_or_owned(
         "2026/06/01": "이천이십육년 유월 일일",
         "[5.6km/h]": "5.6km/h",
     }.get(source, source)
-    assert _span_default(source) == expected
+    assert _production_transform(source) == expected

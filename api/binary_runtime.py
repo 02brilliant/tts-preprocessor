@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import json
 import os
 import subprocess
@@ -11,8 +10,6 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_BINARY_NAME = "tts_preprocessor"
 # API production runtime resolves and executes this packaged binary instead of
 # importing engine.* source modules from the deployed server filesystem.
-SOURCE_DEBUG_FALLBACK_ENV = "TTS_PREPROCESSOR_ALLOW_SOURCE_DEBUG_FALLBACK"
-SOURCE_DEBUG_FALLBACK_TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
 class BinaryRuntimeError(RuntimeError):
@@ -65,19 +62,7 @@ def run_transform_binary_debug(
     runtime_binary = binary_path or resolve_binary_path()
     command = [str(runtime_binary), "--include-debug"]
 
-    try:
-        raw_output = _run_binary_command(command, text=text)
-    except BinaryRuntimeError as exc:
-        if not _should_fallback_to_source_debug(exc):
-            raise
-        if not _allow_source_debug_fallback():
-            raise BinaryRuntimeError(
-                "packaged runtime binary does not support debug output; "
-                "source debug fallback is disabled by default for production runtime; "
-                "rebuild or update the packaged binary. "
-                f"Original binary error: {exc}"
-            ) from exc
-        return _run_source_debug_fallback(text)
+    raw_output = _run_binary_command(command, text=text)
 
     try:
         payload = json.loads(raw_output)
@@ -105,19 +90,3 @@ def _run_binary_command(command: list[str], *, text: str) -> str:
     if not normalized:
         raise BinaryRuntimeError("binary returned empty output")
     return normalized
-
-
-def _should_fallback_to_source_debug(exc: BinaryRuntimeError) -> bool:
-    return "unrecognized arguments: --include-debug" in str(exc)
-
-
-def _allow_source_debug_fallback() -> bool:
-    value = os.getenv(SOURCE_DEBUG_FALLBACK_ENV, "")
-    return value.strip().lower() in SOURCE_DEBUG_FALLBACK_TRUE_VALUES
-
-
-def _run_source_debug_fallback(text: str) -> dict:
-    # Local/dev compatibility escape hatch only. Production default must use
-    # the packaged binary and fail old binaries instead of importing sources.
-    engine_main = importlib.import_module("engine.main")
-    return engine_main.transform_debug(text)

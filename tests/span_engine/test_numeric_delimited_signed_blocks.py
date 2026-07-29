@@ -108,7 +108,7 @@ def test_signed_tilde_range_preserves_existing_owner_precedence_and_neighbors():
     assert transform("10～20분") == "십분에서 이십분"
     assert (
         transform("pH -2.3와 -2.3~4.5kg")
-        == "pH 마이너스 이쩜삼와 마이너스 이쩜삼에서 사쩜오 킬로그램"
+        == "피에이치 마이너스 이쩜삼와 마이너스 이쩜삼에서 사쩜오 킬로그램"
     )
     assert transform("v-2.3~4.5kg") == "v-2.3~4.5kg"
     assert (

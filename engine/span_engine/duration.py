@@ -27,6 +27,23 @@ _NEGATIVE_DURATION_RE = re.compile(
     rf"-(?:{_NUMBER_RE})분"
 )
 _PREV_BLOCKERS = frozenset("+.,~:/_")
+_MINUTE_DURATION_NEXT_ANCHORS = (
+    "뒤",
+    "전",
+    "동안",
+    "이내",
+    "이상",
+    "이하",
+    "소요",
+    "부터",
+    "까지",
+)
+_MINUTE_DURATION_PREV_ANCHORS = (
+    "소요 시간",
+    "소요 시간은",
+    "소요 시간는",
+    "소요 시간의",
+)
 
 
 def scan_duration_candidates(
@@ -88,6 +105,8 @@ def scan_duration_candidates(
             )
             continue
         else:
+            if not _has_explicit_minute_duration_context(raw_text, span):
+                continue
             minute = match.group("minute_only")
             minute_reading = _duration_amount_reading(minute, "분")
             if minute_reading is None:
@@ -102,6 +121,16 @@ def scan_duration_candidates(
                 )
             )
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
+
+
+def _has_explicit_minute_duration_context(
+    raw_text: str, span: SourceSpan
+) -> bool:
+    previous = raw_text[: span.start].rstrip()
+    following = raw_text[span.end :].lstrip()
+    return any(previous.endswith(anchor) for anchor in _MINUTE_DURATION_PREV_ANCHORS) or any(
+        following.startswith(anchor) for anchor in _MINUTE_DURATION_NEXT_ANCHORS
+    )
 
 
 def parse_duration_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:

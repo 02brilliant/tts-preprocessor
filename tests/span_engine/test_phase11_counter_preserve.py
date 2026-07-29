@@ -56,8 +56,8 @@ def test_emergency_counter_forbidden_signatures_do_not_appear(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3번", "삼번"),
-        ("3분", "삼분"),
+        ("3번", "3번"),
+        ("3분", "3분"),
         ("3초", "삼초"),
         ("3건", "세 건"),
     ],

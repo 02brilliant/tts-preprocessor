@@ -14,7 +14,7 @@ from engine.span_engine.mixed_integer import is_safe_mixed_integer_left_boundary
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
-NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살"})
+NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살", "가지"})
 
 # 시간 follows the native counter reading path used by time/range policy.
 _NATIVE_TIME_COUNTERS = frozenset({"시간"})
@@ -83,8 +83,6 @@ HYBRID_THRESHOLD_39_COUNTERS = frozenset(
     }
 )
 
-# Backward-compatible alias for existing imports/tests.
-THRESHOLD_39_HYBRID_COUNTERS = HYBRID_THRESHOLD_39_COUNTERS
 HYBRID_COUNTERS = HYBRID_THRESHOLD_39_COUNTERS
 SINO_COUNTERS = frozenset(
     {
@@ -499,7 +497,16 @@ def _has_registered_counter_at(raw_text: str, number_end: int) -> bool:
 
 def _has_supported_counter_unsafe_tail(raw_text: str, counter_end: int) -> bool:
     next_char = raw_text[counter_end] if counter_end < len(raw_text) else None
-    return next_char is not None and next_char.isascii() and next_char.isalnum()
+    if next_char is None:
+        return False
+    if next_char.isascii() and next_char.isalnum():
+        return True
+    return (
+        next_char == "."
+        and counter_end + 1 < len(raw_text)
+        and raw_text[counter_end + 1].isascii()
+        and raw_text[counter_end + 1].isalnum()
+    )
 
 
 def _has_strict_special_determiner_tail(raw_text: str, counter_end: int) -> bool:
@@ -980,7 +987,6 @@ __all__ = [
     "SINO_COUNTERS",
     "SPACELESS_COUNTERS",
     "SUPPORTED_COUNTERS",
-    "THRESHOLD_39_HYBRID_COUNTERS",
     "counter_mode",
     "counter_number_reading",
     "counter_render_pieces",

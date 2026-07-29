@@ -5,6 +5,7 @@ from typing import Any
 from engine.span_engine.models import (
     ClaimCollisionLog,
     ClaimedRange,
+    ContextualDecision,
     RenderPiece,
     ShadowUnit,
     SourceSpan,
@@ -18,6 +19,7 @@ TRACE_LOG_FIELDS = [
     "source_map_logs",
     "tokenization_logs",
     "shadow_logs",
+    "contextual_decision_logs",
     "claim_logs",
     "claim_collision_logs",
     "gate_logs",
@@ -98,6 +100,25 @@ def claim_collision_log_to_dict(log: ClaimCollisionLog) -> dict[str, Any]:
     }
 
 
+def contextual_decision_to_dict(decision: ContextualDecision) -> dict[str, Any]:
+    if not isinstance(decision, ContextualDecision):
+        raise TypeError("decision must be ContextualDecision")
+    return {
+        "rule_version": decision.rule_version,
+        "unit": decision.unit,
+        "decision": decision.decision.value,
+        "semantic_type": decision.semantic_type,
+        "confirmed_reading": decision.confirmed_reading,
+        "candidate_readings": _json_safe(decision.candidate_readings),
+        "matched_anchor": decision.matched_anchor,
+        "blocking_reason": decision.blocking_reason,
+        "owner_priority": decision.owner_priority,
+        "reentry_blocked": decision.reentry_blocked,
+        "existing_engine_result": decision.existing_engine_result,
+        "new_rule_result": decision.new_rule_result,
+    }
+
+
 def trace_log_entry_to_dict(entry: TraceLogEntry | dict[str, Any]) -> dict[str, Any]:
     if isinstance(entry, dict):
         return _json_safe(entry)
@@ -165,6 +186,8 @@ def _json_safe(value: Any) -> Any:
         return validation_log_to_dict(value)
     if isinstance(value, ClaimCollisionLog):
         return claim_collision_log_to_dict(value)
+    if isinstance(value, ContextualDecision):
+        return contextual_decision_to_dict(value)
     if isinstance(value, ClaimedRange):
         return claimed_range_to_dict(value)
     if isinstance(value, TraceLogEntry):

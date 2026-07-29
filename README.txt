@@ -127,7 +127,7 @@ Windows ZIP만 업로드:
 bash scripts/upload_desktop_packages.sh --platform windows
 ```
 
-업로드 스크립트는 Windows 전용이며 명시적 `--platform windows`를 요구한다.
+업로드 스크립트는 Windows 전용이며 명시적 `--platform windows`를 요구한다.1
 macOS/Linux ZIP, 서버 패키지, 서버 프로세스는 변경하지 않는다. SSH 인증은
 기존 SSH 설정과 agent를 사용하며 개인키나 인증정보를 스크립트에 저장하지
 않는다.

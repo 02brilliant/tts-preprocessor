@@ -224,7 +224,7 @@ def test_korean_numeric_chain_rejects_code_like_tokens(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("3대", "3대", "ambiguous_numeric_dae_preserve"),
+        ("3대", "3대", "contextual_number_unit"),
         ("제15권", "제 십오권", "numeric_suffix"),
         ("종로3가", "종로삼가", "administrative_suffix"),
     ],

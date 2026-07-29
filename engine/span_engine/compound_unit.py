@@ -7,6 +7,7 @@ from engine.span_engine.amount_reading import (
 )
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.numeric_reading import read_number_text
 
 COMPOUND_SLASH_UNIT_READINGS: dict[str, str] = {
     "km/h": "시속 {number} 킬로미터",
@@ -68,8 +69,12 @@ _ORDERED_COMPOUND_UNITS = sorted(
 _ORDERED_COMPOUND_EXACT_UNITS = sorted(
     COMPOUND_EXACT_UNIT_READINGS, key=len, reverse=True
 )
-_DECIMAL_ENABLED_UNITS = frozenset(COMPOUND_SLASH_UNIT_READINGS)
-_COMMA_ENABLED_UNITS = frozenset(COMPOUND_SLASH_UNIT_READINGS)
+_DECIMAL_ENABLED_UNITS = frozenset(
+    {*COMPOUND_SLASH_UNIT_READINGS, *COMPOUND_EXACT_UNIT_READINGS}
+)
+_COMMA_ENABLED_UNITS = frozenset(
+    {*COMPOUND_SLASH_UNIT_READINGS, *COMPOUND_EXACT_UNIT_READINGS}
+)
 _TAIL_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":"})
 _BLOCKING_PREV_CHARS = frozenset("+-.,~:/_")
 
@@ -142,14 +147,10 @@ def compound_exact_unit_reading(unit: str, numeric: str) -> str | None:
     template = COMPOUND_EXACT_UNIT_READINGS.get(unit)
     if template is None:
         return None
-    if not _is_ascii_digits(numeric):
+    number_reading = read_number_text(numeric)
+    if number_reading is None:
         return None
-    if len(numeric) > 1 and numeric.startswith("0"):
-        return None
-    value = int(numeric)
-    if value > 9999:
-        return None
-    return template.format(number=number_to_korean_under_10000(value))
+    return template.format(number=number_reading)
 
 
 def scan_compound_slash_unit_candidates(

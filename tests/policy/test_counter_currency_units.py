@@ -7,14 +7,14 @@ from engine.main import transform as transform_text
     ("text", "expected"),
     [
         ("21명", "스물한 명"),
-        ("22권", "스물두 권"),
-        ("23장", "스물세 장"),
+        ("22권", "22권"),
+        ("23장", "23장"),
         ("24개", "스물네 개"),
         ("29명", "스물아홉 명"),
         ("30명", "서른 명"),
-        ("30권", "서른 권"),
+        ("30권", "30권"),
         ("31명", "서른한 명"),
-        ("31권", "서른한 권"),
+        ("31권", "31권"),
         ("사과 21개는 남았다", "사과 스물한 개는 남았다"),
         ("책 30권을 정리했다", "책 서른 권을 정리했다"),
     ],
@@ -26,11 +26,11 @@ def test_hybrid_counter_positive_and_boundary_cases(text: str, expected: str):
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("21층", "이십일 층"),
+        ("21층", "21층"),
         ("21원", "이십일 원"),
         ("57개", "오십칠 개"),
         ("100명", "백 명"),
-        ("101권", "백일 권"),
+        ("101권", "101권"),
     ],
 )
 def test_hybrid_counter_negative_and_regression_cases(text: str, expected: str):

@@ -106,16 +106,16 @@ DISALLOWED_SUFFIX_CASES = [
     TextCase(
         case_id="emergency-disallowed-beon",
         text="긴급 신고는 112번으로 한다",
-        expected="긴급 신고는 백십이번으로 한다",
-        rule="emergency number / disallowed-suffix",
-        reason="번 is explicitly disallowed as an emergency tail even when emergency context exists.",
+        expected="긴급 신고는 112번으로 한다",
+        rule="contextual number-unit / deferred",
+        reason="번 is disallowed as an emergency tail and has no exact contextual meaning anchor.",
     ),
     TextCase(
         case_id="emergency-disallowed-ho",
         text="119호는 비상구 옆이다",
-        expected="백십구호는 비상구 옆이다",
-        rule="emergency number / disallowed-suffix",
-        reason="호 is not an allowed emergency tail and should normalize as a general number label.",
+        expected="119호는 비상구 옆이다",
+        rule="contextual number-unit / deferred",
+        reason="호 is disallowed as an emergency tail and has no exact identifier anchor.",
     ),
     TextCase(
         case_id="emergency-disallowed-alpha-tail",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 SPAN_TOKEN_KINDS = frozenset(
@@ -37,6 +38,13 @@ RENDER_PROVENANCE_VALUES = frozenset(
 )
 
 CLAIM_TYPES = frozenset({"surface", "preserve", "gate_fail", "lock", "shadow"})
+
+
+class ContextualDecisionKind(str, Enum):
+    CONFIRMED = "confirmed"
+    DEFERRED = "deferred"
+    ABSOLUTE_PRESERVE = "absolute_preserve"
+    NOT_APPLICABLE = "not_applicable"
 
 
 def _ensure_str_field(name: str, value: Any) -> None:
@@ -265,6 +273,49 @@ class ClaimCollisionLog:
             raise TypeError("metadata must be dict")
 
 
+@dataclass(frozen=True)
+class ContextualDecision:
+    rule_version: str
+    unit: str
+    decision: ContextualDecisionKind
+    semantic_type: str | None = None
+    confirmed_reading: str | None = None
+    candidate_readings: tuple[dict[str, str], ...] = ()
+    matched_anchor: str | None = None
+    blocking_reason: str | None = None
+    owner_priority: int = 0
+    reentry_blocked: bool = True
+    existing_engine_result: str | None = None
+    new_rule_result: str | None = None
+
+    def __post_init__(self) -> None:
+        _ensure_str_field("rule_version", self.rule_version)
+        _ensure_str_field("unit", self.unit)
+        if not isinstance(self.decision, ContextualDecisionKind):
+            raise TypeError("decision must be ContextualDecisionKind")
+        _ensure_optional_str_field("semantic_type", self.semantic_type)
+        _ensure_optional_str_field("confirmed_reading", self.confirmed_reading)
+        _ensure_optional_str_field("matched_anchor", self.matched_anchor)
+        _ensure_optional_str_field("blocking_reason", self.blocking_reason)
+        _ensure_optional_str_field(
+            "existing_engine_result", self.existing_engine_result
+        )
+        _ensure_optional_str_field("new_rule_result", self.new_rule_result)
+        if not isinstance(self.candidate_readings, tuple):
+            raise TypeError("candidate_readings must be tuple[dict[str, str], ...]")
+        for candidate in self.candidate_readings:
+            if not isinstance(candidate, dict) or not all(
+                isinstance(key, str) and isinstance(value, str)
+                for key, value in candidate.items()
+            ):
+                raise TypeError(
+                    "candidate_readings must contain dict[str, str]"
+                )
+        if not isinstance(self.owner_priority, int):
+            raise TypeError("owner_priority must be int")
+        _ensure_bool_field("reentry_blocked", self.reentry_blocked)
+
+
 @dataclass
 class TraceLogEntry:
     stage: str
@@ -340,6 +391,7 @@ class TransformTrace:
     source_map_logs: list[Any] = field(default_factory=list)
     tokenization_logs: list[Any] = field(default_factory=list)
     shadow_logs: list[Any] = field(default_factory=list)
+    contextual_decision_logs: list[Any] = field(default_factory=list)
     claim_logs: list[Any] = field(default_factory=list)
     claim_collision_logs: list[Any] = field(default_factory=list)
     gate_logs: list[Any] = field(default_factory=list)
@@ -373,6 +425,8 @@ class TransformOutput:
 __all__ = [
     "CLAIM_TYPES",
     "ClaimCollisionLog",
+    "ContextualDecision",
+    "ContextualDecisionKind",
     "LOCKED_TOKEN_KINDS",
     "RENDER_PROVENANCE_VALUES",
     "SHADOW_UNIT_KINDS",

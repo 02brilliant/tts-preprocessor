@@ -10,6 +10,15 @@ The goal is to keep common standalone numeric parsing separate from
 owner-attached numeric parsing. Owner-specific exceptions must full-claim their
 surface or preserve it; they must not rely on broad internal digit fallback.
 
+Contextual number-unit owners are an owner-attached exception. A supported
+positive integer or valid decimal plus an approved exact anchor is confirmed
+through the existing number/counter renderer. Decimal numeric cores always use
+the existing compact Sino `쩜` renderer; the contextual decision still owns
+meaning-specific unit attachment and spacing. A recognized ambiguous or malformed
+number-unit surface is deferred source-exact and terminally claimed; its numeric
+core must not re-enter numeric suffix, counter, decimal, signed-number, or
+general-number fallback. This default behavior has no rollout mode.
+
 ## 2. Official production validation path
 
 The official production source validation path is:
@@ -79,8 +88,43 @@ reader is explicitly named. Owner support remains opt-in and full-consume.
 | Celsius / Fahrenheit | 영상 | 영하 | Sino integer/decimal | temperature owner precedes unit/general number |
 | angle degree ° | 플러스 | 마이너스 | Sino integer/decimal | bare º remains temperature-like |
 | international phone | 플러스 | owner policy | digit-by-digit | never use ordinary integer reader |
-| counter | existing support only | existing support only | counter owner policy | broad signed support prohibited |
+| counter | valid decimal full-claim only | valid decimal full-claim only | Sino decimal; integer counter renderer unchanged | signed integer counter remains prohibited |
 | ambiguous signed 대 | preserve | preserve | none | atomic invalid/unsupported signed preserve |
+| contextual number-unit | valid decimal under exact anchor | valid decimal under exact anchor | integer uses meaning-specific renderer; decimal uses Sino | ambiguous bare surface still defers; debug decision log is separate from output |
+
+`가지` is the first always-count contextual unit: integer 1..99 uses the
+existing native counter renderer, integer 0 and 100+ use the existing
+Sino/large-integer path, and valid decimal uses ordinary Sino decimal. The
+counter gap is one space. Range owns the full shared-suffix surface before
+`가지`; signed integers, leading-zero, malformed-comma, alphanumeric, and
+ordinal `가지` surfaces are deferred atomically. A valid signed decimal may be
+claimed as one surface.
+
+`분`, `번`, `점`, and `조` use exact meaning anchors. Specific clock/duration,
+decimal-score, currency/large-unit, range, and score-relation owners still win.
+Without an approved anchor, a recognized integer surface is deferred even when
+the previous generic owner would have emitted a Sino/counter reading.
+
+`대` keeps score-pair and ordinal precedence, the existing central machine
+registry, and the existing unsigned integer 40+ threshold. Generation and
+10-multiple age-band anchors select Sino reading; low bare/major-item surfaces
+defer. Valid decimal uses Sino reading only under an approved exact anchor.
+Signed integer, leading-zero, malformed-comma, alphanumeric, bare decimal, and
+decimal age-band surfaces defer.
+
+`부`, `동`, `호`, `판`, `단`, `등`, and `척` split sequence/identifier/
+grade meanings from physical counts only through the canonical exact
+noun/suffix/action registries. Existing ordinal, address, and range owners keep
+precedence. Bare and malformed surfaces are atomically deferred. Sino
+`부·단·등` keeps source attachment, Sino `동·호·판·척` uses the existing
+counter gap, and every native count uses one counter gap.
+
+`장`, `권`, and `편` split registered item/book/work counts from fixed
+chapter/volume/part structures. `층` confirms only exact location particles,
+`지하`, or registered location nouns; movement and physical-count ambiguity
+defer. Valid decimal uses Sino reading under the same exact anchors while bare
+decimal remains deferred. Ordinal and range owners remain earlier than all
+four contextual decisions.
 
 Common valid forms are integer, comma integer, decimal, and comma decimal.
 Fractional source digits and trailing zero are exact; comma is validation-only.
@@ -136,8 +180,8 @@ Current standalone invalid/malformed forms:
 
 | Owner | Valid numeric forms | Sign | Decimal | Comma | Spacing | Invalid handling | Trailing zero state |
 |---|---|---|---|---|---|---|---|
-| unit | integer, decimal, comma integer/decimal for supported unit policy; SI `m`/`M` is case-sensitive for `mW/MW`, `mV/MV`, `mPa/MPa`, and `mHz/MHz`; owner-local aliases include `㎽`/`㎿`, `㎷`/`㎹`, `㎫`, frequency `㎑`/`㎒`/`㎓`, and data size `㎅`/`㎆`/`㎇`; registered area forms include `m²`/`m2`, `cm²`/`cm2`, `km²`/`km2`; a registered ASCII-letter unit immediately followed by `^2` or `^3` uses the caret-power owner | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes, inheriting the base unit's decimal eligibility | yes for allowed unit matrix | registered units allow attached or one ASCII space; unit-to-`^2`/`^3` must have no space | malformed numeric+unit, alphabetic unsafe tails, and unregistered CJK compatibility unit symbols preserve without partial numeric fallback; exact uppercase `MPA` is not a unit alias and remains available to news/acronym routing | `2.5mW -> 이쩜오 밀리와트`, `2.5MW`/`2.5㎿ -> 이쩜오 메가와트`, `55㎷ -> 오십오 밀리볼트`, `55㎫ -> 오십오 메가파스칼`; `ML` remains the existing milliliter alias |
-| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun; longest-first character counters include `자녀`, `자루`, `자리`, `자릿수`, `자매`; name and explicit character-count `N자` are contextual hybrid, while general `N자` is Sino; `제N자` has no separate reading owner and reuses that general route; attached `N대` below 40 keeps its context gate | no arithmetic sign semantics | yes through the no-space registered decimal suffix owner, but the new `자` and traditional special-determiner policies are integer-only | yes for valid integer/comma integer; mixed compact core must parse fully | long character counters and contextual character counts render one space before the noun; general `N자` keeps `자` attached and preserves any source gap before the number, so `제3자 -> 제삼자`, `제 3자 -> 제 삼자`; attached `N냥` renders attached (`3냥 -> 석냥`) while spaced `N 냥` preserves its gap | unsafe mixed counter tails preserve; `제N 자`, leading-zero, ASCII/code-like/protected surfaces do not enter the specialized owner; `냥` needs no semantic anchor, while ambiguous `되·섬·돈·말·발·푼` require bounded semantic anchors before special determiner forms apply | `3자녀 -> 세 자녀`, `이름 3자 -> 이름 석 자`, `한글 3자 이내 -> 한글 세 자 이내`, `3자 회담 -> 삼자 회담`, `금요일 3냥 -> 금요일 석냥`; clear traditional-unit contexts use `석/넉` or `서/너` |
+| unit | integer, decimal, comma integer/decimal for registered unit policy; `kHz` and `KB` inherit the same decimal eligibility; SI `m`/`M` remains case-sensitive; exact natural caret-power allowlist is limited to `mm·cm·km·m` directly followed by `^2` or `^3` | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes for registered simple/special units | yes for valid comma integer/decimal | registered units allow attached or one ASCII space; caret unit-to-exponent has no gap | malformed numeric+unit and unsafe tails preserve; unsupported `alphabetic-unit^exponent` keeps that literal block while a separately valid numeric prefix may be read; exponent-only fallback is forbidden | `2.35kHz -> 이쩜삼오 킬로헤르츠`, `2.35KB -> 이쩜삼오 킬로바이트`, `10000.5kg -> 만쩜오 킬로그램`, `2.35m^2 -> 이쩜삼오 제곱미터`, `2.35KB^2 -> 이쩜삼오KB^2` |
+| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun; contextual units retain exact-anchor meaning gates | valid decimal only; signed integer remains unsupported | yes through the registered decimal suffix or contextual owner; integer-only special determiners remain excluded | yes for valid comma decimal; integer policy unchanged | decimal uses the existing owner-specific unit spacing; attached tails `쯤·정도·꼴·당` remain source-exact | malformed/leading-zero/code-like/protected surfaces preserve atomically; ambiguous contextual bare decimal preserves | `+2.35명 -> 플러스 이쩜삼오 명`, `-2.35개 -> 마이너스 이쩜삼오 개`, `총 2.35번 -> 총 이쩜삼오 번`, `2.35번 확인했다 -> preserve` |
 | multiplier | unsigned integer/comma integer and unsigned decimal/comma decimal followed by Korean multiplier noun `배`, e.g. `3배`, `3 배`, `1.5배`, `1,000.5 배` | no signed multiplier in this phase | yes | yes for valid comma integer/decimal | no space or one ASCII space before `배`; renders one generated space before original `배` | malformed/signed forms are not claimed by multiplier in this phase; protected/code-like contexts preserve first | decimal uses ordinary Sino decimal reading; integer `1..39` uses native/hybrid counter-style reading and `40+` uses Sino |
 | duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | `분`/`초` share the suffix-time Sino reader and normalize only their integer-part leading zeros, e.g. `01.5분 -> 일쩜오 분`; other decimal duration suffixes retain ordinary reading, e.g. `4.5주 -> 사쩜오 주` |
 | mixed integer atomic | complete valid Arabic-Hangul integer core using `십/백/천/만/억/조/경`, after more-specific owners; a trailing Arabic block must be a positive value smaller than its immediately preceding small unit | no sign | no | valid comma blocks only where the shared integer parser accepts them | preserves source adjacency to safe Korean prose and sentence punctuation; registered counter/currency suffix owners retain priority and their spacing | ASCII identifier/code/URL/path/protected surfaces, prefixed ordinal-like forms, leading zero, malformed/repeated unit order, oversized trailing Arabic block, and partial numeric residue preserve | numeric blocks use Sino reading and original Korean unit characters retain provenance: `6천400 -> 육천사백`, `1천2백3십4 -> 일천이백삼십사`, `값은3천만5천이다 -> 값은삼천만오천이다`; `6천400명` keeps the existing counter owner |
@@ -254,30 +298,31 @@ range, minus, or differently spaced hyphen forms.
 
 Clock-hour `N시` is handled by the time owner with an owner-local safe Korean tail whitelist. Safe attached tails such as `을/를/은/는/이/가/로/으로/와/과/도/만/부터/까지/에/에는/에서/에도/보다/처럼/마다` and `이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다` are allowed without opening broad numeric suffix fallback. Lexical/code-like continuations such as `시리즈`, `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain preserve-first.
 
-| registered numeric suffix | registered Korean numeric suffix inventory, including explicit numeric suffixes such as `차`, `과`, `선` | no arithmetic sign semantics in this branch | yes for valid decimal numeric core attached to a registered/approved suffix | yes for valid comma decimal | no space before suffix; renders one generated space before original suffix | malformed decimal and unsafe/code-like tails preserve or are not claimed; arbitrary Hangul suffixes and whitespace-separated ordinary nouns are not eligible | ordinary decimal/Sino reading + original suffix, e.g. `1.5차 -> 일쩜오 차` |
+| registered numeric suffix | registered Korean numeric suffix inventory, including explicit numeric suffixes such as `차`, `과`, `선` | valid decimal may use `+` or owner-local minus alias; signed integer does not enter this branch | yes for valid decimal numeric core attached to a registered/approved suffix | yes for valid comma decimal | no space before suffix; renders one generated space before original suffix | malformed decimal and unsafe/code-like tails preserve or are not claimed; arbitrary Hangul suffixes and whitespace-separated ordinary nouns are not eligible | ordinary decimal/Sino reading + original suffix, e.g. `1.5차 -> 일쩜오 차` |
 | Korean numeric chain | a full Korean-eligible token made only of completed Hangul and one or more valid ASCII integer blocks; a single digit block at token start is limited to one unregistered Hangul literal such as `5극` | no sign | no; invalid decimal/comma residue blocks the owner | no | preserves all source adjacency and spacing; inserts no semantic suffix space | ASCII letters, compatibility jamo, `_`, `/`, URL/path/email/code-like structures, Korean numeric-unit literals, registered suffix/counter blocks, explicit ambiguous attached `N대` surfaces, and partial residue are excluded; registered/preserve owners win first | reads only numeric cores without assigning suffix meaning: `다우존스30 -> 다우존스삼십`, `5극3특 -> 오극삼특`; `3대` is an explicit atomic-preserve exception and `123입니다` remains the existing generic number + original Korean path |
 | percent | integer, decimal, slash fraction for percent-point `%p`/`%P`; `%` supports signed decimal-aware forms | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed percent or percent-point conditions | yes | yes where numeric reader accepts | no space or one ASCII space | malformed percent/percent-point preserves; dash-like invalid forms preserve, e.g. `–1,00.5%` | ordinary decimal fractional zero uses `영`, e.g. `25.50% -> 이십오쩜오영 퍼센트`, `–2.03% -> 마이너스 이쩜영삼 퍼센트` |
 | temperature / degree | signed temperature, signed degree, unsigned degree-like unit surfaces | signed temperature uses `영상/영하`; bare degree has separate policy; dash-like minus aliases are owner-local under full-claim signed temperature/degree conditions | yes | signed parser accepts comma where valid | optional one space for signed unit variants | malformed signed temperature preserves, e.g. `+.5℃` | ordinary decimal fractional zero uses `영`, e.g. `25.50℃ -> 이십오쩜오영도`, `+25.50℃ -> 영상 이십오쩜오영도` |
 | KRW currency | registered KRW code/symbol/suffix forms | `+`/`-` supported around registered markers | yes | yes | no space or one ASCII space | invalid comma/leading-zero forms preserve; no partial fallback | ordinary decimal fractional zero uses `영`, e.g. `KRW25.50 -> 이십오쩜오영 원` |
 | non-KRW currency | registered USD/EUR/JPY/GBP forms within current currency matrix | partial sign support by marker form | USD/EUR decimal currently allowed; JPY integer-focused | yes where amount parser accepts | no space or one ASCII space | unsupported or malformed currency tokens preserve | current decimal fractional zero is `영`, e.g. `USD 25.50 -> 이십오쩜오영 달러` |
-| large-unit | Arabic integer/comma integer, signed decimal, Arabic-Hangul/Korean mixed full surface; structured compact final decimal after at least one explicit large unit, e.g. `5만1839.26` | `+`/`-` for decimal large-unit lexical form | yes; structured mixed form allows a decimal only in the final small group | yes where the existing group parser permits | lexical decimal suffix spacing is owner-scoped; structured compact form creates no missing group space | invalid comma, leading zero, empty/extra dot, unit after final fraction, ASCII/code-like tail, and mixed-unit failure preserve the whole token; no internal fallback | `25.50억 -> 이십오쩜오영 억`; `5만1839.26 -> 오만천팔백삼십구쩜이육`; `2만5508.07 -> 이만오천오백팔쩜영칠` |
+| large-unit | Arabic integer/comma integer, signed decimal, Arabic-Hangul/Korean mixed full surface; structured compact final decimal after at least one explicit large unit, e.g. `5만1839.26` | `+`/`-` for decimal large-unit lexical form | yes; structured mixed form allows a decimal only in the final small group | yes where the existing group parser permits | lexical decimal suffix spacing is owner-scoped; structured compact form creates no missing group space | invalid comma, leading zero, empty/extra dot, unit after final fraction, ASCII/code-like tail, mixed-unit failure, and unapproved adjacent delimiters `–—−－＋·` preserve without internal fallback | `25.50억 -> 이십오쩜오영 억`; `2.35억–원 -> preserve`; `5만1839.26 -> 오만천팔백삼십구쩜이육` |
 | tilde range | two numeric sides with tilde-like delimiter; optional compatible suffix/tail; range-compatible unit aliases include meter `ｍ` | limited signed range forms in current policy | yes | yes for valid numeric blocks | suffix/tail policy owner-scoped | malformed range preserves; no partial fallback for invalid owner surface, e.g. `1~~2ｍ` | current range decimal output uses `영`, e.g. `1.50~2.50테스트 -> 일쩜오영에서 이쩜오영 테스트` |
 | colon / N:M | broad non-time-like `N:M`; multi-colon supported separately | signed decimal in approved paths | yes | yes | Korean tail spacing owner-scoped | invalid/multi-delimiter/time-like/code-like guards preserve | ordinary decimal fractional zero uses `영`, e.g. `3:4.50테스트 -> 삼 대 사쩜오영 테스트` |
-| Korean `대` score pair | valid readable numeric operands already supported by `span_default` numeric owners as standalone numeric expressions; plain integer compact `N대M` keeps compact score reading | ASCII `+`/`-` signed integer/decimal operands where standalone signed owner validates them | yes | yes | supports `LEFT 대 RIGHT`, `LEFT대RIGHT`, `LEFT대 RIGHT`; `LEFT 대RIGHT` remains unsupported | malformed/unsafe operands and protected/code-like contexts are not claimed; right operand attached to registered owner suffix/unit/currency/percent/duration/multiplier/counter surface blocks this owner | ordinary decimal fractional zero follows the underlying standalone numeric reading; non-plain operands render spaced around `대`, e.g. `2.1대1.5 -> 이쩜일 대 일쩜오` |
+| Korean `대` score pair | valid readable numeric operands already supported by current production numeric owners as standalone numeric expressions; plain integer compact `N대M` keeps compact score reading | ASCII `+`/`-` signed integer/decimal operands where standalone signed owner validates them | yes | yes | supports `LEFT 대 RIGHT`, `LEFT대RIGHT`, `LEFT대 RIGHT`; `LEFT 대RIGHT` remains unsupported | malformed/unsafe operands and protected/code-like contexts are not claimed; right operand attached to registered owner suffix/unit/currency/percent/duration/multiplier/counter surface blocks this owner | ordinary decimal fractional zero follows the underlying standalone numeric reading; non-plain operands render spaced around `대`, e.g. `2.1대1.5 -> 이쩜일 대 일쩜오` |
 | compound slash unit | exact registered compound slash unit surfaces, including `/`, owner-local `／` aliases, and the exact `㎧` alias for `m/s`; examples include `km/h`, `m/s`, `㎧`, `km/L`, `mg/L`, `㎎/L`, `mg/dL`, `MB/s` | no signed compound slash broadening in this phase | yes for registered slash surfaces that already support integer numeric cores | yes for valid comma integer/decimal through the compound owner parser | no space or one ASCII space before the full registered suffix | malformed numeric cores, unregistered slash pairs, unsafe tails, spaced slash boundaries, URL/path/protected contexts preserve; no partial `5.6km` rewrite | ordinary decimal/Sino reading reuses the unchanged template, e.g. `5.6km/h -> 시속 오쩜육 킬로미터`, `55㎧ -> 초속 오십오 미터` |
+| compound exact unit | exact `Mbps`, `Gbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi` | unsigned; existing signed compound policy unchanged | yes | yes for valid comma integer/decimal | attached numeric prefix only | malformed numeric core, unsafe tail, URL/path/protected context preserves atomically | `2.35Mbps -> 이쩜삼오 메가비피에스`, `2.35rpm -> 이쩜삼오 알피엠` |
+| pH | `pH` plus complete valid numeric core | `+` and owner-local minus aliases under pH full-claim | yes | yes for valid comma decimal | existing optional gap after `pH` | malformed comma/repeated dot/unsafe tail preserves `pH` and numeric token together; sentence-final dot stays punctuation | `pH 7.4. -> 피에이치 칠쩜사.`, `pH –7.4 -> 피에이치 마이너스 칠쩜사`, `pH 7,4 -> preserve` |
 | hyphen restricted range | approved `N-M + range-compatible unit`, e.g. `1-2kg` | broad signed hyphen ranges out of scope | decimal broad signed hyphen remains out of scope | narrow owner-specific support only | attached compatible unit required for range reading | arbitrary `1-2`, `1-2테스트`, `+1.5-2kg` preserve | follows owner parser when valid; no broad trailing-zero policy |
 | single-letter numeric-code | single ASCII uppercase letter followed by unsigned integer/valid decimal, with optional ASCII `-` separator; integer tail letters remain owner-local, e.g. `K1`, `K-1`, `F-15C`, `B-2.5`, `K-1.5` | no sign; ASCII `-` is a separator, not minus | yes | no comma in current owner | no space or ASCII `-` separator | plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, unsafe tails, and protected contexts preserve or claim preserve to block partial decimal fallback | integer one-digit code readings use code digit forms such as `원`, `투`; decimals use ordinary `쩜`, e.g. `K-1.5 -> 케이 일쩜오` |
 | managed dictionary numeric-code | exact current English managed dictionary entry followed by a short unsigned integer/valid decimal suffix, with optional ASCII `-` separator, e.g. `GPT4`, `Wi-Fi-6`, `version-1.5`; simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` remain excluded | no sign; ASCII `-` is a separator, not minus | yes, but decimal integer part must be 1-2 digits | no comma in current owner | no space or ASCII `-` separator | unregistered ASCII word + numeric preserves; plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024`, unsafe tails, and URL/path/email/JSON/backtick/square bracket/file-like contexts preserve or claim preserve to block partial fallback | registry-backed from current managed dictionary entries and reuses single-letter numeric-code reader for accepted short suffixes, e.g. `GPT-4 -> 지피티 포`, `version-1.5 -> 버전 일쩜오` |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
 
-### Ambiguous standalone numeric `대` matrix
+### Contextual numeric `대` matrix
 
-The source-attached `N대` rule uses a value threshold before semantic
-ambiguity. A valid unsigned integer/comma integer or decimal/comma decimal with
-numeric value 40 or greater always uses the Sino reading plus original `대`;
-semantic context is not required. Protected/code-like, signed, leading-zero,
-malformed, prefixed ordinal, and full-claimed score/relation surfaces remain
-higher-priority owner decisions.
+The source-attached `N대` rule first preserves the existing score-pair and
+ordinal owners. The existing unsigned-integer 40+ threshold remains, but
+decimal, signed, leading-zero, malformed, and alphanumeric forms are now
+contextual deferred surfaces regardless of value. Protected/code-like owners
+remain higher priority.
 
 Values below 40 retain the conservative contextual gate. The exact centralized
 counter-noun inventory is `자동차`, `차량`, `장비`, `버스`, `서버`, and
@@ -293,36 +338,34 @@ cross punctuation or infer arbitrary nouns, verbs, or distant context.
 | ordinal | `제2대` | existing `제 이대` |
 | explicit registered counter | `차량 3대` | `차량 세 대` |
 | topic/quantity registered counter | `자동차는 모두 3대` | `자동차는 모두 세 대` |
-| explicit decimal counter | `장비 1.5대` | `장비 일쩜오 대` |
+| decimal counter candidate | `장비 1.5대` | preserve |
 | narrow adjacent continuation | `차량 2대 1대를` | `차량 두 대 한 대를` |
 | Sino threshold integer | `40대`, `6,700대` | `사십 대`, `육천칠백 대` |
-| Sino threshold decimal | `40.5대` | `사십쩜오 대` |
+| decimal, any value | `40.5대` | preserve |
 | ambiguous bare | `3대` | preserve |
-| ambiguous particle/ending tail | `20대가`, `3대째` | preserve |
-| semantic ambiguity | `20대 남성`, `가족 3대` | preserve |
+| generation suffix | `3대째` | `삼 대째` |
+| age exact anchor | `20대 남성` | `이십 대 남성` |
+| generation exact noun | `가족 3대` | `가족 삼 대` |
+| unapproved major-item noun | `3대 과제` | preserve |
 | bare decimal | `1.5대` | preserve |
 | protected/code-like | `[3대]`, backtick `3대`, `path/3대/file`, `A3대` | existing protected result |
 
-The threshold path reuses the existing counter/decimal renderers and records
-reason `dae_counter_sino_threshold_40_plus`. `ambiguous_numeric_dae_preserve`
-is limited to otherwise-unowned values below 40 and uses surface type
-`AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE` and reason
-`no_existing_owner_and_no_explicit_counter_context`. It is an atomic preserve
-claim before decimal, generic number, and Korean numeric-chain fallback. The
-policy does not introduce age, generation, major-item, unprefixed ordinal,
-verb-based quantity, or probabilistic context inference. “Arbitrary Hangul
-suffix is not a registered numeric suffix” remains unchanged; registry-backed
-counter meaning and general numeric-core reading are separate, and attached
-`대` is an explicit preserve exception to the latter.
+The integer threshold path reuses the existing counter renderer and records
+reason `dae_counter_sino_threshold_40_plus`. All confirmed/deferred low-value
+decisions use the `contextual_number_unit` owner and terminally block decimal,
+generic number, counter, and Korean numeric-chain reentry. Age and generation
+use only the exact registries above; major-item inference, unprefixed ordinal,
+verb-only quantity, and probabilistic context inference remain excluded.
 
 Claim precedence is:
 
 ```text
 protected / structured owner
 -> explicit score or game context N대M
--> threshold-qualified N대 or explicit contextual N대
+-> malformed contextual defer or threshold-qualified integer N대
+-> explicit contextual machine/generation/age N대
 -> keywordless independent N대M
--> below-40 ambiguous N대 preserve
+-> ambiguous contextual N대 defer
 -> generic number fallback
 ```
 

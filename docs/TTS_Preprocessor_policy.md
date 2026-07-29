@@ -8,6 +8,359 @@
 
 ---
 
+## Contextual Number-Unit Decision Contract
+
+문맥에 따라 수사 체계가 달라지는 숫자+단위는 기본 transform에서 즉시
+판정한다. 별도 호환 모드나 rollout mode는 두지 않는다. 규칙만으로 의미를
+확정하지 못하면 숫자·원래 공백·단위·붙은 조사/접사를 포함한 인식 surface
+전체를 원문으로 출력하고 terminal claim으로 종료한다. 따라서 LLM이
+비활성화된 호출에서도 raw 숫자가 남을 수 있다.
+
+내부 판정은 다음 네 typed outcome을 사용한다.
+
+- `confirmed`: 승인된 exact anchor 또는 확정 구조가 일치하여 기존
+  Sino/native/hybrid renderer로 변환한다.
+- `deferred`: 단위 surface는 인식했지만 의미가 모호하거나 숫자 형식이
+  지원되지 않아 source-exact로 보존한다.
+- `absolute_preserve`: URL, email, path, filename, JSON-like, code,
+  identifier 또는 보호 괄호처럼 규칙과 후속 LLM 모두 변경하면 안 되는
+  영역이다.
+- `not_applicable`: 현재 contextual owner의 대상이 아니므로 다음 owner
+  평가를 허용한다.
+
+`confirmed`와 `deferred`는 모두 비재진입 claim이다. 특히 deferred span의
+숫자가 `numeric_suffix`, generic counter 또는 일반 number fallback으로
+다시 처리되어서는 안 된다. 기존 날짜·시간·전화번호·통화·백분율·온도·
+분수·범위·점수 관계·측정 단위처럼 더 구체적인 owner가 항상 먼저다.
+
+production facade는 계속 `engine.main.transform(text)`와
+`engine.main.transform_debug(text)`의 mode-less 계약을 사용한다.
+`/api/transform`에도 rollout 필드를 추가하지 않는다. 일반 transform과
+일반 API 응답은 읽기 문자열만 반환하며 판정 정보나 marker를 포함하지
+않는다.
+
+의미 판정 로그는 원문 preservation 검증용 `shadow_logs`와 분리된
+`TransformTrace.contextual_decision_logs`에만 기록한다. 이 필드는
+`transform_debug`, packaged binary `--include-debug`, API
+`include_debug=true` 경로에서만 직렬화한다. 일반 transform 응답, 영속 DB,
+외부 telemetry에는 노출하거나 전송하지 않는다.
+
+전면 적용 이후 dual-run, shadow rollout, compatibility mode는 존재하지
+않는다. `engine.span_engine.shadow`와 `shadow_logs`는 구버전 결과를
+실행하거나 선택하는 경로가 아니라 원문 한글·공백·문장부호의 source-span
+보존을 검증하는 현행 safety invariant다. `contextual_decision_logs`의
+`existing_engine_result`, `new_rule_result`, `actual_final_output`은
+debug-only 판정 근거이며 서비스 routing이나 구버전 fallback에 사용하지
+않는다.
+
+새 문맥 owner는 현재 renderer와 canonical spacing을 재사용한다.
+대표적으로 `5분 뒤 -> 오분 뒤`, `3번 버스 -> 삼번 버스`,
+`제3장 -> 제 삼장`을 유지한다. 의미가 달라 기존 읽기 구조가 달라지는
+경우에만 `총 3번 -> 총 세 번`, `손님 5분 -> 손님 다섯 분`처럼
+승인된 의미별 읽기를 적용한다.
+
+정상 decimal과 comma-decimal은 단위의 native/Sino 정수 형태와 무관하게
+기존 compact Sino decimal renderer를 사용한다. 즉 소수점은 공백 없는
+`쩜`, 소수부는 source digit 순서 그대로 읽고 trailing zero도 `영`으로
+보존한다. 소수라고 해서 단위 의미 판정이 없어지는 것은 아니다.
+`번·부·단·등`처럼 의미별 attachment/spacing이 다른 단위는 기존 exact
+anchor로 의미와 간격을 확정하며, anchor가 없는 bare surface는 계속
+deferred claim으로 종료한다.
+
+valid decimal counter와 exact contextual anchor에는 직접 붙은 `+`와
+owner-local minus alias를 허용한다. 부호·숫자·단위는 하나의 claim으로
+소비하며 `플러스`/`마이너스`를 생성한다. 이는 signed integer counter를
+일괄 허용하는 정책이 아니다. `+3명`, `-4가지` 등 정수 counter의 기존
+UNSIGNED_ONLY 계약은 유지한다. `쯤`, `정도`, `꼴`, `당`은 정상 decimal
+counter 뒤의 exact attached tail로 허용하며 철자와 source attachment는
+변경하지 않는다.
+
+### `가지`
+
+`가지`는 직접 결합 또는 ASCII 공백 한 칸으로 결합한 정상 unsigned
+integer와 valid decimal을 수량으로 확정한다. 정수 `1..99`는 기존 native
+renderer, 정수 `0`과 `100+`는 기존 Sino/large-integer renderer를
+사용한다. decimal은 Sino decimal renderer를 사용하고 결과는 항상
+수사와 `가지` 사이를 한 칸 띄운다.
+
+```text
+0가지 -> 영 가지
+1가지 -> 한 가지
+20가지 -> 스무 가지
+40가지 -> 마흔 가지
+99가지 -> 아흔아홉 가지
+100가지 -> 백 가지
+1.5가지 -> 일쩜오 가지
++1.5가지 -> 플러스 일쩜오 가지
+4 가지 -> 네 가지
+4가지를 -> 네 가지를
+3~4가지 -> 세 가지에서 네 가지
+```
+
+`01가지`, `+4가지`, `-4가지`, `1,00가지`, `4A가지`,
+`제4가지`는 surface 전체를 deferred claim으로 원문 보존한다. URL, path,
+filename, JSON-like, backtick, identifier 내부는 absolute preserve가
+먼저다. 이미 한글인 `네 가지`, `여러 가지`, `몇 가지`는 비대상이다.
+
+### `분`, `번`, `점`, `조`
+
+`분`은 기존 clock/structured-duration owner와 `뒤`, `전`, `동안`,
+`이내`, `이상`, `이하`, `소요`, `부터`, `까지`의 명시 시간 구조를
+Sino canonical로 유지한다. 바로 앞 어절이 다음 exact 사람 명사일 때만
+높임 인원 수로 확정한다.
+
+`손님`, `고객`, `내빈`, `참석자`, `참가자`, `지원자`, `후보자`,
+`위원`, `심사위원`, `선생님`, `교수님`, `어르신`, `환자`, `승객`.
+
+```text
+5분 뒤 -> 오분 뒤
+손님 5분이 도착했다 -> 손님 다섯 분이 도착했다
+5분이 남았다 -> 5분이 남았다
+```
+
+bare `N분`과 사람/시간 anchor가 없는 조사 결합은 유보한다. 이 결정으로
+LLM OFF 기본 출력에서도 `18분 -> 18분`처럼 raw 숫자가 남을 수 있다.
+`N시간 N분`, `N분 N초` 등 기존 structured-duration owner는 계속 먼저다.
+
+`번`의 identifier exact allowlist는 `버스`, `출구`, `문제`, `문항`,
+`질문`, `후보`, `좌석`, `객실`, `창구`, `게이트`, `트랙`, `채널`,
+`노선`, `테이블`, `파일`, `항목`이다. occurrence는 앞 marker
+`총`/`모두`, 직접 tail `씩`/`이나`, 또는 exact action
+`반복`, `재시도`, `방문`, `시도`, `호출`, `클릭`, `재생`에서만
+확정한다. 고정 주소 suffix `N번지`는 기존 붙임형 Sino canonical로
+확정한다.
+
+```text
+3번 버스 -> 삼번 버스
+총 3번 시도했다 -> 총 세 번 시도했다
+3번 확인했다 -> 3번 확인했다
+```
+
+`점`의 score allowlist는 `점수`, `평점`, `만점`, `득점`, `실점`,
+`감점`, `가점`, `별점`, `획득`, `기록`, `차이`, `격차`, `평균`,
+`평가`이다. 물품 수량은 앞 명사가 `작품`, `출품작`, `전시품`,
+`미술품`, `유물`, `문화재`, `소장품`, `물품`, `상품`, `수집품` 중
+하나이고 다음 action이 `전시`, `공개`, `출품`, `기증`, `소장`,
+`선정`, `판매`, `반입`, `확보` 중 하나인 exact pair에서만 확정한다.
+decimal `N.N점`은 기존 decimal-score owner가 먼저다.
+
+```text
+평점 3점 -> 평점 삼 점
+평점은 3점이었다 -> 평점은 삼 점이었다
+작품 3점을 전시했다 -> 작품 세 점을 전시했다
+3점이 공개됐다 -> 3점이 공개됐다
+3.5점 -> 삼쩜오 점
+총 2.35번 -> 총 이쩜삼오 번
+손님 2.35분 -> 손님 이쩜삼오 분
+```
+
+`조`의 `N조 원`과 바로 앞 금융 anchor `금액`, `예산`, `매출`, `자산`,
+`부채`, `투자`, `규모`, 그리고 bare standalone `N조`는 기존
+large-unit owner가 우선한다. group count는 `총`/`모두` 또는 직접
+action `나누`, `나눴`, `편성`, `구성`, `배정`, `만들` 구조에서만
+native로 확정한다. 조사가 붙었으나 이 anchor가 없는 표면은 유보한다.
+`제N조`는 기존 조문 preserve canonical을 유지한다.
+
+```text
+3조 원 -> 삼조 원
+학생을 3조로 나눴다 -> 학생을 세 조로 나눴다
+3조가 발표했다 -> 3조가 발표했다
+제3조 -> 제3조
+```
+
+네 단위 모두 leading zero, malformed comma, alphanumeric numeric core와
+signed integer를 원자적으로 유보한다. valid decimal은 기존 specific
+owner 또는 exact contextual anchor가 있으면 Sino decimal로 확정하고,
+의미별 spacing이 갈리는 bare surface는 원문 유보한다. 검토 후보,
+미등록 명사, 범주 추론, 단독 다의 동사는 allowlist에 포함하지 않는다.
+
+### `대`
+
+기존 Korean `N대M` 점수 관계와 `제N대` 서수 owner가 먼저다. 기계·차량
+수량은 기존 중앙 registry `자동차`, `차량`, `장비`, `버스`, `서버`,
+`카메라` 및 기존의 direct/topic/adjacent-continuation 구조만 허용한다.
+확장 검토 후보인 승용차·트럭·택시·열차·기차·오토바이·자전거·드론·
+로봇·컴퓨터·노트북·모니터·프린터·스마트폰·태블릿·가전 명사는
+추가하지 않는다.
+
+세대 Sino 읽기는 direct suffix `N대째` 또는 exact generation noun
+`가족`, `가문`, `가계`, `가업`, `집안`, `왕조`, `세습`과의 직접
+구조에서 확정한다. 연령대는 10의 배수와 exact noun `남성`, `여성`,
+`청년`, `직장인`, `소비자`, `유권자`, `환자`, `인구`, `세대`,
+`연령층`, `초반`, `중반`, `후반`의 직접 결합에서 확정한다.
+
+```text
+3대2 -> 삼대이
+자동차 3대 -> 자동차 세 대
+가업을 3대째 이어 왔다 -> 가업을 삼 대째 이어 왔다
+가족 3대가 함께 살았다 -> 가족 삼 대가 함께 살았다
+20대 남성 -> 이십 대 남성
+30대 초반 -> 삼십 대 초반
+3대 과제 -> 3대 과제
+3대가 남았다 -> 3대가 남았다
+```
+
+기존 unsigned integer 40+ threshold owner는 유지한다. valid decimal은
+승인된 기계·세대 exact anchor에서 Sino decimal로 읽고 bare/age-band
+decimal은 유보한다. signed decimal도 동일 exact anchor가 full-claim할 수
+있을 때만 허용한다. signed integer, leading zero, malformed comma,
+alphanumeric `대`는 source-exact deferred claim이다. 과제·원칙·목표·전략 등
+“초기 검토 주요 항목”은 승인하지 않았으므로 `3대 과제`를 확정하지 않는다.
+
+### `부`, `동`, `호`, `판`, `단`, `등`, `척`
+
+이 단위들은 기존 주소·서수·범위·점수 owner 뒤이면서 generic
+numeric-suffix/counter/number fallback 앞의 contextual owner가 판정한다.
+확정 및 유보 claim 모두 terminal이다. 기존 spacing canonical을 재사용하여
+`부·단·등`의 붙임형 Sino 읽기는 붙여 쓰고, 기존 Sino counter인 `동·호`와
+hybrid counter인 `판·척`, 모든 native 수량 읽기는 단위 앞을 한 칸 띈다.
+valid decimal은 anchor가 확정한 어느 의미에서도 Sino decimal을 사용하되
+이 표의 기존 attachment/spacing을 그대로 재사용한다. bare decimal은
+정수 bare와 마찬가지로 유보한다.
+
+| 단위 | Sino/식별 확정 allowlist | native/수량 확정 allowlist | 유보 예 |
+|---|---|---|---|
+| `부` | `N부작`, 앞 명사 `행사·공연·책의` | 문서 명사 `신문·서류·문서·보고서·신청서·계약서·책자·인쇄물·안내문·자료집·원고`와 action `인쇄·복사·제출·배포·준비·발급·보관·냈`의 직접 pair | `자료 3부`, `3부가 남았다` |
+| `동` | `N동 N호`, 뒤 명사 `주민·사무소·행정동·주소` | `건물·주택·공장·창고·시설`과 `신축·건설·철거·붕괴·피해·증축·지었·무너졌`의 직접 pair | `아파트 3동`, `3동이 남았다` |
+| `호` | `N호실`, `N호선`, `N동 N호`, 앞/뒤 식별 명사 `차량·태풍·선박·열차·위성` | `농가·가구·세대·피해가구`와 `지원·피해·조사·선정·복구`의 직접 pair | `농가 3호`, `3호가 선정됐다` |
+| `판` | 앞 명사 `개정·증보·책·사전·교재` | `바둑·장기·체스·경기·대국·게임·승부` 직접 결합 또는 고정 `N판을/를 겨루다` | `3판 진행했다` |
+| `단` | `N단계`, 앞 명사 `태권도·유도·검도·바둑·기어·계단·단계` | `총 N단`, 고정 `N단 선반`, 또는 `N단으로`와 action `쌓·적재·올리` | `3단 구조` |
+| `등` | `N등급`, 앞 명사 `대회·경기·평가·시험·순위` | `조명·전등·등불·램프`와 `설치·점등·소등·교체·켜·끄`의 직접 pair | `3등이 남았다` |
+| `척` | 앞 길이 anchor `길이·폭·너비·높이·깊이·둘레` | 앞 선박 명사 `선박·배·함정·어선·화물선·여객선·군함·잠수함` | `3척이 남았다` |
+
+```text
+서류 3부를 제출했다 -> 서류 세 부를 제출했다
+행사 3부가 시작됐다 -> 행사 삼부가 시작됐다
+3동 502호 -> 삼 동 오백이 호
+건물 3동을 지었다 -> 건물 세 동을 지었다
+3호실 -> 삼 호실
+피해 농가 3호를 지원했다 -> 피해 농가 세 호를 지원했다
+바둑 3판 -> 바둑 세 판
+개정 3판 -> 개정 삼 판
+태권도 3단 -> 태권도 삼단
+상자를 3단으로 쌓았다 -> 상자를 세 단으로 쌓았다
+대회 3등 -> 대회 삼등
+조명 3등을 설치했다 -> 조명 세 등을 설치했다
+선박 3척 -> 선박 세 척
+길이 3척 -> 길이 삼 척
+```
+
+`동`의 단독 앞 명사 `아파트`는 식별과 수량이 충돌하므로 확정하지 않는다.
+`판`의 뒤 동사만 있는 구조도 확정하지 않는다. 조명 수량은 명사/action
+pair를 모두 요구한다. valid decimal은 동일 exact anchor에서 Sino
+decimal로 확정한다. signed integer, leading zero, malformed-comma,
+alphanumeric numeric core와 anchor 없는 decimal은 표면 전체를 유보한다.
+
+### `장`, `권`, `편`, `층`
+
+마지막 contextual batch도 기존 prefixed ordinal과 range owner를 먼저
+유지한다. `제3장 -> 제 삼장`, `제15권 -> 제 십오권`,
+`제2편 -> 제 이편`, `1~3층 -> 일에서 삼 층` canonical은 바뀌지 않는다.
+
+- `장`: `종이·사진·표·티켓·카드·문서·인쇄물·포스터·전단·명함`
+  direct noun은 native sheet count다. `N장 N절` 또는 앞 명사
+  `책·보고서·교재·논문·목차`는 Sino chapter number다.
+- `권`: `책·도서·사전·교재·소설·만화책·자료집` direct noun은
+  native book count다. `N권 N호` 또는 앞 명사 `전집·시리즈·서지`는
+  Sino volume number다.
+- `편`: `영화·드라마·논문·시·소설·기사·영상·다큐멘터리·광고`
+  direct noun은 native work count다. 앞 명사 `시리즈·법전·문서·상편·하편`
+  direct structure는 Sino part number다.
+- `층`: tail `에·에서`, direct next location noun
+  `회의실·사무실·로비·식당`, 또는 direct previous `지하`에서만 Sino
+  floor location으로 확정한다.
+
+```text
+사진 3장 -> 사진 세 장
+3장 2절 -> 삼 장 이절
+책 3권 -> 책 세 권
+3권 2호 -> 삼 권 이 호
+영화 3편 -> 영화 세 편
+시리즈 3편 -> 시리즈 삼 편
+3층 회의실 -> 삼 층 회의실
+3층을 올라갔다 -> 3층을 올라갔다
+3층이 무너졌다 -> 3층이 무너졌다
+```
+
+`장·권·편`의 bare/under-anchored 표면은 구조 번호와 실제 수량을
+구분하지 못하므로 유보한다. `층`은 특히 보수적으로 처리하여 건물 명사,
+이동 동사, 붕괴·적층 문맥만으로는 위치를 확정하지 않는다. 네 단위의
+valid decimal은 동일 exact anchor에서 Sino decimal로 확정한다. signed
+integer, leading zero, malformed comma, alphanumeric numeric core와
+anchor 없는 decimal은 표면 전체를 유보한다.
+
+### Decimal owner coverage와 caret 원자성
+
+등록된 simple/special unit은 owner별로 별도 금지 사유가 없는 정상
+decimal과 comma-decimal을 공통 Sino decimal renderer로 읽는다. `kHz`와
+`KB`도 이 계약에 포함한다. 숫자 renderer가 지원하는 1억 미만 정수부는
+plain/comma 표기 여부와 무관하게 동일하게 허용하므로
+`10000.5kg -> 만쩜오 킬로그램`이다.
+
+exact compound unit `Mbps`, `Gbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi`도
+정상 decimal/comma-decimal을 full-claim한다. compound slash unit의 기존
+unsigned/sign 정책과 URL/path/unsafe-tail 보호는 바꾸지 않는다.
+
+`pH` owner는 정상 signed/unsigned integer, decimal, comma-decimal을
+`피에이치 + 공통 숫자 읽기`로 full-claim한다. 문장 끝 마침표는 numeric
+surface 밖의 punctuation으로 남긴다. malformed comma/repeated dot 또는
+unsafe tail은 `pH`와 숫자를 함께 보존하며 숫자만 다시 읽지 않는다.
+
+caret power는 자연스러운 exact length-unit allowlist
+`mm·cm·km·m`의 직접 결합 `^2`/`^3`만 각각
+`제곱<단위>`/`세제곱<단위>`로 읽는다. 모든 등록 알파벳 단위에 이 구조를
+자동 추론하지 않는다. 승인되지 않은 `알파벳단위^지수`는 해당 literal
+블록을 source-exact로 보존하되, 그 앞의 독립적으로 유효한 숫자 core는
+공통 숫자 읽기로 변환할 수 있다.
+
+```text
+2.35m^2 -> 이쩜삼오 제곱미터
+2.35cm^3 -> 이쩜삼오 세제곱센티미터
+2.35KB^2 -> 이쩜삼오KB^2
+2.35m^4 -> 이쩜삼오m^4
+m^3 -> m^3
+7m ^3 -> 칠 미터 ^3
+01.5m^2 -> 01.5m^2
+```
+
+caret exponent의 숫자만 generic number fallback으로 변환하거나,
+비승인 단위만 먼저 번역하는 부분 변환은 금지한다. URL, path, filename,
+JSON-like, code, identifier 안에서는 기존 absolute preserve가 전체에
+우선한다. 소수점 출력은 이 변경에서도 기존 compact `쩜` canonical을
+유지하며 `이쩜 삼오` 같은 새 간격을 도입하지 않는다.
+
+large-unit 뒤의 비승인 delimiter `–`, `—`, `−`, `－`, `＋`, `·`는
+large-unit 또는 내부 decimal만 부분 변환하지 않고 해당 숫자+large-unit
+core를 보존한다. ASCII range/path delimiter의 기존 owner도 유지한다.
+
+### 승인하지 않은 anchor와 구조
+
+아래 항목은 설계 입력의 검토 후보이거나 exact pair가 부족하므로 이번
+canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자동 확장하지
+않는다.
+
+| 단위 | 제외한 anchor/구조 |
+|---|---|
+| `가지` | ordinal `제N가지`, signed integer/leading-zero/malformed/alphanumeric surface; valid decimal은 포함 |
+| `분` | 등록되지 않은 사람 명사, bare `N분`, 사람/시간을 동사만으로 추론하는 구조 |
+| `번` | 미등록 번호 명사, `확인` 같은 미등록 occurrence action, bare `N번` |
+| `점` | 물품 명사 또는 action 한쪽만 있는 구조, 미등록 작품 범주 |
+| `조` | bare 조사 결합 그룹 추론, 미등록 금융/그룹 명사 |
+| `대` | 승용차·트럭·택시·열차·기차·오토바이·자전거·드론·로봇·컴퓨터·노트북·모니터·프린터·스마트폰·태블릿·가전; 과제·원칙·목표·전략 같은 초기 검토 주요 항목 |
+| `부` | `자료 N부`, 문서 명사만 있고 수량 action이 없는 구조 |
+| `동` | bare `아파트 N동`, 미등록 건축물 명사, 실제 수량 action이 없는 구조 |
+| `호` | action 없는 `농가 N호`, 미등록 고유 식별 대상 |
+| `판` | `N판 진행했다`, `N판이 나왔다` 같은 일반 뒤 동사만 있는 구조 |
+| `단` | `N단 구조`, `N단으로 만들었다`, 미등록 적층 action |
+| `등` | 조명 명사/action 중 하나만 있는 구조, bare `N등` |
+| `척` | `N척 규모`, bare/새로운 `N척`, 미등록 선박·길이 명사 |
+| `장` | `N장부터`, `N장이 중요하다`, 미등록 물품·문서 구조 명사 |
+| `권` | `N권부터`, `N권이 남았다`, 미등록 출판물·서지 구조 명사 |
+| `편` | `N편부터`, `N편이 남았다`, 미등록 작품·구조 명사 |
+| `층` | `N층을 올라가다/내려가다`, `N층이 무너지다`, 건물 명사만 있는 위치/개수 추론 |
+
+---
+
 ## 0.0 Korean Eligibility / Symbol Alias Integrated Policy
 
 ### 0.0.1 Guard 우선순위 고정
@@ -511,9 +864,10 @@ compatibility wrapper without changing their structural assembly: standalone
 signed number, simple/special unit, currency, percent-point, large-unit,
 minus-only slash fraction, colon/multi-colon/score operands, tilde range
 endpoints, signed temperature, and signed angle degree. International phone
-keeps its owner-custom digit-by-digit reader. Compound slash units and counters
-remain unsigned unless their own policy explicitly says otherwise; this change
-does not add signed counter semantics.
+keeps its owner-custom digit-by-digit reader. Compound slash units remain
+unsigned. Counter integers also remain unsigned, but the explicit decimal
+counter/contextual contract above opts valid decimal surfaces into the default
+sign profile when the complete sign+number+unit surface can be claimed.
 
 Temperature remains the explicit semantic exception and must full-claim before
 general unit/number fallback. Celsius/Fahrenheit plus and minus use 영상/영하;
@@ -967,7 +1321,7 @@ Time owner precedence remains higher than semantic-pair owner. Leading-zero and 
 ### Korean `대` score-pair owner: independent right-number gate
 
 The `korean_da_score_pair` owner handles narrow Korean score/result relations in
-the `span_default` path. In addition to explicit semantic-pair keyword context,
+the current production path. In addition to explicit semantic-pair keyword context,
 Korean `대` score-pair surfaces may be claimed without a score keyword when the
 right-side numeric block is independent. It claims the following spacing forms:
 
@@ -978,7 +1332,7 @@ N대 M
 ```
 
 Both numeric sides must be valid readable numeric operands already supported by
-the `span_default` numeric owners as standalone numeric expressions. This
+the current production numeric owners as standalone numeric expressions. This
 includes valid unsigned integers, ASCII `+`/`-` signed integers, comma integers,
 unsigned decimals, ASCII `+`/`-` signed decimals, comma decimals, and slash
 fractions. The owner does not accept leading-zero integers, malformed decimals,
@@ -4875,7 +5229,7 @@ suffix 정책을 확장하지 않는다. `냥`은 숫자와 결합한 표면 자
 21명
 3개
 2개월
-21층
+3층 회의실
 ```
 
 원칙:
@@ -4892,8 +5246,8 @@ Counter Policy Table:
 | `사람` | native_only | - | `두 사람` | 1~99 native path |
 | `살` | native_only | - | `열세 살` | 1~99 native path |
 | `개` | hybrid | 39 | `39개 -> 서른아홉 개` | 40부터 sino |
-| `권` | hybrid | 39 | `39권 -> 서른아홉 권` | 40부터 sino |
-| `장` | hybrid | 39 | `39장 -> 서른아홉 장` | 40부터 sino |
+| `권` | contextual | - | `책 3권 -> 책 세 권` | bare는 권차/수량 충돌로 유보 |
+| `장` | contextual | - | `사진 3장 -> 사진 세 장` | bare는 장 번호/수량 충돌로 유보 |
 | `명` | hybrid | 39 | `39명 -> 서른아홉 명` | 40부터 sino |
 | `마리` | hybrid | 39 | `39마리 -> 서른아홉 마리` | 40부터 sino |
 | `그루` | hybrid | 39 | `39그루 -> 서른아홉 그루` | 40부터 sino |
@@ -4920,11 +5274,11 @@ Counter Policy Table:
 | `봉지` | hybrid | 39 | `39봉지 -> 서른아홉 봉지` | 40부터 sino |
 | `통` | hybrid | 39 | `39통 -> 서른아홉 통` | 40부터 sino |
 | `묶음` | hybrid | 39 | `39묶음 -> 서른아홉 묶음` | 40부터 sino |
-| `편` | hybrid | 39 | `39편 -> 서른아홉 편` | 40부터 sino |
-| `판` | hybrid | 39 | `39판 -> 서른아홉 판` | 40부터 sino |
+| `편` | contextual | - | `영화 3편 -> 영화 세 편` | bare는 편 번호/수량 충돌로 유보 |
+| `판` | contextual | - | `바둑 3판 -> 바둑 세 판` | bare는 판차/횟수 충돌로 유보 |
 | `줄` | hybrid | 39 | `39줄 -> 서른아홉 줄` | 40부터 sino |
 | `칸` | hybrid | 39 | `39칸 -> 서른아홉 칸` | 40부터 sino |
-| `대` | hybrid | 39 | `차량 39대 -> 차량 서른아홉 대` | 40 미만은 등록 수량 문맥에서만 owner 진입; 40부터 문맥 없이 sino |
+| `대` | contextual + legacy threshold | 39 | `차량 39대 -> 차량 서른아홉 대` | 등록 기계·세대·연령 anchor; bare 40+는 기존 sino threshold |
 | `석` | hybrid | 39 | `39석 -> 서른아홉 석` | 40부터 sino |
 | `표` | hybrid | 39 | `39표 -> 서른아홉 표` | 40부터 sino |
 | `매` | hybrid | 39 | `39매 -> 서른아홉 매` | 40부터 sino |
@@ -4938,13 +5292,13 @@ Counter Policy Table:
 | `종류` | hybrid | 39 | `39종류 -> 서른아홉 종류` | 40부터 sino |
 | `항목` | hybrid | 39 | `39항목 -> 서른아홉 항목` | 40부터 sino |
 | `사례` | hybrid | 39 | `39사례 -> 서른아홉 사례` | 40부터 sino |
-| `척` | hybrid | 39 | `39척 -> 서른아홉 척` | 선박/배 등 수량 counter; 40부터 sino |
+| `척` | contextual | - | `선박 3척 -> 선박 세 척` | bare는 선박 수량/길이 충돌로 유보 |
 | `냥` | hybrid | 39 | `3냥 -> 석냥` | `N냥` 자체로 단위 확정; 3=`석`, 4=`넉`; 입력 공백 보존 |
 | `되`, `섬` | hybrid | 39 | `쌀 4되 -> 쌀 넉 되` | 명확한 전통 단위 문맥에서 3=`석`, 4=`넉` |
 | `돈`, `말`, `발`, `푼` | hybrid | 39 | `쌀 3말 -> 쌀 서 말` | 명확한 전통 단위 문맥에서 3=`서`, 4=`너` |
-| `층` | sino_only | - | `21층 -> 이십일 층` | native 금지 |
-| `호` | sino_only | - | `21호 -> 이십일 호` | native 금지 |
-| `동` | sino_only | - | `21동 -> 이십일 동` | native 금지 |
+| `층` | contextual | - | `3층 회의실 -> 삼 층 회의실` | bare/이동·개수 가능 표현 유보 |
+| `호` | contextual | - | `3호실 -> 삼 호실` | bare는 식별/가구 수량 충돌로 유보 |
+| `동` | contextual | - | `3동 502호 -> 삼 동 오백이 호` | bare는 주소/건물 수량 충돌로 유보 |
 | `년` | sino_only | - | `21년 -> 이십일년` | native 금지 |
 | `월` | sino_only | - | `01월 -> 일월` | leading zero override |
 | `일` | sino_only | - | `03일 -> 삼일` | leading zero override |
@@ -5047,12 +5401,12 @@ preserve한다. `N대`의 `40` 이상은 의미 문맥 없이 owner에 진입한
 119건 -> 백십구 건
 139명 -> 백삼십구 명
 140명 -> 백사십 명
-31권 -> 서른한 권
-39권 -> 서른아홉 권
-40권 -> 사십 권
-31장 -> 서른한 장
-39장 -> 서른아홉 장
-40장 -> 사십 장
+31권 -> 31권
+39권 -> 39권
+40권 -> 40권
+31장 -> 31장
+39장 -> 39장
+40장 -> 40장
 31개 -> 서른한 개
 39개 -> 서른아홉 개
 40개 -> 사십 개
@@ -5126,24 +5480,24 @@ preserve한다. `N대`의 `40` 이상은 의미 문맥 없이 owner에 진입한
 40통 -> 사십 통
 2묶음 -> 두 묶음
 40묶음 -> 사십 묶음
-2편 -> 두 편
-40편 -> 사십 편
+2편 -> 2편
+40편 -> 40편
 101차례 -> 백일 차례
-101편 -> 백일 편
-101권 -> 백일 권
-101장 -> 백일 장
+101편 -> 101편
+101권 -> 101권
+101장 -> 101장
 101개 -> 백일 개
 12,345명 -> 만 이천삼백사십오 명
 123,456명 -> 십이만 삼천사백오십육 명
 12,345,678,901,234명 -> 십이조 삼천사백오십육억 칠천팔백구십만 천이백삼십사 명
-2판 -> 두 판
-40판 -> 사십 판
+2판 -> 2판
+40판 -> 40판
 2줄 -> 두 줄
 40줄 -> 사십 줄
 2칸 -> 두 칸
 40칸 -> 사십 칸
-2대 -> 두 대
-39대 -> 서른아홉 대
+2대 -> 2대
+39대 -> 39대
 40대 -> 사십 대
 101대 -> 백일 대
 2항목 -> 두 항목
@@ -5158,11 +5512,11 @@ preserve한다. `N대`의 `40` 이상은 의미 문맥 없이 owner에 진입한
 39종류 -> 서른아홉 종류
 40종류 -> 사십 종류
 101종류 -> 백일 종류
-1척 -> 한 척
-29척 -> 스물아홉 척
-39척 -> 서른아홉 척
-40척 -> 사십 척
-100척 -> 백 척
+1척 -> 1척
+29척 -> 29척
+39척 -> 39척
+40척 -> 40척
+100척 -> 100척
 2항목abc -> 2항목abc
 2사례test -> 2사례test
 2종류A -> 2종류A
@@ -5170,7 +5524,7 @@ preserve한다. `N대`의 `40` 이상은 의미 문맥 없이 owner에 진입한
 A2항목 -> A2항목
 A1척 -> A1척
 model-2대 -> model-2대
-21층 -> 이십일 층
+21층 -> 21층
 2개월 -> 이개월
 ```
 
@@ -8635,7 +8989,7 @@ production 구현과 문서 규칙의 대응은 다음과 같다.
 | 문서 규칙 | 현행 구현 기준 파일 / 함수 |
 |---|---|
 | production source facade | `engine.main.transform` |
-| production orchestration | `engine.span_engine.production_adapter.transform_for_production` → `engine.span_engine.transform.transform_with_trace` |
+| production orchestration | `engine.span_engine.production_adapter.transform_for_production(text, debug=False)` → `engine.span_engine.transform.transform_with_trace` |
 | source span / render piece / typed surface | `engine.span_engine.models` |
 | tokenization | `engine.span_engine.tokenizer.tokenize_immutable_spans` |
 | shadow buffer | `engine.span_engine.shadow.build_shadow_buffer` |
@@ -10160,7 +10514,8 @@ Boundary:
 적용 owner:
 
 - currency: `1,330원`, `1,330 원`, `₩1,330`, `₩ 1,330`, `$1,234.56`, `$ 1,234.56`, `€1,234`, `€ 1,234`, `￥1,500`
-- counter: `1,200건`, `1,200 건`, `8,500명`, `8,500 명`, `1,200점`, `1,200 점`
+- counter: `1,200건`, `1,200 건`, `8,500명`, `8,500 명`
+- contextual `점`: bare `1,200점`, `1,200 점`은 점수/물품 anchor가 없어 유보
 - simple physical/data/frequency unit: `1,250m`, `1,250 m`, `1,250km`, `1,250 km`, `1,250cm`, `1,250 cm`, `1,200kg`, `1,200 kg`, `1,200g`, `1,200 g`, `1,000MB`, `1,000 MB`, `1,000GB`, `1,000 GB`, `1,000PB`, `1,000 PB`, `1,000Hz`, `1,000 Hz`, `1,000MHz`, `1,000 MHz`, `1,000GHz`, `1,000 GHz`
 - temperature: `25℃`, `25 ℃`, `-2.5℃`, `-2.5 ℃`, `+3℃`, `+3 ℃`, `25℉`, `25 ℉`, `-2.5℉`, `-2.5 ℉`
 - compound slash unit: `1,000km/h`, `1,000 km/h`, `1,000m/s`, `1,000 m/s`, `1,000cm/s`, `1,000 cm/s`, `1,000m/min`, `1,000 m/min`, `1,000km/L`, `1,000 km/L`, `1,000m/L`, `1,000 m/L`, `1,000KB/s`, `1,000 KB/s`
@@ -10259,7 +10614,7 @@ Boundary / unsafe tail:
 fallback에만 의존하지 않는다. `korean_da_score_pair` owner가 approved
 score/result context 또는 independent right-number gate 안에서 `N 대 M`,
 `N대M`, `N대 M` 세 형태를 full-claim하고 양쪽 operand를 읽는다. Operand는
-`span_default` numeric owners가 standalone numeric expression으로 검증하고
+current production numeric owner가 standalone numeric expression으로 검증하고
 읽을 수 있는 valid readable numeric operand이다. 이 owner는 `counter_noun`보다 먼저 평가되어야 하며, 오른쪽
 숫자가 등록된 owner-attached counter/unit/currency/percent/date-time/duration/
 multiplier/numeric-suffix surface를 형성하면 score keyword 문맥에서도
@@ -10299,6 +10654,11 @@ square-bracket protected interior, 또는 unsafe alphabetic tail은
 `korean_da_score_pair`가 claim하지 않는다.
 
 #### Ambiguous standalone numeric `대`
+
+> 이 하위절은 이전 `대` gate의 historical baseline이다. 현재 canonical은
+> 문서 맨 앞의 contextual `대` 절이 전부 supersede한다. 아래의 과거
+> decimal/age/generation 예와 `ambiguous_numeric_dae_preserve` owner 명칭은
+> 현재 구현·테스트 판단에 사용하지 않는다.
 
 기존 상위 owner가 claim하지 않은 source-attached `숫자+대` surface는
 numeric value를 먼저 평가한다. Valid unsigned integer/comma integer 또는
@@ -10351,17 +10711,14 @@ N대{조사·어미}`로 인접한 경우에만 허용한다. 쉼표, 절 경계
 40대 남성 -> 사십 대 남성
 100대 명소 -> 백 대 명소
 6,700대, -> 육천칠백 대,
-40.5대 -> 사십쩜오 대
+40.5대 -> 40.5대
 차량 2대 1대를 점검했다 -> 차량 두 대 한 대를 점검했다
-차량 2대, 가족 1대가 모였다 -> 차량 두 대, 가족 1대가 모였다
+차량 2대, 가족 1대가 모였다 -> 차량 두 대, 가족 일 대가 모였다
 ```
 
-소수도 같은 value threshold와 context gate를 사용한다. `40.0대`,
-`40.5대`는 각각 `사십쩜영 대`, `사십쩜오 대`로 읽는다. 40 미만에서는
-명시 문맥의 `장비 1.5대`만 기존 `decimal_registered_suffix` reading
-`장비 일쩜오 대`를 사용하고, bare `1.5대` 및 `1.5대가`는 전체를
-preserve한다. Malformed decimal/counter surface는 기존의 더 구체적인
-preserve 정책을 유지한다.
+소수 `대`는 값이나 기계 anchor와 관계없이 표면 전체를 유보한다.
+`40.0대`, `40.5대`, `장비 1.5대`, bare `1.5대` 및 `1.5대가` 모두
+source-exact contextual deferred claim이다.
 
 40 이상 threshold의 canonical reason은
 `dae_counter_sino_threshold_40_plus`다. 이 threshold는 semantic ambiguity만
@@ -10388,15 +10745,16 @@ token에 있으면 source-exact preserve span에 함께 포함할 수 있다. �
 40대를 -> 사십 대를
 100대로 -> 백 대로
 5대 과제 -> 5대 과제
-20대 남성 -> 20대 남성
-가족 3대 -> 가족 3대
-가업을 3대째 이어 왔다 -> 가업을 3대째 이어 왔다
+20대 남성 -> 이십 대 남성
+가족 3대 -> 가족 삼 대
+가업을 3대째 이어 왔다 -> 가업을 삼 대째 이어 왔다
 1.5대 -> 1.5대
 ```
 
-40 미만에서는 `5대 과제`, `20대 남성`, `가족 3대`의 의미를
-판별하는 semantic owner, 동사 기반 counter 추론, 확률/점수 기반 문맥 판정,
-제 없는 순번 또는 세대/연령대 사전을 추가하지 않는다. 숫자와 `대` 사이에
+40 미만에서 `5대 과제` 같은 미승인 주요 항목 의미는 유보한다.
+`20대 남성`과 `가족 3대`는 문서 맨 앞의 exact 연령/세대 registry에서만
+확정한다. 동사 기반 광범위 counter 추론, 확률/점수 기반 문맥 판정,
+제 없는 순번은 추가하지 않는다. 숫자와 `대` 사이에
 공백이 있는 기존 standalone counter surface는 이번 source-attached `N대`
 규칙의 직접 대상이 아니며 기존 counter 동작을 유지한다.
 
@@ -11031,14 +11389,16 @@ counter owner가 claim하지 않고 일반 숫자 읽기로 넘긴다.
 
 `분`, `초`는 sino counter로 읽고 붙인다. `05분`, `05초`처럼 두 자리 leading zero minute/second는 time reading과 같은 방식으로 허용한다.
 
-`건`, `곳`은 hybrid counter로 추가한다. `점`은 sino counter로 추가한다. 세 단위는 단위 앞에 띄어쓰기를 둔다.
+`건`, `곳`은 hybrid counter다. `점`은 현재 contextual owner가 점수/물품
+anchor를 요구하며 bare 표면은 유보한다. 확정된 `점`은 단위 앞에 띄어쓰기를
+둔다.
 
 ```text
 7시간 05분 -> 일곱 시간 오분
 3시간 이상 -> 세 시간 이상
 15건 -> 열다섯 건
 59건 -> 오십구 건
-120점 -> 백이십 점
+120점 -> 120점
 8곳 -> 여덟 곳
 ```
 

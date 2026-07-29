@@ -5,6 +5,8 @@ import os
 import zipfile
 from pathlib import Path
 
+import pytest
+
 
 def test_phase31a_required_scripts_and_artifacts_exist() -> None:
     for path in (
@@ -132,6 +134,7 @@ def test_phase31a_build_package_is_packaging_only() -> None:
     assert "subprocess.run" not in build_package_script
     assert "def build_binary" not in build_package_script
     assert "--binary" in build_package_script
+    assert "ignored_version" not in build_package_script
     assert "dist/tts_preprocessor" in build_package_script
     assert 'ARCHIVE_NAME = "tts-preprocessor-linux.zip"' in build_package_script
     assert "DOWNLOADS_DIR.iterdir()" not in build_package_script
@@ -140,3 +143,18 @@ def test_phase31a_build_package_is_packaging_only() -> None:
     assert "\"scripts/build_package.py\"" in release_script
     assert "\"--binary\"" in release_script
     assert "\"dist/tts_preprocessor\"" in release_script
+    assert "ignored-version" not in release_script
+
+
+def test_phase31a_package_and_release_reject_retired_version_argument(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from scripts import build_package, release
+
+    with pytest.raises(SystemExit) as exc_info:
+        build_package.parse_args(["build_package.py", "1.0"])
+    assert exc_info.value.code == 2
+    capsys.readouterr()
+
+    assert release.main(["release.py", "1.0"]) == 1
+    assert capsys.readouterr().err.strip() == "Usage: python scripts/release.py"

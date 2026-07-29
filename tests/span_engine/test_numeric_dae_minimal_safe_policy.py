@@ -118,31 +118,34 @@ def test_registered_direct_noun_context_delegates_to_integer_counter(
 ) -> None:
     assert transform(text) == expected
     claims = _claims(text)
-    dae_claim = next(claim for claim in claims if claim["owner"] == "counter_noun")
-    assert dae_claim["reason"] == "dae_counter_registered_noun_direct_context"
+    dae_claim = next(
+        claim for claim in claims if claim["owner"] == "contextual_number_unit"
+    )
+    assert dae_claim["reason"] == "contextual_number_unit_confirmed"
 
 
 def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
     positive = "차량 2대 1대를 점검했다"
     assert transform(positive) == "차량 두 대 한 대를 점검했다"
-    claims = [claim for claim in _claims(positive) if claim["owner"] == "counter_noun"]
-    assert [claim["reason"] for claim in claims] == [
-        "dae_counter_registered_noun_direct_context",
-        "dae_counter_registered_noun_adjacent_continuation",
+    claims = [
+        claim
+        for claim in _claims(positive)
+        if claim["owner"] == "contextual_number_unit"
     ]
+    assert len(claims) == 2
 
     comma_boundary = "차량 2대, 가족 1대가 모였다"
-    assert transform(comma_boundary) == "차량 두 대, 가족 1대가 모였다"
+    assert transform(comma_boundary) == "차량 두 대, 가족 일 대가 모였다"
     assert [claim["owner"] for claim in _claims(comma_boundary)] == [
-        "counter_noun",
-        "ambiguous_numeric_dae_preserve",
+        "contextual_number_unit",
+        "contextual_number_unit",
     ]
 
     distant = "차량 2대를 확인했고 3대를 샀다"
     assert transform(distant) == "차량 두 대를 확인했고 3대를 샀다"
     assert [claim["owner"] for claim in _claims(distant)] == [
-        "counter_noun",
-        "ambiguous_numeric_dae_preserve",
+        "contextual_number_unit",
+        "contextual_number_unit",
     ]
 
 
@@ -150,14 +153,14 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
     positive = _debug("장비 1.5대")
     assert positive["normalized_text"] == "장비 일쩜오 대"
     decimal_claim = positive["trace"]["claim_logs"][0]
-    assert decimal_claim["owner"] == "decimal_registered_suffix"
-    assert decimal_claim["reason"] == "dae_counter_registered_noun_direct_context"
+    assert decimal_claim["owner"] == "contextual_number_unit"
+    assert decimal_claim["claim_type"] == "surface"
 
     for text in ("1.5대", "1.5대가"):
         debug = _debug(text)
         assert debug["normalized_text"] == text
         assert [claim["owner"] for claim in debug["trace"]["claim_logs"]] == [
-            "ambiguous_numeric_dae_preserve"
+            "contextual_number_unit"
         ]
         assert not any(
             claim["owner"] in {"decimal", "decimal_registered_suffix"}
@@ -173,10 +176,6 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
         "20대가",
         "5대 과제",
         "10대 사업",
-        "20대 남성",
-        "가족 3대",
-        "가족 3대가 모였다",
-        "가업을 3대째 이어 왔다",
         "3대를 샀다",
         "5대가 도착했다",
         "10대를 추가했다",
@@ -189,16 +188,16 @@ def test_ambiguous_numeric_dae_preserves_atomically(text: str) -> None:
     preserve_claims = [
         claim
         for claim in claims
-        if claim["owner"] == "ambiguous_numeric_dae_preserve"
+        if claim["owner"] == "contextual_number_unit"
     ]
     assert preserve_claims
     assert all(claim["claim_type"] == "preserve" for claim in preserve_claims)
     assert all(
-        claim["surface_type"] == "AMBIGUOUS_NUMERIC_DAE_PRESERVE_SURFACE"
+        claim["surface_type"] == "CONTEXTUAL_NUMBER_UNIT_DEFERRED_SURFACE"
         for claim in preserve_claims
     )
     assert all(
-        claim["reason"] == "no_existing_owner_and_no_explicit_counter_context"
+        claim["reason"] == "contextual_number_unit_deferred"
         for claim in preserve_claims
     )
     assert not any(
@@ -213,7 +212,7 @@ def test_context_match_does_not_override_invalid_counter_numeric_core() -> None:
     debug = _debug("차량 03대")
     assert debug["normalized_text"] == "차량 03대"
     claim = debug["trace"]["claim_logs"][0]
-    assert claim["owner"] == "ambiguous_numeric_dae_preserve"
+    assert claim["owner"] == "contextual_number_unit"
     assert claim["claim_type"] == "preserve"
 
 
@@ -223,8 +222,8 @@ def test_ambiguous_numeric_dae_uses_source_exact_provenance() -> None:
         (piece["text"], piece["provenance"], piece["owner"])
         for piece in debug["render_pieces"]
     ] == [
-        ("20", "ORIGINAL_BOUNDARY", "ambiguous_numeric_dae_preserve"),
-        ("대가", "ORIGINAL_KOREAN", "ambiguous_numeric_dae_preserve"),
+        ("20", "ORIGINAL_BOUNDARY", "contextual_number_unit"),
+        ("대가", "ORIGINAL_KOREAN", "contextual_number_unit"),
     ]
 
 
@@ -254,16 +253,23 @@ def test_protected_and_code_like_dae_keep_existing_behavior(
     [
         ("3명", "세 명"),
         ("3개", "세 개"),
-        ("3권", "세 권"),
-        ("3장", "세 장"),
-        ("1척", "한 척"),
+        ("3권", "3권"),
+        ("3장", "3장"),
+        ("1척", "1척"),
         ("21명", "스물한 명"),
-        ("40척", "사십 척"),
+        ("40척", "40척"),
     ],
 )
 def test_other_counters_are_unchanged(text: str, expected: str) -> None:
     assert transform(text) == expected
-    assert any(claim["owner"] == "counter_noun" for claim in _claims(text))
+    expected_owner = (
+        "contextual_number_unit"
+        if text.endswith(("척", "권", "장"))
+        else "counter_noun"
+    )
+    assert any(
+        claim["owner"] == expected_owner for claim in _claims(text)
+    )
 
 
 def test_mixed_numeric_dae_owner_e2e() -> None:
@@ -272,13 +278,11 @@ def test_mixed_numeric_dae_owner_e2e() -> None:
         "제3대 책임자는 경기 결과 2대1을 보고했다."
     )
     expected = (
-        "차량 세 대와 장비 일쩜오 대를 확인했고, 20대 남성과 가족 3대는 별도 기록했으며 "
+        "차량 세 대와 장비 일쩜오 대를 확인했고, 이십 대 남성과 가족 삼 대는 별도 기록했으며 "
         "제 삼대 책임자는 경기 결과 이대일을 보고했다."
     )
     assert transform(text) == expected
     owners = [claim["owner"] for claim in _claims(text)]
-    assert "counter_noun" in owners
-    assert "decimal_registered_suffix" in owners
-    assert owners.count("ambiguous_numeric_dae_preserve") == 2
+    assert owners.count("contextual_number_unit") == 4
     assert "numeric_suffix" in owners
     assert "korean_da_score_pair" in owners

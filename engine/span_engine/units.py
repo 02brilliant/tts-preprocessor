@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.amount_reading import read_decimal_amount_text
-from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.sign_aliases import (
     SIGNED_NUMERIC_SIGN_ALIASES,
@@ -12,6 +12,7 @@ from engine.span_engine.signed_numeric import (
     SIGNED_OWNER_POLICIES,
     apply_sign_profile,
     parse_signed_numeric_core,
+    render_signed_numeric,
 )
 
 SIMPLE_UNIT_READINGS: dict[str, str] = {
@@ -56,16 +57,17 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "﹪": "퍼센트",
 }
 
+_NATURAL_CARET_POWER_BASE_READINGS = {
+    unit: SIMPLE_UNIT_READINGS[unit] for unit in ("mm", "cm", "km", "m")
+}
 CARET_POWER_UNIT_READINGS: dict[str, str] = {
     **{
         f"{unit}^2": f"제곱{reading}"
-        for unit, reading in SIMPLE_UNIT_READINGS.items()
-        if unit.isascii() and unit.isalpha()
+        for unit, reading in _NATURAL_CARET_POWER_BASE_READINGS.items()
     },
     **{
         f"{unit}^3": f"세제곱{reading}"
-        for unit, reading in SIMPLE_UNIT_READINGS.items()
-        if unit.isascii() and unit.isalpha()
+        for unit, reading in _NATURAL_CARET_POWER_BASE_READINGS.items()
     },
 }
 
@@ -215,6 +217,7 @@ _COMPOUND_SLASH_NUMERATOR_PREFIXES = frozenset(
         "Kb",
         "kb",
         "MB",
+        "KB",
         "Mb",
         "mb",
         "GB",
@@ -236,6 +239,7 @@ _COMPOUND_EXACT_UNIT_SURFACES = frozenset(
 )
 _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
     {
+        "KB",
         "MB",
         "GB",
         "PB",
@@ -267,6 +271,7 @@ _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
         "Hz",
         "hz",
         "mHz",
+        "kHz",
         "MHz",
         "GHz",
         "Ghz",
@@ -326,6 +331,167 @@ def scan_caret_power_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
         _CARET_POWER_UNITS_BY_LENGTH,
         "caret_power_unit",
         "CARET_POWER_UNIT_SURFACE",
+    )
+
+
+def scan_caret_literal_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    """Read a valid numeric prefix while preserving an unsupported ``unit^N`` block."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not (
+            _is_ascii_digit(raw_text[index])
+            or is_signed_numeric_sign(raw_text[index])
+        ):
+            index += 1
+            continue
+        amount_start = index
+        numeric_start = (
+            amount_start + 1
+            if is_signed_numeric_sign(raw_text[amount_start])
+            else amount_start
+        )
+        amount_end = _consume_decimal_number(raw_text, numeric_start)
+        if amount_end is None:
+            index += 1
+            continue
+        unit_start = _consume_optional_ascii_space(raw_text, amount_end)
+        unit_end = unit_start
+        while unit_end < len(raw_text) and (
+            raw_text[unit_end].isascii() and raw_text[unit_end].isalpha()
+        ):
+            unit_end += 1
+        if unit_end == unit_start or unit_end >= len(raw_text) or raw_text[unit_end] != "^":
+            index += 1
+            continue
+        exponent_end = unit_end + 1
+        while exponent_end < len(raw_text) and (
+            raw_text[exponent_end].isascii()
+            and raw_text[exponent_end].isalnum()
+        ):
+            exponent_end += 1
+        if exponent_end == unit_end + 1:
+            index += 1
+            continue
+        literal = raw_text[unit_start:exponent_end]
+        amount = raw_text[amount_start:amount_end]
+        if (
+            literal in CARET_POWER_UNIT_READINGS
+            and _valid_amount_and_boundary(
+                raw_text, SourceSpan(amount_start, exponent_end), amount
+            )
+            and _valid_caret_power_boundary(raw_text, exponent_end)
+        ):
+            index = exponent_end
+            continue
+        core = parse_signed_numeric_core(amount)
+        if core is None or not _valid_caret_literal_left_boundary(raw_text, amount_start):
+            span = SourceSpan(
+                _caret_numeric_like_start(raw_text, amount_start),
+                exponent_end,
+            )
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=span,
+                    full_span=span,
+                    owner="preserve",
+                    surface_type="CARET_LITERAL_PRESERVE_SURFACE",
+                    reason="invalid_numeric_caret_literal_preserve",
+                )
+            )
+            index = exponent_end
+            continue
+        number_reading = render_signed_numeric(core)
+        if number_reading is None:
+            index += 1
+            continue
+        span = SourceSpan(amount_start, exponent_end)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="caret_literal_unit",
+                surface_type="CARET_LITERAL_UNIT_SURFACE",
+                reason="unsupported_caret_unit_literal_preserve",
+                metadata={
+                    "amount_span": SourceSpan(amount_start, amount_end),
+                    "gap_span": (
+                        SourceSpan(amount_end, unit_start)
+                        if unit_start > amount_end
+                        else None
+                    ),
+                    "literal_span": SourceSpan(unit_start, exponent_end),
+                    "number_reading": number_reading,
+                    "reading": (
+                        f"{number_reading}"
+                        f"{raw_text[amount_end:unit_start]}"
+                        f"{literal}"
+                    ),
+                },
+            )
+        )
+        index = exponent_end
+    candidates.extend(_scan_bare_caret_literal_preserves(raw_text))
+    candidates.extend(_scan_spaced_caret_literal_preserves(raw_text))
+    return candidates
+
+
+def parse_caret_literal_unit_candidate(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "caret_literal_unit":
+        return None
+    amount_span = candidate.metadata.get("amount_span")
+    gap_span = candidate.metadata.get("gap_span")
+    literal_span = candidate.metadata.get("literal_span")
+    number_reading = candidate.metadata.get("number_reading")
+    if (
+        not isinstance(amount_span, SourceSpan)
+        or not isinstance(literal_span, SourceSpan)
+        or not isinstance(number_reading, str)
+        or gap_span is not None
+        and not isinstance(gap_span, SourceSpan)
+    ):
+        return None
+    pieces = [
+        RenderPiece(
+            text=number_reading,
+            provenance="GENERATED_READING",
+            source_span=amount_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    ]
+    if isinstance(gap_span, SourceSpan):
+        pieces.append(
+            RenderPiece(
+                text=raw_text[gap_span.start : gap_span.end],
+                provenance="ORIGINAL_SPACE",
+                source_span=gap_span,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+    pieces.append(
+        RenderPiece(
+            text=raw_text[literal_span.start : literal_span.end],
+            provenance="ORIGINAL_BOUNDARY",
+            source_span=literal_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    )
+    reading = "".join(piece.text for piece in pieces)
+    return Surface(
+        surface_type=candidate.surface_type or "CARET_LITERAL_UNIT_SURFACE",
+        owner=candidate.owner,
+        raw=raw_text[candidate.core_span.start : candidate.core_span.end],
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
+        metadata={"reason": candidate.reason},
     )
 
 
@@ -865,11 +1031,8 @@ def _valid_amount_and_boundary(raw_text: str, span: SourceSpan, amount: str) -> 
     integer_part = unsigned_amount.split(".", 1)[0].replace(",", "")
     if len(integer_part) > 1 and integer_part.startswith("0"):
         return False
-    if int(integer_part) > 9999:
-        if "," not in unsigned_amount:
-            return False
-        if int(integer_part) >= 100000000:
-            return False
+    if int(integer_part) >= 100000000:
+        return False
     prev_char = raw_text[span.start - 1] if span.start > 0 else None
     next_char = raw_text[span.end] if span.end < len(raw_text) else None
     next_next = raw_text[span.end + 1] if span.end + 1 < len(raw_text) else None
@@ -907,7 +1070,119 @@ def _valid_caret_power_boundary(raw_text: str, end: int) -> bool:
     if end == len(raw_text):
         return True
     next_char = raw_text[end]
-    return next_char.isspace() or "\uac00" <= next_char <= "\ud7a3"
+    return (
+        next_char.isspace()
+        or "\uac00" <= next_char <= "\ud7a3"
+        or next_char in {".", ",", "!", "?", ";", ":", ")", "]", "}"}
+    )
+
+
+def _valid_caret_literal_left_boundary(raw_text: str, start: int) -> bool:
+    if start == 0:
+        return True
+    previous = raw_text[start - 1]
+    return not (
+        previous.isascii()
+        and previous.isalnum()
+        or "\uac00" <= previous <= "\ud7a3"
+        or previous in _PREV_BLOCKERS
+    )
+
+
+def _caret_numeric_like_start(raw_text: str, start: int) -> int:
+    index = start
+    while index > 0 and (
+        _is_ascii_digit(raw_text[index - 1])
+        or raw_text[index - 1] in {",", "."}
+        or is_signed_numeric_sign(raw_text[index - 1])
+    ):
+        index -= 1
+    return index
+
+
+def _scan_bare_caret_literal_preserves(
+    raw_text: str,
+) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not (raw_text[index].isascii() and raw_text[index].isalpha()):
+            index += 1
+            continue
+        start = index
+        while index < len(raw_text) and (
+            raw_text[index].isascii() and raw_text[index].isalpha()
+        ):
+            index += 1
+        if index >= len(raw_text) or raw_text[index] != "^":
+            continue
+        exponent_end = index + 1
+        while exponent_end < len(raw_text) and (
+            raw_text[exponent_end].isascii()
+            and raw_text[exponent_end].isalnum()
+        ):
+            exponent_end += 1
+        if exponent_end == index + 1:
+            continue
+        previous = raw_text[start - 1] if start > 0 else None
+        preceded_by_numeric = (
+            previous is not None
+            and previous.isascii()
+            and previous.isdigit()
+        ) or (
+            previous == " "
+            and start >= 2
+            and raw_text[start - 2].isascii()
+            and raw_text[start - 2].isdigit()
+        )
+        if preceded_by_numeric:
+            index = exponent_end
+            continue
+        span = SourceSpan(start, exponent_end)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="CARET_LITERAL_PRESERVE_SURFACE",
+                reason="bare_caret_literal_preserve",
+            )
+        )
+        index = exponent_end
+    return candidates
+
+
+def _scan_spaced_caret_literal_preserves(
+    raw_text: str,
+) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for caret_index, char in enumerate(raw_text):
+        if char != "^" or caret_index == 0 or raw_text[caret_index - 1] != " ":
+            continue
+        previous_index = caret_index - 2
+        if previous_index < 0 or not (
+            raw_text[previous_index].isascii()
+            and raw_text[previous_index].isalpha()
+        ):
+            continue
+        end = caret_index + 1
+        while end < len(raw_text) and (
+            raw_text[end].isascii() and raw_text[end].isalnum()
+        ):
+            end += 1
+        if end == caret_index + 1:
+            continue
+        span = SourceSpan(caret_index, end)
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="CARET_LITERAL_PRESERVE_SURFACE",
+                reason="spaced_caret_literal_preserve",
+            )
+        )
+    return candidates
 
 
 __all__ = [
@@ -916,9 +1191,11 @@ __all__ = [
     "SIMPLE_UNIT_READINGS",
     "SPECIAL_UNIT_READINGS",
     "parse_unit_candidate",
+    "parse_caret_literal_unit_candidate",
     "range_compatible_unit_reading",
     "range_compatible_units_by_length",
     "scan_caret_power_unit_candidates",
+    "scan_caret_literal_unit_candidates",
     "scan_simple_unit_candidates",
     "scan_special_unit_candidates",
     "scan_unit_contamination_preserve_candidates",

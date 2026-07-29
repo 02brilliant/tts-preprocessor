@@ -380,10 +380,10 @@ LARGE_UNIT_ATOMIC_PARSE_CASES = [
     TextCase(
         case_id="large-unit-atomic-1jo-ga",
         text="1조가",
-        expected="일조가",
-        rule="policy / large-unit atomic parse",
-        reason="Particle attachment after 조 must preserve the atomic large-unit reading.",
-        classification="large_unit",
+        expected="1조가",
+        rule="policy / contextual number-unit defer",
+        reason="A particle-attached 조 without a financial or group anchor remains source-exact.",
+        classification="contextual_defer",
     ),
     TextCase(
         case_id="large-unit-atomic-100eok-eun",

@@ -12,6 +12,15 @@ from engine.span_engine.numeric_reading import (
     read_decimal_text,
     read_sino_time_suffix_number_text,
 )
+from engine.span_engine.sign_aliases import (
+    SIGNED_NUMERIC_SIGN_ALIASES,
+    is_signed_numeric_sign,
+)
+from engine.span_engine.signed_numeric import (
+    apply_sign_profile,
+    parse_signed_numeric_core,
+    render_signed_numeric,
+)
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 from engine.span_engine.span_guards import (
@@ -19,7 +28,10 @@ from engine.span_engine.span_guards import (
     span_overlaps_excluded_ranges,
 )
 
-_DECIMAL_RE = re.compile(r"(?:\d{1,3}(?:,\d{3})+|\d+)\.\d+")
+_SIGN_PATTERN = re.escape("".join(sorted(SIGNED_NUMERIC_SIGN_ALIASES)))
+_DECIMAL_RE = re.compile(
+    rf"[{_SIGN_PATTERN}]?(?:\d{{1,3}}(?:,\d{{3}})+|\d+)\.\d+"
+)
 _APPROVED_DURATION_SUFFIXES = frozenset({"주"})
 REGISTERED_DECIMAL_SUFFIXES = (
     frozenset(SUPPORTED_COUNTERS)
@@ -62,6 +74,10 @@ _ATTACHED_KOREAN_TAILS = (
     "마다",
     "씩",
     "짜리",
+    "쯤",
+    "정도",
+    "꼴",
+    "당",
 )
 
 
@@ -107,11 +123,7 @@ def _candidate_at_suffix(
         if not raw_text.startswith(suffix, suffix_start):
             continue
         raw_number = raw_text[decimal_span.start : decimal_span.end]
-        reading = (
-            read_sino_time_suffix_number_text(raw_number)
-            if suffix in {"분", "초"}
-            else read_decimal_text(raw_number)
-        )
+        reading = _signed_decimal_reading(raw_number, suffix)
         if reading is None:
             return None
         suffix_end = suffix_start + len(suffix)
@@ -143,6 +155,7 @@ def _candidate_at_suffix(
                 "suffix": suffix,
                 "suffix_span": SourceSpan(suffix_start, suffix_end),
                 "reading": f"{reading} ",
+                **_signed_contract_metadata(raw_number),
             },
         )
     return None
@@ -154,11 +167,20 @@ def _scan_malformed_decimal_suffix_preserves(
     candidates: list[SurfaceCandidate] = []
     index = 0
     while index < len(raw_text):
-        if not (_is_ascii_digit(raw_text[index]) or raw_text[index] == "."):
+        if not (
+            _is_ascii_digit(raw_text[index])
+            or raw_text[index] == "."
+            or is_signed_numeric_sign(raw_text[index])
+        ):
             index += 1
             continue
         numeric_start = index
-        numeric_end = _consume_decimal_like_surface(raw_text, numeric_start)
+        unsigned_start = (
+            numeric_start + 1
+            if is_signed_numeric_sign(raw_text[numeric_start])
+            else numeric_start
+        )
+        numeric_end = _consume_decimal_like_surface(raw_text, unsigned_start)
         if numeric_end == numeric_start:
             index += 1
             continue
@@ -181,10 +203,8 @@ def _scan_malformed_decimal_suffix_preserves(
             index = numeric_end
             continue
         suffix_start, suffix_end = suffix
-        reading = (
-            read_sino_time_suffix_number_text(raw_number)
-            if raw_text[suffix_start:suffix_end] in {"분", "초"}
-            else read_decimal_text(raw_number)
+        reading = _signed_decimal_reading(
+            raw_number, raw_text[suffix_start:suffix_end]
         )
         if reading is not None and _suffix_boundary_is_safe(raw_text, suffix_end):
             index = numeric_end
@@ -272,6 +292,31 @@ def _consume_decimal_like_surface(raw_text: str, start: int) -> int:
             continue
         break
     return index if saw_digit else start
+
+
+def _signed_decimal_reading(raw_number: str, suffix: str) -> str | None:
+    if suffix in {"분", "초"} and not is_signed_numeric_sign(raw_number[0]):
+        return read_sino_time_suffix_number_text(raw_number)
+    core = parse_signed_numeric_core(raw_number)
+    if core is None or not core.has_decimal:
+        return None
+    if suffix not in {"분", "초"}:
+        return render_signed_numeric(core)
+    reading = read_sino_time_suffix_number_text(core.number.raw)
+    if reading is None:
+        return None
+    return apply_sign_profile(reading, core.sign_kind)
+
+
+def _signed_contract_metadata(raw_number: str) -> dict[str, object]:
+    core = parse_signed_numeric_core(raw_number)
+    if core is None:
+        return {}
+    return {
+        "sign_profile": "default",
+        "numeric_form": core.numeric_form,
+        "sign_surface": core.sign_surface,
+    }
 
 
 def _is_ascii_digit(char: str) -> bool:

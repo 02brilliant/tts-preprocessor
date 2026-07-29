@@ -42,7 +42,7 @@ def test_decimal_registered_counter_suffixes_now_transform_policy_v1(
     ("text", "expected"),
     [
         ("21명", "스물한 명"),
-        ("12권", "열두 권"),
+        ("12권", "12권"),
         ("-2.5℃", "영하 이쩜오도"),
         ("-2.5℉", "화씨 영하 이쩜오도"),
         ("3.14", "삼쩜일사"),

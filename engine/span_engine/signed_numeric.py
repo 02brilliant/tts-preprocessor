@@ -51,11 +51,6 @@ class SignedNumericCore:
     sign_surface: str | None
 
     @property
-    def sign(self) -> str | None:
-        """Backward-compatible raw sign surface used by range helper callers."""
-        return self.sign_surface
-
-    @property
     def integer_raw(self) -> str:
         return self.number.integer_raw
 

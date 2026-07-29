@@ -7,6 +7,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -47,6 +48,49 @@ def test_engine_main_exports_only_mode_less_production_facades() -> None:
     assert not hasattr(adapter, "run_rollout_transform")
     assert not hasattr(adapter, "run_rollout_payload")
     assert not hasattr(adapter, "normalize_rollout_mode")
+
+
+def test_production_adapter_exposes_only_the_current_facade() -> None:
+    adapter = importlib.import_module("engine.span_engine.production_adapter")
+
+    assert adapter.__all__ == ["transform_for_production"]
+    assert tuple(inspect.signature(adapter.transform_for_production).parameters) == (
+        "text",
+        "debug",
+    )
+    assert not hasattr(adapter, "transform_payload")
+    assert adapter.transform_for_production("90km/h") == "시속 구십 킬로미터"
+    debug = adapter.transform_for_production("90km/h", debug=True)
+    assert debug["ok"] is True
+    assert debug["normalized_text"] == "시속 구십 킬로미터"
+
+
+def test_binary_debug_runtime_never_falls_back_to_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_run(cmd, *, input, capture_output, text, check):
+        assert cmd == ["/tmp/fake-binary", "--include-debug"]
+        return SimpleNamespace(
+            returncode=2,
+            stdout="",
+            stderr="unrecognized arguments: --include-debug",
+        )
+
+    monkeypatch.setattr(
+        binary_runtime,
+        "resolve_binary_path",
+        lambda: Path("/tmp/fake-binary"),
+    )
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+
+    with pytest.raises(
+        binary_runtime.BinaryRuntimeError,
+        match="unrecognized arguments: --include-debug",
+    ):
+        binary_runtime.run_transform_binary_debug("90km/h")
+
+    assert not hasattr(binary_runtime, "SOURCE_DEBUG_FALLBACK_ENV")
+    assert not hasattr(binary_runtime, "_run_source_debug_fallback")
 
 
 def test_binary_entrypoint_has_no_rollout_option(

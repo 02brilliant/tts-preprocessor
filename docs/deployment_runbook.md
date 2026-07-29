@@ -160,8 +160,9 @@ bash scripts/deploy_server.sh
 1. Darwin arm64, 표준 GIL Python 3.13 `.venv`, PyInstaller, 로컬 명령과
    필수 파일 검사
 2. 서버의 기존 Python 3.13 `.venv`/`buildenv`와 필수 원격 명령 검사
-3. 새 원격 `buildsrc`에 entrypoint, `engine/`, spec, 공용 runtime hook,
-   core semantic probes, release README와 다음 시작에 쓸 server control script 전송
+3. 새 원격 `buildsrc`에 entrypoint, `engine/`, spec, 전체
+   `scripts/probes/` canonical probe set, release README와 다음 시작에 쓸
+   server control script 전송
 4. 고유 deploy ID로 원격 Linux `prepare`와 로컬 macOS arm64 빌드를 병렬 시작
 5. 두 PID를 모두 `wait`하고 각 종료 코드 확인
 6. 두 작업 모두 성공한 경우에만 로컬 macOS ZIP 재검증
@@ -175,7 +176,8 @@ bash scripts/deploy_server.sh
 13. 운영 `app/`에 남은 `engine/`, `docs/` 제거
 14. 서버 시작
 15. Web, Linux ZIP, macOS ZIP, API docs, API transform sanity 검증
-16. 해당 deploy ID의 staging과 임시 `buildsrc` 정리
+16. 실행 중인 API에 canonical core semantic probe 전체 실행
+17. 해당 deploy ID의 staging과 임시 `buildsrc` 정리
 
 Windows ZIP은 이 통합 배포에서 만들거나 업로드하지 않는다.
 
@@ -237,7 +239,7 @@ publish 단계에는 backup 또는 자동 rollback이 없다. publish 실패 시
 | macOS SCP | 서버 중지 상태 | 새 Linux 반영 | macOS/Windows 없음 | 없음 | 전체 배포 재실행 |
 | macOS 원격 검증/`mv` | 서버 중지 상태 | 새 Linux 반영 | macOS 없을 수 있고 Windows 없음 | 없음 | 전체 배포 재실행 |
 | server start | 시작 실패 또는 불확정 | 새 Linux 반영 | 새 macOS 반영, Windows 없음 | 없음 | 로그 확인 후 전체 배포 재실행 |
-| final check | 서버가 시작됐으나 검증 실패 | 새 Linux 반영 | 새 macOS 반영, Windows 없음 | 없음 | 서버 확인 후 필요 시 전체 배포 재실행 |
+| final check/API semantic probe | 서버가 시작됐으나 검증 실패 | 새 Linux 반영 | 새 macOS 반영, Windows 없음 | 없음 | `TTS_PREPROCESSOR_BINARY`와 보존된 `buildsrc` 확인 후 전체 배포 재실행 |
 | cleanup | 검증된 서버 실행 유지 | 새 Linux 반영 | 새 macOS 반영, Windows 없음 | 없음 | 출력된 deploy ID cleanup 명령 재시도 |
 
 Linux publish 이후 실패의 기본 복구 명령은 다음과 같다.
@@ -363,7 +365,17 @@ Linux ZIP 이름 마이그레이션:
 
 `scripts/release.py`와 `scripts/build_binary.sh`는 Linux 로컬 검증 전용이며
 macOS 운영 배포에 사용하지 않는다. `scripts/build_package.py`는 준비된
-바이너리만 packaging하며 바이너리를 직접 빌드하지 않는다.
+바이너리만 packaging하며 바이너리를 직접 빌드하지 않는다. 두 Python
+스크립트 모두 과거 호환용 version positional argument를 받지 않는다.
+
+```sh
+.venv/bin/python scripts/release.py
+.venv/bin/python scripts/build_package.py --binary dist/tts_preprocessor
+```
+
+`--include-debug`를 지원하지 않는 구버전 바이너리는 source debug로
+fallback하지 않는다. 현재 binary contract와 semantic probe를 통과하도록
+다시 빌드해야 한다.
 
 로컬 Linux package 경로:
 

@@ -54,6 +54,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/colon_time_like_policy.py",
         "scripts/probes/large_unit_numeric_surface.py",
         "scripts/probes/json_like_protected_spans.py",
+        "scripts/probes/contextual_number_units.py",
         "tts_preprocessor.spec",
         "bin/build_binary_entrypoint.py",
         "docs/Release_Package_README.txt",
@@ -208,6 +209,9 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
             elif grep -q 'start_server.sh' "$payload"; then
               printf 'server-start\\n' >> "{calls}"
               status="${{FAKE_START_STATUS:-0}}"
+            elif grep -q -- '--runtime api' "$payload"; then
+              printf 'api-semantic-probes\\n' >> "{calls}"
+              status="${{FAKE_API_SEMANTIC_STATUS:-0}}"
             elif grep -q 'rm -f -- "$temp_path"' "$payload"; then
               printf 'macos-temp-cleanup\\n' >> "{calls}"
               status=0
@@ -275,6 +279,8 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     scp = deploy.index('scp -- "$LOCAL_MACOS_ARCHIVE"')
     start = deploy.index("if ! start_remote_server")
     check = deploy.index('bash "$CHECK_SERVER_SCRIPT"')
+    api_semantic = deploy.index("if ! run_remote_api_semantic_probes")
+    cleanup = deploy.rindex("if ! run_remote_build_action cleanup")
 
     assert linux_start < first_wait
     assert macos_start < first_wait
@@ -288,6 +294,8 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
         < scp
         < start
         < check
+        < api_semantic
+        < cleanup
     )
     assert '"$downloads_dir/tts-preprocessor-windows.zip"' in deploy
     assert "*.zip" not in deploy
@@ -299,6 +307,9 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert 'find "$api_dir" "$llm_dir"' in deploy
     assert "-name __pycache__" in deploy
     assert "--delete-excluded" not in deploy
+    assert '"$LOCAL_SEMANTIC_PROBES_DIR/"' in deploy
+    assert '"$SSH_TARGET:$REMOTE_BUILD_SRC_PROBES_DIR/"' in deploy
+    assert "contextual_number_units.py" not in deploy
 
 
 @pytest.mark.skipif(
@@ -565,6 +576,7 @@ def test_successful_deploy_orders_all_operations_and_cleanup(tmp_path: Path) -> 
     source_cleanup = events.index("source-free-cleanup")
     start = events.index("server-start")
     check = events.index("final-check")
+    api_semantic = events.index("api-semantic-probes")
     cleanup = events.index("linux-cleanup")
     assert (
         stop
@@ -577,6 +589,7 @@ def test_successful_deploy_orders_all_operations_and_cleanup(tmp_path: Path) -> 
         < source_cleanup
         < start
         < check
+        < api_semantic
         < cleanup
     )
 
@@ -598,6 +611,27 @@ def test_start_or_final_check_failure_never_runs_rollback(tmp_path: Path) -> Non
     assert "linux-cleanup" not in events
     assert "rollback" not in SOURCE_DEPLOY.read_text(encoding="utf-8").lower()
     assert "final verification failed" in result.stderr
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_live_api_semantic_failure_retains_diagnostic_buildsrc(
+    tmp_path: Path,
+) -> None:
+    script, env, calls = _prepare_deploy_tree(tmp_path)
+    env["FAKE_API_SEMANTIC_STATUS"] = "59"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode != 0
+    events = _events(calls)
+    assert events.index("server-start") < events.index("final-check")
+    assert events.index("final-check") < events.index("api-semantic-probes")
+    assert "linux-cleanup" not in events
+    assert "does not match the verified published binary semantics" in result.stderr
+    assert "TTS_PREPROCESSOR_BINARY" in result.stderr
 
 
 @pytest.mark.skipif(
