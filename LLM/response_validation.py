@@ -40,24 +40,28 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
     if not isinstance(speech_text, str) or not speech_text:
         raise LLMResponseError("LLM response is empty.")
 
-    source_structure = _STRUCTURE_CHARACTER_RE.findall(normalized_text)
-    source_index = 0
-    for character in _STRUCTURE_CHARACTER_RE.findall(speech_text):
-        if (
-            source_index < len(source_structure)
-            and character == source_structure[source_index]
-        ):
-            source_index += 1
-            continue
-        if character not in {",", " "}:
-            raise LLMStageContractError(
-                "LLM response changed existing whitespace, line breaks, "
-                "or fixed punctuation, or added a structural character "
-                "other than comma or ASCII space.",
-                stage="speech",
-                output_text=speech_text,
-            )
-    if source_index != len(source_structure):
+    source_structure = _required_structure(normalized_text)
+    output_structure = _required_structure(speech_text)
+    if not _preserves_structure_with_allowed_insertions(
+        source_structure,
+        output_structure,
+    ):
+        source_index = 0
+        for character in output_structure:
+            if (
+                source_index < len(source_structure)
+                and character == source_structure[source_index]
+            ):
+                source_index += 1
+                continue
+            if character not in {",", " "}:
+                raise LLMStageContractError(
+                    "LLM response changed existing whitespace, line breaks, "
+                    "or fixed punctuation, or added a structural character "
+                    "other than comma or ASCII space.",
+                    stage="speech",
+                    output_text=speech_text,
+                )
         raise LLMStageContractError(
             "LLM response deleted or reordered existing whitespace, "
             "line breaks, or fixed punctuation.",
@@ -80,3 +84,54 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
                 output_text=speech_text,
             )
     return speech_text
+
+
+def _preserves_structure_with_allowed_insertions(
+    source_structure: list[str],
+    output_structure: list[str],
+) -> bool:
+    """Match source structure while allowing only inserted comma/ASCII space.
+
+    A newly inserted ASCII space can be identical to the next source space.
+    Keep both match and insertion paths so a greedy match cannot consume the
+    wrong space and reject an otherwise valid response.
+    """
+
+    match_masks: dict[str, int] = {}
+    for source_index, character in enumerate(source_structure):
+        match_masks[character] = (
+            match_masks.get(character, 0) | (1 << source_index)
+        )
+
+    reachable = 1
+    for character in output_structure:
+        next_reachable = (
+            reachable & match_masks.get(character, 0)
+        ) << 1
+        if character in {",", " "}:
+            next_reachable |= reachable
+        if not next_reachable:
+            return False
+        reachable = next_reachable
+    return bool(reachable & (1 << len(source_structure)))
+
+
+def _required_structure(text: str) -> list[str]:
+    """Return fixed structure, excluding separators consumed by number reading."""
+
+    structure: list[str] = []
+    for match in _STRUCTURE_CHARACTER_RE.finditer(text):
+        character = match.group(0)
+        index = match.start()
+        if (
+            character in {".", ",", ":"}
+            and index > 0
+            and index + 1 < len(text)
+            and text[index - 1].isascii()
+            and text[index - 1].isdigit()
+            and text[index + 1].isascii()
+            and text[index + 1].isdigit()
+        ):
+            continue
+        structure.append(character)
+    return structure

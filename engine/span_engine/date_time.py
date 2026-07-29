@@ -9,6 +9,9 @@ from engine.span_engine.delimiters import COLON_LIKE_DELIMITERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate, TraceLogEntry
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.numeric_reading import read_sino_time_suffix_number_text
+from engine.span_engine.numeric_suffix import (
+    starts_with_longer_registered_numeric_suffix,
+)
 from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
@@ -916,6 +919,13 @@ def _unsafe_korean_suffix_amount_candidates(
         ):
             continue
         if _is_existing_duration_fraction_or_negative(raw_text, span):
+            continue
+        short_suffix = raw_text[span.end - 1 : span.end]
+        if starts_with_longer_registered_numeric_suffix(
+            raw_text,
+            span.end - len(short_suffix),
+            short_suffix,
+        ):
             continue
         if _valid_korean_suffix_amount_boundary(raw_text, span):
             continue

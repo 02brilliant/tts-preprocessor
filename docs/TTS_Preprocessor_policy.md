@@ -385,9 +385,19 @@ candidate, `contextual_decision_logs` 또는 다른 hidden metadata를 서비스
 URL/path/file/JSON, 잠금 구간은 정책상 보호 대상으로 부분 변환 없이
 보존한다.
 
+LLM이 새로 생성하는 읽기도 규칙 canonical spacing을 따른다. 시간의
+`N분`과 번호의 `N번`은 각각 `오분`, `삼번`처럼 붙이고, 사람 높임 수량과
+횟수는 `다섯 분`, `세 번`처럼 띄어 쓴다. `N층을 올라가다`처럼 목적지가
+생략된 일반 용례는 위치 의미를 우선하여 `삼 층을 올라가다`로 읽고, 실제
+이동 층 수는 `세 개 층을 올라가다`처럼 개수 문맥으로 구분한다.
+
 LLM 프롬프트와 응답에는 분석, 판정 상태, 후보 읽기 또는 내부 log를
 출력하지 않는다. 최종 응답은 `speech_text` 문자열 하나이며, 이 선택적
 후단 계약은 일반 `/api/transform` 결과와 debug 노출 범위를 바꾸지 않는다.
+응답 구조 검증에서는 숫자 사이의 소수점, 자릿수 쉼표, 시각 쌍점을
+한국어 숫자 읽기로 소비할 수 있다. 그 밖의 원문 공백·줄바꿈·고정
+문장부호는 순서대로 모두 보존하고, 새로 추가할 수 있는 구조 문자는
+운율용 쉼표와 ASCII 공백뿐이다.
 
 ---
 
@@ -4812,6 +4822,30 @@ generic Hangul suffix fallback.
 - unsupported suffix는 즉시 Absolute Preserve하지 않고 generic numeric+suffix owner 후보로 평가할 수 있다.
 - unsafe tail, ASCII identifier-left context, invalid comma는 Absolute Preserve 또는 Terminal Fallback Preserve로 처리한다.
 
+`분기`는 임의의 숫자+한글 fallback이 아니라 등록된 non-prefixed
+numeric suffix다. 숫자 core는 기존 한자어 renderer로 생성하고 `분기`와
+붙은 조사/어미는 원문 한글 provenance로 유지한다. 붙임형은 붙여 쓰고,
+입력에 ASCII space 한 칸이 있으면 그 공백을 유지한다.
+
+```text
+1분기 2분기 -> 일분기 이분기
+2025년 1분기 -> 이천이십오년 일분기
+1 분기 -> 일 분기
+제1분기 -> 제 일분기
+1분기부터 4분기까지 -> 일분기부터 사분기까지
+1.5분기 -> 일쩜오 분기
++1.5분기 -> 플러스 일쩜오 분기
+-1.5분기 -> 마이너스 일쩜오 분기
+```
+
+시간 owner의 짧은 `분` prefix는 더 긴 등록 suffix `분기`를 선점하거나
+unsafe time tail preserve로 종료하면 안 된다. longest registered suffix를
+먼저 인정한 뒤 `numeric_suffix` 또는 `decimal_registered_suffix`가
+claim한다. `01분기`, `1..5분기`, `1,00분기`, signed integer,
+ASCII/alphanumeric unsafe tail은 전체 suffix-like token을 보존하여 짧은
+`분` counter나 generic number fallback의 부분 변환을 막는다. `이번 분기`
+같이 숫자 core가 없는 기존 한글 표현은 비대상이다.
+
 canonical output:
 
 ```text
@@ -4931,6 +4965,9 @@ A2,645.35선 -> A2,645.35선
 ```
 
 현재 정책에서 `주`, `개월`, `분기`, `상반기`, `하반기`, `주년`, `일간`, `년간`은 date shared suffix range로 추가하지 않는다.
+다만 등록 numeric suffix인 `분기`가 range에 붙으면 date처럼 양쪽에
+suffix를 복제하지 않고 기존 general Korean suffix range를 사용한다.
+따라서 `1~4분기`, `1-4분기`의 canonical은 `일에서 사 분기`다.
 
 #### Time shared suffix range
 

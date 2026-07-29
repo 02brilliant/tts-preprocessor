@@ -51,6 +51,7 @@ KOREAN_RANGE_SUFFIXES = frozenset(
         "도",
         "시",
         "분",
+        "분기",
         "초",
         "시간",
         "쪽",
@@ -64,6 +65,7 @@ HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS = {
     "개": "개",
     "명": "명",
     "분": "분",
+    "분기": "분기",
     "원": "원",
     "가지": "가지",
 }

@@ -33,6 +33,14 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("gaji-decimal", "1.5가지", "일쩜오 가지"),
         ProbeCase("gaji-protected", "`4가지`", "`4가지`"),
     ),
+    "quarter-suffix": (
+        ProbeCase("quarter-attached-pair", "1분기 2분기", "일분기 이분기"),
+        ProbeCase("quarter-year-context", "2025년 1분기", "이천이십오년 일분기"),
+        ProbeCase("quarter-decimal", "1.5분기", "일쩜오 분기"),
+        ProbeCase("quarter-malformed", "1..5분기", "1..5분기"),
+        ProbeCase("quarter-range", "1~4분기", "일에서 사 분기"),
+        ProbeCase("quarter-protected", "`1분기`", "`1분기`"),
+    ),
     "bun-beon-jeom": (
         ProbeCase("bun-time", "5분 뒤", "오분 뒤"),
         ProbeCase("bun-person", "손님 5분이 도착했다", "손님 다섯 분이 도착했다"),

@@ -2,6 +2,23 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Registered numeric quarter suffix
+
+- `분기`를 broad 숫자+한글 fallback이나 입력 치환이 아닌 정식
+  non-prefixed `numeric_suffix` registry에 추가했다. integer는 기존 Sino
+  renderer와 source attachment를 재사용하여
+  `1분기 2분기 -> 일분기 이분기`, `1 분기 -> 일 분기`로 읽는다.
+- 정상 decimal과 signed decimal은 기존 `decimal_registered_suffix`
+  계약을 그대로 사용한다. `1.5분기 -> 일쩜오 분기`,
+  `+1.5분기 -> 플러스 일쩜오 분기`이며 signed integer는 확장하지 않았다.
+- time owner의 짧은 `분`이 더 긴 등록 suffix `분기`를 prefix-claim하거나
+  preserve하지 않도록 longest registered suffix 경계를 추가했다.
+  leading-zero, malformed numeric, unsafe ASCII tail은 전체 token preserve로
+  종료하여 짧은 counter/generic number 부분 변환을 막는다.
+- `분기`는 date shared range로 승격하지 않았다. 기존 general range를
+  정식 longest suffix로 claim하여 `1~4분기`, `1-4분기`를
+  `일에서 사 분기`로 읽는다.
+
 ## Context-aware LLM handoff
 
 - 전면 활성화된 규칙 엔진이 의도적으로 남기는 raw 숫자+다의 단위를 후단
@@ -18,6 +35,11 @@
   metadata를 추가하지 않았다. LLM 요청은 계속 순수 `normalized_text`
   문자열만 사용하고, 규칙 출력은 LLM 없이 독립적으로 TTS 입력에 사용할
   수 있다.
+- 응답 구조 검증이 새 운율 공백을 기존 공백으로 greedy하게 잘못
+  소비하거나, `2.35`, `1,000`, `09:30`의 numeric separator를 고정
+  문장부호로 오인하던 문제를 수정했다. 원문 구조는 모호한 공백 정렬을
+  모두 고려해 보존하고, 숫자 사이 separator만 읽기로 소비하며 문장부호와
+  파일 확장자 마침표는 계속 필수 보존한다.
 
 ## Full-activation transition cleanup
 

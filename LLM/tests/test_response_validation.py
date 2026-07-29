@@ -41,6 +41,41 @@ def test_integrated_response_preserves_existing_whitespace_and_punctuation() -> 
     assert validate_response(source, output) == output
 
 
+def test_integrated_response_accepts_insertions_before_existing_spaces() -> None:
+    source = "첫 문장이고 둘째 문장이다."
+    output = "첫 문장이고, 둘째 문장이다."
+
+    assert validate_response(source, output) == output
+
+
+def test_integrated_response_rejects_deleted_space_hidden_by_comma() -> None:
+    with pytest.raises(LLMStageContractError):
+        validate_response("첫 문장.", "첫,문장.")
+
+
+@pytest.mark.parametrize(
+    ("source", "output"),
+    (
+        ("2.35번 확인했다.", "이쩜삼오 번 확인했다."),
+        ("1,000원을 냈다.", "천 원을 냈다."),
+        ("09:30에 시작했다.", "아홉시 삼십분에 시작했다."),
+    ),
+)
+def test_integrated_response_allows_consumed_numeric_separators(
+    source: str,
+    output: str,
+) -> None:
+    assert validate_response(source, output) == output
+
+
+def test_integrated_response_still_requires_filename_and_sentence_periods() -> None:
+    with pytest.raises(LLMStageContractError):
+        validate_response(
+            "report_v2.json을 읽었다.",
+            "report_v2json을 읽었다.",
+        )
+
+
 def test_integrated_response_preserves_lock_tokens_exactly() -> None:
     with pytest.raises(LLMStageContractError, match="locked token") as exc_info:
         validate_response(

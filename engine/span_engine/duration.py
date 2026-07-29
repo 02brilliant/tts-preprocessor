@@ -10,6 +10,9 @@ from engine.span_engine.numeric_reading import (
     read_number_text,
     read_sino_time_suffix_number_text,
 )
+from engine.span_engine.numeric_suffix import (
+    starts_with_longer_registered_numeric_suffix,
+)
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
@@ -147,6 +150,13 @@ def _scan_negative_preserve_candidates(
     for match in _NEGATIVE_DURATION_RE.finditer(raw_text):
         span = SourceSpan(match.start(), match.end())
         if _span_overlaps_excluded_range(span, excluded_ranges):
+            continue
+        short_suffix = raw_text[span.end - 1 : span.end]
+        if starts_with_longer_registered_numeric_suffix(
+            raw_text,
+            span.end - len(short_suffix),
+            short_suffix,
+        ):
             continue
         if not _valid_boundary(raw_text, span):
             continue

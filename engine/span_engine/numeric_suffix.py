@@ -15,7 +15,7 @@ PREFIXED_SUFFIXES_DEFERRED_TO_GENERIC_NUMBER = frozenset({"자"})
 ORDINAL_SUFFIXES = (
     frozenset(SUPPORTED_COUNTERS) | ORDINAL_ONLY_SUFFIXES
 ) - PREFIXED_ORDINAL_EXCLUDED_SUFFIXES
-NON_PREFIXED_NUMERIC_SUFFIXES = frozenset({"초", "선"})
+NON_PREFIXED_NUMERIC_SUFFIXES = frozenset({"초", "선", "분기"})
 NUMERIC_SUFFIXES = NON_PREFIXED_NUMERIC_SUFFIXES | ORDINAL_SUFFIXES
 PREFIXED_ONLY_SUFFIXES = ORDINAL_SUFFIXES - NON_PREFIXED_NUMERIC_SUFFIXES
 _ORDERED_SUFFIXES = sorted(NUMERIC_SUFFIXES, key=len, reverse=True)
@@ -59,7 +59,25 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 if ordinal_prefix_span is not None
                 else number_start
             )
-            if not _valid_boundary(raw_text, boundary_start, suffix_end):
+            if not _valid_left_boundary(raw_text, boundary_start):
+                continue
+            if not _valid_right_boundary(raw_text, suffix_end):
+                if ordinal_prefix_span is None:
+                    preserve_end = (
+                        _prefixed_ordinal_like_token_end(raw_text, number_start)
+                        or suffix_end
+                    )
+                    preserve_span = SourceSpan(number_start, preserve_end)
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=preserve_span,
+                            full_span=preserve_span,
+                            owner="preserve",
+                            surface_type="NUMERIC_SUFFIX_PRESERVE_SURFACE",
+                            reason="numeric_suffix_unsafe_tail_preserve",
+                        )
+                    )
+                    break
                 continue
             reading = (
                 read_sino_time_suffix_number_text(number)
@@ -67,6 +85,22 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 else read_number_text(number)
             )
             if reading is None:
+                if ordinal_prefix_span is None:
+                    preserve_end = (
+                        _prefixed_ordinal_like_token_end(raw_text, number_start)
+                        or suffix_end
+                    )
+                    preserve_span = SourceSpan(number_start, preserve_end)
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=preserve_span,
+                            full_span=preserve_span,
+                            owner="preserve",
+                            surface_type="NUMERIC_SUFFIX_PRESERVE_SURFACE",
+                            reason="numeric_suffix_invalid_number_preserve",
+                        )
+                    )
+                    break
                 continue
             if ordinal_prefix_span is not None:
                 full_span = SourceSpan(ordinal_prefix_span.start, suffix_end)
@@ -138,6 +172,25 @@ def parse_numeric_suffix_candidate(
     if isinstance(reading, str):
         return reading
     return read_number_text(raw_text[candidate.core_span.start : candidate.core_span.end])
+
+
+def starts_with_longer_registered_numeric_suffix(
+    raw_text: str,
+    suffix_start: int,
+    short_suffix: str,
+) -> bool:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(suffix_start, int):
+        raise TypeError("suffix_start must be int")
+    if not isinstance(short_suffix, str):
+        raise TypeError("short_suffix must be str")
+    return any(
+        len(suffix) > len(short_suffix)
+        and suffix.startswith(short_suffix)
+        and raw_text.startswith(suffix, suffix_start)
+        for suffix in _ORDERED_SUFFIXES
+    )
 
 
 def _consume_number(raw_text: str, start: int) -> int | None:
@@ -229,9 +282,8 @@ def _has_candidate_at(candidates: list[SurfaceCandidate], start: int) -> bool:
     return any(candidate.core_span.start == start for candidate in candidates)
 
 
-def _valid_boundary(raw_text: str, number_start: int, suffix_end: int) -> bool:
+def _valid_left_boundary(raw_text: str, number_start: int) -> bool:
     prev_char = raw_text[number_start - 1] if number_start > 0 else None
-    next_char = raw_text[suffix_end] if suffix_end < len(raw_text) else None
     if prev_char is not None:
         if prev_char.isascii() and prev_char.isalnum():
             return False
@@ -239,6 +291,11 @@ def _valid_boundary(raw_text: str, number_start: int, suffix_end: int) -> bool:
             return False
         if prev_char in _PREV_BLOCKERS:
             return False
+    return True
+
+
+def _valid_right_boundary(raw_text: str, suffix_end: int) -> bool:
+    next_char = raw_text[suffix_end] if suffix_end < len(raw_text) else None
     if next_char is None:
         return True
     if next_char.isascii() and next_char.isalnum():
@@ -259,4 +316,5 @@ __all__ = [
     "ORDINAL_SUFFIXES",
     "parse_numeric_suffix_candidate",
     "scan_numeric_suffix_candidates",
+    "starts_with_longer_registered_numeric_suffix",
 ]

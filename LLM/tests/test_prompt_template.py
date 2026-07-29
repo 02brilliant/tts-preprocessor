@@ -92,9 +92,14 @@ def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
         "보호 대상이 아닌 숫자나 영문 표면을 최종 출력에 남기지 않는다."
         in prompt
     )
+    assert "`했다`를 `했습니다`로" in prompt
+    assert "`오분 남았다`처럼 `이`를 삭제하면 안 된다." in prompt
+    assert "`CPU -> 씨피유`" in prompt
+    assert "씨피유 로그는 report_v2.json에 있다" in prompt
     assert "3번 확인했다 -> 세 번 확인했다" in prompt
+    assert "대기표 3호를 호출했다 -> 대기표 삼 호를 호출했다" in prompt
     assert "5분이 남았다. -> 오분이 남았다." in prompt
-    assert "3층을 올라갔다 -> 세 층을 올라갔다" in prompt
+    assert "3층을 올라갔다 -> 삼 층을 올라갔다" in prompt
     assert "총 2.34번 -> 총 이쩜삼사 번" in prompt
 
 
