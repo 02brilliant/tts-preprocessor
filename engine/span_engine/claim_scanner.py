@@ -55,7 +55,10 @@ from engine.span_engine.delimiters import (
 from engine.span_engine.duration import scan_duration_candidates
 from engine.span_engine.emergency import scan_emergency_candidates
 from engine.span_engine.event import scan_event_candidates
-from engine.span_engine.fraction import scan_fraction_candidates
+from engine.span_engine.fraction import (
+    scan_fraction_candidates,
+    scan_textual_fraction_candidates,
+)
 from engine.span_engine.middle_dot import scan_middle_dot_candidates
 from engine.span_engine.mixed_integer import scan_mixed_integer_candidates
 from engine.span_engine.multiplier import scan_multiplier_candidates
@@ -355,6 +358,17 @@ def claim_surfaces(
         for candidate in mixed_numeric_candidates
         if candidate.owner == "mixed_integer_atomic"
     ]
+    middle_dot_candidates = scan_middle_dot_candidates(raw_text, excluded_ranges)
+    equipment_middle_dot_candidates = [
+        candidate
+        for candidate in middle_dot_candidates
+        if candidate.metadata.get("equipment_sequence") is True
+    ]
+    remaining_middle_dot_candidates = [
+        candidate
+        for candidate in middle_dot_candidates
+        if candidate not in equipment_middle_dot_candidates
+    ]
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
@@ -382,6 +396,7 @@ def claim_surfaces(
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_date_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_textual_fraction_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_time_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_phone_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_colon_semantic_pair_candidates(raw_text), registry, excluded_ranges))
@@ -389,6 +404,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_multi_colon_numeric_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_event_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_emergency_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(equipment_middle_dot_candidates, registry, excluded_ranges))
 
     candidates.extend(_claim_scanned_candidates(scan_spaced_separator_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_spaced_hyphen_numeric_candidates(raw_text), registry, excluded_ranges))
@@ -447,7 +463,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(mixed_decimal_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_malformed_dotted_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_middle_dot_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(remaining_middle_dot_candidates, registry, excluded_ranges))
 
     candidates.extend(_claim_scanned_candidates(scan_public_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(remaining_counter_candidates, registry, excluded_ranges))

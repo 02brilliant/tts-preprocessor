@@ -7,7 +7,11 @@ import pytest
 from api import server as server_module
 from api.server import LLMTransformRequest, app
 from LLM.client import GenerationResult, LLMTimeoutError
-from LLM.gemini_client import GeminiRateLimitError, GeminiServiceDisabledError
+from LLM.gemini_client import (
+    GeminiAPIKeyRestrictionError,
+    GeminiRateLimitError,
+    GeminiServiceDisabledError,
+)
 
 
 def get_endpoint(path: str, method: str):
@@ -307,4 +311,31 @@ def test_gemini_service_disabled_maps_to_service_unavailable(monkeypatch) -> Non
     assert exc_info.value.detail == (
         "Gemini API is disabled for this API key's Google Cloud project. "
         "Enable Generative Language API and retry."
+    )
+
+
+def test_gemini_api_key_restriction_maps_to_service_unavailable(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "dummy-gemini-test-key")
+
+    def fake_generate_gemini(**_kwargs):
+        raise GeminiAPIKeyRestrictionError(
+            "Gemini API key is blocked from calling Generative Language API. "
+            "Restrict or replace the key for Gemini API and retry."
+        )
+
+    monkeypatch.setattr(server_module, "generate_gemini", fake_generate_gemini)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gemini-3.5-flash",
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == (
+        "Gemini API key is blocked from calling Generative Language API. "
+        "Restrict or replace the key for Gemini API and retry."
     )

@@ -150,3 +150,28 @@ def test_upstream_http_error_exposes_only_status() -> None:
 
     assert str(exc_info.value) == "Local LLM server returned HTTP 503."
     assert SETTINGS.token not in str(exc_info.value)
+
+
+def test_upstream_proxy_bad_gateway_has_safe_remediation_message() -> None:
+    def opener(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            502,
+            "contains-upstream-detail",
+            hdrs=None,
+            fp=None,
+        )
+
+    with pytest.raises(LLMUpstreamHTTPError) as exc_info:
+        generate(
+            model="gemma4:e4b",
+            prompt="테스트",
+            settings=SETTINGS,
+            opener=opener,
+        )
+
+    assert str(exc_info.value) == (
+        "Local LLM server returned HTTP 502. Its proxy backend may be "
+        "unavailable; check the local LLM service and retry."
+    )
+    assert SETTINGS.token not in str(exc_info.value)

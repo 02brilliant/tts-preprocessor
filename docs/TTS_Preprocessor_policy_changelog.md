@@ -2,6 +2,19 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Article numeric owner alignment
+
+- `5000분의 1` 같은 denominator-first Korean fraction을 하나의
+  `textual_fraction` surface로 승격했다. 시간 owner보다 먼저 claim하여
+  `5000분의`만 보존하고 뒤 숫자만 읽는 부분 변환을 제거했다. invalid
+  leading zero, malformed comma, 0 분자/분모는 전체 표면을 보존한다.
+- `1·2호기`처럼 가운데점 숫자열 바로 뒤에 exact `호기`가 오는 경우
+  기존 middle-dot block reader가 전체 숫자열을 먼저 claim한다. 주소형
+  `1·2호` guard는 유지한다.
+- `대`의 exact 주요 항목 allowlist를 `과제`에서
+  `과제·전략·추진전략`으로 확장했다. `3대 추진전략`은 `삼대 추진전략`,
+  미등록 `3대 후보`는 원문 유보한다.
+
 ## Contextual allowlist expansion and 31b default
 
 - 47개 문맥형 acceptance corpus에서 확정된 잔여 표면을 규칙 allowlist로

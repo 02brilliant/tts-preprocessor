@@ -35,6 +35,10 @@ class GeminiServiceDisabledError(GeminiClientError):
     pass
 
 
+class GeminiAPIKeyRestrictionError(GeminiClientError):
+    pass
+
+
 class GeminiRateLimitError(GeminiClientError):
     pass
 
@@ -119,10 +123,16 @@ def generate_gemini(
         raw_body = response.read()
     except urllib.error.HTTPError as exc:
         if exc.code in {401, 403}:
-            if exc.code == 403 and _is_generative_language_api_disabled(exc):
+            error_message = _extract_gemini_error_message(exc)
+            if exc.code == 403 and _is_generative_language_api_disabled(error_message):
                 raise GeminiServiceDisabledError(
                     "Gemini API is disabled for this API key's Google Cloud "
                     "project. Enable Generative Language API and retry."
+                ) from exc
+            if exc.code == 403 and _is_gemini_api_key_restricted(error_message):
+                raise GeminiAPIKeyRestrictionError(
+                    "Gemini API key is blocked from calling Generative Language "
+                    "API. Restrict or replace the key for Gemini API and retry."
                 ) from exc
             raise GeminiAuthenticationError(
                 "Gemini API authentication or permission failed."
@@ -153,23 +163,41 @@ def generate_gemini(
     return GenerationResult(text=text, elapsed_ms=elapsed_ms)
 
 
-def _is_generative_language_api_disabled(error: urllib.error.HTTPError) -> bool:
-    """Recognize the documented API-disabled response without exposing it."""
+def _extract_gemini_error_message(error: urllib.error.HTTPError) -> str | None:
+    """Read only the structured upstream message needed for classification."""
     try:
         raw_body = error.read()
         payload = json.loads(raw_body)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return False
+        return None
     if not isinstance(payload, dict):
-        return False
+        return None
     upstream_error = payload.get("error")
     if not isinstance(upstream_error, dict):
-        return False
+        return None
     message = upstream_error.get("message")
     if not isinstance(message, str):
+        return None
+    return message
+
+
+def _is_generative_language_api_disabled(error_message: str | None) -> bool:
+    """Recognize the documented API-disabled response without exposing it."""
+    if error_message is None:
         return False
-    normalized = message.lower()
+    normalized = error_message.lower()
     return (
         "generativelanguage.googleapis.com" in normalized
         and ("disabled" in normalized or "has not been used" in normalized)
+    )
+
+
+def _is_gemini_api_key_restricted(error_message: str | None) -> bool:
+    """Recognize Gemini API-key API restrictions without exposing upstream text."""
+    if error_message is None:
+        return False
+    normalized = error_message.lower()
+    return (
+        "generativelanguage.googleapis.com" in normalized
+        and ("are blocked" in normalized or "api_key_service_blocked" in normalized)
     )

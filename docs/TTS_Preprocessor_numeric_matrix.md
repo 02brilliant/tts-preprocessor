@@ -111,8 +111,9 @@ the previous generic owner would have emitted a Sino/counter reading.
 registry, and the existing unsigned integer 40+ threshold. Generation and
 10-multiple age-band anchors select Sino reading. A registered machine noun
 with a direct topic particle may license the count without `총·모두`;
-`주차장 ... 남다` licenses a machine count, and `N대 과제` is the sole current
-major-item Sino allowlist. Other low bare/major-item surfaces defer. Valid decimal uses Sino reading only under an approved exact anchor.
+`주차장 ... 남다` licenses a machine count, and `N대 과제`, `N대 전략`,
+and `N대 추진전략` are the current exact major-item Sino allowlist. Other low
+bare/major-item surfaces defer. Valid decimal uses Sino reading only under an approved exact anchor.
 Signed integer, leading-zero, malformed-comma, alphanumeric, bare decimal, and
 decimal age-band surfaces defer.
 
@@ -353,7 +354,8 @@ cross punctuation or infer arbitrary nouns, verbs, or distant context.
 | generation suffix | `3대째` | `삼 대째` |
 | age exact anchor | `20대 남성` | `이십 대 남성` |
 | generation exact noun | `가족 3대` | `가족 삼 대` |
-| unapproved major-item noun | `3대 과제` | preserve |
+| approved major-item noun | `3대 추진전략` | `삼대 추진전략` |
+| unapproved major-item noun | `3대 후보` | preserve |
 | bare decimal | `1.5대` | preserve |
 | protected/code-like | `[3대]`, backtick `3대`, `path/3대/file`, `A3대` | existing protected result |
 
@@ -1455,3 +1457,36 @@ Owner contract:
 - protected/code-like and registered structured owners win before arithmetic
 - signed/fraction/decimal/generic numeric fallback cannot reenter a claimed or
   atomically preserved expression
+
+## 14. Korean textual fractions and numbered equipment sequences
+
+The denominator-first Korean fraction surface
+`positive integer + optional horizontal space + 분의 + optional horizontal
+space + positive integer` is one atomic `textual_fraction` owner. Both integer
+cores use the shared fraction integer reader; the original `분의` marker and
+source horizontal spacing retain provenance. It precedes the Korean time owner,
+so `분` cannot claim only the denominator as an unsafe minute amount.
+
+| Surface | Canonical / route |
+|---|---|
+| `5000분의 1 축척` | `오천분의 일 축척` |
+| `1000분의 1 지도` | `천분의 일 지도` |
+| `1,000분의 2` | `천분의 이` |
+| `01분의 2` | atomic preserve |
+| `1분의 0` | atomic preserve |
+
+Invalid leading-zero, malformed-comma, or non-positive textual fractions are
+claimed by `TEXTUAL_FRACTION_PRESERVE_SURFACE`; generic number and time fallback
+cannot partially rewrite them.
+
+A contiguous middle-dot numeric chain immediately followed by the exact suffix
+`호기` is a numbered-equipment sequence. The existing middle-dot block reader
+claims the complete numeric chain before contextual `호`, counter, or generic
+number fallback. Address/administrative `호` without `기` keeps its existing
+guard.
+
+| Surface | Canonical / route |
+|---|---|
+| `국토위성 1·2호기` | `국토위성 일 이호기` |
+| `3·4호기를 도입한다` | `삼 사호기를 도입한다` |
+| `1·2호` | existing address/identifier preserve |

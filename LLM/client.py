@@ -83,6 +83,11 @@ def generate(
         response = opener(request, timeout=settings.timeout_seconds)
         raw_body = response.read()
     except urllib.error.HTTPError as exc:
+        if exc.code == 502:
+            raise LLMUpstreamHTTPError(
+                "Local LLM server returned HTTP 502. Its proxy backend may be "
+                "unavailable; check the local LLM service and retry."
+            ) from exc
         raise LLMUpstreamHTTPError(
             f"Local LLM server returned HTTP {exc.code}."
         ) from exc

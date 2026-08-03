@@ -36,6 +36,7 @@ from LLM.config import (
     load_runtime_settings,
 )
 from LLM.gemini_client import (
+    GeminiAPIKeyRestrictionError,
     GeminiAuthenticationError,
     GeminiConnectionError,
     GeminiRateLimitError,
@@ -179,6 +180,8 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
     except GeminiRateLimitError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except GeminiServiceDisabledError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except GeminiAPIKeyRestrictionError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (
         GeminiAuthenticationError,

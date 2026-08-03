@@ -25,7 +25,10 @@ from engine.span_engine.decimal_registered_suffix import (
 from engine.span_engine.duration import parse_duration_candidate
 from engine.span_engine.emergency import parse_emergency_candidate
 from engine.span_engine.event import parse_event_candidate
-from engine.span_engine.fraction import parse_fraction_candidate
+from engine.span_engine.fraction import (
+    parse_fraction_candidate,
+    parse_textual_fraction_candidate,
+)
 from engine.span_engine.hyphen import hyphen_digit_reading
 from engine.span_engine.jamo import parse_jamo_candidate
 from engine.span_engine.korean_da_score_pair import parse_korean_da_score_pair_candidate
@@ -165,6 +168,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_percent_point_candidate(raw_text, candidate)
     elif candidate.owner == "fraction":
         reading = parse_fraction_candidate(raw_text, candidate)
+    elif candidate.owner == "textual_fraction":
+        return parse_textual_fraction_candidate(raw_text, candidate)
     elif candidate.owner == "basic_arithmetic_expression":
         return parse_basic_arithmetic_candidate(raw_text, candidate)
     elif candidate.owner == "emergency":

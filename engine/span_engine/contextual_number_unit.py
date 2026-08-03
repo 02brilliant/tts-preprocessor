@@ -217,7 +217,7 @@ DAE_AGE_NOUNS = frozenset(
         "후반",
     }
 )
-DAE_MAJOR_ITEM_NOUNS = frozenset({"과제"})
+DAE_MAJOR_ITEM_NOUNS = frozenset({"과제", "전략", "추진전략"})
 DAE_MACHINE_LOCATION_NOUNS = frozenset({"주차장"})
 DAE_MACHINE_LOCATION_ACTIONS = frozenset({"남"})
 BU_SEQUENCE_NOUNS = frozenset({"행사", "공연", "책의"})

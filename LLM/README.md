@@ -139,12 +139,12 @@ PYTHONPATH=. .venv/bin/python LLM/tests/smoke_gemini.py
 이 smoke 검증은 설정된 Gemini 모델마다 통합 요청을 한 번 전송하므로 API
 사용량이 발생한다. 응답 본문과 API 키는 출력하지 않는다.
 
-### `Gemini API is disabled` 오류
+### Gemini 403 오류
 
-`Gemini API authentication or permission failed` 또는
-`Gemini API is disabled for this API key's Google Cloud project`가 표시되고
-upstream 403 응답에 Generative Language API 비활성화가 포함되면, API 키를
-바꾸기 전에 해당 키가 연결된 Google Cloud 프로젝트에서 **Generative Language
-API**를 활성화한다. 활성화 뒤 전파에 몇 분이 걸릴 수 있으므로, 완료 후 기존
-서버를 재시작하고 smoke 검증을 다시 실행한다. 키 값은 `llm.env`에만 두며
-Git·명령행·브라우저에 넣지 않는다.
+- `Gemini API is disabled ...`: 키가 연결된 Google Cloud 프로젝트에서
+  **Generative Language API**를 활성화한 뒤 전파를 기다리고 재시도한다.
+- `Gemini API key is blocked ...`: Google AI Studio에서 새 Gemini API 키를
+  만들거나 기존 키의 API 제한을 **Generative Language API (Gemini API)**로
+  설정한다.
+
+키 값은 `llm.env`에만 두며 Git·명령행·브라우저에 넣지 않는다.

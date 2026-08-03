@@ -216,7 +216,12 @@ owner 또는 exact contextual anchor가 있으면 Sino decimal로 확정하고,
 decimal은 유보한다. signed decimal도 동일 exact anchor가 full-claim할 수
 있을 때만 허용한다. signed integer, leading zero, malformed comma,
 alphanumeric `대`는 source-exact deferred claim이다. 주요 항목 allowlist는
-현재 `과제`만 승인하며 `원칙·목표·전략·사업`은 계속 유보한다.
+현재 `과제·전략·추진전략`을 승인하며 `원칙·목표·사업`은 계속 유보한다.
+
+`숫자+대` 뒤의 공백을 건너뛴 exact noun만 검사하며 범주 추론은 하지
+않는다. 따라서 `3대 추진전략 -> 삼대 추진전략`과
+`3대 전략 -> 삼대 전략`은 major-item Sino 읽기로 확정하지만,
+`3대 후보`는 계속 원문 유보한다.
 
 ### `부`, `동`, `호`, `판`, `단`, `등`, `척`
 
@@ -12151,3 +12156,34 @@ source operand/operator spans. Source whitespace inside the typed surface is
 consumed under the existing `SURFACE_INTERNAL_CONSUMED` Shadow Validation
 contract; text outside the surface keeps original provenance. Parser trace
 records `operand_kinds`, `operator_kinds`, and `has_equality`.
+
+### 12.9 Korean textual fraction and numbered-equipment owner alignment
+
+분모를 먼저 적는 한국어 분수 표면은
+`양의 정수 + optional horizontal space + 분의 + optional horizontal space
++ 양의 정수` 전체를 `textual_fraction` owner가 원자적으로 claim한다.
+두 숫자는 기존 fraction integer renderer를 공유하고, 원문의 `분의`와
+수평 공백은 원본 provenance로 유지한다. 이 owner는 Korean time owner보다
+먼저 실행되므로 `분`이 분모까지만 시간 단위로 오인할 수 없다.
+
+```text
+5000분의 1 축척 -> 오천분의 일 축척
+1000분의 1 지도 -> 천분의 일 지도
+1,000분의 2 -> 천분의 이
+3 분의 1 -> 삼 분의 일
+```
+
+leading zero, malformed comma, 0 분자/분모처럼 기존 fraction integer
+계약을 통과하지 못한 인식 표면은 `TEXTUAL_FRACTION_PRESERVE_SURFACE`가
+전체 보존한다. generic number와 time fallback의 부분 재진입은 금지한다.
+
+연속된 middle-dot 숫자열 바로 뒤에 exact suffix `호기`가 오면
+numbered-equipment sequence로 판정한다. 기존 middle-dot block reader가
+숫자열 전체를 contextual `호`, counter, generic number보다 먼저 claim한다.
+`호기`가 아닌 주소/행정형 `호` guard는 유지한다.
+
+```text
+국토위성 1·2호기 -> 국토위성 일 이호기
+3·4호기를 도입한다 -> 삼 사호기를 도입한다
+1·2호 -> 1·2호
+```

@@ -10,6 +10,7 @@ import pytest
 
 from LLM.config import GeminiSettings
 from LLM.gemini_client import (
+    GeminiAPIKeyRestrictionError,
     GeminiAuthenticationError,
     GeminiConnectionError,
     GeminiRateLimitError,
@@ -209,6 +210,37 @@ def test_api_disabled_403_has_safe_remediation_message() -> None:
     assert str(exc_info.value) == (
         "Gemini API is disabled for this API key's Google Cloud project. "
         "Enable Generative Language API and retry."
+    )
+    assert SETTINGS.api_key not in str(exc_info.value)
+
+
+def test_api_key_restriction_403_has_safe_remediation_message() -> None:
+    def opener(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            403,
+            "contains-upstream-detail",
+            hdrs=None,
+            fp=BytesIO(
+                b'{"error":{"code":403,"status":"PERMISSION_DENIED",'
+                b'"message":"Requests to this API '
+                b'generativelanguage.googleapis.com method '
+                b'google.ai.generativelanguage.v1beta.ModelService.ListModels '
+                b'are blocked."}}'
+            ),
+        )
+
+    with pytest.raises(GeminiAPIKeyRestrictionError) as exc_info:
+        generate_gemini(
+            model="gemini-3.6-flash",
+            prompt="테스트",
+            settings=SETTINGS,
+            opener=opener,
+        )
+
+    assert str(exc_info.value) == (
+        "Gemini API key is blocked from calling Generative Language API. "
+        "Restrict or replace the key for Gemini API and retry."
     )
     assert SETTINGS.api_key not in str(exc_info.value)
 

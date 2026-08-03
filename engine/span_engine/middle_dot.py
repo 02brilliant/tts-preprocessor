@@ -54,8 +54,14 @@ def scan_middle_dot_candidates(
                 and raw_text[span.end + 1].isdigit()
             ):
                 continue
-            if any(raw_text[span.end:].startswith(s) for s in ("가", "호", "동", "번", "로", "길", "번지")):
+            equipment_sequence = raw_text.startswith("호기", span.end)
+            if not equipment_sequence and any(
+                raw_text[span.end:].startswith(s)
+                for s in ("가", "호", "동", "번", "로", "길", "번지")
+            ):
                 continue
+        else:
+            equipment_sequence = False
 
         # URL/Path context guard
         if is_decimal_like_url_or_path_context(raw_text, span):
@@ -71,7 +77,11 @@ def scan_middle_dot_candidates(
                 owner="middle_dot_numeric",
                 surface_type="LEXICAL_MIDDLEDOT_SURFACE",
                 reason="middle_dot_numeric_block_match",
-                metadata={"reading": reading, "blocks": blocks},
+                metadata={
+                    "reading": reading,
+                    "blocks": blocks,
+                    "equipment_sequence": equipment_sequence,
+                },
             )
         )
     return candidates
