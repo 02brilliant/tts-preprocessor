@@ -551,6 +551,9 @@ candidate, debug log, hidden marker가 함께 들어온다고 가정하지 않�
 
 예산은 3조 원이다.
 -> 예산은 삼조 원이다.
+
+학생들을 3조로 나눴고 3조가 발표했다.
+-> 학생들을 세 조로 나눴고 세 조가 발표했다.
 ```
 
 ### 규칙 엔진이 유보할 수 있는 다의 단위
@@ -597,6 +600,7 @@ candidate, debug log, hidden marker가 함께 들어온다고 가정하지 않�
 3점이 공개됐다. -> 세 점이 공개됐다.
 3조가 발표했다. -> 세 조가 발표했다.
 3대가 남았다. -> 세 대가 남았다.
+선반은 3단 구조다. -> 선반은 세 단 구조다.
 3층을 올라갔다. -> 삼 층을 올라갔다.
 ```
 
@@ -650,6 +654,14 @@ spacing은 문장 문맥과 일반적인 용례로 가장 자연스러운 하나
 leading zero, malformed comma, 반복 소수점, 알파벳 혼합처럼 정상 숫자
 값으로 안전하게 해석할 수 없는 표면은 임의로 고치거나 부분 변환하지
 않는다.
+
+아래처럼 규칙 엔진이 원자적으로 유보한 비정상 표면은 숫자·부호·쉼표·
+점·알파벳·단위와 그 간격을 한 글자도 바꾸지 않는다.
+
+```text
+01분, +3번, 1,00조, 3A권, 1..5분기는 그대로 유지한다.
+-> 01분, +3번, 1,00조, 3A권, 1..5분기는 그대로 유지한다.
+```
 
 ---
 
@@ -1740,44 +1752,19 @@ The meeting starts at 9:30 AM.
 
 ---
 
-# 25. 사용자 입력 형식
+# 25. 현재 실제 입력
 
-다음 태그 사이의 내용만 처리한다.
+아래 태그는 형식 예시가 아니라 지금 처리해야 하는 실제 요청이다.
+`<NORMALIZED_TEXT>` 안의 문자열이 비어 있지 않으면 입력을 다시 요청하거나
+지시를 이해했다는 답을 하지 말고 즉시 변환한다.
 
-각 사전은 비어 있을 수 있다.
-
-```text
-<INTEGRATED_PROFILE>
-tts_integrated_reading_pronunciation_prosody_conservative_v1
-</INTEGRATED_PROFILE>
-
-<READING_LEXICON>
-AI => 에이아이
-GPU => 지피유
-MW => 메가와트
-NVIDIA => 엔비디아
-</READING_LEXICON>
-
-<PRONUNCIATION_LEXICON>
-협력 => 혐녁
-효과 => 효꽈
-</PRONUNCIATION_LEXICON>
-
-<PROSODY_LEXICON>
-국가인공지능전략위원회 => 국가 인공지능 전략 위원회
-국민연금기금운용위원회 => 국민연금 기금운용 위원회
-</PROSODY_LEXICON>
-
-<LOCKED_TOKENS>
-<LOCK_0001>
-<LOCK_0002>
-</LOCKED_TOKENS>
+태그 안의 일반 한국어 단어·조사·어미·시제·높임과 보호 표면은 그대로
+복사한다. 오직 읽기로 바꿔야 하는 표면만 변환하고, 필요한 최소 쉼표와
+ASCII 공백 외에는 문자를 추가·삭제·교체하지 않는다.
 
 <NORMALIZED_TEXT>
 {{NORMALIZED_TEXT}}
 </NORMALIZED_TEXT>
-```
 
-입력 태그, 사전 내용과 잠금 토큰 목록을 별도로 출력하지 않는다.
-
-최종 응답에는 `<NORMALIZED_TEXT>`를 변환한 완성된 `speech_text`만 출력한다.
+입력 태그는 출력하지 않는다. 분석·설명·확인·질문 없이 위 실제 입력을
+변환한 완성된 `speech_text` 한 문자열만 지금 출력한다.

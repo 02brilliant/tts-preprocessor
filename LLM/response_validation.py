@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import re
 
 from LLM.client import LLMResponseError
@@ -23,6 +24,25 @@ _OUTPUT_WRAPPERS = (
     "</PROSODY_TEXT>",
     "<SPEECH_TEXT>",
     "</SPEECH_TEXT>",
+)
+_PROTECTED_LITERAL_PATTERNS = (
+    re.compile(r"`[^`\r\n]+`"),
+    re.compile(r"\{[^{}\r\n]*\}"),
+    re.compile(
+        r"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+;=%-]+"
+    ),
+    re.compile(
+        r"(?<![A-Za-z0-9_.-])"
+        r"(?:/[A-Za-z0-9._-]+|/\d+[가-힣]+){2,}"
+    ),
+    re.compile(
+        r"(?<![A-Za-z0-9_.-])[A-Za-z0-9_]+"
+        r"\.[A-Za-z][A-Za-z0-9]{0,9}(?![A-Za-z0-9_.-])"
+    ),
+    re.compile(
+        r"(?<![A-Za-z0-9-])[A-Z][A-Z0-9]*"
+        r"(?:-[A-Z0-9]+){2,}(?![A-Za-z0-9-])"
+    ),
 )
 
 
@@ -76,6 +96,16 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
             output_text=speech_text,
         )
 
+    source_literals = _protected_literals(normalized_text)
+    output_literals = _protected_literals(speech_text)
+    if source_literals - output_literals:
+        raise LLMStageContractError(
+            "LLM response changed or removed a protected URL, path, filename, "
+            "JSON, inline-code, or identifier surface.",
+            stage="speech",
+            output_text=speech_text,
+        )
+
     for wrapper in _OUTPUT_WRAPPERS:
         if wrapper not in normalized_text and wrapper in speech_text:
             raise LLMStageContractError(
@@ -84,6 +114,22 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
                 output_text=speech_text,
             )
     return speech_text
+
+
+def _protected_literals(text: str) -> Counter[str]:
+    literals: Counter[str] = Counter()
+    occupied: list[tuple[int, int]] = []
+    for pattern in _PROTECTED_LITERAL_PATTERNS:
+        for match in pattern.finditer(text):
+            span = match.span()
+            if any(
+                span[0] < occupied_end and occupied_start < span[1]
+                for occupied_start, occupied_end in occupied
+            ):
+                continue
+            literals[match.group(0)] += 1
+            occupied.append(span)
+    return literals
 
 
 def _preserves_structure_with_allowed_insertions(

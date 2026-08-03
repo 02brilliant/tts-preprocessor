@@ -12,6 +12,9 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 LLM은 선택 모델로 한 번만 호출한다. 규칙 기반 `normalized_text` 계약과
 source-free binary runtime은 이 통합으로 변경되지 않는다.
+model을 생략하면 기본 로컬 모델 `gemma4:31b`를 사용한다. 규칙 확정
+읽기를 위한 별도 lock/provenance, 반복 안정성 측정, 자동 재시도는
+사용하지 않는다.
 
 규칙 엔진은 문맥형 숫자+단위의 의미를 확정하지 못하면 해당 표면을
 terminal preserve하고 raw 숫자를 남길 수 있다. 후단 LLM은
@@ -52,7 +55,7 @@ GET /api/llm/models
 ```json
 {
   "normalized_text": "국물은 좋습니다.",
-  "model": "gemma4:e4b"
+  "model": "gemma4:31b"
 }
 ```
 
@@ -61,7 +64,7 @@ GET /api/llm/models
 ```json
 {
   "speech_text": "궁무른, 따뜨탐니다.",
-  "model": "gemma4:e4b",
+  "model": "gemma4:31b",
   "elapsed_ms": 123.456
 }
 ```

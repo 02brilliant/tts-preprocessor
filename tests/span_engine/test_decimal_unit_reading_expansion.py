@@ -32,14 +32,14 @@ def test_valid_decimal_contextual_units_use_sino_decimal_reading(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("5.5분이 남았다", "5.5분이 남았다"),
-        ("2.35번 확인했다", "2.35번 확인했다"),
+        ("5.5분이 남았다", "오쩜오 분이 남았다"),
+        ("2.35번 확인했다", "이쩜삼오 번 확인했다"),
         ("2.35권이 놓였다", "2.35권이 놓였다"),
         ("2.35편이 공개됐다", "2.35편이 공개됐다"),
         ("2.35층이 남았다", "2.35층이 남았다"),
     ],
 )
-def test_decimal_contextual_units_still_defer_when_spacing_meaning_is_ambiguous(
+def test_decimal_contextual_units_follow_expanded_exact_anchors_or_defer(
     source: str, expected: str
 ) -> None:
     assert transform(source) == expected

@@ -25,7 +25,7 @@ def test_model_config_has_fixed_models_and_default() -> None:
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
     )
-    assert config.default_model == "gemma4:e4b"
+    assert config.default_model == "gemma4:31b"
     assert config.get("gemma4:e4b").provider == "local"
     assert config.get("gemini-3.6-flash").provider == "gemini"
     assert config.get("missing") is None

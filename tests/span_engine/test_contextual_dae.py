@@ -17,7 +17,7 @@ from engine.span_engine.numeric_dae import REGISTERED_DAE_COUNTER_NOUNS
         ("가족 3대가 함께 살았다", "가족 삼 대가 함께 살았다"),
         ("20대 남성", "이십 대 남성"),
         ("30대 초반", "삼십 대 초반"),
-        ("3대 과제", "3대 과제"),
+        ("3대 과제", "삼대 과제"),
         ("3대가 남았다", "3대가 남았다"),
         ("40대", "사십 대"),
     ],
@@ -53,7 +53,7 @@ def test_contextual_dae_malformed_deferred(text: str) -> None:
         ("자동차 3대", "machine_count", "confirmed"),
         ("가업을 3대째 이어 왔다", "generation", "confirmed"),
         ("20대 남성", "age_band", "confirmed"),
-        ("3대 과제", "dae_ambiguous", "deferred"),
+        ("3대 과제", "major_item", "confirmed"),
         ("3대가 남았다", "dae_ambiguous", "deferred"),
     ],
 )

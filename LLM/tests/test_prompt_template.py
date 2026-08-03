@@ -99,8 +99,17 @@ def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     assert "3번 확인했다 -> 세 번 확인했다" in prompt
     assert "대기표 3호를 호출했다 -> 대기표 삼 호를 호출했다" in prompt
     assert "5분이 남았다. -> 오분이 남았다." in prompt
+    assert (
+        "학생들을 3조로 나눴고 3조가 발표했다.\n"
+        "-> 학생들을 세 조로 나눴고 세 조가 발표했다."
+    ) in prompt
+    assert "선반은 3단 구조다. -> 선반은 세 단 구조다." in prompt
     assert "3층을 올라갔다 -> 삼 층을 올라갔다" in prompt
     assert "총 2.34번 -> 총 이쩜삼사 번" in prompt
+    assert (
+        "01분, +3번, 1,00조, 3A권, 1..5분기는 그대로 유지한다."
+        in prompt
+    )
 
 
 def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
@@ -130,3 +139,6 @@ def test_active_prompt_injects_only_plain_normalized_text() -> None:
     ) in rendered
     assert "<CONTEXTUAL_DECISION_LOGS>" not in rendered
     assert "<DECISION_CANDIDATES>" not in rendered
+    actual_input = rendered.rsplit("# 25. 현재 실제 입력", 1)[1]
+    assert "```" not in actual_input
+    assert "형식 예시가 아니라 지금 처리해야 하는 실제 요청" in actual_input

@@ -43,7 +43,7 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
             "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
         ],
-        "default_model": "gemma4:e4b",
+        "default_model": "gemma4:31b",
     }
     assert get_endpoint("/api/llm/transform", "POST")
 
@@ -51,21 +51,21 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
 @pytest.mark.parametrize(
     "payload",
     (
-        {"model": "gemma4:e4b"},
+        {"model": "gemma4:31b"},
         {
             "stage": "prosody",
             "normalized_text": "원고",
-            "model": "gemma4:e4b",
+            "model": "gemma4:31b",
         },
         {
             "normalized_text": "원고",
             "prosody_text": "이전 단계",
-            "model": "gemma4:e4b",
+            "model": "gemma4:31b",
         },
         {
             "normalized_text": "원고",
             "contextual_decision_logs": [{"decision": "deferred"}],
-            "model": "gemma4:e4b",
+            "model": "gemma4:31b",
         },
     ),
 )
@@ -120,6 +120,24 @@ def test_local_transform_returns_integrated_contract(monkeypatch) -> None:
         "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
         "base_url": "http://llm.invalid/api",
     }
+
+
+def test_local_transform_uses_31b_default(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    captured = {}
+
+    def fake_generate(*, model, prompt, settings):
+        captured["model"] = model
+        return GenerationResult(text="원고", elapsed_ms=1.0)
+
+    monkeypatch.setattr(server_module, "generate", fake_generate)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    result = endpoint(LLMTransformRequest(normalized_text="원고"))
+
+    assert result["model"] == "gemma4:31b"
+    assert captured["model"] == "gemma4:31b"
 
 
 def test_gemini_transform_routes_to_gemini_client(monkeypatch) -> None:

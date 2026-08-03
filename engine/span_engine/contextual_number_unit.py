@@ -141,8 +141,19 @@ BEON_IDENTIFIER_NOUNS = frozenset(
 )
 BEON_OCCURRENCE_MARKERS = frozenset({"총", "모두"})
 BEON_OCCURRENCE_ACTIONS = frozenset(
-    {"반복", "재시도", "방문", "시도", "호출", "클릭", "재생"}
+    {
+        "반복",
+        "재시도",
+        "방문",
+        "시도",
+        "호출",
+        "클릭",
+        "재생",
+        "확인",
+        "우회",
+    }
 )
+BUN_TIME_REMAINING_ACTIONS = frozenset({"남"})
 JEOM_SCORE_ANCHORS = frozenset(
     {
         "점수",
@@ -163,6 +174,7 @@ JEOM_SCORE_ANCHORS = frozenset(
 )
 JEOM_ITEM_NOUNS = frozenset(
     {
+        "신작",
         "작품",
         "출품작",
         "전시품",
@@ -183,7 +195,7 @@ JO_FINANCIAL_ANCHORS = frozenset(
 )
 JO_GROUP_MARKERS = frozenset({"총", "모두"})
 JO_GROUP_ACTIONS = frozenset(
-    {"나누", "나눴", "편성", "구성", "배정", "만들"}
+    {"나누", "나눴", "편성", "구성", "배정", "만들", "발표"}
 )
 DAE_GENERATION_NOUNS = frozenset(
     {"가족", "가문", "가계", "가업", "집안", "왕조", "세습"}
@@ -205,9 +217,14 @@ DAE_AGE_NOUNS = frozenset(
         "후반",
     }
 )
+DAE_MAJOR_ITEM_NOUNS = frozenset({"과제"})
+DAE_MACHINE_LOCATION_NOUNS = frozenset({"주차장"})
+DAE_MACHINE_LOCATION_ACTIONS = frozenset({"남"})
 BU_SEQUENCE_NOUNS = frozenset({"행사", "공연", "책의"})
 BU_DOCUMENT_NOUNS = frozenset(
     {
+        "자료",
+        "복사본",
         "신문",
         "서류",
         "문서",
@@ -222,11 +239,23 @@ BU_DOCUMENT_NOUNS = frozenset(
     }
 )
 BU_QUANTITY_ACTIONS = frozenset(
-    {"인쇄", "복사", "제출", "배포", "준비", "발급", "보관", "냈"}
+    {
+        "인쇄",
+        "복사",
+        "제출",
+        "배포",
+        "준비",
+        "발급",
+        "보관",
+        "냈",
+        "남",
+        "사용",
+    }
 )
 DONG_IDENTIFIER_NOUNS = frozenset(
     {"아파트", "주민", "사무소", "행정동", "주소"}
 )
+DONG_PREVIOUS_IDENTIFIER_NOUNS = frozenset({"아파트", "주소"})
 DONG_BUILDING_NOUNS = frozenset(
     {"건물", "주택", "공장", "창고", "시설"}
 )
@@ -234,11 +263,11 @@ DONG_QUANTITY_ACTIONS = frozenset(
     {"신축", "건설", "철거", "붕괴", "피해", "증축", "지었", "무너졌"}
 )
 HO_IDENTIFIER_NOUNS = frozenset(
-    {"차량", "태풍", "선박", "열차", "위성"}
+    {"대기표", "차량", "태풍", "선박", "열차", "위성"}
 )
 HO_HOUSEHOLD_NOUNS = frozenset({"농가", "가구", "세대", "피해가구"})
 HO_QUANTITY_ACTIONS = frozenset(
-    {"지원", "피해", "조사", "선정", "복구"}
+    {"지원", "피해", "조사", "선정", "복구", "확인"}
 )
 PAN_GAME_NOUNS = frozenset(
     {"바둑", "장기", "체스", "경기", "대국", "게임", "승부"}
@@ -249,8 +278,9 @@ DAN_GRADE_NOUNS = frozenset(
     {"태권도", "유도", "검도", "바둑", "기어", "계단", "단계"}
 )
 DAN_STACK_ACTIONS = frozenset({"쌓", "적재", "올리"})
+DAN_STACK_NOUNS = frozenset({"선반", "상자"})
 DEUNG_RANK_NOUNS = frozenset(
-    {"대회", "경기", "평가", "시험", "순위"}
+    {"대회", "경기", "평가", "시험", "순위", "결과"}
 )
 DEUNG_LIGHT_NOUNS = frozenset({"조명", "전등", "등불", "램프"})
 DEUNG_LIGHT_ACTIONS = frozenset(
@@ -262,6 +292,7 @@ CHEOK_SHIP_NOUNS = frozenset(
 CHEOK_LENGTH_NOUNS = frozenset(
     {"길이", "폭", "너비", "높이", "깊이", "둘레"}
 )
+CHEOK_SHIP_LOCATION_NOUNS = frozenset({"항구"})
 JANG_SHEET_NOUNS = frozenset(
     {
         "종이",
@@ -302,6 +333,8 @@ PYEON_STRUCTURE_NOUNS = frozenset(
 CHEUNG_LOCATION_NOUNS = frozenset(
     {"회의실", "사무실", "로비", "식당"}
 )
+CHEUNG_ACCESS_NOUNS = frozenset({"계단"})
+CHEUNG_MOVEMENT_ACTIONS = frozenset({"올라", "내려"})
 
 
 def scan_contextual_malformed_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -432,6 +465,14 @@ def _evaluate_standard_match(
                 "native_1_to_99",
                 f"person_noun:{previous}",
             )
+        if _starts_with_anchor(following, BUN_TIME_REMAINING_ACTIONS):
+            return _confirmed(
+                raw_text,
+                match,
+                "duration_minute",
+                "sino",
+                f"remaining_action:{following}",
+            )
         return _deferred(raw_text, match, "time_or_person", "exact_anchor_missing")
 
     if unit == "번":
@@ -487,15 +528,21 @@ def _evaluate_standard_match(
                 else f"score_anchor:{following_score_anchor}"
             )
             return _confirmed(raw_text, match, "score", "sino", anchor)
-        if previous in JEOM_ITEM_NOUNS and _starts_with_anchor(
-            following, JEOM_ITEM_ACTIONS
+        item_noun = _matching_noun_anchor(previous, JEOM_ITEM_NOUNS)
+        item_action = _starts_with_anchor(following, JEOM_ITEM_ACTIONS)
+        if item_action and (
+            item_noun is not None or tail.startswith(("이", "가", "을", "를"))
         ):
             return _confirmed(
                 raw_text,
                 match,
                 "item_count",
                 "native",
-                f"item_noun_action:{previous}+{following}",
+                (
+                    f"item_noun_action:{item_noun}+{following}"
+                    if item_noun is not None
+                    else f"item_action:{following}"
+                ),
             )
         if _match_has_decimal(match):
             return _confirmed(
@@ -547,6 +594,19 @@ def _evaluate_standard_match(
                 "native",
                 machine_reason,
             )
+        machine_location = _matching_noun_anchor(
+            previous, DAE_MACHINE_LOCATION_NOUNS
+        )
+        if machine_location is not None and _starts_with_anchor(
+            following, DAE_MACHINE_LOCATION_ACTIONS
+        ):
+            return _confirmed(
+                raw_text,
+                match,
+                "machine_count",
+                "native",
+                f"machine_location_action:{machine_location}+{following}",
+            )
         generation_noun = _matching_noun_anchor(
             previous, DAE_GENERATION_NOUNS
         )
@@ -569,6 +629,17 @@ def _evaluate_standard_match(
                 "age_band",
                 "sino",
                 f"age_anchor:{age_noun}",
+            )
+        major_item_noun = _matching_noun_anchor(
+            following, DAE_MAJOR_ITEM_NOUNS
+        )
+        if major_item_noun is not None:
+            return _confirmed(
+                raw_text,
+                match,
+                "major_item",
+                "sino",
+                f"major_item_noun:{major_item_noun}",
             )
         if value >= 40:
             # Existing approved threshold owner and renderer remain canonical.
@@ -613,7 +684,7 @@ def _evaluate_standard_match(
         if (
             _is_dong_ho_structure(raw_text, match)
             or following_identifier is not None
-            or previous_identifier == "주소"
+            or previous_identifier in DONG_PREVIOUS_IDENTIFIER_NOUNS
         ):
             anchor = (
                 "fixed_structure:N동_N호"
@@ -626,15 +697,13 @@ def _evaluate_standard_match(
         building_noun = _matching_noun_anchor(
             previous, DONG_BUILDING_NOUNS
         )
-        if building_noun is not None and _starts_with_anchor(
-            following, DONG_QUANTITY_ACTIONS
-        ):
+        if building_noun is not None:
             return _confirmed(
                 raw_text,
                 match,
                 "building_count",
                 "native",
-                f"building_noun_action:{building_noun}+{following}",
+                f"building_noun:{building_noun}",
             )
         return _deferred(
             raw_text, match, "identifier_or_building_count", "exact_anchor_pair_missing"
@@ -725,13 +794,18 @@ def _evaluate_standard_match(
             return _confirmed(
                 raw_text, match, "grade_or_stage", "sino", anchor
             )
-        if following == "선반":
+        stack_noun = _matching_noun_anchor(previous, DAN_STACK_NOUNS)
+        if following == "선반" or stack_noun is not None:
             return _confirmed(
                 raw_text,
                 match,
                 "stack_count",
                 "native",
-                "fixed_structure:N단_선반",
+                (
+                    "fixed_structure:N단_선반"
+                    if following == "선반"
+                    else f"stack_noun:{stack_noun}"
+                ),
             )
         if (
             previous == "총"
@@ -762,15 +836,17 @@ def _evaluate_standard_match(
                 raw_text, match, "rank_or_grade", "sino", anchor
             )
         light_noun = _matching_noun_anchor(previous, DEUNG_LIGHT_NOUNS)
-        if light_noun is not None and _starts_with_anchor(
-            following, DEUNG_LIGHT_ACTIONS
-        ):
+        if light_noun is not None:
             return _confirmed(
                 raw_text,
                 match,
                 "light_count",
                 "native",
-                f"light_noun_action:{light_noun}+{following}",
+                (
+                    f"light_noun_action:{light_noun}+{following}"
+                    if _starts_with_anchor(following, DEUNG_LIGHT_ACTIONS)
+                    else f"light_noun:{light_noun}"
+                ),
             )
         return _deferred(
             raw_text, match, "rank_or_light_count", "exact_anchor_pair_missing"
@@ -786,14 +862,31 @@ def _evaluate_standard_match(
                 "native",
                 f"ship_noun:{ship_noun}",
             )
+        ship_location = _matching_noun_anchor(
+            previous, CHEOK_SHIP_LOCATION_NOUNS
+        )
+        if ship_location is not None:
+            return _confirmed(
+                raw_text,
+                match,
+                "ship_count",
+                "native",
+                f"ship_location:{ship_location}",
+            )
         length_noun = _matching_noun_anchor(previous, CHEOK_LENGTH_NOUNS)
-        if length_noun is not None:
+        if length_noun is not None or _has_left_clause_anchor(
+            raw_text, match.start(), CHEOK_LENGTH_NOUNS
+        ):
             return _confirmed(
                 raw_text,
                 match,
                 "length_measure",
                 "sino",
-                f"length_noun:{length_noun}",
+                (
+                    f"length_noun:{length_noun}"
+                    if length_noun is not None
+                    else "left_clause_length_noun"
+                ),
             )
         return _deferred(
             raw_text, match, "ship_or_length", "exact_anchor_missing"
@@ -898,12 +991,22 @@ def _evaluate_standard_match(
             tail.startswith(("에", "에서"))
             or previous == "지하"
             or location_noun is not None
+            or (
+                _matching_noun_anchor(previous, CHEUNG_ACCESS_NOUNS)
+                is not None
+                and _starts_with_anchor(
+                    following, CHEUNG_MOVEMENT_ACTIONS
+                )
+            )
         ):
             anchor = (
                 f"location_particle:{tail}"
                 if tail.startswith(("에", "에서"))
                 else "location_prefix:지하"
                 if previous == "지하"
+                else f"access_movement:{previous}+{following}"
+                if _matching_noun_anchor(previous, CHEUNG_ACCESS_NOUNS)
+                is not None
                 else f"location_noun:{location_noun}"
             )
             return _confirmed(
@@ -1250,6 +1353,10 @@ def _number_reading(
 
 def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:
     unit = match.group("unit")
+    if semantic_type == "major_item":
+        return match.group("space")
+    if semantic_type == "duration_minute":
+        return " " if _match_has_decimal(match) else match.group("space")
     if semantic_type in {
         "kind_or_item_count",
         "honorific_person_count",
@@ -1505,8 +1612,11 @@ def _matching_noun_anchor(
 ) -> str | None:
     particles = (
         "에서",
+        "에서는",
         "으로",
         "에게",
+        "에는",
+        "의",
         "은",
         "는",
         "이",
@@ -1524,6 +1634,28 @@ def _matching_noun_anchor(
         if word == anchor or any(word == f"{anchor}{particle}" for particle in particles):
             return anchor
     return None
+
+
+def _has_left_clause_anchor(
+    raw_text: str,
+    start: int,
+    anchors: frozenset[str],
+) -> bool:
+    boundary = max(
+        raw_text.rfind(delimiter, 0, start)
+        for delimiter in (".", "!", "?", ",", ";")
+    )
+    clause = raw_text[boundary + 1 : start]
+    return any(
+        re.search(
+            rf"(?<![가-힣]){re.escape(anchor)}"
+            r"(?:은|는|이|가|을|를|의|에|에서|으로|로|도|만)?"
+            r"(?![가-힣])",
+            clause,
+        )
+        is not None
+        for anchor in anchors
+    )
 
 
 def _jo_specific_owner_context(

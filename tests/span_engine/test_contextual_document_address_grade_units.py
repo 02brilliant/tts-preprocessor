@@ -63,7 +63,6 @@ def test_batch4_exact_anchors_confirm_meaning(
     [
         "자료 3부",
         "3부가 남았다",
-        "아파트 3동",
         "3동이 남았다",
         "농가 3호",
         "3호가 선정됐다",
@@ -89,6 +88,14 @@ def test_batch4_bare_or_under_anchored_surfaces_defer_atomically(
         claim["owner"] in {"number", "counter_noun", "korean_numeric_chain"}
         for claim in debug["trace"]["claim_logs"]
     )
+
+
+def test_batch4_apartment_identifier_allowlist() -> None:
+    debug = _debug("아파트 3동")
+    assert debug["normalized_text"] == "아파트 삼 동"
+    log = debug["trace"]["contextual_decision_logs"][0]
+    assert log["decision"] == "confirmed"
+    assert log["semantic_type"] == "building_identifier"
 
 
 @pytest.mark.parametrize(

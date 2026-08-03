@@ -2,6 +2,20 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Contextual allowlist expansion and 31b default
+
+- 47개 문맥형 acceptance corpus에서 확정된 잔여 표면을 규칙 allowlist로
+  승격했다. 잔여 시간 `남다`, 횟수 `확인·우회`, 신작/공개 물품 수량,
+  그룹 `발표`, marker 없는 등록 기계 topic, 주차장 잔여 차량,
+  `N대 과제`, 자료·복사본, 아파트 동, 대기표 호, 선반·상자 단,
+  결과 순위, 조명 수량, 항구 선박, 같은 절의 길이, 계단 층 이동을
+  포함한다. 해당 corpus의 규칙 출력은 47/47 canonical이다.
+- 로컬 기본 LLM을 `gemma4:e4b`에서 `gemma4:31b`로 변경했다. 명시적 model
+  선택 기능은 유지한다.
+- 규칙 확정 읽기 강제 lock/provenance는 추가하지 않았다. 후단에는 계속
+  순수 `normalized_text`만 전달한다. LLM 반복 안정성 측정, 자동 재시도,
+  model 승격 fallback도 이번 정책 범위에 포함하지 않았다.
+
 ## Registered numeric quarter suffix
 
 - `분기`를 broad 숫자+한글 fallback이나 입력 치환이 아닌 정식
@@ -21,6 +35,15 @@
 
 ## Context-aware LLM handoff
 
+- 실제 `normalized_text`가 사용자 입력 형식 예시의 fenced code block 및
+  가상 사전/잠금 토큰과 함께 놓여 일부 모델이 입력 부재로 오판하던
+  프롬프트 구조를 수정했다. 현재 요청은 예시 밖의 실행 payload로
+  명시하며, `3단 구조`의 native 읽기와 leading-zero·malformed comma·
+  alphanumeric·반복 소수점 표면의 원문 보존 예를 보강했다.
+- LLM 응답 검증은 기존 문장부호·공백·lock token 계약에 더해 URL, 경로,
+  파일명, JSON-like block, Markdown inline code, SKU-like 식별자의
+  source-exact 보존을 확인한다. 모델이 보호 표면을 읽기 문자열로 바꾸거나
+  삭제한 응답은 성공 결과로 반환하지 않는다.
 - 전면 활성화된 규칙 엔진이 의도적으로 남기는 raw 숫자+다의 단위를 후단
   LLM 프롬프트에 반영했다. 같은 문장/절의 의미 관계를 우선하고 일반적인
   표준 한국어 용례로 가장 자연스러운 native/Sino 읽기를 선택하도록
@@ -83,6 +106,9 @@
 
 ## Decimal number-unit coverage and caret atomicity
 
+- 정상 decimal registered suffix의 안전 조사 tail에 관형격 `의`를
+  추가했다. `평점 3.5점의 작품 -> 평점 삼쩜오 점의 작품`처럼 숫자와
+  단위는 기존 canonical로 읽고 조사는 source-exact로 유지한다.
 - 기존 compact `쩜`과 source-exact fractional digit/trailing-zero canonical은
   그대로 유지한다. `이쩜 삼오` 같은 새 decimal 간격은 도입하지 않는다.
 - valid decimal은 등록 simple/special unit, exact compound unit
@@ -134,14 +160,16 @@
 - `분`, `번`, `점`, `조`를 exact local anchor 기반 owner로 분리했다.
   특정 시간/소수 점수/금액·large-unit owner는 계속 먼저이며,
   사람 높임 수량·횟수·물품 수량·그룹 수량만 기존 native renderer로
-  확정한다. bare/ambiguous와 unsupported numeric forms는 기본 출력에서
-  source-exact로 남고 generic fallback 재진입을 차단한다.
+  확정한다. 이후 `남다`, `확인·우회`, 물품 공개, 그룹 발표를 exact
+  allowlist로 추가했다. 남은 bare/ambiguous와 unsupported numeric forms는
+  기본 출력에서 source-exact로 남고 generic fallback 재진입을 차단한다.
 - 기존의 모든 bare `N분`, `N번`, `N점`, 조사 결합 `N조`를 일괄
   Sino/native로 읽던 기대값은 supersede했다. 이는 즉시 유보 활성화에
   따른 승인된 canonical 변경이다.
 - `대`는 기존 점수 관계와 `제N대`를 보존한 채 중앙 기계 registry,
   세대 exact noun/`째`, 10의 배수 연령대 exact noun을 분리했다.
-  `3대 과제` 같은 초기 검토 주요 항목과 확장 검토 기계 명사는 제외했다.
+  이후 marker 없는 등록 기계 topic, 주차장 잔여 차량과 `N대 과제`를
+  allowlist로 승인했다. 다른 주요 항목과 확장 검토 기계 명사는 제외한다.
   기존 unsigned integer 40+ threshold는 유지한다. 이후 exact anchor의
   valid decimal/signed decimal만 위 decimal coverage로 확장했고,
   signed integer/bare decimal/leading-zero/malformed/alphanumeric `대`는
@@ -149,12 +177,14 @@
 - `부·동·호·판·단·등·척`을 문서/주소/등급 contextual batch로
   활성화했다. 순서·식별·등급·길이와 실제 복사본·건물·가구·경기·적층·
   조명·선박 수량을 exact noun/suffix/action 구조에서만 분리한다.
-  bare 또는 한쪽 anchor만 있는 표현은 source-exact deferred claim이며,
+  이후 자료·복사본, 아파트, 대기표, 선반·상자, 결과·조명, 항구와
+  같은 절 길이 anchor를 승인했다. 남은 bare 표현은 source-exact deferred claim이며,
   기존 주소·서수·범위 owner와 각 단위의 기존 spacing canonical이 우선한다.
 - `장·권·편·층`을 수량/구조번호 충돌 batch로 활성화했다. 물품·책·작품
   direct noun과 장/권의 고정 번호 구조를 분리하고, `층`은 조사
-  `에·에서`, `지하`, 등록 위치 명사에서만 location을 확정한다.
-  이동·개수 가능성이 겹치는 층 표현과 모든 bare 표현은 유보한다.
+  `에·에서`, `지하`, 등록 위치 명사 및 계단 이동 구조에서 location을
+  확정한다. 그 밖의 이동·개수 가능성이 겹치는 층 표현과 모든 bare
+  표현은 유보한다.
 
 - Allowed the approximate tail `께` only after a complete structured suffix
   clock containing minutes: `N시 N분`, `N분 N초`, or `N시 N분 N초`.

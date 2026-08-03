@@ -84,7 +84,7 @@ check_llm_models() {
     exit 1
   fi
 
-  if ! grep -Fq '"default_model":"gemma4:e4b"' "$output_file"; then
+  if ! grep -Fq '"default_model":"gemma4:31b"' "$output_file"; then
     echo "[FAIL] LLM model list response does not contain the configured default model" >&2
     exit 1
   fi
@@ -92,7 +92,7 @@ check_llm_models() {
 
 check_post_llm_transform() {
   local output_file="$1"
-  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4:e4b"}'
+  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4:31b"}'
 
   echo "[check] Integrated LLM transform: ${LLM_TRANSFORM_URL}"
   if ! curl -fsS \

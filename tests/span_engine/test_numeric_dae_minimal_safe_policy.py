@@ -169,12 +169,32 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
 
 
 @pytest.mark.parametrize(
+    ("text", "expected", "semantic"),
+    [
+        ("장비는 3.5대가 필요하다", "장비는 삼쩜오 대가 필요하다", "machine_count"),
+        ("5대 과제", "오대 과제", "major_item"),
+    ],
+)
+def test_expanded_dae_allowlist(
+    text: str, expected: str, semantic: str
+) -> None:
+    debug = _debug(text)
+    assert debug["normalized_text"] == expected
+    log = next(
+        item
+        for item in debug["trace"]["contextual_decision_logs"]
+        if item["unit"] == "대"
+    )
+    assert log["decision"] == "confirmed"
+    assert log["semantic_type"] == semantic
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "3대",
         "10대",
         "20대가",
-        "5대 과제",
         "10대 사업",
         "3대를 샀다",
         "5대가 도착했다",

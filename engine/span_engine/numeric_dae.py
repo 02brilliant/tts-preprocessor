@@ -90,6 +90,10 @@ def explicit_numeric_dae_counter_context_reason(
     if previous_noun is not None and is_registered_dae_counter_noun(previous_noun):
         return "dae_counter_registered_noun_direct_context"
 
+    topic_noun = _registered_topic_noun(raw_text, candidate_span.start)
+    if topic_noun is not None:
+        return "dae_counter_registered_noun_topic_context"
+
     continuation_noun = _registered_counter_series_noun(raw_text, candidate_span.start)
     if continuation_noun is not None:
         return "dae_counter_registered_noun_adjacent_continuation"
@@ -223,6 +227,34 @@ def _registered_topic_quantity_noun(
     ):
         return None
     return noun
+
+
+def _registered_topic_noun(
+    raw_text: str,
+    numeric_start: int,
+) -> str | None:
+    numeric_match = _NUMERIC_DAE_RE.match(raw_text, numeric_start)
+    if numeric_match is not None and _looks_like_relation_right_operand(
+        raw_text, numeric_match.end()
+    ):
+        return None
+    if numeric_start < 2 or raw_text[numeric_start - 1] != " ":
+        return None
+    topic = raw_text[: numeric_start - 1]
+    for particle in sorted(REGISTERED_DAE_TOPIC_PARTICLES, key=len, reverse=True):
+        if not topic.endswith(particle):
+            continue
+        noun_end = len(topic) - len(particle)
+        noun_start = noun_end
+        while noun_start > 0 and _is_completed_hangul(topic[noun_start - 1]):
+            noun_start -= 1
+        noun = topic[noun_start:noun_end]
+        if not is_registered_dae_counter_noun(noun):
+            continue
+        if noun_start > 0 and _is_identifier_neighbor(topic[noun_start - 1]):
+            continue
+        return noun
+    return None
 
 
 def is_sino_threshold_numeric_dae(

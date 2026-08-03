@@ -21,7 +21,11 @@ from scripts.probes.runtime_matrix import (
 PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
     "contextual-decision-contract": (
         ProbeCase("confirmed-decimal-unit", "1.5가지", "일쩜오 가지"),
-        ProbeCase("deferred-decimal-unit", "2.35번 확인했다", "2.35번 확인했다"),
+        ProbeCase(
+            "confirmed-decimal-occurrence",
+            "2.35번 확인했다",
+            "이쩜삼오 번 확인했다",
+        ),
         ProbeCase("specific-owner-precedence", "3.5점", "삼쩜오 점"),
     ),
     "gaji": (
@@ -44,10 +48,10 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
     "bun-beon-jeom": (
         ProbeCase("bun-time", "5분 뒤", "오분 뒤"),
         ProbeCase("bun-person", "손님 5분이 도착했다", "손님 다섯 분이 도착했다"),
-        ProbeCase("bun-defer", "5분이 남았다", "5분이 남았다"),
+        ProbeCase("bun-remaining", "5분이 남았다", "오분이 남았다"),
         ProbeCase("beon-id", "3번 버스", "삼번 버스"),
         ProbeCase("beon-count", "총 3번 시도했다", "총 세 번 시도했다"),
-        ProbeCase("beon-defer", "3번 확인했다", "3번 확인했다"),
+        ProbeCase("beon-confirm", "3번 확인했다", "세 번 확인했다"),
         ProbeCase("jeom-score", "평점 3점", "평점 삼 점"),
         ProbeCase(
             "jeom-score-anchor-particle",
@@ -55,16 +59,16 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
             "평점은 삼 점이었다",
         ),
         ProbeCase("jeom-item", "작품 3점을 전시했다", "작품 세 점을 전시했다"),
-        ProbeCase("jeom-defer", "3점이 공개됐다", "3점이 공개됐다"),
+        ProbeCase("jeom-published-item", "3점이 공개됐다", "세 점이 공개됐다"),
         ProbeCase("jeom-decimal", "3.5점", "삼쩜오 점"),
         ProbeCase("bun-decimal-duration", "5.5분 뒤", "오쩜오 분 뒤"),
         ProbeCase("beon-decimal-count", "총 2.35번", "총 이쩜삼오 번"),
-        ProbeCase("beon-decimal-defer", "2.35번 확인했다", "2.35번 확인했다"),
+        ProbeCase("beon-decimal-confirm", "2.35번 확인했다", "이쩜삼오 번 확인했다"),
     ),
     "jo-bu": (
         ProbeCase("jo-money", "3조 원", "삼조 원"),
         ProbeCase("jo-group", "학생을 3조로 나눴다", "학생을 세 조로 나눴다"),
-        ProbeCase("jo-defer", "3조가 발표했다", "3조가 발표했다"),
+        ProbeCase("jo-presentation", "3조가 발표했다", "세 조가 발표했다"),
         ProbeCase("bu-copy", "서류 3부를 제출했다", "서류 세 부를 제출했다"),
         ProbeCase("bu-sequence", "행사 3부가 시작됐다", "행사 삼부가 시작됐다"),
         ProbeCase("bu-defer", "3부가 남았다", "3부가 남았다"),
@@ -77,7 +81,7 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
     "dong-ho-address": (
         ProbeCase("dong-address", "3동 502호", "삼 동 오백이 호"),
         ProbeCase("dong-count", "건물 3동을 지었다", "건물 세 동을 지었다"),
-        ProbeCase("dong-defer", "아파트 3동", "아파트 3동"),
+        ProbeCase("dong-apartment-id", "아파트 3동", "아파트 삼 동"),
         ProbeCase("ho-id", "3호실", "삼 호실"),
         ProbeCase("ho-count", "피해 농가 3호를 지원했다", "피해 농가 세 호를 지원했다"),
         ProbeCase("ho-defer", "3호가 선정됐다", "3호가 선정됐다"),
@@ -171,7 +175,7 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("dae-machine", "자동차 3대", "자동차 세 대"),
         ProbeCase("dae-generation", "가업을 3대째 이어 왔다", "가업을 삼 대째 이어 왔다"),
         ProbeCase("dae-age", "20대 남성", "이십 대 남성"),
-        ProbeCase("dae-major-defer", "3대 과제", "3대 과제"),
+        ProbeCase("dae-major-item", "3대 과제", "삼대 과제"),
         ProbeCase("dae-bare-defer", "3대가 남았다", "3대가 남았다"),
         ProbeCase("dae-decimal-defer", "3.5대", "3.5대"),
         ProbeCase(

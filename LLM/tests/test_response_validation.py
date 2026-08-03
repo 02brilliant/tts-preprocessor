@@ -84,3 +84,45 @@ def test_integrated_response_preserves_lock_tokens_exactly() -> None:
         )
 
     assert exc_info.value.output_text == "유아레른 <LOCK_0002>임니다."
+
+
+@pytest.mark.parametrize(
+    ("source", "output"),
+    (
+        (
+            "CPU 로그는 report_v2.json, https://example.com/3장, "
+            "/tmp/3권/file에 있다.",
+            "씨피유 로그는 report_v2.json, https://example.com/삼 장, "
+            "/tmp/삼 권/file에 있다.",
+        ),
+        (
+            '{"value":"3편"}와 `3층`은 코드 예시다.',
+            '{"value":"삼 편"}와 `삼 층`은 코드 예시다.',
+        ),
+        (
+            "제품 코드는 SKU-H100-25다.",
+            "제품 코드는 에스케이유 에이치백 이십오다.",
+        ),
+    ),
+)
+def test_integrated_response_rejects_changed_protected_literals(
+    source: str,
+    output: str,
+) -> None:
+    with pytest.raises(LLMStageContractError, match="protected") as exc_info:
+        validate_response(source, output)
+
+    assert exc_info.value.output_text == output
+
+
+def test_integrated_response_accepts_exact_protected_literals() -> None:
+    source = (
+        "CPU 로그는 report_v2.json, https://example.com/3장, "
+        "/tmp/3권/file에 있다."
+    )
+    output = (
+        "씨피유 로그는 report_v2.json, https://example.com/3장, "
+        "/tmp/3권/file에 있다."
+    )
+
+    assert validate_response(source, output) == output

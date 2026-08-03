@@ -102,27 +102,34 @@ claimed as one surface.
 
 `분`, `번`, `점`, and `조` use exact meaning anchors. Specific clock/duration,
 decimal-score, currency/large-unit, range, and score-relation owners still win.
+The expanded exact anchors include remaining-time `남다`, occurrence
+`확인·우회`, item publication, and group presentation.
 Without an approved anchor, a recognized integer surface is deferred even when
 the previous generic owner would have emitted a Sino/counter reading.
 
 `대` keeps score-pair and ordinal precedence, the existing central machine
 registry, and the existing unsigned integer 40+ threshold. Generation and
-10-multiple age-band anchors select Sino reading; low bare/major-item surfaces
-defer. Valid decimal uses Sino reading only under an approved exact anchor.
+10-multiple age-band anchors select Sino reading. A registered machine noun
+with a direct topic particle may license the count without `총·모두`;
+`주차장 ... 남다` licenses a machine count, and `N대 과제` is the sole current
+major-item Sino allowlist. Other low bare/major-item surfaces defer. Valid decimal uses Sino reading only under an approved exact anchor.
 Signed integer, leading-zero, malformed-comma, alphanumeric, bare decimal, and
 decimal age-band surfaces defer.
 
 `부`, `동`, `호`, `판`, `단`, `등`, and `척` split sequence/identifier/
 grade meanings from physical counts only through the canonical exact
-noun/suffix/action registries. Existing ordinal, address, and range owners keep
+noun/suffix/action registries. The expanded inventory includes
+`자료·복사본`, apartment identifiers, waiting-ticket identifiers,
+`선반·상자`, result/light anchors, harbor ship counts, and same-clause length
+anchors. Existing ordinal, address, and range owners keep
 precedence. Bare and malformed surfaces are atomically deferred. Sino
 `부·단·등` keeps source attachment, Sino `동·호·판·척` uses the existing
 counter gap, and every native count uses one counter gap.
 
 `장`, `권`, and `편` split registered item/book/work counts from fixed
 chapter/volume/part structures. `층` confirms only exact location particles,
-`지하`, or registered location nouns; movement and physical-count ambiguity
-defer. Valid decimal uses Sino reading under the same exact anchors while bare
+`지하`, registered location nouns, or the exact stair-access movement
+structure; other movement and physical-count ambiguity defer. Valid decimal uses Sino reading under the same exact anchors while bare
 decimal remains deferred. Ordinal and range owners remain earlier than all
 four contextual decisions.
 
@@ -181,7 +188,7 @@ Current standalone invalid/malformed forms:
 | Owner | Valid numeric forms | Sign | Decimal | Comma | Spacing | Invalid handling | Trailing zero state |
 |---|---|---|---|---|---|---|---|
 | unit | integer, decimal, comma integer/decimal for registered unit policy; `kHz` and `KB` inherit the same decimal eligibility; SI `m`/`M` remains case-sensitive; exact natural caret-power allowlist is limited to `mm·cm·km·m` directly followed by `^2` or `^3` | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed unit conditions | yes for registered simple/special units | yes for valid comma integer/decimal | registered units allow attached or one ASCII space; caret unit-to-exponent has no gap | malformed numeric+unit and unsafe tails preserve; unsupported `alphabetic-unit^exponent` keeps that literal block while a separately valid numeric prefix may be read; exponent-only fallback is forbidden | `2.35kHz -> 이쩜삼오 킬로헤르츠`, `2.35KB -> 이쩜삼오 킬로바이트`, `10000.5kg -> 만쩜오 킬로그램`, `2.35m^2 -> 이쩜삼오 제곱미터`, `2.35KB^2 -> 이쩜삼오KB^2` |
-| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun; contextual units retain exact-anchor meaning gates | valid decimal only; signed integer remains unsupported | yes through the registered decimal suffix or contextual owner; integer-only special determiners remain excluded | yes for valid comma decimal; integer policy unchanged | decimal uses the existing owner-specific unit spacing; attached tails `쯤·정도·꼴·당` remain source-exact | malformed/leading-zero/code-like/protected surfaces preserve atomically; ambiguous contextual bare decimal preserves | `+2.35명 -> 플러스 이쩜삼오 명`, `-2.35개 -> 마이너스 이쩜삼오 개`, `총 2.35번 -> 총 이쩜삼오 번`, `2.35번 확인했다 -> preserve` |
+| counter | integer/comma integer and owner-approved mixed Korean-Arabic numeric core followed by registered counter noun; contextual units retain exact-anchor meaning gates | valid decimal only; signed integer remains unsupported | yes through the registered decimal suffix or contextual owner; integer-only special determiners remain excluded | yes for valid comma decimal; integer policy unchanged | decimal uses the existing owner-specific unit spacing; attached common particles including genitive `의` and tails `쯤·정도·꼴·당` remain source-exact | malformed/leading-zero/code-like/protected surfaces preserve atomically; ambiguous contextual bare decimal preserves | `+2.35명 -> 플러스 이쩜삼오 명`, `-2.35개 -> 마이너스 이쩜삼오 개`, `3.5점의 -> 삼쩜오 점의`, `총 2.35번 -> 총 이쩜삼오 번`, `2.35번 확인했다 -> preserve` |
 | multiplier | unsigned integer/comma integer and unsigned decimal/comma decimal followed by Korean multiplier noun `배`, e.g. `3배`, `3 배`, `1.5배`, `1,000.5 배` | no signed multiplier in this phase | yes | yes for valid comma integer/decimal | no space or one ASCII space before `배`; renders one generated space before original `배` | malformed/signed forms are not claimed by multiplier in this phase; protected/code-like contexts preserve first | decimal uses ordinary Sino decimal reading; integer `1..39` uses native/hybrid counter-style reading and `40+` uses Sino |
 | duration/year-period | duration `시간`/`분`; registered decimal duration-like suffixes such as `일`, `주`, `개월`, `년`; narrow exact `N년간` year-period form | negative duration preserves | yes for valid decimal registered duration/time suffixes | yes where duration numeric reader accepts | owner-scoped; decimal registered suffixes render one generated space before the original suffix | unsafe exact year-period tails preserve, e.g. `1년간abc`; unsafe decimal suffix tails preserve, e.g. `4.5주abc` | `분`/`초` share the suffix-time Sino reader and normalize only their integer-part leading zeros, e.g. `01.5분 -> 일쩜오 분`; other decimal duration suffixes retain ordinary reading, e.g. `4.5주 -> 사쩜오 주` |
 | mixed integer atomic | complete valid Arabic-Hangul integer core using `십/백/천/만/억/조/경`, after more-specific owners; a trailing Arabic block must be a positive value smaller than its immediately preceding small unit | no sign | no | valid comma blocks only where the shared integer parser accepts them | preserves source adjacency to safe Korean prose and sentence punctuation; registered counter/currency suffix owners retain priority and their spacing | ASCII identifier/code/URL/path/protected surfaces, prefixed ordinal-like forms, leading zero, malformed/repeated unit order, oversized trailing Arabic block, and partial numeric residue preserve | numeric blocks use Sino reading and original Korean unit characters retain provenance: `6천400 -> 육천사백`, `1천2백3십4 -> 일천이백삼십사`, `값은3천만5천이다 -> 값은삼천만오천이다`; `6천400명` keeps the existing counter owner |

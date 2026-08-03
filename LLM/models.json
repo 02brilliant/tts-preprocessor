@@ -31,5 +31,5 @@
       "upstream_model": "gemini-3.5-flash-lite"
     }
   ],
-  "default_model": "gemma4:e4b"
+  "default_model": "gemma4:31b"
 }

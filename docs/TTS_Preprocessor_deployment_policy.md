@@ -160,6 +160,16 @@ The optional second-stage LLM receives only the ordinary `normalized_text`
 string. Deployment MUST NOT attach `contextual_decision_logs`, candidates,
 decision markers, or other rule-engine metadata to that request. The rule
 endpoint remains independently usable as a final TTS input path.
+The configured default model is `gemma4:31b`; callers may still select another
+registered model explicitly. The runtime does not add rule-reading lock
+metadata, repeated stability sampling, or automatic retry/fallback generation.
+
+The active prompt MUST present that `normalized_text` as the current execution
+payload, outside documentation/example code fences. Response validation MUST
+reject any output that changes or removes a source URL, path, filename,
+JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
+This validation is a safety gate; it does not authorize rewriting protected
+surfaces or falling back to an unvalidated model response.
 
 `LLM/docs/LLM_prompt.txt` is the single active prompt and is deployed with the
 API runtime, independently of the packaged rule binary. Prompt-only policy
