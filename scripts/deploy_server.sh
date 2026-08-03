@@ -286,6 +286,7 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/client.py" \
   "$ROOT_DIR/LLM/config.py" \
   "$ROOT_DIR/LLM/gemini_client.py" \
+  "$ROOT_DIR/LLM/openai_client.py" \
   "$ROOT_DIR/LLM/models.json" \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/response_validation.py" \

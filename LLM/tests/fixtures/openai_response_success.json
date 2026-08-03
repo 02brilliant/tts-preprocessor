@@ -1,0 +1,25 @@
+{
+  "id": "resp_test",
+  "object": "response",
+  "status": "completed",
+  "output": [
+    {
+      "id": "rs_test",
+      "type": "reasoning",
+      "summary": []
+    },
+    {
+      "id": "msg_test",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "text": "확인"
+        }
+      ]
+    }
+  ]
+}

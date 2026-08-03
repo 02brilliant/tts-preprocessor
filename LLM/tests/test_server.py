@@ -12,6 +12,10 @@ from LLM.gemini_client import (
     GeminiRateLimitError,
     GeminiServiceDisabledError,
 )
+from LLM.openai_client import (
+    OpenAIPermissionError,
+    OpenAIRateLimitError,
+)
 
 
 def get_endpoint(path: str, method: str):
@@ -46,6 +50,7 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
             "gemini-3.6-flash",
             "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
+            "gpt-5.6-luna",
         ],
         "default_model": "gemma4:31b",
     }
@@ -176,6 +181,40 @@ def test_gemini_transform_routes_to_gemini_client(monkeypatch) -> None:
     }
 
 
+def test_openai_transform_routes_to_responses_client(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+    captured = {}
+
+    def fake_generate_openai(*, model, prompt, settings):
+        captured["model"] = model
+        captured["prompt"] = prompt
+        captured["api_key_present"] = bool(settings.api_key)
+        captured["reasoning_effort"] = settings.reasoning_effort
+        return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=345.6)
+
+    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    result = endpoint(
+        LLMTransformRequest(
+            normalized_text="국물은 좋습니다.",
+            model="gpt-5.6-luna",
+        )
+    )
+
+    assert result == {
+        "speech_text": "궁무른, 조씀니다.",
+        "model": "gpt-5.6-luna",
+        "elapsed_ms": 345.6,
+    }
+    assert captured == {
+        "model": "gpt-5.6-luna",
+        "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
+        "api_key_present": True,
+        "reasoning_effort": "medium",
+    }
+
+
 def test_contract_violation_maps_to_bad_gateway(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
@@ -240,6 +279,24 @@ def test_missing_runtime_configuration_is_local_only_error(monkeypatch) -> None:
     assert "LOCAL_LLM_BASE_URL" in exc_info.value.detail
 
 
+def test_missing_openai_configuration_is_openai_only_error(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gpt-5.6-luna",
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == (
+        "Required environment variable OPENAI_API_KEY is missing."
+    )
+
+
 def test_upstream_timeout_maps_to_gateway_timeout(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
@@ -284,6 +341,56 @@ def test_gemini_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
     assert exc_info.value.status_code == 429
     assert exc_info.value.detail == (
         "Gemini API quota or rate limit was exceeded."
+    )
+
+
+def test_openai_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+
+    def fake_generate_openai(**_kwargs):
+        raise OpenAIRateLimitError(
+            "OpenAI API quota or rate limit was exceeded."
+        )
+
+    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gpt-5.6-luna",
+            )
+        )
+
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.detail == (
+        "OpenAI API quota or rate limit was exceeded."
+    )
+
+
+def test_openai_permission_error_maps_to_service_unavailable(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+
+    def fake_generate_openai(**_kwargs):
+        raise OpenAIPermissionError(
+            "OpenAI API key does not have permission to use the selected model."
+        )
+
+    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gpt-5.6-luna",
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == (
+        "OpenAI API key does not have permission to use the selected model."
     )
 
 

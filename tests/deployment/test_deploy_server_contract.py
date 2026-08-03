@@ -62,6 +62,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/client.py",
         "LLM/config.py",
         "LLM/gemini_client.py",
+        "LLM/openai_client.py",
         "LLM/models.json",
         "LLM/prompt_template.py",
         "LLM/response_validation.py",

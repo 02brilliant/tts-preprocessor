@@ -1,4 +1,4 @@
-# Local and Gemini LLM API integration
+# Local, Gemini, and OpenAI LLM API integration
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
 포트에서 `/api/llm/models`와 `/api/llm/transform`을 제공한다.
@@ -35,6 +35,7 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 - `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
   읽기·발음·운율 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
+- `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
 - `response_validation.py`: 통합 LLM 출력 불변 조건 검증
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
@@ -90,9 +91,32 @@ GET /api/llm/models
 - `LOCAL_LLM_TIMEOUT_SECONDS`: upstream 제한시간(초), 기본값 `300`
 - `GEMINI_API_KEY`: Gemini API 전용 키
 - `GEMINI_TIMEOUT_SECONDS`: Gemini API 제한시간(초), 기본값 `300`
+- `OPENAI_API_KEY`: OpenAI API 전용 키
+- `OPENAI_TIMEOUT_SECONDS`: OpenAI API 제한시간(초), 기본값 `300`
+- `OPENAI_REASONING_EFFORT`: GPT-5.6 추론 강도. `none`, `low`, `medium`,
+  `high`, `xhigh`, `max` 중 하나이며 기본값은 `medium`
 
 토큰과 API 키를 소스, 명령행 인자, Git 또는 브라우저에 넣지 않는다. Gemini
 호출은 기존 API 서버가 `x-goog-api-key` 헤더를 사용해 서버 측에서만 수행한다.
+OpenAI 호출도 기존 API 서버가 `Authorization: Bearer` 헤더를 사용해 서버
+측에서만 수행한다.
+
+## OpenAI GPT-5.6 Luna
+
+선택 모델 `gpt-5.6-luna`는 OpenAI의 같은 모델 ID로 라우팅한다. 호출에는
+`POST https://api.openai.com/v1/responses`를 사용하고, 통합 프롬프트 전체를
+Responses API의 `input`으로 전달한다. 추론 강도는
+`OPENAI_REASONING_EFFORT`로 명시하며, 이 서비스는 요청 간 대화 상태를
+사용하지 않으므로 `store=false`로 호출한다. 응답의 `output` 배열에서 모든
+`message` 항목의 `output_text`를 순서대로 결합한 뒤 기존
+`response_validation.py` 계약을 동일하게 적용한다.
+
+현재 프로젝트의 `gpt-5.6-luna`는 비용 민감형 대량 처리용 모델이다. 모델과
+Responses API 사양은 다음 공식 문서를 기준으로 한다.
+
+- [GPT-5.6 Luna 모델](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
+- [Responses API 텍스트 생성](https://developers.openai.com/api/docs/guides/text)
+- [GPT-5.6 모델 가이드](https://developers.openai.com/api/docs/guides/latest-model)
 
 ### 기존 배포 명령을 사용하는 운영 서버
 
@@ -111,11 +135,21 @@ umask 077
 editor ~/tts-preprocessor/config/llm.env
 ```
 
-파일에는 로컬 LLM용 `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_TOKEN` 또는 Gemini용
-`GEMINI_API_KEY` 중 사용할 공급자의 설정을 `KEY=value` 형식으로 둔다. 필요하면
-각 공급자의 timeout을 설정한다. 최소 한 공급자가 완전히 설정되어야 서버가
-시작된다. 이후에는 기존과 같이 `bash scripts/deploy_server.sh`를 실행한다.
+파일에는 로컬 LLM용 `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_TOKEN`, Gemini용
+`GEMINI_API_KEY` 또는 OpenAI용 `OPENAI_API_KEY` 중 사용할 공급자의 설정을
+`KEY=value` 형식으로 둔다. 필요하면 각 공급자의 timeout과 OpenAI 추론 강도를
+설정한다. 최소 한 공급자가 완전히 설정되어야 서버가 시작된다. 이후에는
+기존과 같이 `bash scripts/deploy_server.sh`를 실행한다.
 시작 스크립트가 이 파일을 읽어 기존 API 서버 프로세스에만 환경변수로 전달한다.
+
+OpenAI만 사용할 때의 예시는 다음과 같다. 실제 키 값은 운영 서버에서 직접
+입력한다.
+
+```sh
+OPENAI_API_KEY=실제_키
+OPENAI_REASONING_EFFORT=medium
+OPENAI_TIMEOUT_SECONDS=300
+```
 
 ## 확인
 
@@ -138,6 +172,24 @@ PYTHONPATH=. .venv/bin/python LLM/tests/smoke_gemini.py
 
 이 smoke 검증은 설정된 Gemini 모델마다 통합 요청을 한 번 전송하므로 API
 사용량이 발생한다. 응답 본문과 API 키는 출력하지 않는다.
+
+실제 OpenAI 연결은 `OPENAI_API_KEY`가 설정된 셸에서 다음으로 확인한다.
+
+```sh
+PYTHONPATH=. .venv/bin/python LLM/tests/smoke_openai.py
+```
+
+이 smoke 검증은 설정된 OpenAI 모델마다 통합 요청을 한 번 전송하므로 API
+사용량이 발생한다. 성공 시 모델 ID, 출력 길이, 소요 시간만 출력하며 응답
+본문과 API 키는 출력하지 않는다.
+
+### OpenAI 오류
+
+- `OpenAI API authentication failed.`: 키 값과 활성 상태를 확인한다.
+- `OpenAI API key does not have permission ...`: 키가 속한 프로젝트에
+  `gpt-5.6-luna` 사용 권한과 결제 설정이 있는지 확인한다.
+- `OpenAI API quota or rate limit was exceeded.`: 프로젝트의 사용 한도와
+  rate limit을 확인한 뒤 재시도한다.
 
 ### Gemini 403 오류
 

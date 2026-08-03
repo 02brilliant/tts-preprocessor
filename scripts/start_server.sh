@@ -66,15 +66,21 @@ set +a
 
 LOCAL_LLM_CONFIGURED=false
 GEMINI_LLM_CONFIGURED=false
+OPENAI_LLM_CONFIGURED=false
 if [[ -n "${LOCAL_LLM_BASE_URL:-}" && -n "${LOCAL_LLM_TOKEN:-}" ]]; then
   LOCAL_LLM_CONFIGURED=true
 fi
 if [[ -n "${GEMINI_API_KEY:-}" ]]; then
   GEMINI_LLM_CONFIGURED=true
 fi
-if [[ "$LOCAL_LLM_CONFIGURED" != true && "$GEMINI_LLM_CONFIGURED" != true ]]; then
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  OPENAI_LLM_CONFIGURED=true
+fi
+if [[ "$LOCAL_LLM_CONFIGURED" != true \
+  && "$GEMINI_LLM_CONFIGURED" != true \
+  && "$OPENAI_LLM_CONFIGURED" != true ]]; then
   echo "No complete LLM provider configuration was found." >&2
-  echo "Configure local LLM credentials or GEMINI_API_KEY before starting." >&2
+  echo "Configure local LLM credentials, GEMINI_API_KEY, or OPENAI_API_KEY before starting." >&2
   exit 1
 fi
 

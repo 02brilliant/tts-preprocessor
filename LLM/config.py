@@ -55,6 +55,13 @@ class GeminiSettings:
     timeout_seconds: float
 
 
+@dataclass(frozen=True)
+class OpenAISettings:
+    api_key: str
+    timeout_seconds: float
+    reasoning_effort: str
+
+
 def _load_positive_timeout(environment_name: str, default: str = "300") -> float:
     timeout_raw = os.getenv(environment_name, default).strip()
     try:
@@ -92,7 +99,7 @@ def load_model_config(path: Path = MODEL_CONFIG_PATH) -> ModelConfig:
         if (
             not isinstance(model_id, str)
             or not model_id.strip()
-            or provider not in {"local", "gemini"}
+            or provider not in {"local", "gemini", "openai"}
             or not isinstance(upstream_model, str)
             or not upstream_model.strip()
         ):
@@ -145,4 +152,25 @@ def load_gemini_settings() -> GeminiSettings:
     return GeminiSettings(
         api_key=api_key,
         timeout_seconds=_load_positive_timeout("GEMINI_TIMEOUT_SECONDS"),
+    )
+
+
+def load_openai_settings() -> OpenAISettings:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise ConfigurationError(
+            "Required environment variable OPENAI_API_KEY is missing."
+        )
+
+    reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT", "medium").strip()
+    if reasoning_effort not in {"none", "low", "medium", "high", "xhigh", "max"}:
+        raise ConfigurationError(
+            "OPENAI_REASONING_EFFORT must be one of: "
+            "none, low, medium, high, xhigh, max."
+        )
+
+    return OpenAISettings(
+        api_key=api_key,
+        timeout_seconds=_load_positive_timeout("OPENAI_TIMEOUT_SECONDS"),
+        reasoning_effort=reasoning_effort,
     )

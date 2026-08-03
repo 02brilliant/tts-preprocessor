@@ -33,6 +33,7 @@ from LLM.config import (
     ConfigurationError,
     load_gemini_settings,
     load_model_config,
+    load_openai_settings,
     load_runtime_settings,
 )
 from LLM.gemini_client import (
@@ -45,6 +46,16 @@ from LLM.gemini_client import (
     GeminiTimeoutError,
     GeminiUpstreamHTTPError,
     generate_gemini,
+)
+from LLM.openai_client import (
+    OpenAIAuthenticationError,
+    OpenAIConnectionError,
+    OpenAIPermissionError,
+    OpenAIRateLimitError,
+    OpenAIResponseError,
+    OpenAITimeoutError,
+    OpenAIUpstreamHTTPError,
+    generate_openai,
 )
 from LLM.prompt_template import (
     PromptTemplateError,
@@ -190,6 +201,19 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         GeminiResponseError,
     ) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except OpenAITimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except OpenAIRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except OpenAIPermissionError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (
+        OpenAIAuthenticationError,
+        OpenAIConnectionError,
+        OpenAIUpstreamHTTPError,
+        OpenAIResponseError,
+    ) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {
         "speech_text": speech_text,
@@ -210,6 +234,12 @@ def _generate_with_provider(model_definition, prompt: str):
             model=model_definition.upstream_model,
             prompt=prompt,
             settings=load_gemini_settings(),
+        )
+    if model_definition.provider == "openai":
+        return generate_openai(
+            model=model_definition.upstream_model,
+            prompt=prompt,
+            settings=load_openai_settings(),
         )
     raise HTTPException(
         status_code=500,

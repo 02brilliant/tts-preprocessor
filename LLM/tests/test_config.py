@@ -10,6 +10,7 @@ from LLM.config import (
     LLM_PROMPT_PATH,
     load_gemini_settings,
     load_model_config,
+    load_openai_settings,
     load_runtime_settings,
 )
 
@@ -24,10 +25,12 @@ def test_model_config_has_fixed_models_and_default() -> None:
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
+        "gpt-5.6-luna",
     )
     assert config.default_model == "gemma4:31b"
     assert config.get("gemma4:e4b").provider == "local"
     assert config.get("gemini-3.6-flash").provider == "gemini"
+    assert config.get("gpt-5.6-luna").provider == "openai"
     assert config.get("missing") is None
 
 
@@ -86,6 +89,44 @@ def test_gemini_settings_load_key_and_timeout(monkeypatch) -> None:
     assert settings.timeout_seconds == 12.5
 
 
+def test_openai_settings_require_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with pytest.raises(ConfigurationError, match="OPENAI_API_KEY"):
+        load_openai_settings()
+
+
+def test_openai_settings_load_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+    monkeypatch.delenv("OPENAI_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("OPENAI_REASONING_EFFORT", raising=False)
+
+    settings = load_openai_settings()
+
+    assert settings.api_key == "dummy-openai-test-key"
+    assert settings.timeout_seconds == 300
+    assert settings.reasoning_effort == "medium"
+
+
+def test_openai_settings_load_timeout_and_reasoning_effort(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+    monkeypatch.setenv("OPENAI_TIMEOUT_SECONDS", "45.5")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "low")
+
+    settings = load_openai_settings()
+
+    assert settings.timeout_seconds == 45.5
+    assert settings.reasoning_effort == "low"
+
+
+def test_openai_settings_reject_invalid_reasoning_effort(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "minimal")
+
+    with pytest.raises(ConfigurationError, match="OPENAI_REASONING_EFFORT"):
+        load_openai_settings()
+
+
 def test_integrated_prompt_template_is_stored_under_llm_docs() -> None:
     assert LLM_PROMPT_PATH == Path("LLM/docs/LLM_prompt.txt").resolve()
     assert LLM_PROMPT_PATH.is_file()
@@ -97,6 +138,7 @@ def test_deprecated_stage_prompts_are_not_runtime_dependencies() -> None:
         Path("LLM/prompt_template.py"),
         Path("api/server.py"),
         Path("LLM/tests/smoke_gemini.py"),
+        Path("LLM/tests/smoke_openai.py"),
     )
 
     for source_path in runtime_sources:
