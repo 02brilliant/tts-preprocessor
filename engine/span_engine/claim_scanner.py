@@ -692,8 +692,12 @@ def _is_safe_acronym_fallback_token(raw: str) -> bool:
         return False
     if raw in _ACRONYM_FALLBACK_BLOCKLIST:
         return False
-    # Avoid ambiguous partial dictionary/fallback splits such as AIP or AIA.
-    return not any(dictionary_key in raw for dictionary_key in DICTIONARY_READINGS)
+    # The regex claims the complete uppercase block, so a shorter dictionary
+    # entry embedded in it cannot be rendered separately.  Do not suppress a
+    # safe fallback solely because of that overlap (for example, ``OS`` in
+    # ``OSP`` or ``IP`` in ``IPS``).  Exact dictionary matches were already
+    # claimed earlier in the pipeline.
+    return True
 
 
 def _safe_acronym_fallback_boundary(token_raw: str, start: int, end: int) -> bool:

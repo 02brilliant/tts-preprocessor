@@ -3898,6 +3898,10 @@ General alphabet fallback은 dictionary/acronym owner와 CODE_SEPARATOR_BLOCK_SU
 원칙:
 
 1. dictionary에 등록된 약어와 fixed term은 dictionary reading을 우선한다.
+   dictionary 항목의 일부 문자열을 포함하는 더 긴 독립 uppercase block은
+   dictionary가 아니라 전체 block을 acronym fallback으로 처리한다. 예를 들어
+   `OS`가 사전에 있어도 `OSP`는 `오에스피`, `IP`가 사전에 있어도 `IPS`는
+   `아이피에스`로 읽는다.
 2. CODE_SEPARATOR_BLOCK_SURFACE 내부의 영문은 항상 알파벳 한 글자씩 읽는다.
 3. 일반 uppercase acronym fallback은 두 글자 이상의 연속 ASCII 대문자 block만 대상으로 한다.
 4. 단독 영문 1글자는 일반 fallback으로 새로 읽지 않으며 single-letter code 등 명시 owner에서만 읽을 수 있다.
@@ -3910,6 +3914,8 @@ canonical output:
 ```text
 ABC -> 에이비씨
 AB -> 에이비
+OSP -> 오에스피
+원익IPS는 -> 원익아이피에스는
 ```
 
 dictionary output:
