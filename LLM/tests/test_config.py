@@ -25,12 +25,17 @@ def test_model_config_has_fixed_models_and_default() -> None:
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
-        "gpt-5.6-luna",
+        "gpt-5.6-luna (medium)",
+        "gpt-5.6-luna (low)",
+        "gpt-5.6-luna (none)",
     )
     assert config.default_model == "gemma4:31b"
     assert config.get("gemma4:e4b").provider == "local"
     assert config.get("gemini-3.6-flash").provider == "gemini"
-    assert config.get("gpt-5.6-luna").provider == "openai"
+    assert config.get("gpt-5.6-luna (medium)").provider == "openai"
+    assert config.get("gpt-5.6-luna (medium)").reasoning_effort == "medium"
+    assert config.get("gpt-5.6-luna (low)").reasoning_effort == "low"
+    assert config.get("gpt-5.6-luna (none)").reasoning_effort == "none"
     assert config.get("missing") is None
 
 
@@ -53,6 +58,56 @@ def test_invalid_default_model_is_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ConfigurationError, match="not in the model list"):
+        load_model_config(path)
+
+
+def test_invalid_model_reasoning_effort_is_rejected(tmp_path: Path) -> None:
+    path = tmp_path / "models.json"
+    path.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "gpt-test",
+                        "provider": "openai",
+                        "upstream_model": "gpt-5.6-luna",
+                        "reasoning_effort": "minimal",
+                    }
+                ],
+                "default_model": "gpt-test",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="model entry is invalid"):
+        load_model_config(path)
+
+
+@pytest.mark.parametrize("reasoning_effort", ([], {"value": "low"}, 1))
+def test_non_string_model_reasoning_effort_is_rejected(
+    tmp_path: Path,
+    reasoning_effort,
+) -> None:
+    path = tmp_path / "models.json"
+    path.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "gpt-test",
+                        "provider": "openai",
+                        "upstream_model": "gpt-5.6-luna",
+                        "reasoning_effort": reasoning_effort,
+                    }
+                ],
+                "default_model": "gpt-test",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="model entry is invalid"):
         load_model_config(path)
 
 

@@ -127,6 +127,24 @@ def test_generate_uses_responses_api_header_auth_and_transient_storage() -> None
     assert result.elapsed_ms == 1250
 
 
+def test_generate_uses_per_model_reasoning_effort_override() -> None:
+    captured = {}
+
+    def opener(request, timeout):
+        captured["payload"] = json.loads(request.data)
+        return FakeResponse(FIXTURE_PATH.read_bytes())
+
+    generate_openai(
+        model="gpt-5.6-luna",
+        prompt="테스트",
+        settings=SETTINGS,
+        reasoning_effort="none",
+        opener=opener,
+    )
+
+    assert captured["payload"]["reasoning"] == {"effort": "none"}
+
+
 def test_timeout_error_is_safe() -> None:
     def opener(_request, timeout):
         assert timeout == 300

@@ -240,6 +240,7 @@ def _generate_with_provider(model_definition, prompt: str):
             model=model_definition.upstream_model,
             prompt=prompt,
             settings=load_openai_settings(),
+            reasoning_effort=model_definition.reasoning_effort,
         )
     raise HTTPException(
         status_code=500,

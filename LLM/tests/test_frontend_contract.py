@@ -14,7 +14,9 @@ def test_frontend_has_llm_toggle_model_control_and_two_stage_outputs() -> None:
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
-        "gpt-5.6-luna",
+        "gpt-5.6-luna (medium)",
+        "gpt-5.6-luna (low)",
+        "gpt-5.6-luna (none)",
     ):
         assert model not in web
 

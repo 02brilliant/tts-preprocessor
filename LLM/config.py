@@ -9,6 +9,7 @@ from pathlib import Path
 
 MODEL_CONFIG_PATH = Path(__file__).resolve().parent / "models.json"
 LLM_PROMPT_PATH = Path(__file__).resolve().parent / "docs" / "LLM_prompt.txt"
+REASONING_EFFORTS = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 
 
 class ConfigurationError(ValueError):
@@ -20,6 +21,7 @@ class ModelDefinition:
     id: str
     provider: str
     upstream_model: str
+    reasoning_effort: str | None = None
 
 
 @dataclass(frozen=True)
@@ -96,12 +98,22 @@ def load_model_config(path: Path = MODEL_CONFIG_PATH) -> ModelConfig:
         model_id = model_payload.get("id")
         provider = model_payload.get("provider")
         upstream_model = model_payload.get("upstream_model")
+        reasoning_effort = model_payload.get("reasoning_effort")
         if (
             not isinstance(model_id, str)
             or not model_id.strip()
             or provider not in {"local", "gemini", "openai"}
             or not isinstance(upstream_model, str)
             or not upstream_model.strip()
+            or (
+                reasoning_effort is not None
+                and not isinstance(reasoning_effort, str)
+            )
+            or (
+                reasoning_effort is not None
+                and isinstance(reasoning_effort, str)
+                and reasoning_effort not in REASONING_EFFORTS
+            )
         ):
             raise ConfigurationError("LLM model entry is invalid.")
         definitions.append(
@@ -109,6 +121,7 @@ def load_model_config(path: Path = MODEL_CONFIG_PATH) -> ModelConfig:
                 id=model_id,
                 provider=provider,
                 upstream_model=upstream_model,
+                reasoning_effort=reasoning_effort,
             )
         )
 
@@ -163,7 +176,7 @@ def load_openai_settings() -> OpenAISettings:
         )
 
     reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT", "medium").strip()
-    if reasoning_effort not in {"none", "low", "medium", "high", "xhigh", "max"}:
+    if reasoning_effort not in REASONING_EFFORTS:
         raise ConfigurationError(
             "OPENAI_REASONING_EFFORT must be one of: "
             "none, low, medium, high, xhigh, max."

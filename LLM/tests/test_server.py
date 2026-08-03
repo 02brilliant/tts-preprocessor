@@ -50,7 +50,9 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
             "gemini-3.6-flash",
             "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
-            "gpt-5.6-luna",
+            "gpt-5.6-luna (medium)",
+            "gpt-5.6-luna (low)",
+            "gpt-5.6-luna (none)",
         ],
         "default_model": "gemma4:31b",
     }
@@ -185,11 +187,11 @@ def test_openai_transform_routes_to_responses_client(monkeypatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
     captured = {}
 
-    def fake_generate_openai(*, model, prompt, settings):
+    def fake_generate_openai(*, model, prompt, settings, reasoning_effort):
         captured["model"] = model
         captured["prompt"] = prompt
         captured["api_key_present"] = bool(settings.api_key)
-        captured["reasoning_effort"] = settings.reasoning_effort
+        captured["reasoning_effort"] = reasoning_effort
         return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=345.6)
 
     monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
@@ -198,20 +200,20 @@ def test_openai_transform_routes_to_responses_client(monkeypatch) -> None:
     result = endpoint(
         LLMTransformRequest(
             normalized_text="국물은 좋습니다.",
-            model="gpt-5.6-luna",
+            model="gpt-5.6-luna (low)",
         )
     )
 
     assert result == {
         "speech_text": "궁무른, 조씀니다.",
-        "model": "gpt-5.6-luna",
+        "model": "gpt-5.6-luna (low)",
         "elapsed_ms": 345.6,
     }
     assert captured == {
         "model": "gpt-5.6-luna",
         "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
         "api_key_present": True,
-        "reasoning_effort": "medium",
+        "reasoning_effort": "low",
     }
 
 
@@ -287,7 +289,7 @@ def test_missing_openai_configuration_is_openai_only_error(monkeypatch) -> None:
         endpoint(
             LLMTransformRequest(
                 normalized_text="원고",
-                model="gpt-5.6-luna",
+                model="gpt-5.6-luna (medium)",
             )
         )
 
@@ -359,7 +361,7 @@ def test_openai_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
         endpoint(
             LLMTransformRequest(
                 normalized_text="원고",
-                model="gpt-5.6-luna",
+                model="gpt-5.6-luna (low)",
             )
         )
 
@@ -384,7 +386,7 @@ def test_openai_permission_error_maps_to_service_unavailable(monkeypatch) -> Non
         endpoint(
             LLMTransformRequest(
                 normalized_text="원고",
-                model="gpt-5.6-luna",
+                model="gpt-5.6-luna (none)",
             )
         )
 

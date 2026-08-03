@@ -103,10 +103,13 @@ OpenAI 호출도 기존 API 서버가 `Authorization: Bearer` 헤더를 사용�
 
 ## OpenAI GPT-5.6 Luna
 
-선택 모델 `gpt-5.6-luna`는 OpenAI의 같은 모델 ID로 라우팅한다. 호출에는
+웹 모델 선택기에는 `gpt-5.6-luna (medium)`, `gpt-5.6-luna (low)`,
+`gpt-5.6-luna (none)`을 별도 항목으로 제공하지만, 세 항목 모두 OpenAI의
+같은 upstream 모델 ID `gpt-5.6-luna`로 라우팅한다. 각 항목이 요청별
+`reasoning.effort` 값을 지정한다. 호출에는
 `POST https://api.openai.com/v1/responses`를 사용하고, 통합 프롬프트 전체를
-Responses API의 `input`으로 전달한다. 추론 강도는
-`OPENAI_REASONING_EFFORT`로 명시하며, 이 서비스는 요청 간 대화 상태를
+Responses API의 `input`으로 전달한다. 모델 설정에 항목별 강도가 없을 때만
+`OPENAI_REASONING_EFFORT`를 fallback으로 사용한다. 이 서비스는 요청 간 대화 상태를
 사용하지 않으므로 `store=false`로 호출한다. 응답의 `output` 배열에서 모든
 `message` 항목의 `output_text`를 순서대로 결합한 뒤 기존
 `response_validation.py` 계약을 동일하게 적용한다.

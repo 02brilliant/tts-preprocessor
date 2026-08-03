@@ -89,14 +89,16 @@ def generate_openai(
     model: str,
     prompt: str,
     settings: OpenAISettings,
+    reasoning_effort: str | None = None,
     opener: Callable[..., Any] = urllib.request.urlopen,
     clock: Callable[[], float] = time.perf_counter,
 ) -> GenerationResult:
+    effective_reasoning_effort = reasoning_effort or settings.reasoning_effort
     request_body = json.dumps(
         {
             "model": model,
             "input": prompt,
-            "reasoning": {"effort": settings.reasoning_effort},
+            "reasoning": {"effort": effective_reasoning_effort},
             "store": False,
         },
         ensure_ascii=False,
