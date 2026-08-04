@@ -323,6 +323,13 @@
       color: var(--stage-1-text);
     }
 
+    .diff-stage-1-input-modified {
+      padding: 1px 3px;
+      border-radius: 4px;
+      background: #ffe0e0;
+      color: #cc0000;
+    }
+
     .diff-stage-2 {
       background: var(--stage-2-bg);
       color: var(--stage-2-text);
@@ -679,6 +686,11 @@
           throw new Error("규칙 기반 API 응답 형식이 올바르지 않습니다.");
         }
 
+        PipelineDiff.renderStage1Input(
+          originalText,
+          data.normalized_text,
+          stage.input,
+        );
         PipelineDiff.renderOutputWithStageChanges(
           originalText,
           data.normalized_text,

@@ -5,6 +5,7 @@
   const SPACE_SYMBOL = "\u2423";
   const SPEECH_STRUCTURE_CHARACTER_RE =
     /^[\s,，.。!?！？:：;；()（）[\]{}"'“”‘’…—–]$/u;
+  const UNPROCESSED_ALPHANUMERIC_RE = /^[0-9A-Za-z]$/;
 
   function escapeHtml(text) {
     return text
@@ -206,6 +207,28 @@
     return parts;
   }
 
+  function stage1InputParts(originalText, normalizedText) {
+    const parts = [];
+    for (const op of sequenceOps(originalText, normalizedText)) {
+      if (op.op === "eq") {
+        appendPart(parts, {
+          value: op.value,
+          type: UNPROCESSED_ALPHANUMERIC_RE.test(op.value)
+            ? "unprocessed_alphanumeric"
+            : "unchanged",
+          stage: 0,
+        });
+      } else if (op.op === "del") {
+        appendPart(parts, {
+          value: op.value,
+          type: "stage1_modified",
+          stage: 1,
+        });
+      }
+    }
+    return parts;
+  }
+
   function speechContractParts(sourceText, targetText, includeDeletions) {
     const parts = [];
     for (const op of sequenceOps(sourceText, targetText)) {
@@ -316,6 +339,20 @@
           + `${visualizeViolationWhitespace(safeValue)}</span>`
         );
       }
+      if (part.type === "stage1_modified") {
+        return (
+          '<span class="diff-stage-1-input-modified" '
+          + 'title="1단계 규칙 기반 발음교정 처리">'
+          + `${visualizeSpaces(safeValue)}</span>`
+        );
+      }
+      if (part.type === "unprocessed_alphanumeric") {
+        return (
+          '<span class="diff-contract-violation" '
+          + 'title="1단계에서 처리되지 않은 숫자·알파벳">'
+          + `${visualizeSpaces(safeValue)}</span>`
+        );
+      }
       if (part.type === "paragraph_tag") {
         return (
           `<span class="diff-paragraph diff-stage-${part.stage}">`
@@ -360,6 +397,12 @@
     );
   }
 
+  function renderStage1Input(originalText, normalizedText, targetElement) {
+    targetElement.innerHTML = renderParts(
+      stage1InputParts(originalText, normalizedText),
+    );
+  }
+
   function renderSpeechContractViolation(
     sourceText,
     outputText,
@@ -384,6 +427,8 @@
     renderOutputWithStageChanges,
     renderParts,
     renderSpeechContractViolation,
+    renderStage1Input,
+    stage1InputParts,
     sequenceOps,
     speechContractParts,
   };

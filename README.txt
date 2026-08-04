@@ -24,32 +24,6 @@ Linux 운영 바이너리는 macOS나 GitHub Actions에서 빌드하지 않는�
 macOS·Windows ZIP을 삭제하고 새 macOS ZIP을 검증·반영한 다음 서버를
 시작한다.
 
-## Python 및 의존성 기준
-
-- 기준 인터프리터는 일반 GIL 빌드의 CPython 3.13이다.
-- `.python-version`은 개발 및 CI의 재현 가능한 기준 패치인 3.13.14를
-  지정한다.
-- 빌드·배포 preflight는 보안 패치 업데이트를 허용하기 위해 3.13 계열
-  (`>=3.13,<3.14`)과 일반 GIL 빌드 여부를 검사한다.
-- API 직접 의존성은 `requirements/runtime.txt`, PyInstaller 빌드 의존성은
-  `requirements/build.txt`, 로컬 테스트 전체 환경은
-  `requirements/dev.txt`로 관리한다.
-
-기존 Python 3.10 가상환경을 인플레이스 업그레이드하지 않는다. Apple
-Silicon Mac에 일반 GIL Python 3.13 arm64를 설치한 뒤 기존 `.venv`를
-백업하고 같은 경로에 다시 만든다.
-
-```sh
-mv .venv .venv-python310-backup
-python3.13 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements/dev.txt
-.venv/bin/python --version
-.venv/bin/python -c "import platform, sys; print(platform.machine()); print(sys.executable)"
-```
-
-버전은 3.13.x, 아키텍처는 `arm64`여야 한다. 새 환경 검증이 끝날 때까지
-백업을 삭제하지 않는다.
 
 ## Linux 운영 배포
 

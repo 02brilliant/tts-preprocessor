@@ -69,7 +69,12 @@ def test_frontend_has_stage_colors_legend_and_provenance_rendering() -> None:
     assert ".diff-contract-violation" in web
     assert "legend-violation" in web
     assert "renderSpeechContractViolation" in web
+    assert "renderStage1Input" in web
     assert "speechContractParts" in diff_source
+    assert "stage1InputParts" in diff_source
+    assert 'type: "stage1_modified"' in diff_source
+    assert '"unprocessed_alphanumeric"' in diff_source
+    assert ".diff-stage-1-input-modified" in web
     assert 'type: "contract_violation"' in diff_source
     assert '"contract_violation_deleted"' in diff_source
 
