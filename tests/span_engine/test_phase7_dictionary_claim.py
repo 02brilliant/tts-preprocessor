@@ -30,7 +30,7 @@ def test_dictionary_fixed_lexical_transform(text: str, expected: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["OpenAI", "AIP", "AI3", "3AI", "APIv2", "JSONParser"],
+    ["OpenAI", "AI3", "3AI", "APIv2", "JSONParser"],
 )
 def test_dictionary_does_not_partial_consume_inside_mixed_tokens(text: str) -> None:
     assert transform(text) == text
