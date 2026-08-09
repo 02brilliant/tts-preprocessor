@@ -3841,7 +3841,7 @@ KTX
 ```text
 AI -> 에이아이
 FTA -> 에프티에이
-OpenAI -> preserve 또는 dictionary 있을 때만 처리
+OpenAI -> 오픈 에이아이  # current dictionary entry
 USB3 -> generic acronym fallback 금지
 A-1 -> acronym fallback 금지
 ```
@@ -3874,10 +3874,14 @@ current exact managed dictionary entry, it must not inherit
 #### 9.3.0.1 Managed Dictionary Numeric-Code Suffix
 
 `managed_acronym_numeric_code` extends the single-letter numeric-code suffix
-rule to exact current English managed dictionary entries. It is registry-backed
-from the span managed dictionary inventory and must not keep an owner-local base
-allowlist. Entries that should not inherit numeric-code suffixes must not remain
-current managed dictionary entries. Simple fallback-covered acronyms such as
+rule to exact current English managed dictionary entries and the explicit
+case-insensitive numeric-only bases `F/A`, `A/S`, `Mig`, `Su`, `MK`, `KC`,
+`AIM`, and `AGM`. The numeric-only bases match ASCII case-insensitively. It is
+registry-backed from the span managed dictionary inventory plus that narrow
+numeric-only dictionary; it must not keep an
+owner-local base allowlist. Numeric-only bases do not normalize when standalone.
+Entries that should not inherit numeric-code suffixes must not remain current
+managed dictionary entries. Simple fallback-covered acronyms such as
 `AI`, `CPU`, and `USB` are handled by uppercase acronym fallback when standalone;
 `AI3`, `CPU900`, and `USB300` preserve because broad acronym+number fallback is
 forbidden.
@@ -3905,6 +3909,9 @@ KTX1 -> 케이티엑스 원
 Wi-Fi-6 -> 와이파이-식스
 version-1.5 -> 버전-일쩜오
 release-1.5 -> 릴리즈-일쩜오
+F/A-9 -> 에프에이-나인
+mig-50 -> 미그-오십
+Su-57 -> 수호이-오십칠
 KTX-2024 -> preserve
 GPT-2024 -> preserve
 version-2024 -> preserve
@@ -3969,10 +3976,10 @@ Q&A -> 큐앤에이
 S&P -> 에스앤피
 ```
 
-preserve output:
+selected output:
 
 ```text
-OpenAI -> OpenAI
+OpenAI -> 오픈 에이아이
 USB300 -> USB300
 A12.3B -> A12.3B
 A -> A
@@ -8346,7 +8353,7 @@ A-B-C -> 에이 비 씨
 가-나-다 -> 가 나 다
 ㄱ-ㄴ-ㄷ -> 기역 니은 디귿
 1 - 2 - 3 -> 일 - 이 - 삼
-OpenAI -> OpenAI
+OpenAI -> 오픈 에이아이
 1e6 -> preserve
 3.2E-4 -> preserve
 3가 맞다 -> 삼가 맞다

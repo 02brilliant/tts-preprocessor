@@ -21,8 +21,12 @@ def test_longest_match():
     assert transform("USB") == "유에스비"
 
 
-def test_unmatched_mixed_case_text_is_preserved():
-    assert transform("OpenAI") == "OpenAI"
+def test_managed_mixed_case_dictionary_text_is_read():
+    assert transform("OpenAI") == "오픈 에이아이"
+    assert transform("L-SAM") == "엘-샘"
+    assert transform("M-SAM") == "엠-샘"
+    assert transform("FA") == "에프에이"
+    assert transform("MQ") == "엠큐"
 
 
 def test_uppercase_abbreviation():

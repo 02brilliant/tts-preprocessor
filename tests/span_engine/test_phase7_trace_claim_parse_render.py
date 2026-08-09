@@ -13,11 +13,11 @@ def test_owner_first_claim_trace_for_dictionary_acronym_and_number() -> None:
         assert any(claim.owner == owner for claim in output.trace.claim_logs)
 
 
-def test_preserved_unsupported_input_has_no_claim_log() -> None:
+def test_managed_mixed_case_dictionary_input_has_dictionary_claim() -> None:
     output = transform_with_trace("OpenAI")
 
-    assert output.normalized_text == "OpenAI"
-    assert output.trace.claim_logs == []
+    assert output.normalized_text == "오픈 에이아이"
+    assert any(claim.owner == "dictionary" for claim in output.trace.claim_logs)
 
 
 def test_parser_and_render_trace_records_generated_owners() -> None:

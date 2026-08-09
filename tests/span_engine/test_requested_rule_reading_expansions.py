@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from engine.main import transform
+from engine.span_engine.transform import transform_with_trace
 
 
 @pytest.mark.parametrize(
@@ -11,6 +12,10 @@ from engine.main import transform
         (
             "1·4분기 2·4분기 1·2월 3·4일",
             "일·사분기 이·사분기 일·이월 삼·사일",
+        ),
+        (
+            "1·사분기 2·사분기 1·이월 삼 사일",
+            "일·사분기 이·사분기 일·이월 삼 사일",
         ),
         ("12·3 7·25 123·456", "일이·삼 칠·이오 일이삼·사오육"),
         ("KGM-체리자동차 KG그룹", "케이지엠-체리자동차 케이지그룹"),
@@ -26,6 +31,20 @@ from engine.main import transform
 )
 def test_requested_reading_expansions(text: str, expected: str) -> None:
     assert transform(text) == expected
+
+
+def test_middle_dot_korean_temporal_literals_use_general_number_fallback() -> None:
+    output = transform_with_trace("1·사분기 2·사분기 1·이월")
+
+    assert output.normalized_text == "일·사분기 이·사분기 일·이월"
+    assert [
+        (claim.owner, claim.reason, claim.span.start, claim.span.end)
+        for claim in output.trace.claim_logs
+    ] == [
+        ("number", "phase7_minimal_ascii_number", 0, 1),
+        ("number", "phase7_minimal_ascii_number", 6, 7),
+        ("number", "phase7_minimal_ascii_number", 12, 13),
+    ]
 
 
 @pytest.mark.parametrize(

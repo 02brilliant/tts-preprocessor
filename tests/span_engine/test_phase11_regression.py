@@ -15,7 +15,7 @@ from engine.span_engine import transform, transform_with_trace
         ("(21명)", ""),
         ("참석자는 (21명)입니다", "참석자는 입니다"),
         ("3~8cm", "삼에서 팔 센티미터"),
-        ("OpenAI", "OpenAI"),
+        ("OpenAI", "오픈 에이아이"),
     ],
 )
 def test_phase11_regression_cases(text: str, expected: str) -> None:

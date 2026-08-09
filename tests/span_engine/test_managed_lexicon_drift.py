@@ -136,7 +136,7 @@ def test_fallback_covered_acronyms_are_not_current_managed_dictionary(
     assert any(claim.owner == "acronym_fallback" for claim in trace.claim_logs)
 
 
-@pytest.mark.parametrize("text", ["USB300", "APIv2", "A12.3B", "OpenAI"])
+@pytest.mark.parametrize("text", ["USB300", "APIv2", "A12.3B"])
 def test_managed_lexicon_does_not_expand_broad_fallbacks(text: str) -> None:
     assert production_transform(text) == text
 

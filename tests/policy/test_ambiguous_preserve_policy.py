@@ -88,14 +88,6 @@ AMBIGUOUS_POLICY_CASES = (
         classification="preserve",
     ),
     TextCase(
-        case_id="preserve-mixed-case-acronym",
-        text="OpenAI",
-        expected="OpenAI",
-        rule="preserve / mixed-case acronym fallback forbidden",
-        reason="mixed-case acronym은 broad acronym fallback 대상이 아니다.",
-        classification="preserve",
-    ),
-    TextCase(
         case_id="preserve-scientific-notation-lower",
         text="1e6",
         expected="1e6",

@@ -6,6 +6,9 @@ from engine.span_engine.arithmetic import (
     is_strict_basic_arithmetic_expression,
     unsupported_parenthesized_arithmetic_spans,
 )
+from engine.span_engine.managed_numeric_code import (
+    scan_managed_acronym_numeric_code_candidates,
+)
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 
 _URL_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:https?://|www\.)[^\s,，]+")
@@ -66,6 +69,11 @@ _LOWERCASE_WORD_RE = re.compile(r"\b[A-Za-z]*[a-z][A-Za-z]*\b")
 def scan_protected_literal_candidates(raw_text: str) -> list[SurfaceCandidate]:
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be str")
+    managed_numeric_code_spans = {
+        candidate.core_span
+        for candidate in scan_managed_acronym_numeric_code_candidates(raw_text)
+        if candidate.owner == "managed_acronym_numeric_code"
+    }
     return [
         SurfaceCandidate(
             core_span=span,
@@ -75,6 +83,7 @@ def scan_protected_literal_candidates(raw_text: str) -> list[SurfaceCandidate]:
             reason="url_path_email_code_protection_claim",
         )
         for span in protected_literal_spans(raw_text)
+        if span not in managed_numeric_code_spans
     ]
 
 

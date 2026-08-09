@@ -97,11 +97,11 @@ SPECIAL_AND_DICTIONARY_CASES = [
         reason="A fixed dictionary acronym entry should resolve to its documented reading rather than generic fallback.",
     ),
     TextCase(
-        case_id="dictionary-nonmatching-mixedcase-word-stays-original",
+        case_id="dictionary-managed-mixedcase-word",
         text="OpenAI",
-        expected="OpenAI",
-        rule="acronym fallback / negative",
-        reason="Mixed-case words outside the documented dictionary should not trigger the all-caps acronym fallback.",
+        expected="오픈 에이아이",
+        rule="dictionary / fixed mapping",
+        reason="OpenAI is a documented managed dictionary entry.",
     ),
     TextCase(
         case_id="dictionary-currency-wins-over-acronym-fallback",

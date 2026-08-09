@@ -22,6 +22,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "DOW": "다우",
     "FTA": "에프티에이",
     "FAQ": "에프에이큐",
+    "FA": "에프에이",
     "FOMC": "에프오엠씨",
     "Fed": "연준",
     "GDP": "지디피",
@@ -58,6 +59,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "NLP": "엔엘피",
     "NoSQL": "노에스큐엘",
     "OAuth": "오어스",
+    "OpenAI": "오픈 에이아이",
     "OPEC": "오펙",
     "OS": "오에스",
     "PPI": "피피아이",
@@ -93,6 +95,8 @@ DICTIONARY_READINGS: dict[str, str] = {
     "8K": "에잇케이",
     "KBS": "케이비에스",
     "MBC": "엠비씨",
+    "M-SAM": "엠-샘",
+    "MQ": "엠큐",
     "SBS": "에스비에스",
     "EBS": "이비에스",
     "JTBC": "제이티비씨",
@@ -131,6 +135,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "HDD": "에이치디디",
     "HDMI": "에이치디엠아이",
     "LTE": "엘티이",
+    "L-SAM": "엘-샘",
     "IP": "아이피",
     "DNS": "디엔에스",
     "VPN": "브이피엔",
@@ -165,6 +170,16 @@ FINANCE_INDEX_BASE_READINGS: dict[str, str] = {
 }
 CONTEXTUAL_ACRONYM_READINGS: dict[str, str] = {
     "KB": "케이비",
+}
+CASE_INSENSITIVE_NUMERIC_CODE_READINGS: dict[str, str] = {
+    "F/A": "에프에이",
+    "A/S": "에이에스",
+    "Mig": "미그",
+    "Su": "수호이",
+    "MK": "엠케이",
+    "KC": "케이씨",
+    "AIM": "에이아이엠",
+    "AGM": "에이지엠",
 }
 _K_HANGUL_PREFIX = "K-"
 _K_HANGUL_UNSAFE_TAIL_CHARS = frozenset("-_/.")
@@ -750,6 +765,7 @@ def _is_identifier_neighbor(char: str) -> bool:
 
 
 __all__ = [
+    "CASE_INSENSITIVE_NUMERIC_CODE_READINGS",
     "CONTEXTUAL_ACRONYM_READINGS",
     "DICTIONARY_READINGS",
     "LETTER_READINGS",

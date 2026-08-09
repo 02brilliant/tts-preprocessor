@@ -70,7 +70,7 @@ Managed dictionary claim rules:
 7. Do not use this inventory to add arbitrary unknown unit, currency, product,
    or organization readings.
 
-A no-Hangul input may enter the core transform only when the entire input is composed of exact current managed dictionary entries and approved separators/whitespace. This exception does not apply to English prose, mixed unknown tokens, code-like tokens, path/URL/email/JSON/backtick/square bracket contexts, or larger alnum tokens such as APIv2 and JSONPath.
+A no-Hangul input may enter the core transform only when the entire input is composed of exact current managed dictionary entries and approved separators/whitespace, or is an approved numeric-only managed code surface. This exception does not apply to English prose, mixed unknown tokens, code-like tokens, path/URL/email/JSON/backtick/square bracket contexts, or larger alnum tokens such as APIv2 and JSONPath.
 
 ## 5. Status Taxonomy
 
@@ -122,6 +122,7 @@ span production managed dictionary and covered by production-path tests.
 | `ETF` | 이티에프 | current | exact | safe token boundary | Fixed finance product term. |
 | `ETN` | 이티엔 | current | exact | safe token boundary | Fixed finance product term. |
 | `FAO` | 에프에이오 | current | exact | safe token boundary | Fixed institution term. |
+| `FA` | 에프에이 | current | exact | safe token boundary | Fixed defense-system acronym. |
 | `FAQ` | 에프에이큐 | current | exact | safe token boundary | Fixed help term. |
 | `FOMC` | 에프오엠씨 | current | exact | safe token boundary | Fixed finance term. |
 | `FTA` | 에프티에이 | current | exact | safe token boundary | Fixed policy/economy term. |
@@ -163,7 +164,10 @@ span production managed dictionary and covered by production-path tests.
 | `LAN` | 랜 | current | exact | safe token boundary | Fixed network term. |
 | `LLM` | 엘엘엠 | current | exact | safe token boundary | Fixed AI term. |
 | `LTE` | 엘티이 | current | exact | safe token boundary | Fixed network term. |
+| `L-SAM` | 엘-샘 | current | exact | safe token boundary | Fixed defense-system term. |
 | `MBC` | 엠비씨 | current | exact | safe token boundary | Fixed broadcast term. |
+| `M-SAM` | 엠-샘 | current | exact | safe token boundary | Fixed defense-system term. |
+| `MQ` | 엠큐 | current | exact | safe token boundary | Fixed defense-system acronym. |
 | `MFN` | 엠에프엔 | current | exact | safe token boundary | Fixed policy/economy term. |
 | `MLB` | 엠엘비 | current | exact | safe token boundary | Fixed sports league term. |
 | `MoM` | 엠오엠 | current | exact | safe token boundary | Fixed finance comparison term. |
@@ -178,6 +182,7 @@ span production managed dictionary and covered by production-path tests.
 | `NPU` | 엔피유 | current | exact | safe token boundary | Fixed hardware term. |
 | `NoSQL` | 노에스큐엘 | current | exact | safe token boundary | Fixed database term. |
 | `OAuth` | 오어스 | current | exact | safe token boundary | Fixed auth term. |
+| `OpenAI` | 오픈 에이아이 | current | exact | safe token boundary | Fixed organization/product term. |
 | `OECD` | 오이씨디 | current | exact | safe token boundary | Fixed institution/economy term. |
 | `OPEC` | 오펙 | current | exact | safe token boundary | Fixed institution term. |
 | `OS` | 오에스 | current | exact | safe token boundary | Fixed technical term. |
@@ -265,6 +270,7 @@ full-claim the entire conditional surface and must preserve protected contexts.
 | `K-` + complete Hangul lexical prefix | 케이 + original Hangul | current_with_condition | K-Hangul lexical owner | full claim | `K-푸드`, `K-뷰티`; unsafe tails preserve. |
 | managed acronym + `-` + complete Hangul lexical token | managed/acronym reading + raw hyphen + original Hangul | current_with_condition | managed acronym-Hangul hyphen lexical compound | full claim | Left side must be a current managed dictionary entry, e.g. `KTX-이음`; not a broad hyphen rewrite. Code-like/path/URL/protected contexts preserve. |
 | current English managed dictionary entry + short numeric-code suffix | managed reading + numeric-code reading | current_with_condition | `managed_acronym_numeric_code` | full claim | Left side must be a current exact managed dictionary entry that starts and ends with ASCII alphabetic text and contains only ASCII letters/digits or `-`. This is registry-backed from the span managed dictionary inventory, not an owner-local base allowlist. Entries that should not inherit numeric-code suffixes must not remain current managed dictionary entries. Simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` preserve because broad acronym+number fallback is forbidden. Supports no separator or ASCII `-`, e.g. `GPT4`, `GPT-4`, `KTX1`, `KBS-1`, `NASA1`, `GUI2`, `YAML-2`, `REST1`, `RAM2`, `ROM3`, `OAuth2`, `WAN1`, `WLAN2`, `Wi-Fi6`, `version-1.5`, `release-1.5`. The hyphen is an original boundary, not a minus sign, and is preserved in output. Numeric block is a short unsigned code suffix only: integer suffixes must be 1-2 digits; decimal suffixes must have a 1-2 digit integer part and at least one fractional digit. No plus, signed number, leading-zero malformed decimal, bare dot, malformed comma, segmented malformed numeric, or unsafe tail. Long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024` preserve. Unregistered ASCII word + numeric surfaces such as `abc-1.5`, `build-25`, and `foo2` preserve. URL/path/email/JSON/backtick/fenced code/shell-like/square bracket/file-like contexts preserve. |
+| case-insensitive numeric-only bases `F/A`, `A/S`, `Mig`, `Su`, `MK`, `KC`, `AIM`, `AGM` | registered reading + numeric-code reading | current_with_condition | `managed_acronym_numeric_code` | full claim | ASCII case-insensitive; supports no separator or ASCII `-` plus the same short unsigned integer/decimal validation. These are not standalone dictionary entries. `Su`/`su` alone preserves, while `Su(수호이)` parenthetical alias remains higher priority. |
 | `ISO·IEC` | 아이에스오·아이이씨 | current_with_condition | lexical compound | safe token boundary | Fixed lexical compound; not broad middle-dot normalization. |
 
 ## 8. Pending / Conflict / Future Entries

@@ -9,7 +9,10 @@ from engine.span_engine.currency import (
     CURRENCY_SYMBOL_READINGS,
     KOREAN_CURRENCY_SUFFIX_READINGS,
 )
-from engine.span_engine.lexicon import DICTIONARY_READINGS
+from engine.span_engine.lexicon import (
+    CASE_INSENSITIVE_NUMERIC_CODE_READINGS,
+    DICTIONARY_READINGS,
+)
 from engine.span_engine.protected import (
     is_standalone_protected_literal,
     mask_protected_literals,
@@ -213,7 +216,23 @@ def is_standalone_supported_token(text: str) -> bool:
     stripped = text.strip()
     if not stripped:
         return False
-    return any(pattern.fullmatch(stripped) for pattern in _STANDALONE_PATTERNS)
+    return _is_case_insensitive_managed_numeric_code_token(stripped) or any(
+        pattern.fullmatch(stripped) for pattern in _STANDALONE_PATTERNS
+    )
+
+
+def _is_case_insensitive_managed_numeric_code_token(text: str) -> bool:
+    folded = text.casefold()
+    for surface in CASE_INSENSITIVE_NUMERIC_CODE_READINGS:
+        prefix = surface.casefold()
+        if not folded.startswith(prefix):
+            continue
+        number = text[len(surface) :]
+        if number.startswith("-"):
+            number = number[1:]
+        if re.fullmatch(r"(?:0|[1-9]\d?)(?:\.\d+)?", number):
+            return True
+    return False
 
 
 def is_managed_dictionary_phrase(text: str) -> bool:

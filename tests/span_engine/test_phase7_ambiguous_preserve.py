@@ -8,7 +8,6 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     "text",
     [
-        "OpenAI",
         "USB3",
         "1e6",
         "3.2E-4",

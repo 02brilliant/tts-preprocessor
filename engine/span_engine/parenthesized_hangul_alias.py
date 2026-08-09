@@ -8,7 +8,7 @@ from engine.span_engine.numeric_reading import read_number_text
 
 _PARENTHESIZED_HANGUL_ALIAS_RE = re.compile(
     r"(?<![A-Za-z0-9_./-])"
-    r"(?P<latin>[A-Z][A-Za-z]*)"
+    r"(?P<latin>[A-Za-z]+)"
     r"\((?P<alias>[가-힣]+)\)"
     r"(?:"
     r"(?P<hyphen_number>-\d+(?:\.\d+)?)(?![A-Za-z0-9가-힣ㄱ-ㅎㅏ-ㅣ_./])"
@@ -30,6 +30,9 @@ def scan_parenthesized_hangul_alias_candidates(raw_text: str) -> list[SurfaceCan
 
     candidates: list[SurfaceCandidate] = []
     for match in _PARENTHESIZED_HANGUL_ALIAS_RE.finditer(raw_text):
+        latin = match.group("latin")
+        if not latin[0].isupper() and latin.casefold() != "su":
+            continue
         latin_span = SourceSpan(match.start("latin"), match.end("latin"))
         alias_span = SourceSpan(match.start("alias"), match.end("alias"))
         full_span = SourceSpan(match.start(), match.end())

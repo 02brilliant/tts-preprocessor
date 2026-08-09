@@ -20,7 +20,7 @@ def test_safe_uppercase_acronym_fallback(text: str, expected: str) -> None:
     assert transform(text) == expected
 
 
-@pytest.mark.parametrize("text", ["A", "OpenAI", "USB3", "mL", "km", "AI3", "abc"])
+@pytest.mark.parametrize("text", ["A", "USB3", "mL", "km", "AI3", "abc"])
 def test_acronym_fallback_preserves_unsafe_tokens(text: str) -> None:
     assert transform(text) == text
 

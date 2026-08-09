@@ -176,6 +176,9 @@ _NUMBER_BLOCKING_PREV_CHARS = (
     frozenset(",+/_") | COLON_LIKE_DELIMITERS | RANGE_LIKE_DELIMITERS | TILDE_LIKE_DELIMITERS
 )
 _NUMBER_BLOCKING_PREV_SYMBOLS = frozenset("$€£¥₩")
+_ATTACHED_MIDDLE_DOT_KOREAN_TEMPORAL_LITERAL_RE = re.compile(
+    r"·[가-힣]+(?:분기|월|일)(?![A-Za-z0-9])"
+)
 _ACRONYM_FALLBACK_BLOCKLIST = frozenset(
     {
         "CM",
@@ -897,8 +900,17 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
         elif next_char == "·":
             # A right-side ASCII gap makes this a spaced middle-dot boundary.
             # Read the left operand only when a complete safe numeric operand
-            # follows; attached middle-dot forms remain owned atomically.
-            if re.match(r"·[ ]+[0-9]+(?![A-Za-z0-9])", raw_text[span.end:]) is None:
+            # follows.  An attached Korean temporal literal is not a numeric
+            # block, so it has no middle-dot owner to claim it; allow the
+            # ordinary number fallback to read only the left operand.
+            if (
+                re.match(r"·[ ]+[0-9]+(?![A-Za-z0-9])", raw_text[span.end:])
+                is None
+                and _ATTACHED_MIDDLE_DOT_KOREAN_TEMPORAL_LITERAL_RE.match(
+                    raw_text[span.end:]
+                )
+                is None
+            ):
                 return False
 
     if "\uac00" <= next_char <= "\ud7a3":

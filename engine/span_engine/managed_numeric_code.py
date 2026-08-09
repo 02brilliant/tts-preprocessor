@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from engine.span_engine.lexicon import DICTIONARY_READINGS
+from engine.span_engine.lexicon import (
+    CASE_INSENSITIVE_NUMERIC_CODE_READINGS,
+    DICTIONARY_READINGS,
+)
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.single_letter_code import numeric_code_number_reading
 
@@ -31,8 +34,10 @@ def scan_managed_acronym_numeric_code_candidates(
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be str")
     candidates: list[SurfaceCandidate] = []
-    for surface, surface_reading in _managed_numeric_code_bases():
-        start = raw_text.find(surface)
+    for surface, surface_reading, case_insensitive in _managed_numeric_code_bases():
+        haystack = raw_text.casefold() if case_insensitive else raw_text
+        needle = surface.casefold() if case_insensitive else surface
+        start = haystack.find(needle)
         while start != -1:
             candidate = _candidate_at(raw_text, start, surface, surface_reading)
             if candidate is not None:
@@ -41,7 +46,7 @@ def scan_managed_acronym_numeric_code_candidates(
                 malformed = _malformed_preserve_candidate_at(raw_text, start, surface)
                 if malformed is not None:
                     candidates.append(malformed)
-            start = raw_text.find(surface, start + 1)
+            start = haystack.find(needle, start + 1)
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
 
 
@@ -60,8 +65,8 @@ def parse_managed_acronym_numeric_code_surface(
     if candidate.owner != "managed_acronym_numeric_code":
         return None
     raw = raw_text[candidate.core_span.start : candidate.core_span.end]
-    for surface, surface_reading in _managed_numeric_code_bases():
-        if not raw.startswith(surface):
+    for surface, surface_reading, case_insensitive in _managed_numeric_code_bases():
+        if not _surface_matches(raw, surface, case_insensitive):
             continue
         separator_start = candidate.core_span.start + len(surface)
         hyphen = raw_text[separator_start : separator_start + 1]
@@ -114,15 +119,30 @@ def parse_managed_acronym_numeric_code_surface(
     return None
 
 
-def _managed_numeric_code_bases() -> list[tuple[str, str]]:
+def _managed_numeric_code_bases() -> list[tuple[str, str, bool]]:
     return sorted(
-        (
-            (surface, reading)
-            for surface, reading in DICTIONARY_READINGS.items()
-            if _is_managed_numeric_code_base(surface)
-        ),
+        [
+            *(
+                (surface, reading, False)
+                for surface, reading in DICTIONARY_READINGS.items()
+                if _is_managed_numeric_code_base(surface)
+            ),
+            *(
+                (surface, reading, True)
+                for surface, reading in CASE_INSENSITIVE_NUMERIC_CODE_READINGS.items()
+            ),
+        ],
         key=lambda item: len(item[0]),
         reverse=True,
+    )
+
+
+def _surface_matches(raw: str, surface: str, case_insensitive: bool) -> bool:
+    candidate = raw[: len(surface)]
+    return (
+        candidate.casefold() == surface.casefold()
+        if case_insensitive
+        else candidate == surface
     )
 
 

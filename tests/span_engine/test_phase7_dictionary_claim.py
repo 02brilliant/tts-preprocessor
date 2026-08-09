@@ -13,6 +13,9 @@ from engine.span_engine import transform, transform_with_trace
         ("KOSPI", "코스피"),
         ("TTS", "티티에스"),
         ("API", "에이피아이"),
+        ("OpenAI", "오픈 에이아이"),
+        ("L-SAM", "엘-샘"),
+        ("M-SAM", "엠-샘"),
         ("AI는 중요하다", "에이아이는 중요하다"),
         ("FTA는 적용됐다", "에프티에이는 적용됐다"),
         ("KOSPI가 올랐다", "코스피가 올랐다"),
@@ -30,7 +33,7 @@ def test_dictionary_fixed_lexical_transform(text: str, expected: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["OpenAI", "AI3", "3AI", "APIv2", "JSONParser"],
+    ["AI3", "3AI", "APIv2", "JSONParser"],
 )
 def test_dictionary_does_not_partial_consume_inside_mixed_tokens(text: str) -> None:
     assert transform(text) == text
