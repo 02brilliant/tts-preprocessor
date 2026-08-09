@@ -33,6 +33,7 @@ from engine.span_engine.compound_unit import (
     scan_compound_slash_unit_candidates,
     starts_with_supported_compound_exact_unit,
 )
+from engine.span_engine.corporate_marker import scan_corporate_marker_candidates
 from engine.span_engine.code_separator import (
     scan_mixed_alnum_code_separator_candidates,
     scan_spaced_hyphen_numeric_candidates,
@@ -59,13 +60,20 @@ from engine.span_engine.fraction import (
     scan_fraction_candidates,
     scan_textual_fraction_candidates,
 )
-from engine.span_engine.middle_dot import scan_middle_dot_candidates
+from engine.span_engine.middle_dot import (
+    scan_middle_dot_candidates,
+    scan_middle_dot_korean_suffix_candidates,
+)
 from engine.span_engine.mixed_integer import scan_mixed_integer_candidates
 from engine.span_engine.multiplier import scan_multiplier_candidates
 from engine.span_engine.numeric_dae import (
     scan_ambiguous_numeric_dae_preserve_candidates,
 )
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
+from engine.span_engine.ordinal import scan_ordinal_candidates
+from engine.span_engine.parenthesized_hangul_alias import (
+    scan_parenthesized_hangul_alias_candidates,
+)
 from engine.span_engine.ph import scan_ph_candidates
 from engine.span_engine.percent_point import scan_percent_point_candidates
 from engine.span_engine.protected import scan_protected_literal_candidates
@@ -94,6 +102,7 @@ from engine.span_engine.public_number import is_public_number, scan_public_numbe
 from engine.span_engine.phone import scan_phone_candidates
 from engine.span_engine.range import (
     scan_colon_semantic_pair_candidates,
+    scan_compact_large_unit_range_candidates,
     scan_multi_colon_numeric_candidates,
     scan_numeric_delimited_hyphen_range_candidates,
     scan_range_candidates,
@@ -110,6 +119,7 @@ from engine.span_engine.units import (
     scan_caret_literal_unit_candidates,
     scan_simple_unit_candidates,
     scan_special_unit_candidates,
+    scan_korean_numeric_unit_candidates,
     scan_unit_contamination_preserve_candidates,
     supported_unit_prefix_length,
     starts_with_supported_unit,
@@ -213,6 +223,8 @@ _ACRONYM_FALLBACK_BLOCKLIST = frozenset(
 CLAIM_ORDER_DOC = (
     "bracket",
     "protected_literal",
+    "corporate_marker",
+    "parenthesized_hangul_alias",
     "dictionary",
     "finance_index",
     "contextual_acronym",
@@ -239,6 +251,7 @@ CLAIM_ORDER_DOC = (
     "multi_colon_numeric",
     "event",
     "emergency",
+    "middle_dot_numeric",
     "spaced_separator_preserve",
     "spaced_hyphen_numeric_blocks",
     "numeric_delimited_hyphen_range",
@@ -270,7 +283,6 @@ CLAIM_ORDER_DOC = (
     "invalid_mixed_decimal_preserve",
     "mixed_decimal_atomic",
     "decimal",
-    "middle_dot_numeric",
     "public_number",
     "counter_noun",
     "mixed_integer_atomic",
@@ -316,6 +328,7 @@ def claim_surfaces(
         raw_text, excluded_ranges
     )
     simple_unit_candidates = scan_simple_unit_candidates(raw_text)
+    korean_numeric_unit_candidates = scan_korean_numeric_unit_candidates(raw_text)
     unit_contamination_candidates = scan_unit_contamination_preserve_candidates(
         raw_text
     )
@@ -359,6 +372,9 @@ def claim_surfaces(
         if candidate.owner == "mixed_integer_atomic"
     ]
     middle_dot_candidates = scan_middle_dot_candidates(raw_text, excluded_ranges)
+    middle_dot_korean_suffix_candidates = scan_middle_dot_korean_suffix_candidates(
+        raw_text, excluded_ranges
+    )
     equipment_middle_dot_candidates = [
         candidate
         for candidate in middle_dot_candidates
@@ -368,8 +384,17 @@ def claim_surfaces(
         candidate
         for candidate in middle_dot_candidates
         if candidate not in equipment_middle_dot_candidates
+        and candidate not in middle_dot_korean_suffix_candidates
     ]
     candidates.extend(_claim_scanned_candidates(scan_protected_literal_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_corporate_marker_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_parenthesized_hangul_alias_candidates(raw_text),
+            registry,
+            excluded_ranges,
+        )
+    )
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_acronym_candidates(raw_text, contextual_acronym_unit_candidates), registry, excluded_ranges))
@@ -383,6 +408,11 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(
+        _claim_uppercase_hangul_fallback(
+            raw_text, registry, excluded_ranges, simple_unit_candidates
+        )
+    )
+    candidates.extend(
         _claim_acronym_fallback(
             tokens,
             registry,
@@ -393,8 +423,10 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_collision_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_compact_large_unit_range_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(middle_dot_korean_suffix_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_date_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_textual_fraction_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_time_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
@@ -405,7 +437,6 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_event_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_emergency_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(equipment_middle_dot_candidates, registry, excluded_ranges))
-
     candidates.extend(_claim_scanned_candidates(scan_spaced_separator_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_spaced_hyphen_numeric_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_delimited_hyphen_range_candidates(raw_text), registry, excluded_ranges))
@@ -443,8 +474,10 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(simple_unit_candidates, registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(korean_numeric_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_number_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_ordinal_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ambiguous_numeric_dae_preserve_candidates(raw_text), registry, excluded_ranges))
@@ -464,7 +497,6 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_decimal_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_malformed_dotted_preserve_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(remaining_middle_dot_candidates, registry, excluded_ranges))
-
     candidates.extend(_claim_scanned_candidates(scan_public_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(remaining_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(mixed_integer_candidates, registry, excluded_ranges))
@@ -552,6 +584,51 @@ def _claim_acronym_fallback(
             )
             _claim_candidate(candidate, registry)
             candidates.append(candidate)
+    return candidates
+
+
+def _claim_uppercase_hangul_fallback(
+    raw_text: str,
+    registry: SurfaceClaimRegistry,
+    excluded_ranges: list[BracketRange],
+    simple_unit_candidates: list[SurfaceCandidate],
+) -> list[SurfaceCandidate]:
+    """Spell an all-caps block directly attached to a Korean lexical tail.
+
+    This is deliberately narrower than broad acronym fallback: it enables
+    lexical forms such as ``KG그룹`` without reclassifying ASCII identifiers or
+    numeric unit surfaces.
+    """
+    candidates: list[SurfaceCandidate] = []
+    for match in _UPPERCASE_ACRONYM_RE.finditer(raw_text):
+        start, end = match.span()
+        if end >= len(raw_text) or not ("\uac00" <= raw_text[end] <= "\ud7a3"):
+            continue
+        previous = raw_text[start - 1] if start > 0 else None
+        if previous is not None and (
+            previous.isascii() and previous.isalnum() or previous in {"_", "-", "/"}
+        ):
+            continue
+        span = SourceSpan(start, end)
+        if (
+            span_overlaps_excluded_ranges(span, excluded_ranges)
+            or any(
+                unit_candidate.core_span.start <= span.start
+                and span.end <= unit_candidate.core_span.end
+                for unit_candidate in simple_unit_candidates
+            )
+            or not registry.can_claim(span, "acronym_fallback")
+        ):
+            continue
+        candidate = SurfaceCandidate(
+            core_span=span,
+            full_span=span,
+            owner="acronym_fallback",
+            surface_type="ACRONYM_FALLBACK_SURFACE",
+            reason="uppercase_acronym_hangul_lexical_fallback",
+        )
+        _claim_candidate(candidate, registry)
+        candidates.append(candidate)
     return candidates
 
 

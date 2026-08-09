@@ -62,11 +62,11 @@ def test_phase37_decimal_suffix_does_not_prefix_match_ordinary_noun() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("7·25", "칠 이오"),
-        ("10·5", "십 오"),
-        ("15·40 운동", "십오 사영 운동"),
-        ("12·3수치", "십이 삼수치"),
-        ("12·3-비상계엄", "십이 삼-비상계엄"),
+        ("7·25", "칠·이오"),
+        ("10·5", "일영·오"),
+        ("15·40 운동", "일오·사영 운동"),
+        ("12·3수치", "일이·삼수치"),
+        ("12·3-비상계엄", "일이·삼-비상계엄"),
     ],
 )
 def test_phase37_middle_dot_event_failure_falls_back_to_numeric_blocks(

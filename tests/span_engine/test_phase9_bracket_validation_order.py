@@ -23,7 +23,7 @@ def test_parenthesis_content_does_not_leak_as_context(text: str, expected: str) 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("AI(임시)은 중요하다", "에이아이은 중요하다"),
+        ("AI(임시)은 중요하다", "임시는 중요하다"),
         ("AI은(임시) 중요하다", "에이아이는 중요하다"),
     ],
 )

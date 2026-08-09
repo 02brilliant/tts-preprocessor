@@ -212,7 +212,7 @@ def test_no_hangul_gate_keeps_non_numeric_code_and_paths(text: str) -> None:
 
 
 def test_registered_managed_code_still_wins_over_arithmetic_negative_gate() -> None:
-    assert transform("version-2") == "버전 투"
+    assert transform("version-2") == "버전-투"
 
 
 @pytest.mark.parametrize(

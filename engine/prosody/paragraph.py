@@ -9,6 +9,14 @@ STRONG_TRANSITIONS = {"한편", "반면", "결론적으로", "마지막으로"}
 CONDITIONAL_TRANSITIONS = {"하지만", "그러나", "그래서", "다만"}
 DEMONSTRATIVES = ("이", "그", "저", "해당")
 QUOTE_CHARS = {'"', "'", "“", "”", "‘", "’"}
+_ASCII_QUOTE_CHARS = frozenset({'"', "'"})
+_NEWLINE_RUN_RE = re.compile(r"(?:\r\n|\r|\n)+")
+_CODE_FENCE_RE = re.compile(r"```[^\r\n]*(?:\r?\n)(?:.|\r|\n)*?```", re.DOTALL)
+_INLINE_BACKTICK_MULTILINE_RE = re.compile(r"(?<!`)`(?!`)(?:.|\r|\n)*?(?<!`)`(?!`)", re.DOTALL)
+_JSON_OBJECT_RE = re.compile(r'^\{+\s*(?:"(?:[^"\\]|\\.)+"|[A-Za-z_][A-Za-z0-9_]*)\s*:.*\}+$', re.DOTALL)
+_STRUCTURED_NUMERIC_TOKEN_RE = re.compile(r"[+\-]?\d+(?:,\d{3})*(?:\.\d+)?$")
+_STRUCTURED_SUFFIXES = frozenset({"원", "KRW", "kg", "%"})
+_ARITHMETIC_OPERATORS = frozenset({"+", "-", "*", "/", "×", "÷", "="})
 
 SOFT_LIMIT = 250
 HARD_LIMIT = 300
@@ -59,8 +67,134 @@ class _ParagraphResult(str):
         return super().split(sep, maxsplit)
 
 
+def normalize_user_newline_semantics(
+    text: str, *, paragraphize_boundaries: bool = False
+) -> str:
+    """Join visual line wrapping and retain only TTS paragraph boundaries."""
+    if not isinstance(text, str):
+        raise TypeError("text must be str")
+    if not _NEWLINE_RUN_RE.search(text):
+        return text
+
+    protected_ranges = _protected_newline_ranges(text)
+    quote_interiors, quote_closers = _matched_ascii_quote_positions(
+        text, protected_ranges
+    )
+    parts: list[str] = []
+    cursor = 0
+    for match in _NEWLINE_RUN_RE.finditer(text):
+        start, end = match.span()
+        parts.append(text[cursor:start])
+        if _range_contains_index(protected_ranges, start):
+            parts.append(match.group(0))
+        elif _is_structured_code_boundary(text, start, end):
+            parts.append(match.group(0))
+        elif start in quote_interiors:
+            parts.append(_newline_joiner(text, start, end))
+        else:
+            last_non_space = _last_non_space_index(text, start)
+            if last_non_space is not None and (
+                _is_existing_sentence_terminal(text, last_non_space)
+                or last_non_space in quote_closers
+            ):
+                parts.append("\n\n" if paragraphize_boundaries else match.group(0))
+            else:
+                parts.append(_newline_joiner(text, start, end))
+        cursor = end
+    parts.append(text[cursor:])
+    return "".join(parts)
+
+
 def _normalize_user_newlines(text: str) -> str:
-    return re.sub(r"\n+", "\n\n", text)
+    return normalize_user_newline_semantics(text, paragraphize_boundaries=True)
+
+
+def _newline_joiner(text: str, start: int, end: int) -> str:
+    left = text[start - 1] if start > 0 else ""
+    right = text[end] if end < len(text) else ""
+    return " " if left and right and not left.isspace() and not right.isspace() else ""
+
+
+def _last_non_space_index(text: str, end: int) -> int | None:
+    index = end - 1
+    while index >= 0 and text[index].isspace():
+        index -= 1
+    return index if index >= 0 else None
+
+
+def _is_existing_sentence_terminal(text: str, index: int) -> bool:
+    if text[index] == ".":
+        return True
+    if text[index] != "/":
+        return False
+    previous = index - 1
+    while previous >= 0 and text[previous] == "/":
+        previous -= 1
+    return previous >= 0 and "\uac00" <= text[previous] <= "\ud7a3"
+
+
+def _is_structured_code_boundary(text: str, start: int, end: int) -> bool:
+    left_start = max(text.rfind("\n", 0, start), text.rfind("\r", 0, start)) + 1
+    right_end_candidates = [
+        value for value in (text.find("\n", end), text.find("\r", end)) if value >= 0
+    ]
+    right_end = min(right_end_candidates) if right_end_candidates else len(text)
+    left = text[left_start:start].strip()
+    right = text[end:right_end].strip()
+    if left in _ARITHMETIC_OPERATORS or right in _ARITHMETIC_OPERATORS:
+        return True
+    if _STRUCTURED_NUMERIC_TOKEN_RE.fullmatch(left) and right in _STRUCTURED_SUFFIXES:
+        return True
+    return left in _STRUCTURED_SUFFIXES and bool(_STRUCTURED_NUMERIC_TOKEN_RE.fullmatch(right))
+
+
+def _protected_newline_ranges(text: str) -> list[tuple[int, int]]:
+    ranges = [match.span() for match in _CODE_FENCE_RE.finditer(text)]
+    ranges.extend(match.span() for match in _INLINE_BACKTICK_MULTILINE_RE.finditer(text))
+    ranges.extend(
+        match.span()
+        for match in re.finditer(r"\{[^{}]*\}", text, re.DOTALL)
+        if _JSON_OBJECT_RE.fullmatch(match.group(0))
+    )
+    return ranges
+
+
+def _range_contains_index(ranges: list[tuple[int, int]], index: int) -> bool:
+    return any(start <= index < end for start, end in ranges)
+
+
+def _matched_ascii_quote_positions(
+    text: str, protected_ranges: list[tuple[int, int]]
+) -> tuple[set[int], set[int]]:
+    opens: dict[str, int | None] = {'"': None, "'": None}
+    interiors: set[int] = set()
+    closers: set[int] = set()
+    for index, char in enumerate(text):
+        if char not in _ASCII_QUOTE_CHARS or _range_contains_index(protected_ranges, index):
+            continue
+        if char == "'" and _is_ascii_apostrophe(text, index):
+            continue
+        opening = opens[char]
+        if opening is None:
+            if char == "'" and index > 0 and text[index - 1].isascii() and text[index - 1].isalnum():
+                continue
+            opens[char] = index
+            continue
+        interiors.update(range(opening + 1, index))
+        closers.add(index)
+        opens[char] = None
+    return interiors, closers
+
+
+def _is_ascii_apostrophe(text: str, index: int) -> bool:
+    return (
+        index > 0
+        and index + 1 < len(text)
+        and text[index - 1].isascii()
+        and text[index - 1].isalnum()
+        and text[index + 1].isascii()
+        and text[index + 1].isalnum()
+    )
 
 
 def _split_user_blocks(text: str) -> list[str]:

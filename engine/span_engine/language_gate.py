@@ -59,6 +59,10 @@ _DATE = r"\d{4}(?:[-/.]|／)\d{2}(?:[-/.]|／)\d{2}"
 _DECIMAL_TOKEN = rf"{_INTEGER}\.\d+"
 _SIGNED_NUMBER_TOKEN = rf"[+\-−－]{_DECIMAL}"
 _MIDDLE_DOT_TOKEN = rf"{_INTEGER}·{_INTEGER}"
+_MIDDLE_DOT_KOREAN_SUFFIX = rf"{_MIDDLE_DOT_TOKEN}(?:월|일|분기)"
+_ORDINAL = rf"{_INTEGER}번째"
+_MIXED_KOREAN_UNIT = rf"{_INTEGER}[십백천만억조경]{_NUMBER_UNIT_GAP}(?:{_SIMPLE_UNIT})"
+_QUANTIFIED_KOREAN_UNIT = rf"(?:수십|수백|수천){_NUMBER_UNIT_GAP}(?:{_SIMPLE_UNIT})"
 _TWO_BLOCK_HYPHEN_CODE = rf"[A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ]+-{_DECIMAL}"
 _SPACED_FREQUENCY = rf"{_DECIMAL}\s+(?:Hz|hz)"
 _PH_SUFFIX_POSITION = rf"{_DECIMAL}\s+pH"
@@ -88,7 +92,7 @@ _STANDALONE_PATTERNS = tuple(
         _PH,
         _UNIT_TOKEN,
         _COMPOUND_TOKEN,
-        _RANGE,
+        rf"{_RANGE}(?:만원|억원|조원|경원|만|억|조|경)?",
         _DURATION,
         _TIME,
         _DATE,
@@ -97,6 +101,10 @@ _STANDALONE_PATTERNS = tuple(
         _SIGNED_NUMBER_TOKEN,
         _DECIMAL_TOKEN,
         _MIDDLE_DOT_TOKEN,
+        _MIDDLE_DOT_KOREAN_SUFFIX,
+        _ORDINAL,
+        _MIXED_KOREAN_UNIT,
+        _QUANTIFIED_KOREAN_UNIT,
         _TWO_BLOCK_HYPHEN_CODE,
         _INTEGER,
     )
@@ -114,10 +122,17 @@ _NUMERIC_LIST_TOKEN_RE = re.compile(
         |{_DURATION}
         |{_COMPOUND_TOKEN}
         |{_UNIT_TOKEN}
+        |{_ORDINAL}
+        |{_MIXED_KOREAN_UNIT}
+        |{_QUANTIFIED_KOREAN_UNIT}
         |{_INTEGER}
     )
     """,
     re.VERBOSE,
+)
+_REQUESTED_NUMERIC_LIST_RE = re.compile(
+    rf"(?:{_ORDINAL}|{_MIXED_KOREAN_UNIT}|{_QUANTIFIED_KOREAN_UNIT})"
+    rf"(?:[ ,]+(?:{_ORDINAL}|{_MIXED_KOREAN_UNIT}|{_QUANTIFIED_KOREAN_UNIT}))*$"
 )
 _CURRENCY_MARKER_LINES = frozenset(
     {
@@ -338,7 +353,9 @@ def _transform_line(
     if line.is_standalone:
         return core_transform(line.text) + line.newline
     if line.is_numeric_list:
-        if _has_adjacent_korean_context(lines, index):
+        if _has_adjacent_korean_context(lines, index) or _REQUESTED_NUMERIC_LIST_RE.fullmatch(
+            line.text.strip()
+        ):
             return core_transform(line.text) + line.newline
         return original
     if line.has_hangul:

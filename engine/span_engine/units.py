@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from engine.span_engine.amount_reading import read_decimal_amount_text
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
-from engine.span_engine.numeric_reading import read_decimal_fraction_digits
+from engine.span_engine.numeric_reading import read_decimal_fraction_digits, read_spaced_integer_text
 from engine.span_engine.sign_aliases import (
     SIGNED_NUMERIC_SIGN_ALIASES,
     is_signed_numeric_sign,
@@ -501,6 +501,194 @@ def scan_simple_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
 
 def scan_special_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return _scan_unit_candidates(raw_text, SPECIAL_UNIT_READINGS, _SPECIAL_UNITS_BY_LENGTH, "special_unit", "SPECIAL_UNIT_SURFACE")
+
+
+def scan_korean_numeric_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    """Read registered units after narrowly approved Korean numeric forms."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+
+    # Imported lazily because the large-unit parser itself depends on signed
+    # unit detection during module initialization.
+    from engine.span_engine.large_unit import parse_mixed_integer_core_at
+
+    inventory = {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}
+    ordered_units = _SIMPLE_UNITS_BY_LENGTH + _SPECIAL_UNITS_BY_LENGTH
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        parsed = (
+            parse_mixed_integer_core_at(raw_text, index)
+            if _is_ascii_digit(raw_text[index])
+            and _valid_korean_numeric_unit_left_boundary(raw_text, index)
+            else None
+        )
+        if parsed is not None:
+            candidate = _korean_numeric_unit_candidate(
+                raw_text,
+                index,
+                parsed.end,
+                parsed.reading,
+                inventory,
+                ordered_units,
+                "mixed_arabic_hangul_numeric_unit",
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+                index = candidate.full_span.end
+                continue
+
+        for marker in ("수십", "수백", "수천"):
+            if raw_text.startswith(marker, index) and _valid_korean_numeric_unit_left_boundary(raw_text, index):
+                candidate = _korean_numeric_unit_candidate(
+                    raw_text,
+                    index,
+                    index + len(marker),
+                    marker,
+                    inventory,
+                    ordered_units,
+                    "quantified_korean_numeric_unit",
+                )
+                if candidate is not None:
+                    candidates.append(candidate)
+                    index = candidate.full_span.end
+                    break
+        else:
+            index += 1
+            continue
+        continue
+    return candidates
+
+
+def parse_korean_numeric_unit_candidate(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "korean_numeric_unit":
+        return None
+    reading = candidate.metadata.get("reading")
+    number_end = candidate.metadata.get("number_end")
+    unit_start = candidate.metadata.get("unit_start")
+    unit = candidate.metadata.get("unit")
+    if not isinstance(reading, str):
+        return None
+    if not (
+        isinstance(number_end, int)
+        and isinstance(unit_start, int)
+        and isinstance(unit, str)
+        and candidate.core_span.start < number_end <= unit_start < candidate.core_span.end
+    ):
+        return None
+    pieces: list[RenderPiece] = []
+    cursor = candidate.core_span.start
+    while cursor < number_end:
+        if _is_ascii_digit(raw_text[cursor]):
+            digit_end = cursor
+            while digit_end < number_end and _is_ascii_digit(raw_text[digit_end]):
+                digit_end += 1
+            digit_reading = read_spaced_integer_text(raw_text[cursor:digit_end])
+            if digit_reading is None:
+                return None
+            pieces.append(
+                RenderPiece(
+                    text=digit_reading,
+                    provenance="GENERATED_READING",
+                    source_span=SourceSpan(cursor, digit_end),
+                    owner=candidate.owner,
+                    metadata={"surface_type": candidate.surface_type},
+                )
+            )
+            cursor = digit_end
+            continue
+        korean_end = cursor
+        while korean_end < number_end and not _is_ascii_digit(raw_text[korean_end]):
+            korean_end += 1
+        pieces.append(
+            RenderPiece(
+                text=raw_text[cursor:korean_end],
+                provenance="ORIGINAL_KOREAN",
+                source_span=SourceSpan(cursor, korean_end),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+        cursor = korean_end
+    pieces.append(
+        RenderPiece(
+            text=" " + candidate.metadata["unit_reading"],
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(unit_start, candidate.core_span.end),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    )
+    return Surface(
+        surface_type=candidate.surface_type or "KOREAN_NUMERIC_UNIT_SURFACE",
+        owner=candidate.owner,
+        raw=raw_text[candidate.core_span.start : candidate.core_span.end],
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
+        metadata={"reason": candidate.reason},
+    )
+
+
+def _korean_numeric_unit_candidate(
+    raw_text: str,
+    start: int,
+    number_end: int,
+    number_reading: str,
+    inventory: dict[str, str],
+    ordered_units: list[str],
+    reason: str,
+) -> SurfaceCandidate | None:
+    unit_start = _consume_optional_ascii_space(raw_text, number_end)
+    for unit in ordered_units:
+        if not raw_text.startswith(unit, unit_start):
+            continue
+        full_span = SourceSpan(start, unit_start + len(unit))
+        if not _valid_korean_numeric_unit_boundary(raw_text, full_span):
+            return None
+        return SurfaceCandidate(
+            core_span=full_span,
+            full_span=full_span,
+            owner="korean_numeric_unit",
+            surface_type="KOREAN_NUMERIC_UNIT_SURFACE",
+            reason=reason,
+            metadata={
+                "reading": f"{number_reading} {inventory[unit]}",
+                "unit": unit,
+                "unit_reading": inventory[unit],
+                "number_end": number_end,
+                "unit_start": unit_start,
+            },
+        )
+    return None
+
+
+def _valid_korean_numeric_unit_left_boundary(raw_text: str, start: int) -> bool:
+    if start == 0:
+        return True
+    previous = raw_text[start - 1]
+    return not (
+        previous.isascii() and previous.isalnum()
+    ) and not ("\uac00" <= previous <= "\ud7a3") and previous not in {
+        "_",
+        "/",
+        ".",
+        ",",
+        "~",
+        "+",
+        "-",
+    }
+
+
+def _valid_korean_numeric_unit_boundary(raw_text: str, span: SourceSpan) -> bool:
+    next_char = raw_text[span.end] if span.end < len(raw_text) else None
+    if next_char is None or next_char.isspace():
+        return True
+    if next_char.isascii() and next_char.isalnum():
+        return False
+    return next_char not in {"_", "/", "."}
 
 
 def scan_unit_contamination_preserve_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -1190,6 +1378,7 @@ __all__ = [
     "RANGE_COMPATIBLE_UNIT_READINGS",
     "SIMPLE_UNIT_READINGS",
     "SPECIAL_UNIT_READINGS",
+    "parse_korean_numeric_unit_candidate",
     "parse_unit_candidate",
     "parse_caret_literal_unit_candidate",
     "range_compatible_unit_reading",
@@ -1198,6 +1387,7 @@ __all__ = [
     "scan_caret_literal_unit_candidates",
     "scan_simple_unit_candidates",
     "scan_special_unit_candidates",
+    "scan_korean_numeric_unit_candidates",
     "scan_unit_contamination_preserve_candidates",
     "supported_unit_prefix_length",
     "starts_with_supported_unit",

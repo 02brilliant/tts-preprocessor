@@ -12,7 +12,8 @@ from engine.span_engine.brackets import (
     apply_final_bracket_filter,
     find_bracket_ranges,
     find_incomplete_bracket_ranges,
-    protect_square_brackets_before_claim,
+    is_code_like_curly_bracket,
+    protect_non_parenthesis_brackets_before_claim,
 )
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
 from engine.span_engine.claim_scanner import claim_surfaces
@@ -41,7 +42,10 @@ from engine.span_engine.models import (
 from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import apply_safe_post_surface_particle_exception
 from engine.span_engine.public_number import build_public_number_gate_logs
-from engine.prosody.paragraph import split_paragraphs
+from engine.prosody.paragraph import (
+    normalize_user_newline_semantics,
+    split_paragraphs,
+)
 from engine.span_engine.prosody import apply_prosody_comma_adapter
 from engine.span_engine.prosody_extra import apply_extra_prosody_comma_adapter
 from engine.span_engine.protected import protected_literal_spans
@@ -71,10 +75,11 @@ def transform(text: str) -> str:
 
 def transform_with_trace(text: str) -> TransformOutput:
     checked_text = _ensure_str(text)
+    normalized_input = normalize_user_newline_semantics(checked_text)
     try:
-        output = _transform_with_language_gate_trace(checked_text)
+        output = _transform_with_language_gate_trace(normalized_input)
     except Exception as exc:
-        output = recover_transform_output(checked_text, exc)
+        output = recover_transform_output(normalized_input, exc)
     return _apply_paragraph_split_to_output(output)
 
 
@@ -570,14 +575,21 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
             for span in unsupported_parenthesized_spans
         )
     ]
+    presentation_bracket_ranges = [
+        bracket_range
+        for bracket_range in active_bracket_ranges
+        if not is_code_like_curly_bracket(bracket_range)
+    ]
     registry = SurfaceClaimRegistry()
     shadow = build_shadow_buffer(tokens)
-    protect_square_brackets_before_claim(registry, active_bracket_ranges)
+    protect_non_parenthesis_brackets_before_claim(
+        registry, presentation_bracket_ranges
+    )
     candidates = claim_surfaces(
         checked_text,
         tokens,
         registry,
-        excluded_ranges=active_bracket_ranges + incomplete_bracket_ranges,
+        excluded_ranges=presentation_bracket_ranges + incomplete_bracket_ranges,
     )
     surfaces = parse_candidates(checked_text, candidates)
     pieces = render_tokens_with_surfaces(checked_text, tokens, surfaces)
@@ -603,7 +615,7 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     )
     pieces = extra_prosody_result.pieces
     pre_filter_text = join_render_pieces(pieces)
-    bracket_filter = apply_final_bracket_filter(pieces, active_bracket_ranges)
+    bracket_filter = apply_final_bracket_filter(pieces, presentation_bracket_ranges)
     normalized_text = bracket_filter.normalized_text
 
     from engine.span_engine.models import TransformTrace
@@ -870,6 +882,16 @@ def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> se
                     "mixed_decimal_atomic",
                 }
                 and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
+            ):
+                consumed.add((unit.span.start, unit.span.end))
+                continue
+            if (
+                getattr(surface, "owner", None) == "parenthesized_hangul_alias"
+                and getattr(surface, "metadata", {}).get("consume_parenthetical_alias")
+                is True
+                and _spans_overlap(
+                    surface.span.start, surface.span.end, unit.span.start, unit.span.end
+                )
             ):
                 consumed.add((unit.span.start, unit.span.end))
                 continue

@@ -3,7 +3,7 @@ from __future__ import annotations
 from engine.span_engine.models import SourceChar, SourceSpan, SpanToken
 from engine.span_engine.source_map import build_source_map
 
-BOUNDARY_CHARS = frozenset("[](){}:|")
+BOUNDARY_CHARS = frozenset("[](){}【】:|")
 PUNCT_LOCK_CHARS = frozenset(".,!?")
 
 

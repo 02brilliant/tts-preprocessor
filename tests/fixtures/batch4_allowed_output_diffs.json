@@ -5,8 +5,8 @@
     {
       "decision_id": "interaction-middle-dot-and-leading-zero-blocks",
       "input": "01·09와 0001",
-      "expected": "일 영구와 0001",
-      "owner_contract": "contiguous middle-dot first block uses numeric reading, later blocks use digit-sequence reading, and standalone leading-zero remains independent preserve"
+      "expected": "영일·영구와 0001",
+      "owner_contract": "contiguous middle-dot blocks use per-digit Sino reading while preserving each middle dot, and standalone leading-zero remains independent preserve"
     },
     {
       "decision_id": "interaction-middle-dot-time-tail-guard",
@@ -23,14 +23,14 @@
     {
       "decision_id": "middle-dot-leading-zero-first-block",
       "input": "01·09",
-      "expected": "일 영구",
-      "owner_contract": "a short first middle-dot block uses numeric value reading while the following block remains digit-sequence reading"
+      "expected": "영일·영구",
+      "owner_contract": "each contiguous middle-dot block uses per-digit Sino reading while preserving the middle dot"
     },
     {
       "decision_id": "middle-dot-leading-zero-second-block",
       "input": "12·003",
-      "expected": "십이 영영삼",
-      "owner_contract": "a later middle-dot block retains every digit using canonical 영 for zero"
+      "expected": "일이·영영삼",
+      "owner_contract": "each contiguous middle-dot block retains every digit using canonical Sino readings for zero"
     },
     {
       "decision_id": "preserve-one-digit-right-dotted-event",

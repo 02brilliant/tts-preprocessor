@@ -652,6 +652,8 @@ def _is_blocked_start(raw_text: str, start: int, owner: str) -> bool:
         return False
     if prev_char in {"(", "[", "{", '"', "'"}:
         return False
+    if prev_char == ")" and _has_textual_parenthesized_prefix(raw_text, start):
+        return True
     if "\uac00" <= prev_char <= "\ud7a3":
         return owner not in {"signed_temperature", "signed_degree"}
     # If the previous character is alphabetic, do not parse as a plain signed number. (e.g. B-2.5, 코드A-3)
@@ -662,6 +664,19 @@ def _is_blocked_start(raw_text: str, start: int, owner: str) -> bool:
         or ("\u3130" <= prev_char <= "\u318f")
         or (prev_char in SIGNED_NUMERIC_SIGN_ALIASES | {".", "_", "/", "℃", "℉", "°", ","})
     )
+
+
+def _has_textual_parenthesized_prefix(raw_text: str, sign_start: int) -> bool:
+    """Reject a sign after ``영문(한글)`` or ``한글(한글)`` as unary minus."""
+    close_index = sign_start - 1
+    open_index = raw_text.rfind("(", 0, close_index)
+    if open_index <= 0:
+        return False
+    alias = raw_text[open_index + 1 : close_index]
+    if not alias or not all(_is_hangul_syllable(char) for char in alias):
+        return False
+    prefix = raw_text[open_index - 1]
+    return _is_hangul_syllable(prefix) or (prefix.isascii() and prefix.isalpha())
 
 
 def _valid_boundaries(raw_text: str, span: SourceSpan, unit: str) -> bool:

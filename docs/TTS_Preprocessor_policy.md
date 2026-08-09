@@ -736,7 +736,7 @@ two-block N-M / N:M numeric-delimited candidate -> specific owner first, broad n
 ```text
 13.3 비상계엄 -> 십삼쩜삼 비상계엄
 12.32 사태 -> 십이쩜삼이 사태
-12·3수치 -> 십이 삼수치
+12·3수치 -> 일이·삼수치
 2025-13-03 -> 이공이오 일삼 공삼
 010 - 1234 - 5678 -> 공일공 - 천이백삼십사 - 오천육백칠십팔
 0.8초 -> 영쩜팔 초
@@ -2321,8 +2321,11 @@ def transform_with_trace(text: str) -> TransformOutput:
 
 시스템 전체에서 가장 높은 우선순위는 한글 보존이다. 다음 규칙은 모든 parser, 모든 helper, 모든 smoothing, 모든 typed surface 등록, 모든 render, 모든 prosody, 모든 paragraph split보다 우선한다.
 
-- 사용자가 입력한 한글 문자열은 절대 변경하지 않는다.
-- 사용자가 입력한 한글과 한글 사이 공백은 절대 변경하지 않는다.
+- 사용자가 입력한 한글 문자열은 절대 변경하지 않는다. 단, 사용자가 문장
+  중간의 시각적 줄바꿈으로 넣은 newline run은 15.5의 문장 경계 정책에 따라
+  한 칸 공백으로 정규화할 수 있다.
+- 사용자가 입력한 한글과 한글 사이 공백은 절대 변경하지 않는다. 위 newline
+  run의 의미 정규화로 생성하는 한 칸 공백은 이 불변성의 예외다.
 - 사용자가 입력한 한글 바로 뒤에 공백 없이 붙은 쉼표는 절대 변경하지 않는다.
 - 사용자가 입력한 한글 뒤 문장부호 `.`, `,`, `!`, `?`는 절대 변경하지 않는다.
 - 사용자가 입력한 조사는 기본적으로 교정하지 않는다.
@@ -2586,7 +2589,7 @@ def transform(raw_text: str) -> str:
 def transform_with_trace(raw_text: str) -> TransformOutput:
     source_chars = build_source_map(raw_text)
     tokens = tokenize_immutable_spans(raw_text, source_chars)
-    tokens = protect_square_brackets_before_claim(tokens)
+    tokens = protect_non_parenthesis_brackets_before_claim(tokens)
     shadow = build_shadow_buffer(tokens)
 
     claim_registry = SurfaceClaimRegistry()
@@ -2623,7 +2626,7 @@ def transform_with_trace(raw_text: str) -> TransformOutput:
 
 - `Safe Post-Surface Particle Exception`은 render 직후, shadow validation 직전에 실행한다.
 - `validate_shadow()`는 prosody 이전에 실행된다. prosody는 이미 보존 검증을 통과한 render piece stream에 insert-only로만 개입한다.
-- `Final Bracket Filter`는 shadow validation 이후의 출력 shaping 단계다. `(...)` 삭제와 `[...]` unwrap은 validation failure로 보지 않는다.
+- `Final Bracket Filter`는 shadow validation 이후의 출력 shaping 단계다. `(...)` 삭제, `[...]`·`{...}` unwrap, `【...】` 보존은 validation failure로 보지 않는다.
 - `transform()`은 공개 문자열 API이고, `transform_with_trace()`는 `TransformOutput`을 반환하는 debug/internal API다.
 
 ## 4. 핵심 데이터 모델## 4. 핵심 데이터 모델
@@ -2978,7 +2981,7 @@ class SurfaceClaimRegistry:
 | Shadow Validation | render 직후 필수 검증 |
 | Prosody | 기존 insert_commas, 단 RenderPiece 기반 권장 |
 | Paragraph Split | 기존 split_paragraphs 유지 |
-| Final Bracket Filter | `(...)` 삭제, `[...]` unwrap, bracket 삭제로 생긴 중복 공백 제한 정리 |
+| Final Bracket Filter | `(...)` 삭제, `[...]`·`{...}` unwrap, `【...】` 전체 보존, bracket 삭제로 생긴 중복 공백 제한 정리 |
 
 ### 5.1 실패 전파 방식
 
@@ -3328,6 +3331,14 @@ AㄱB -> preserve 또는 mixed token owner가 명시될 때만 처리
 
 사용자가 입력한 `(...)` 괄호는 모든 normalization, render, validation이 끝난 후 최종 출력 단계에서 괄호와 괄호 안 텍스트를 모두 삭제한다.
 
+직접 붙은 `대문자로 시작하는 영문(한글)`은 좁은 발음 별칭 예외다. 이 경우
+괄호 안 한글은 일반 문맥이나 독립 surface가 아니라 바로 앞 영문의 reading으로만
+사용한다. generated reading의 source span은 영문 token에만 연결하므로 최종
+parenthesis filter는 여전히 괄호와 원문 내부를 삭제한다. 예를 들어
+`Su(수호이) -> 수호이`, `AI(인공지능) -> 인공지능`이다. 별칭은 공백·숫자·중첩
+괄호·URL/path/code-like boundary로 확장하지 않으며, 일반 `문장(임시)`의 삭제
+정책도 바꾸지 않는다.
+
 단, `basic_arithmetic_expression` 문법이 의도적으로 지원하지 않는
 숫자 기반 괄호식·숫자 인자 함수형 토큰은 full-consume 실패 뒤 내부
 숫자만 변환하거나 토큰 일부를 삭제하지 않는다. `(3+4)×2`,
@@ -3376,18 +3387,18 @@ canonical:
 최종 출력: 비용은 삼만 원입니다
 ```
 
-#### 7.6.2 Square Brackets `[...]`
+#### 7.6.2 Square Brackets `[...]` and Curly Braces `{...}`
 
-사용자가 입력한 `[...]` 괄호는 입력한 그대로 보호하여 출력하기 위한 용도다.
+사용자가 입력한 `[...]`와 일반 `{...}`는 내부를 무교정 보호하여 출력하기 위한 용도다.
 
 원칙:
 
-- square bracket protection은 Phase 1 tokenization 직후, Surface Claim Phase 시작 전에 수행한다.
-- well-formed outermost `[...]` 구간 전체를 `PROTECTED_LITERAL_SURFACE`로 claim한다.
+- square bracket/curly brace protection은 Phase 1 tokenization 직후, Surface Claim Phase 시작 전에 수행한다.
+- well-formed outermost `[...]` 또는 일반 `{...}` 구간 전체를 `PROTECTED_LITERAL_SURFACE`로 claim한다.
 - 이 claim은 `reentry_allowed=False`이며 내부 token은 parser scan 대상에서 제외한다.
-- `[...]` 내부는 normalization 대상에서 제외한다.
+- `[...]`, 일반 `{...}` 내부는 normalization 대상에서 제외한다.
 - 내부 숫자, 단위, 영문, 기호도 변환하지 않는다.
-- 최종 bracket filter에서는 해당 surface의 raw 내부 텍스트만 출력하고 `[`, `]` 기호만 삭제한다.
+- 최종 bracket filter에서는 해당 surface의 raw 내부 텍스트만 출력하고 `[`, `]`, `{`, `}` 기호만 삭제한다.
 - 내부 텍스트와 내부 공백은 입력한 그대로 출력한다.
 
 예:
@@ -3395,17 +3406,37 @@ canonical:
 ```text
 입력: 가격은 [3kg]입니다
 출력: 가격은 3kg입니다
+
+입력: 가격은 {3kg}입니다
+출력: 가격은 3kg입니다
+```
+
+JSON/object-style `{...}`는 코드 보호 예외로 전체를 보존한다. quoted key와
+colon을 포함하는 JSON, 또는 `key: value` 형태의 code-like object는 일반
+중괄호 unwrap 대상이 아니다.
+
+```text
+{"price":"KRW1000"} -> {"price":"KRW1000"}
+{key: value} -> {key: value}
 ```
 
 이 예시에서 `3kg`는 unit parser로 들어가면 안 된다.
 
-#### 7.6.3 중첩 괄호
+#### 7.6.3 Corner Brackets `【...】`
+
+`【...】`는 내부와 bracket delimiter를 모두 원문 그대로 보존한다. 내부는
+normalization 대상에서 제외하며, `【AI 3kg】 -> 【AI 3kg】`이다. 이는
+`[...]`·일반 `{...}`의 delimiter-only 삭제와 다르다.
+
+#### 7.6.4 중첩 괄호
 
 중첩 괄호는 가장 바깥쪽 괄호 기준으로 판단한다.
 
 ```text
 (...[...]) -> 바깥쪽이 (...) 이므로 전체 삭제
 [...(...)...] -> 바깥쪽이 [...] 이므로 내부 전체를 그대로 출력하고 [ ]만 삭제
+{...(...)...} -> 바깥쪽이 {...} 이므로 내부 전체를 그대로 출력하고 { }만 삭제
+【...(...)...】 -> 바깥쪽이 【...】 이므로 bracket과 내부 전체를 보존
 ```
 
 예:
@@ -3428,7 +3459,7 @@ canonical:
 출력: 가격은 [3kg입니다
 ```
 
-#### 7.6.4 Final Bracket Filter 공백 정리
+#### 7.6.5 Final Bracket Filter 공백 정리
 
 Final Bracket Filter 후 공백 정리는 다음 경우에만 적용한다.
 
@@ -3444,11 +3475,11 @@ Final Bracket Filter 후 공백 정리는 다음 경우에만 적용한다.
 전문  가(임시) 유지 -> 전문  가 유지
 ```
 
-#### 7.6.5 Bracket Filter와 Shadow Validation의 관계
+#### 7.6.6 Bracket Filter와 Shadow Validation의 관계
 
 - Shadow Validation은 bracket filter 이전에 수행한다.
 - Final Bracket Filter는 `ORIGINAL_BOUNDARY` piece 중 bracket delimiter만 삭제할 수 있다.
-- Square bracket 내부의 `ORIGINAL_KOREAN`, `ORIGINAL_SPACE`, `ORIGINAL_PUNCT`는 삭제하거나 수정하면 안 된다.
+- Square bracket, curly brace, corner bracket 내부의 `ORIGINAL_KOREAN`, `ORIGINAL_SPACE`, `ORIGINAL_PUNCT`는 삭제하거나 수정하면 안 된다.
 - Parenthesis filter는 parenthesis span 내부의 모든 piece를 삭제할 수 있는 명시 예외다.
 
 ## 8. Phase 2## 8. Phase 2 — Shadow Buffer 생성
@@ -3559,12 +3590,16 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 
 For example, `가격은 [₩1200]입니다 -> 가격은 ₩1200입니다`: presentation removes
 the bracket delimiters, but the protected interior is not re-entered by the
-currency owner.
-`square bracket protection`은 Surface Claim Phase 진입 전에 bracket owner로 excluded range를 만든다. URL/path/email/file-like protected literal은 claim phase 안에서 `preserve` owner와 `PROTECTED_LITERAL_SURFACE`로 선점된다.
+currency owner. `{₩1200}` follows the same unwrap behavior, while
+`【₩1200】` preserves both delimiters and interior.
+`square bracket`, curly brace, and corner bracket protection은 Surface Claim
+Phase 진입 전에 bracket owner로 excluded range를 만든다. URL/path/email/file-like
+protected literal은 claim phase 안에서 `preserve` owner와
+`PROTECTED_LITERAL_SURFACE`로 선점된다.
 
 | 우선순위 | Claim 대상 | 대표 예 | owner |
 |---:|---|---|---|
-| 0 | square bracket protection | `[12.3]`, `[3kg]`, `[2025/13/03]` | `bracket` |
+| 0 | non-parenthesis bracket protection | `[12.3]`, `{3kg}`, `【2025/13/03】` | `bracket` |
 | 1 | URL/path/email/protected literal | `docs/2025/01/03`, `https://example.com/2026/04/17`, `user@example.com`, `v1.2.3-beta` | `preserve` (`PROTECTED_LITERAL_SURFACE`) |
 | 2 | dictionary / fixed lexical | `K-POP`, `KOSPI`, `GPT`, `FTA` | `dictionary` |
 | 3 | finance index numeric suffix | `S&P500`, `NASDAQ100` | `finance_index` |
@@ -3633,7 +3668,7 @@ currency owner.
 - `K-푸드` 계열은 lexical compound가 아니라 `k_hangul_lexical` owner가 처리한다.
 - `A112` is full-consumed by `single_letter_alnum_code` and renders `에이 백십이`;
   emergency and general-number fallback do not split its numeric suffix.
-- `single_letter_alnum_code`는 `B-2.5`, `K-1.5` 같은 single-letter numeric-code 후보를 two-block hyphen code보다 먼저 full-consume한다. 이 owner에서 ASCII `-`는 separator이며 minus sign으로 읽지 않는다.
+- `single_letter_alnum_code`는 `B-2.5`, `K-1.5` 같은 single-letter numeric-code 후보를 two-block hyphen code보다 먼저 full-consume한다. 이 owner에서 ASCII `-`는 minus sign으로 읽지 않는 원문 경계이며 출력에도 보존한다.
 - `managed_acronym_numeric_code`는 current English managed dictionary exact entry 뒤의 no-separator 또는 ASCII `-` short numeric-code suffix만 full-consume한다. 이 owner는 broad acronym+number fallback이 아니며, unregistered ASCII word + numeric surfaces and fallback-covered acronyms outside the managed dictionary preserve.
 - `event`는 decimal/middle-dot numeric fallback보다 먼저 claim해야 한다.
 - `date`는 decimal/hyphen/slash numeric fallback보다 먼저 claim해야 한다.
@@ -3864,18 +3899,18 @@ Examples:
 
 ```text
 GPT4 -> 지피티 포
-GPT-4 -> 지피티 포
-GPT-1.5 -> 지피티 일쩜오
+GPT-4 -> 지피티-포
+GPT-1.5 -> 지피티-일쩜오
 KTX1 -> 케이티엑스 원
-Wi-Fi-6 -> 와이파이 식스
-version-1.5 -> 버전 일쩜오
-release-1.5 -> 릴리즈 일쩜오
+Wi-Fi-6 -> 와이파이-식스
+version-1.5 -> 버전-일쩜오
+release-1.5 -> 릴리즈-일쩜오
 KTX-2024 -> preserve
 GPT-2024 -> preserve
 version-2024 -> preserve
 ```
 
-The ASCII hyphen is a separator, not a sign, and is not rendered. Plus signs,
+The ASCII hyphen is an original boundary, not a sign, and is preserved in the rendered output. Plus signs,
 signed numeric blocks, leading-zero malformed decimals, bare dots, malformed
 comma forms, long numeric suffixes, unsafe alphabetic/identifier tails, and
 protected URL/path/email/JSON/backtick/fenced-code/shell-like/square-bracket/
@@ -4146,9 +4181,9 @@ event examples:
 numeric fallback examples:
 
 ```text
-12·3 -> 십이 삼
-7·25 -> 칠 이오
-1·2·3 -> 일 이 삼
+12·3 -> 일이·삼
+7·25 -> 칠·이오
+1·2·3 -> 일·이·삼
 ```
 
 금지:
@@ -4270,9 +4305,9 @@ fallback examples:
 ```text
 3.14 운동 -> 삼쩜일사 운동  # weak keyword만 있고 event anchor가 없으면 decimal fallback
 7.25 정책 -> 칠쩜이오 정책  # dot 표면은 event gate 실패 시 decimal fallback
-7·25 정책 -> 칠 이오 정책  # middle-dot 표면은 event gate 실패 시 numeric block fallback
+7·25 정책 -> 칠·이오 정책  # middle-dot 표면은 event gate 실패 시 digit-wise numeric block fallback
 12.3수치 -> 십이쩜삼수치
-12·3수치 -> 십이 삼수치
+12·3수치 -> 일이·삼수치
 ```
 
 예:
@@ -4284,7 +4319,7 @@ fallback examples:
 12·3 비상계엄 -> 십이삼 비상계엄
 12.3-비상계엄 -> 십이삼-비상계엄
 12.3 -> 십이쩜삼 (decimal fallback)
-12·3 -> 십이 삼 (middle-dot fallback)
+12·3 -> 일이·삼 (middle-dot fallback)
 ```
 
 ### 9.7 Date / Time Claim
@@ -5755,26 +5790,23 @@ general number 이전
 
 원칙:
 
-- 첫 block이 한두 자리면 leading zero를 값으로 해석한 일반 숫자 reading을
-  사용하고, 세 자리 이상이면 digit-sequence reading을 사용한다.
-- 두 번째 이후 block은 길이와 leading zero에 관계없이 digit-sequence
-  reading을 사용하며 `0`은 `영`으로 읽는다.
-- block 사이에 공백을 둔다.
-- middle dot 자체는 GENERATED_READING으로 출력하지 않는다.
+- 모든 block은 길이와 leading zero에 관계없이 digit-sequence reading을
+  사용하며 `0`은 `영`으로 읽는다.
+- 입력 middle dot은 ORIGINAL_BOUNDARY로 보존한다.
 
 예:
 
-12·3 -> 십이 삼
-7·25 -> 칠 이오
-10·5 -> 십 오
-01·09 -> 일 영구
-12·003 -> 십이 영영삼
-1·2·3 -> 일 이 삼
-123·456 -> 일이삼 사오육
+12·3 -> 일이·삼
+7·25 -> 칠·이오
+10·5 -> 일영·오
+01·09 -> 영일·영구
+12·003 -> 일이·영영삼
+1·2·3 -> 일·이·삼
+123·456 -> 일이삼·사오육
 
-12·3수치 -> 십이 삼수치
-7·25자료 -> 칠 이오자료
-12·3-수치 -> 십이 삼-수치
+12·3수치 -> 일이·삼수치
+7·25자료 -> 칠·이오자료
+12·3-수치 -> 일이·삼-수치
 
 
 ### 9.18 Spaced Separator Handling
@@ -6240,34 +6272,34 @@ A~Z 한 글자 뒤에 optional hyphen과 정수가 붙은 code token은 안전�
 canonical output:
 
 ```text
-K-1 -> 케이 원
+K-1 -> 케이-원
 K1 -> 케이 원
-K-9 -> 케이 나인
+K-9 -> 케이-나인
 K9 -> 케이 나인
-K-10 -> 케이 십
+K-10 -> 케이-십
 K10 -> 케이 십
-K-21 -> 케이 이십일
+K-21 -> 케이-이십일
 K21 -> 케이 이십일
 
-A-1 -> 에이 원
+A-1 -> 에이-원
 A1 -> 에이 원
-A-10 -> 에이 십
+A-10 -> 에이-십
 A10 -> 에이 십
 
-B-1 -> 비 원
+B-1 -> 비-원
 B1 -> 비 원
-B-10 -> 비 십
+B-10 -> 비-십
 B10 -> 비 십
 
-K-1A -> 케이 원 에이
+K-1A -> 케이-원 에이
 K1A -> 케이 원 에이
-K-21B -> 케이 이십일 비
+K-21B -> 케이-이십일 비
 K21B -> 케이 이십일 비
-F-15C -> 에프 십오 씨
+F-15C -> 에프-십오 씨
 F15C -> 에프 십오 씨
-K-21BC -> 케이 이십일 비씨
-A-10C -> 에이 십 씨
-장비는 F-15C입니다 -> 장비는 에프 십오 씨입니다
+K-21BC -> 케이-이십일 비씨
+A-10C -> 에이-십 씨
+장비는 F-15C입니다 -> 장비는 에프-십오 씨입니다
 ```
 
 preserve / non-target examples:
@@ -6299,13 +6331,13 @@ docs/K-1/report.md -> preserve
 - `K-2024`는 K-year/code preserve 결정을 유지한다.
 - `K-한글` owner와 `K-POP` fixed dictionary는 기존대로 유지한다.
 
-공백 없이 붙어 있고 두 블럭 중 하나라도 한글, 영문, 자모 등 숫자 이외 문자를 포함하면 코드 읽기를 적용한다. 이때 `-`는 출력하지 않고 블럭 사이 공백으로 렌더링한다.
+공백 없이 붙어 있고 두 블럭 중 하나라도 한글, 영문, 자모 등 숫자 이외 문자를 포함하면 코드 읽기를 적용한다. 이때 `-`는 음수 부호가 아닌 원문 경계로 유지하고, 숫자 블럭만 읽는다.
 
 ```text
-A-1 -> 에이 원
+A-1 -> 에이-원
 A-나 -> 에이 나
-가-3 -> 가 삼
-ㄱ-2 -> 기역 이
+가-3 -> 가-삼
+ㄱ-2 -> 기역-이
 A1-B2 -> 에이 일 비 이
 가1-나2 -> 가 일 나 이
 AB-12 -> 에이 비 일이
@@ -6355,18 +6387,18 @@ AB-12 -> 에이 비 일이
 3. 두 블럭 중 한쪽 이상에 숫자 이외 문자(영문, 완성형 한글, 한글 자모)가 포함된다.
 4. 다른쪽 block은 정수 또는 소수일 수 있다.
 5. decimal-containing block은 `쩜`을 사용해 읽는다.
-6. `-`는 출력하지 않고 block 사이 공백으로 렌더링한다.
+6. `-`는 음수 부호로 읽지 않고 원문 경계로 보존한다.
 7. 전체 token을 full consume해야 한다.
 8. URL/path/email/code protection 내부이면 적용하지 않는다.
 9. alphabetic tail 또는 단위/온도 tail이 붙어 full consume이 불가능하면 preserve한다.
 
 canonical output:
 ```text
-B-2.5 -> 비 이쩜오
-A-3.14 -> 에이 삼쩜일사
-x-3 -> 엑스 삼
-ㄱ-2.5 -> 기역 이쩜오
-가-3.14 -> 가 삼쩜일사
+B-2.5 -> 비-이쩜오
+A-3.14 -> 에이-삼쩜일사
+x-3 -> 엑스-삼
+ㄱ-2.5 -> 기역-이쩜오
+가-3.14 -> 가-삼쩜일사
 ```
 
 
@@ -6381,7 +6413,7 @@ A-3kg -> A-3kg
 
 ```text
 B-2.5 -> B-2.5
-B-2.5 -> 비-이쩜오
+B-2.5 -> 비 이쩜오
 B-2.5 -> 비 이.5
 x-2.5℉ -> 엑스 화씨 이쩜오도
 ```
@@ -6599,7 +6631,7 @@ Gate 실패는 모두 같은 의미가 아니다. 구현자는 실패를 `Absolu
 112는 -> emergency gate fail -> number fallback -> 백십이는
 12.3-수치 -> event gate fail -> decimal fallback -> 십이쩜삼-수치
 13.3 비상계엄 -> event gate fail -> decimal fallback -> 십삼쩜삼 비상계엄
-12·3수치 -> event gate fail -> middle-dot fallback -> 십이 삼수치
+12·3수치 -> event gate fail -> middle-dot fallback -> 일이·삼수치
 ```
 
 ### 10.4 Gate 평가 pseudo-code
@@ -7411,11 +7443,21 @@ def insert_commas_insert_only(pieces: list[RenderPiece]) -> list[RenderPiece]:
 
 여기서도 최종 TTS 문자열 기준은 `normalized_text`다. `render_pieces`는 debug/provenance 스트림으로 paragraph split 이전 상태를 유지할 수 있으며, parity를 보장하는 contract는 현재 없다.
 
-Paragraph split도 기존 사용자 개행 block을 먼저 존중한다.
+Paragraph split 전에 사용자 개행의 문장 경계 의미를 먼저 판정한다.
 
 원칙:
 
-- 사용자 개행 보존
+- ASCII `.` 뒤 개행과 matched ASCII closing quote 뒤 개행은 기존 paragraph
+  boundary로 보존한다.
+- 기존 sentence-final slash punctuation alias(`/`, `//`)도 마침표와 같은
+  paragraph boundary로 유지한다.
+- 그 밖의 일반 텍스트 newline run은 시각적 줄바꿈으로 보고 제거한다. 양쪽에
+  공백이 없으면 ASCII 공백 한 칸으로 연결하며, 기존 쉼표와 마침표는 보존한다.
+- matched ASCII `"..."` 또는 `'...'` 내부 newline run은 내부 마침표·쉼표와
+  관계없이 항상 문장 내부 연결로 처리한다. English apostrophe(`don't`)는
+  quote delimiter가 아니다.
+- fenced code, inline backtick, JSON/object-style code literal 내부 newline은
+  source-exact로 보존한다.
 - 너무 짧은 문단 split 금지
 - quote 내부 split 금지
 - 지시어 시작 split 억제
@@ -7825,9 +7867,9 @@ A1한2 -> A1한2
 
 ```text
 12.3 비상계엄 -> 십이 삼 비상계엄        # 금지
-12·3 비상계엄 -> 십이 삼 비상계엄        # 금지
+12·3 비상계엄 -> 십이삼 일이·삼 비상계엄   # 금지
 12.3-비상계엄 -> 십이 삼-비상계엄        # 금지
-12·3-비상계엄 -> 십이 삼-비상계엄        # 금지
+12·3-비상계엄 -> 십이삼 일이·삼-비상계엄 # 금지
 4.19 혁명 -> 사 일구 혁명                # 금지
 4·19 혁명 -> 사 일구 혁명                # 금지
 5.18 민주화 운동 -> 오 일팔 민주화 운동   # 금지
@@ -7922,27 +7964,27 @@ canonical output:
 canonical output:
 
 ```text
-12·3 -> 십이 삼
-7·25 -> 칠 이오
-10·5 -> 십 오
-1·2·3 -> 일 이 삼
-123·456 -> 일이삼 사오육
+12·3 -> 일이·삼
+7·25 -> 칠·이오
+10·5 -> 일영·오
+1·2·3 -> 일·이·삼
+123·456 -> 일이삼·사오육
 ```
 
 7. **Middle-dot Fallback Cardinal Misread**: event/date로 확정되지 않은 middle-dot numeric block fallback에서 각 block을 일반 cardinal number로 읽는 출력은 금지한다. 각 block은 digit-sequence reading으로 읽는다.
 
 ```text
 7·25 -> 칠 이십오             # 금지
-10·5 -> 십 오                 # 허용
+10·5 -> 일영·오               # 허용
 123·456 -> 백이십삼 사백오십육 # 금지
 ```
 
 canonical output:
 
 ```text
-7·25 -> 칠 이오
-10·5 -> 십 오
-123·456 -> 일이삼 사오육
+7·25 -> 칠·이오
+10·5 -> 일영·오
+123·456 -> 일이삼·사오육
 ```
 
 8. **Middle-dot Fallback Block Collapse**: event/date로 확정되지 않은 middle-dot numeric block fallback에서 block 사이 공백을 제거하고 붙여 읽는 출력은 금지한다.
@@ -7957,10 +7999,10 @@ canonical output:
 canonical output:
 
 ```text
-12·3 -> 십이 삼
-7·25 -> 칠 이오
-1·2·3 -> 일 이 삼
-123·456 -> 일이삼 사오육
+12·3 -> 일이·삼
+7·25 -> 칠·이오
+1·2·3 -> 일·이·삼
+123·456 -> 일이삼·사오육
 ```
 
 9. **Double Reading / Reentry**: 동일 span을 둘 이상의 owner가 중복 처리한 출력은 금지한다.
@@ -7968,7 +8010,7 @@ canonical output:
 ```text
 12.12 사태 -> 십이십이 십이쩜일이 사태       # 금지
 12.3 비상계엄 -> 십이삼 십이쩜삼 비상계엄    # 금지
-12·3 비상계엄 -> 십이삼 십이 삼 비상계엄     # 금지
+12·3 비상계엄 -> 십이삼 일이·삼 비상계엄     # 금지
 pH 7.4 -> 피에이치 칠쩜사 칠쩜사             # 금지
 15.2km/L -> 십오쩜이 리터당 십오쩜이 킬로미터 # 금지
 ```
@@ -8038,9 +8080,9 @@ canonical output:
 
 ```text
 12.3수치 -> 십이쩜삼수치
-12·3수치 -> 십이 삼수치
+12·3수치 -> 일이·삼수치
 3.14값 -> 삼쩜일사값
-7·25자료 -> 칠 이오자료
+7·25자료 -> 칠·이오자료
 ```
 
 14. **Hyphen-linked Event Preserve Regression**: event keyword가 hyphen으로 인접한 경우 hyphen을 contamination으로 보고 전체 preserve하는 출력은 금지한다. hyphen은 ORIGINAL_BOUNDARY로 보존하고 event keyword는 ORIGINAL_KOREAN으로 보존해야 한다.
@@ -8074,18 +8116,18 @@ canonical output:
 
 ```text
 12.3-수치 -> 십이쩜삼-수치
-12·3-수치 -> 십이 삼-수치
+12·3-수치 -> 일이·삼-수치
 7.25-자료 -> 칠쩜이오-자료
-7·25-자료 -> 칠 이오-자료
+7·25-자료 -> 칠·이오-자료
 ```
 
 16. **Protected Region Violation**: square bracket 내부, URL/path/email/code 내부, alnum model/code-like token을 변환하는 출력은 금지한다.
 
 ```text
 [12.3] -> 십이쩜삼         # 금지
-[12·3] -> 십이 삼          # 금지
+[12·3] -> 일이·삼          # 금지
 A12.3B -> A십이쩜삼B       # 금지
-A12·3B -> A십이 삼B        # 금지
+A12·3B -> A일이·삼B        # 금지
 docs/2025/01/03 -> docs/이천이십오/일/삼 # 금지
 ```
 
@@ -8290,9 +8332,9 @@ Forbidden signatures:
 | `12.3-비상계엄` | `십이삼-비상계엄` | Event |
 | `12·3-비상계엄` | `십이삼-비상계엄` | Event |
 | `12.3` | `십이쩜삼` | Decimal |
-| `12·3` | `십이 삼` | Middle-dot |
+| `12·3` | `일이·삼` | Middle-dot |
 | `12.3수치` | `십이쩜삼수치` | Lexical tail |
-| `12·3수치` | `십이 삼수치` | Lexical tail |
+| `12·3수치` | `일이·삼수치` | Lexical tail |
 | `12 . 3` | `십이 . 삼` | Spaced (Preserve symbol) |
 | `[12.3]` | `12.3` | Preserve (Bracket) |
 | `A12.3B` | `A12.3B` | Preserve (Mixed) |
@@ -8543,11 +8585,11 @@ FTA는 -> 에프티에이는
 Two-block hyphen decimal-containing block:
 
 ```text
-B-2.5 -> 비 이쩜오
-A-3.14 -> 에이 삼쩜일사
-x-3 -> 엑스 삼
-ㄱ-2.5 -> 기역 이쩜오
-가-3.14 -> 가 삼쩜일사
+B-2.5 -> 비-이쩜오
+A-3.14 -> 에이-삼쩜일사
+x-3 -> 엑스-삼
+ㄱ-2.5 -> 기역-이쩜오
+가-3.14 -> 가-삼쩜일사
 ```
 
 Preserve:
@@ -9370,7 +9412,7 @@ spaced period는 부분 변환을 막아 전체 surface를 보존하고, spaced 
 숫자 뒤에 붙은 한글(`12.3수치`)은 contamination으로 보지 않는다. 숫자를 먼저 normalize하고 한글 literal을 보존한다.
 
 - `12.3수치` -> `십이쩜삼수치`
-- `12·3수치` -> `십이 삼수치`
+- `12·3수치` -> `일이·삼수치`
 
 #### 30.1.4 Hyphen-linked Event
 
@@ -9382,7 +9424,7 @@ spaced period는 부분 변환을 막아 전체 surface를 보존하고, spaced 
 이벤트 키워드가 없는 하이픈 테일은 numeric fallback 후 하이픈을 보존한다.
 
 - `12.3-수치` -> `십이쩜삼-수치`
-- `12·3-수치` -> `십이 삼-수치`
+- `12·3-수치` -> `일이·삼-수치`
 - Safe post-surface particle exception은 surface가 성공적으로 생성된 뒤, render 후 Shadow Validation 전 sub-step에서만 적용한다.
 - `[...]` 내부는 무교정 보호이므로 날짜/시간/단위/사전 parser가 진입하지 않는다.
 - `(...)` 내부 token은 괄호 바깥 surface의 gate/context 판단에 사용하지 않는다.
@@ -10879,7 +10921,7 @@ Contextual gate 실패는
 
 ```text
 13.3 비상계엄 -> event 실패 -> decimal fallback -> 십삼쩜삼 비상계엄
-12·3수치 -> event 실패 -> middle-dot fallback -> 십이 삼수치
+12·3수치 -> event 실패 -> middle-dot fallback -> 일이·삼수치
 2025-13-03 -> date 실패 -> guarded code separator fallback -> 이공이오 일삼 공삼
 제15권 -> numeric suffix owner -> 제 십오권
 010 - 1234 - 5678 -> spaced hyphen numeric multi-block -> 공일공 - 천이백삼십사 - 오천육백칠십팔
@@ -11093,7 +11135,7 @@ alphabetic contamination이면 preserve
 
 ```text
 bare 12.12 -> 십이쩜일이  # event gate 실패 후 ordinary decimal
-bare 5·18 -> 오 일팔  # Phase 28G-B: middle-dot numeric block fallback
+bare 5·18 -> 오·일팔  # middle-dot numeric block fallback
 ```
 
 ### 35.14 Jamo dictionary
@@ -12189,7 +12231,7 @@ numbered-equipment sequence로 판정한다. 기존 middle-dot block reader가
 `호기`가 아닌 주소/행정형 `호` guard는 유지한다.
 
 ```text
-국토위성 1·2호기 -> 국토위성 일 이호기
-3·4호기를 도입한다 -> 삼 사호기를 도입한다
+국토위성 1·2호기 -> 국토위성 일·이호기
+3·4호기를 도입한다 -> 삼·사호기를 도입한다
 1·2호 -> 1·2호
 ```

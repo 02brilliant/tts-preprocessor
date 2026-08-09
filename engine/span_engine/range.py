@@ -134,6 +134,7 @@ _BROAD_RANGE_ATTACHED_TAILS = (
     "에서",
 )
 _BASIC_TILDE_DEFERRED_SUFFIXES = tuple(KOREAN_RANGE_SUFFIXES | {"만", "억", "조", "경"})
+_COMPACT_LARGE_UNIT_RANGE_SUFFIXES = ("만원", "억원", "조원", "경원", "만", "억", "조", "경")
 _COLON_PAIR_ATTACHED_TAILS = (
     "였고",
     "였지만",
@@ -235,6 +236,14 @@ def scan_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
             index = korean_suffix_candidate.full_span.end
             continue
 
+        compact_large_unit_candidate = _compact_large_unit_suffix_candidate(
+            raw_text, left_start, right_end, left, right
+        )
+        if compact_large_unit_candidate is not None:
+            candidates.append(compact_large_unit_candidate)
+            index = compact_large_unit_candidate.full_span.end
+            continue
+
         basic_candidate = _basic_candidate(raw_text, left_start, right_end, left, right)
         if basic_candidate is not None:
             candidates.append(basic_candidate)
@@ -247,6 +256,14 @@ def scan_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
             )
         index = right_end
     return candidates
+
+
+def scan_compact_large_unit_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    return [
+        candidate
+        for candidate in scan_range_candidates(raw_text)
+        if candidate.reason == "range_compact_large_unit_suffix_gate"
+    ]
 
 
 def scan_numeric_delimited_hyphen_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -818,6 +835,32 @@ def _basic_candidate(
         reason="range_full_consume_gate",
         metadata={"left": left, "right": right, "reading": _range_reading(left, right)},
     )
+
+
+def _compact_large_unit_suffix_candidate(
+    raw_text: str, left_start: int, right_end: int, left: str, right: str
+) -> SurfaceCandidate | None:
+    for suffix in _COMPACT_LARGE_UNIT_RANGE_SUFFIXES:
+        if not raw_text.startswith(suffix, right_end):
+            continue
+        suffix_span = SourceSpan(right_end, right_end + len(suffix))
+        if not _valid_after_korean_suffix(raw_text, suffix_span):
+            return None
+        return SurfaceCandidate(
+            core_span=SourceSpan(left_start, suffix_span.end),
+            full_span=SourceSpan(left_start, suffix_span.end),
+            owner="range",
+            surface_type="RANGE_SURFACE",
+            reason="range_compact_large_unit_suffix_gate",
+            metadata={
+                "left": left,
+                "right": right,
+                "suffix": suffix,
+                "suffix_span": suffix_span,
+                "reading": _range_reading(left, right) + suffix,
+            },
+        )
+    return None
 
 
 def _range_reading(
@@ -1649,6 +1692,7 @@ __all__ = [
     "parse_range_with_unit_candidate",
     "render_numeric_delimited_number",
     "scan_colon_semantic_pair_candidates",
+    "scan_compact_large_unit_range_candidates",
     "scan_multi_colon_numeric_candidates",
     "scan_numeric_delimited_hyphen_range_candidates",
     "scan_range_candidates",

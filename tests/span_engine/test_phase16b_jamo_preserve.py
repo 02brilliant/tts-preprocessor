@@ -28,4 +28,4 @@ def test_jamo_preserve_and_unsafe_adjacency(text: str) -> None:
 
 
 def test_jamo_two_block_hyphen_code_policy() -> None:
-    assert transform("ㄱ-1") == "기역 일"
+    assert transform("ㄱ-1") == "기역-일"

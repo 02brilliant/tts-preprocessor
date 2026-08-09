@@ -46,7 +46,7 @@ _CPP_STYLE_RE = re.compile(
     r"(?<![A-Za-z0-9_])[A-Za-z][A-Za-z0-9_]*\+\+\d*(?![A-Za-z0-9_])"
 )
 _MARKDOWN_CODE_FENCE_RE = re.compile(r"```[^\r\n]*(?:\r?\n)(?:.|\r|\n)*?```(?:\r?\n)?")
-_INLINE_BACKTICK_RE = re.compile(r"(?<!`)`(?!`)[^`\r\n]+(?<!`)`(?!`)")
+_INLINE_BACKTICK_RE = re.compile(r"(?<!`)`(?!`)(?:.|\r|\n)*?(?<!`)`(?!`)", re.DOTALL)
 _SENTENCE_LIKE_RE = re.compile(r"[^.!?\n]+[.!?]")
 _QUOTED_ENGLISH_PROSE_RE = re.compile(r'"[^"\n]*[A-Za-z][^"\n]*[.!?]"')
 _ENGLISH_PROSE_WITH_PH_RE = re.compile(

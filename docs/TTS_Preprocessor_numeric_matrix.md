@@ -299,7 +299,9 @@ Counter owners keep their own generated suffix spacing, including
 Spaced separator behavior is delimiter-specific. Spaced period forms such as
 `12. 3` preserve completely. Spaced middle-dot forms retain the original
 spaces and middle-dot while each numeric side is read independently:
-`123 · 456 -> 백이십삼 · 사백오십육`.
+`123 · 456 -> 백이십삼 · 사백오십육`. Contiguous middle-dot numeric forms
+read every digit in every block and preserve the middle dot:
+`12·3 -> 일이·삼`, `7·25 -> 칠·이오`.
 The exact spaced-hyphen multi-block owner preserves its source separator:
 `1 - 2 - 3 -> 일 - 이 - 삼`. It does not broaden two-block, attached, date,
 range, minus, or differently spaced hyphen forms.
@@ -320,8 +322,8 @@ Clock-hour `N시` is handled by the time owner with an owner-local safe Korean t
 | compound exact unit | exact `Mbps`, `Gbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi` | unsigned; existing signed compound policy unchanged | yes | yes for valid comma integer/decimal | attached numeric prefix only | malformed numeric core, unsafe tail, URL/path/protected context preserves atomically | `2.35Mbps -> 이쩜삼오 메가비피에스`, `2.35rpm -> 이쩜삼오 알피엠` |
 | pH | `pH` plus complete valid numeric core | `+` and owner-local minus aliases under pH full-claim | yes | yes for valid comma decimal | existing optional gap after `pH` | malformed comma/repeated dot/unsafe tail preserves `pH` and numeric token together; sentence-final dot stays punctuation | `pH 7.4. -> 피에이치 칠쩜사.`, `pH –7.4 -> 피에이치 마이너스 칠쩜사`, `pH 7,4 -> preserve` |
 | hyphen restricted range | approved `N-M + range-compatible unit`, e.g. `1-2kg` | broad signed hyphen ranges out of scope | decimal broad signed hyphen remains out of scope | narrow owner-specific support only | attached compatible unit required for range reading | arbitrary `1-2`, `1-2테스트`, `+1.5-2kg` preserve | follows owner parser when valid; no broad trailing-zero policy |
-| single-letter numeric-code | single ASCII uppercase letter followed by unsigned integer/valid decimal, with optional ASCII `-` separator; integer tail letters remain owner-local, e.g. `K1`, `K-1`, `F-15C`, `B-2.5`, `K-1.5` | no sign; ASCII `-` is a separator, not minus | yes | no comma in current owner | no space or ASCII `-` separator | plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, unsafe tails, and protected contexts preserve or claim preserve to block partial decimal fallback | integer one-digit code readings use code digit forms such as `원`, `투`; decimals use ordinary `쩜`, e.g. `K-1.5 -> 케이 일쩜오` |
-| managed dictionary numeric-code | exact current English managed dictionary entry followed by a short unsigned integer/valid decimal suffix, with optional ASCII `-` separator, e.g. `GPT4`, `Wi-Fi-6`, `version-1.5`; simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` remain excluded | no sign; ASCII `-` is a separator, not minus | yes, but decimal integer part must be 1-2 digits | no comma in current owner | no space or ASCII `-` separator | unregistered ASCII word + numeric preserves; plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024`, unsafe tails, and URL/path/email/JSON/backtick/square bracket/file-like contexts preserve or claim preserve to block partial fallback | registry-backed from current managed dictionary entries and reuses single-letter numeric-code reader for accepted short suffixes, e.g. `GPT-4 -> 지피티 포`, `version-1.5 -> 버전 일쩜오` |
+| single-letter numeric-code | single ASCII uppercase letter followed by unsigned integer/valid decimal, with optional ASCII `-` boundary; integer tail letters remain owner-local, e.g. `K1`, `K-1`, `F-15C`, `B-2.5`, `K-1.5` | no sign; ASCII `-` is an original boundary, not minus | yes | no comma in current owner | no separator for compact form; hyphenated form preserves the source `-` | plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, unsafe tails, and protected contexts preserve or claim preserve to block partial decimal fallback | integer one-digit code readings use code digit forms such as `원`, `투`; decimals use ordinary `쩜`, e.g. `K-1.5 -> 케이-일쩜오` |
+| managed dictionary numeric-code | exact current English managed dictionary entry followed by a short unsigned integer/valid decimal suffix, with optional ASCII `-` boundary, e.g. `GPT4`, `Wi-Fi-6`, `version-1.5`; simple fallback-covered acronyms such as `AI`, `CPU`, and `USB` are not current managed dictionary entries, so `AI3`, `CPU900`, and `USB300` remain excluded | no sign; ASCII `-` is an original boundary, not minus | yes, but decimal integer part must be 1-2 digits | no comma in current owner | compact form has no separator; hyphenated form preserves the source `-` | unregistered ASCII word + numeric preserves; plus/signed, leading-zero malformed decimal, bare dot, malformed decimal, long numeric suffixes such as `KTX-2024`, `GPT-2024`, and `version-2024`, unsafe tails, and URL/path/email/JSON/backtick/square bracket/file-like contexts preserve or claim preserve to block partial fallback | registry-backed from current managed dictionary entries and reuses single-letter numeric-code reader for accepted short suffixes, e.g. `GPT-4 -> 지피티-포`, `version-1.5 -> 버전-일쩜오` |
 | phone / hyphen digit blocks | phone-like exact forms and multi-block digit routes | no arithmetic sign semantics | no decimal phone | no comma phone | hyphen-separated digit blocks | unsafe/code-like/path contexts preserve | digit-by-digit; not decimal trailing-zero policy |
 
 ### Contextual numeric `대` matrix
@@ -938,15 +940,17 @@ Current production-source audit examples:
 | `v1.2.3` | `v1.2.3` | version-like preserve |
 | `1,000` | `천` | valid comma integer |
 | `1,000.50` | `천쩜오영` | valid unsigned comma decimal |
-| `12·3` | `십이 삼` | middle-dot numeric block |
+| `12·3` | `일이·삼` | middle-dot numeric block: every block is digit-wise and `·` is preserved |
 | `12·3 비상계엄` | `십이삼 비상계엄` | middle-dot event |
-| `01·09` | `일 영구` | short first block numeric reading + later digit sequence |
-| `12·003` | `십이 영영삼` | later block retains every digit; zero is 영 |
+| `01·09` | `영일·영구` | every block is digit-wise; zero is 영 |
+| `12·003` | `일이·영영삼` | every block retains every digit; zero is 영 |
 | `12· 3` | `십이· 삼` | asymmetric spaced middle-dot; source separator/gap preserved |
 | `12.12 사태와 12.12 수치를 함께 적었다` | `십이십이 사태와 십이쩜일이 수치를 함께 적었다` | independent event and decimal claims |
 | `1~2` | `일에서 이` | tilde range |
 | `1~~2` | `1~~2` | invalid tilde fallback block |
 | `[₩1200]` | `₩1200` | square-bracket absolute preserve; delimiters removed at presentation |
+| `{₩1200}` | `₩1200` | curly-brace absolute preserve; delimiters removed at presentation |
+| `【₩1200】` | `【₩1200】` | corner-bracket absolute preserve; delimiters and interior remain source-exact |
 | `$-10` | `마이너스 십 달러` | signed currency symbol-prefix amount |
 | `12.0300405` | `십이쩜영삼영영사영오` | unbounded fractional digit sequence |
 | `A112` | `에이 백십이` | atomic single-letter alnum code |

@@ -38,7 +38,7 @@ def test_k_hangul_lexical_prefix_policy(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("AK-푸드", "AK-푸드"),
+        ("AK-푸드", "에이케이-푸드"),
         ("model-K-푸드", "model-K-푸드"),
         ("K-푸드-v2", "K-푸드-v2"),
         ("K-푸드_test", "K-푸드_test"),
@@ -88,7 +88,7 @@ def test_decimal_and_middle_dot_numeric_list_fallbacks() -> None:
 
     assert (
         transform(text)
-        == "삼쩜일사, 십이쩜영삼, 영쩜일이오, 칠 이오, 십 오, 십이 · 삼, 12. 3, 12 .3, 일 이 삼, 일이삼 사오육"
+        == "삼쩜일사, 십이쩜영삼, 영쩜일이오, 칠·이오, 일영·오, 십이 · 삼, 12. 3, 12 .3, 일·이·삼, 일이삼·사오육"
     )
 
 
@@ -250,9 +250,9 @@ def test_signed_temperature_korean_boundary_full_consumes_or_preserves() -> None
 
 
 def test_two_block_hyphen_decimal_code_policy() -> None:
-    assert transform("B-2.5") == "비 이쩜오"
-    assert transform("x-3") == "엑스 삼"
-    assert transform("A-10C") == "에이 십 씨"
+    assert transform("B-2.5") == "비-이쩜오"
+    assert transform("x-3") == "엑스-삼"
+    assert transform("A-10C") == "에이-십 씨"
     for text in ["1-1 무", "B-2.5beta", "x-2.5℉", "A-3kg"]:
         assert transform(text) == text
     assert transform("12-15장") == "십이에서 십오 장"
@@ -261,34 +261,34 @@ def test_two_block_hyphen_decimal_code_policy() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("K-1", "케이 원"),
+        ("K-1", "케이-원"),
         ("K1", "케이 원"),
-        ("K-2", "케이 투"),
+        ("K-2", "케이-투"),
         ("K2", "케이 투"),
-        ("K-9", "케이 나인"),
+        ("K-9", "케이-나인"),
         ("K9", "케이 나인"),
-        ("K-10", "케이 십"),
+        ("K-10", "케이-십"),
         ("K10", "케이 십"),
-        ("K-21", "케이 이십일"),
+        ("K-21", "케이-이십일"),
         ("K21", "케이 이십일"),
-        ("A-1", "에이 원"),
+        ("A-1", "에이-원"),
         ("A1", "에이 원"),
-        ("A-10", "에이 십"),
+        ("A-10", "에이-십"),
         ("A10", "에이 십"),
-        ("B-1", "비 원"),
+        ("B-1", "비-원"),
         ("B1", "비 원"),
-        ("B-10", "비 십"),
+        ("B-10", "비-십"),
         ("B10", "비 십"),
-        ("K-1A", "케이 원 에이"),
+        ("K-1A", "케이-원 에이"),
         ("K1A", "케이 원 에이"),
-        ("K-21B", "케이 이십일 비"),
+        ("K-21B", "케이-이십일 비"),
         ("K21B", "케이 이십일 비"),
-        ("F-15C", "에프 십오 씨"),
+        ("F-15C", "에프-십오 씨"),
         ("F15C", "에프 십오 씨"),
-        ("K-21BC", "케이 이십일 비씨"),
-        ("A-10C", "에이 십 씨"),
-        ("오늘 K-1 장비", "오늘 케이 원 장비"),
-        ("장비는 F-15C입니다", "장비는 에프 십오 씨입니다"),
+        ("K-21BC", "케이-이십일 비씨"),
+        ("A-10C", "에이-십 씨"),
+        ("오늘 K-1 장비", "오늘 케이-원 장비"),
+        ("장비는 F-15C입니다", "장비는 에프-십오 씨입니다"),
     ],
 )
 def test_single_letter_uppercase_alnum_code_policy(

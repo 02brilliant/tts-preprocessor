@@ -57,9 +57,9 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="special-d-number-code-reading",
         text="D-14",
-        expected="디 십사",
-        rule="single-letter alnum code / D-number",
-        reason="A safe single-letter numeric code is full-consumed and rendered through the code owner.",
+        expected="디-십사",
+        rule="single-letter alnum code / D-number preserved hyphen",
+        reason="A safe single-letter numeric code is full-consumed while preserving its source hyphen.",
     ),
     TextCase(
         case_id="special-snp-reading",

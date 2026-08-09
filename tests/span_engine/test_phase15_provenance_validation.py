@@ -28,7 +28,7 @@ def test_phone_route_provenance_validation() -> None:
 def test_two_block_hyphen_code_provenance_validation() -> None:
     output = transform_with_trace("A-1")
 
-    assert output.normalized_text == "에이 원"
+    assert output.normalized_text == "에이-원"
     assert any(
         piece.owner == "single_letter_alnum_code"
         and piece.provenance == "GENERATED_READING"
@@ -67,7 +67,7 @@ def test_prefixed_ordinal_numeric_suffix_trace_owner() -> None:
 def test_single_letter_alnum_code_trace_owner_for_tail_code() -> None:
     output = transform_with_trace("A-10C")
 
-    assert output.normalized_text == "에이 십 씨"
+    assert output.normalized_text == "에이-십 씨"
     assert any(
         claim.owner == "single_letter_alnum_code"
         for claim in output.trace.claim_logs

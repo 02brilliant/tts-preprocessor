@@ -2,6 +2,55 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Textual hyphen-number boundary
+
+- 영문 또는 한글에 공백 없이 붙은 `-숫자`는 음수 부호가 아니라 원문 경계로
+  보존한다. 숫자 블록은 기존 owner별 숫자 읽기를 적용하므로
+  `F-35 -> 에프-삼십오`, `가-3 -> 가-삼`,
+  `Su(수호이)-57 -> 수호이-오십칠`이다.
+- 이 규칙은 single-letter code, managed dictionary numeric-code 및 two-block
+  hyphen owner에 공통 적용한다. URL·경로·코드 보호 및 장문 코드 preserve는
+  그대로 유지한다. 공백 뒤 독립 `-57`은 기존 단항 음수 정책에 따라
+  `마이너스 오십칠`로 읽는다.
+
+## Semantic user newline handling
+
+- 사용자 입력의 newline run은 모두 문단 경계가 아니다. ASCII `.` 또는 matched
+  ASCII closing quote 직후의 newline만 기존 paragraph boundary로 유지하고,
+  나머지는 문장 내부의 시각적 줄바꿈으로 판단해 한 칸 공백으로 연결한다.
+- 기존 sentence-final slash punctuation alias 뒤 newline은 기존 문장 경계
+  호환성을 위해 paragraph boundary로 유지한다.
+- matched ASCII quote 내부 newline은 내부 마침표·쉼표와 무관하게 연결한다.
+  English apostrophe는 quote delimiter가 아니며, fenced code, inline backtick,
+  JSON/object-style literal 내부 newline은 source-exact로 보존한다.
+
+## Bracket presentation alignment
+
+- `【...】`는 bracket delimiter와 내부를 모두 source-exact로 보존하며,
+  내부 owner 재진입도 차단한다.
+- 일반 `{...}`는 `[...]`와 같이 내부를 source-exact로 보존하고 delimiter만
+  제거한다. JSON/object-style `{...}`는 기존 코드 보호대로 전체 보존하며,
+  `( ... )`의 전체 삭제 정책은 변경하지 않았다.
+
+## Requested reading expansions
+
+- 연속된 `숫자·숫자` middle-dot surface는 사건 owner가 확정되지 않은 경우,
+  모든 숫자 block을 한자어 digit sequence로 읽고 입력 middle dot `·`를
+  그대로 보존한다. 따라서 `7·25 -> 칠·이오`, `12·3 -> 일이·삼`,
+  `1·2·3 -> 일·이·삼`이다. 기존의 block 사이 공백 렌더 정책은 교체했다.
+- 일반 문장 내 대문자 약어와 대문자-한글 결합은 읽되 URL·경로·코드 및
+  영숫자 식별자는 계속 보존한다. 약어 내부의 `&`는 `앤`으로 읽는다.
+- `㈜`는 `주식회사`로 치환하며, 바로 뒤의 한글 또는 영문과는 한 칸을
+  둔다. `20~30` 같은 범위는 `이십에서 삼십`으로 읽고, compact large-unit
+  suffix도 함께 처리한다.
+- `N번째`는 1–4에 `첫·두·세·네 번째`를 사용하고, 기존 39 이하 native
+  수사 정책을 확장 적용한다. Arabic+Korean numeric expression 및
+  `수십·수백·수천` 뒤의 등록 단위는 단위를 읽는다.
+- 붙어 있는 `대문자로 시작하는 영문(한글)`은 한글을 영문의 발음 별칭으로
+  사용한다. 별칭은 영문 source span에만 연결하므로 parenthesis filter의
+  괄호·원문 내부 삭제 정책은 유지된다. `Su(수호이) -> 수호이`가 canonical이며,
+  일반 괄호 내부는 여전히 삭제한다.
+
 ## Article numeric owner alignment
 
 - `5000분의 1` 같은 denominator-first Korean fraction을 하나의
@@ -668,7 +717,7 @@ symbol alias는 owner-local matcher에서만 적용한다. 전역 Unicode normal
 - Added owner-scoped single-letter uppercase alnum code policy.
   One uppercase letter followed by optional hyphen, integer digits, and optional uppercase tail of one or two letters is read as alphabet name + number reading + optional tail letters.
   Digits 1-9 are read with English digit names; 10 and above are read Sino-Korean.
-  Examples: `K-1 -> 케이 원`, `K10 -> 케이 십`, `F-15C -> 에프 십오 씨`, `A-10C -> 에이 십 씨`.
+  Current canonical examples: `K-1 -> 케이-원`, `K10 -> 케이 십`, `F-15C -> 에프-십오 씨`, `A-10C -> 에이-십 씨`.
   Multi-letter acronym codes and unsafe tails remain protected, and `K-2024` remains preserved.
 
 - `1.2km -> 일쩜이 킬로미터`
@@ -860,9 +909,9 @@ Event fail fallback examples:
 - `4.0 혁명 -> 사쩜영 혁명`
 - `14.35 대책 -> 십사쩜삼오 대책`
 - `12.3수치 -> 십이쩜삼수치`
-- `12·3수치 -> 십이 삼수치`
+- `12·3수치 -> 일이·삼수치`
 - `12.3-수치 -> 십이쩜삼-수치`
-- `12·3-수치 -> 십이 삼-수치`
+- `12·3-수치 -> 일이·삼-수치`
 
 Immediate event keyword, supported date-like range, boundary, and spacing conditions must all pass.
 

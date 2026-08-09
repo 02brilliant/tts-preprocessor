@@ -77,9 +77,9 @@ def test_spaced_hyphen_numeric_multiblock_does_not_broaden(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("A-1", "에이 원"),
+        ("A-1", "에이-원"),
         ("ABC-12", "ABC-12"),
-        ("D-14", "디 십사"),
+        ("D-14", "디-십사"),
     ],
 )
 def test_two_block_alpha_numeric_hyphen_policy(text: str, expected: str) -> None:
@@ -91,7 +91,7 @@ def test_two_block_alpha_numeric_hyphen_policy(text: str, expected: str) -> None
     [
         ("1-2", "일 이"),
         ("A-1", "에이-일"),
-        ("D-14", "디-십사"),
+        ("D-14", "디 십사"),
         ("12-3장", "일이 삼장"),
         ("123-456-7890abc", "일이삼 사오육 칠팔구공abc"),
     ],

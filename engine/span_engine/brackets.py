@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from engine.span_engine.claim_registry import SurfaceClaimRegistry, spans_overlap
@@ -16,8 +17,8 @@ class BracketRange:
     outermost: bool = True
 
     def __post_init__(self) -> None:
-        if self.bracket_type not in {"square", "parenthesis"}:
-            raise ValueError("bracket_type must be square or parenthesis")
+        if self.bracket_type not in {"square", "corner", "curly", "parenthesis"}:
+            raise ValueError("invalid bracket_type")
         if not isinstance(self.span, SourceSpan):
             raise TypeError("span must be SourceSpan")
         if not isinstance(self.inner_span, SourceSpan):
@@ -46,8 +47,19 @@ class _Marker:
 
 
 _PARENTHESIS_MARKER = _Marker()
-_OPEN_TO_TYPE = {"[": "square", "(": "parenthesis"}
-_CLOSE_TO_OPEN = {"]": "[", ")": "("}
+_OPEN_TO_TYPE = {
+    "[": "square",
+    "【": "corner",
+    "{": "curly",
+    "(": "parenthesis",
+}
+_CLOSE_TO_OPEN = {"]": "[", "】": "【", "}": "{", ")": "("}
+_PRESERVE_BRACKET_TYPES = frozenset({"square", "corner", "curly"})
+_UNWRAPPED_BRACKET_TYPES = frozenset({"square", "curly"})
+_CODE_LIKE_CURLY_BRACKET_RE = re.compile(
+    r'^\{+\s*(?:"(?:[^"\\]|\\.)+"|[A-Za-z_][A-Za-z0-9_]*)\s*:.*\}+$',
+    re.DOTALL,
+)
 
 
 def find_bracket_ranges(raw_text: str) -> list[BracketRange]:
@@ -122,7 +134,7 @@ def find_incomplete_bracket_ranges(raw_text: str) -> list[BracketRange]:
     return incomplete
 
 
-def protect_square_brackets_before_claim(
+def protect_non_parenthesis_brackets_before_claim(
     registry: SurfaceClaimRegistry, bracket_ranges: list[BracketRange]
 ) -> ProtectedBracketResult:
     if not isinstance(registry, SurfaceClaimRegistry):
@@ -132,7 +144,7 @@ def protect_square_brackets_before_claim(
 
     protected: list[BracketRange] = []
     for bracket_range in bracket_ranges:
-        if bracket_range.bracket_type != "square":
+        if bracket_range.bracket_type not in _PRESERVE_BRACKET_TYPES:
             continue
         registry.claim(
             ClaimedRange(
@@ -140,11 +152,28 @@ def protect_square_brackets_before_claim(
                 owner="bracket",
                 claim_type="preserve",
                 surface_type="PROTECTED_LITERAL_SURFACE",
-                reason="square_bracket_protection",
+                reason=f"{bracket_range.bracket_type}_bracket_protection",
             )
         )
         protected.append(bracket_range)
     return ProtectedBracketResult(protected)
+
+
+def protect_square_brackets_before_claim(
+    registry: SurfaceClaimRegistry, bracket_ranges: list[BracketRange]
+) -> ProtectedBracketResult:
+    """Backward-compatible name for all non-parenthesis bracket protection."""
+    return protect_non_parenthesis_brackets_before_claim(registry, bracket_ranges)
+
+
+def is_code_like_curly_bracket(bracket_range: BracketRange) -> bool:
+    """Return whether a curly range is a JSON/object-style protected literal."""
+    if not isinstance(bracket_range, BracketRange):
+        raise TypeError("bracket_range must be BracketRange")
+    return (
+        bracket_range.bracket_type == "curly"
+        and bool(_CODE_LIKE_CURLY_BRACKET_RE.fullmatch(bracket_range.raw))
+    )
 
 
 def is_span_inside_protected_bracket(
@@ -177,7 +206,9 @@ def apply_final_bracket_filter(
     elements: list[str | _Marker] = []
     emitted_parenthesis_markers: set[tuple[int, int]] = set()
     sorted_ranges = sorted(bracket_ranges, key=lambda value: value.span.start)
-    square_ranges = [value for value in sorted_ranges if value.bracket_type == "square"]
+    unwrapped_ranges = [
+        value for value in sorted_ranges if value.bracket_type in _UNWRAPPED_BRACKET_TYPES
+    ]
     parenthesis_ranges = [
         value for value in sorted_ranges if value.bracket_type == "parenthesis"
     ]
@@ -207,7 +238,7 @@ def apply_final_bracket_filter(
                     elements.append(_PARENTHESIS_MARKER)
                     emitted_parenthesis_markers.add(marker_key)
                 continue
-            if _is_square_delimiter_index(source_index, square_ranges):
+            if _is_unwrapped_delimiter_index(source_index, unwrapped_ranges):
                 continue
             elements.append(char)
 
@@ -234,10 +265,10 @@ def _range_containing_index(
     return None
 
 
-def _is_square_delimiter_index(
-    index: int, square_ranges: list[BracketRange]
+def _is_unwrapped_delimiter_index(
+    index: int, unwrapped_ranges: list[BracketRange]
 ) -> bool:
-    for bracket_range in square_ranges:
+    for bracket_range in unwrapped_ranges:
         if index == bracket_range.span.start or index == bracket_range.span.end - 1:
             return True
     return False
@@ -300,6 +331,12 @@ def _bracket_log(bracket_range: BracketRange) -> TraceLogEntry:
     if bracket_range.bracket_type == "square":
         event = "square_bracket_unwrapped"
         action = "unwrap_square_brackets"
+    elif bracket_range.bracket_type == "curly":
+        event = "curly_brace_unwrapped"
+        action = "unwrap_curly_braces"
+    elif bracket_range.bracket_type == "corner":
+        event = "corner_bracket_preserved"
+        action = "preserve_corner_bracket_content"
     else:
         event = "parenthesis_elided"
         action = "delete_parenthesis_content"
@@ -337,7 +374,9 @@ __all__ = [
     "apply_final_bracket_filter",
     "find_bracket_ranges",
     "find_incomplete_bracket_ranges",
+    "is_code_like_curly_bracket",
     "is_span_inside_parenthesis",
     "is_span_inside_protected_bracket",
+    "protect_non_parenthesis_brackets_before_claim",
     "protect_square_brackets_before_claim",
 ]

@@ -4,7 +4,7 @@ import re
 
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
-from engine.span_engine.number import SINO_DIGITS, number_to_korean_under_10000
+from engine.span_engine.number import SINO_DIGITS
 from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
     span_overlaps_excluded_ranges,
@@ -86,6 +86,17 @@ def scan_middle_dot_candidates(
         )
     return candidates
 
+
+def scan_middle_dot_korean_suffix_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    """Return middle-dot numeric blocks that must precede numeric suffix owners."""
+    return [
+        candidate
+        for candidate in scan_middle_dot_candidates(raw_text, excluded_ranges)
+        if any(raw_text.startswith(suffix, candidate.core_span.end) for suffix in ("분기", "월", "일"))
+    ]
+
 def parse_middle_dot_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
     if candidate.owner != "middle_dot_numeric":
         return None
@@ -96,19 +107,22 @@ def middle_dot_number_reading(blocks: list[str]) -> str:
     if not blocks:
         return ""
     
-    # First block: Sino Korean reading if len <= 2, else digit-by-digit
-    first_block = blocks[0]
-    if len(first_block) <= 2:
-        reading_parts = [number_to_korean_under_10000(int(first_block))]
-    else:
-        reading_parts = ["".join(SINO_DIGITS[int(d)] for d in first_block)]
+    # Every block is a code-like digit sequence.  In particular, ``12·3``
+    # renders as ``일이·삼`` rather than treating the first block as the
+    # numeric value 십이.
+    reading_parts = [
+        "".join(SINO_DIGITS[int(digit)] for digit in block)
+        for block in blocks
+    ]
     
-    # Subsequent blocks: Digit-by-digit reading
-    for block in blocks[1:]:
-        block_reading = "".join(SINO_DIGITS[int(d)] for d in block)
-        reading_parts.append(block_reading)
-    
-    # Join with space
-    return " ".join(reading_parts)
+    # Preserve the source middle-dot structure while reading every numeric
+    # block.  A numeric middle dot is a delimiter, not a request to elide the
+    # delimiter into whitespace.
+    return "·".join(reading_parts)
 
-__all__ = ["scan_middle_dot_candidates", "parse_middle_dot_candidate", "middle_dot_number_reading"]
+__all__ = [
+    "scan_middle_dot_candidates",
+    "scan_middle_dot_korean_suffix_candidates",
+    "parse_middle_dot_candidate",
+    "middle_dot_number_reading",
+]

@@ -363,9 +363,9 @@ POLICY_CASES = [
     TextCase(
         case_id="special-d-number-code-reading",
         text="D-14",
-        expected="디 십사",
-        rule="special D-number / code reading",
-        reason="A D-number code is read as the registered letter name followed by the normalized integer.",
+        expected="디-십사",
+        rule="special D-number / preserved hyphen code reading",
+        reason="A D-number code preserves its source hyphen and reads the numeric block.",
     ),
     TextCase(
         case_id="special-emergency-context-positive-112",

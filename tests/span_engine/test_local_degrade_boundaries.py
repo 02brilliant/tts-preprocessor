@@ -150,11 +150,11 @@ def test_single_letter_code_invalid_tail_does_not_block_neighbors() -> None:
     assert_local_degrade(
         text,
         expected_transformed=[
-            "에이 십 씨",
-            "케이 원",
+            "에이-십 씨",
+            "케이-원",
             "케이 십",
-            "에프 십오 씨",
-            "케이 이십일 비씨",
+            "에프-십오 씨",
+            "케이-이십일 비씨",
             "이십오도",
             "삼 킬로그램",
             "피에이치 칠쩜사",

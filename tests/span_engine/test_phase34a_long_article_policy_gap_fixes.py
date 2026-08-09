@@ -195,8 +195,8 @@ def test_phase34a_spaced_separator_policy(text: str, expected: str) -> None:
         ("12.3 비상계엄", "십이삼 비상계엄"),
         ("12·3 비상계엄", "십이삼 비상계엄"),
         ("3.14", "삼쩜일사"),
-        ("7·25", "칠 이오"),
-        ("10·5", "십 오"),
+        ("7·25", "칠·이오"),
+        ("10·5", "일영·오"),
     ],
 )
 def test_phase34a_separator_normal_cases_retained(text: str, expected: str) -> None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.lexicon import DICTIONARY_READINGS
-from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.single_letter_code import numeric_code_number_reading
 
 _MAX_INTEGER_SUFFIX_DIGITS = 2
@@ -52,6 +52,66 @@ def parse_managed_acronym_numeric_code_candidate(
         return None
     reading = candidate.metadata.get("reading")
     return reading if isinstance(reading, str) else None
+
+
+def parse_managed_acronym_numeric_code_surface(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "managed_acronym_numeric_code":
+        return None
+    raw = raw_text[candidate.core_span.start : candidate.core_span.end]
+    for surface, surface_reading in _managed_numeric_code_bases():
+        if not raw.startswith(surface):
+            continue
+        separator_start = candidate.core_span.start + len(surface)
+        hyphen = raw_text[separator_start : separator_start + 1]
+        number_start = separator_start + 1 if hyphen == "-" else separator_start
+        number = raw_text[number_start : candidate.core_span.end]
+        number_reading = numeric_code_number_reading(number)
+        if number_reading is None:
+            return None
+        pieces = [
+            RenderPiece(
+                text=surface_reading,
+                provenance="GENERATED_READING",
+                source_span=SourceSpan(candidate.core_span.start, separator_start),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        ]
+        if hyphen == "-":
+            pieces.append(
+                RenderPiece(
+                    text="-",
+                    provenance="ORIGINAL_BOUNDARY",
+                    source_span=SourceSpan(separator_start, number_start),
+                    owner=candidate.owner,
+                    metadata={"surface_type": candidate.surface_type},
+                )
+            )
+        pieces.append(
+            RenderPiece(
+                text=number_reading if hyphen == "-" else f" {number_reading}",
+                provenance="GENERATED_READING",
+                source_span=SourceSpan(number_start, candidate.core_span.end),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+        return Surface(
+            surface_type=candidate.surface_type or "MANAGED_ACRONYM_NUMERIC_CODE_SURFACE",
+            owner=candidate.owner,
+            raw=raw,
+            span=candidate.core_span,
+            reading=(
+                f"{surface_reading}-{number_reading}"
+                if hyphen == "-"
+                else f"{surface_reading} {number_reading}"
+            ),
+            render_pieces=pieces,
+            metadata={"reason": candidate.reason},
+        )
+    return None
 
 
 def _managed_numeric_code_bases() -> list[tuple[str, str]]:
@@ -207,5 +267,6 @@ def _is_identifier_neighbor(char: str) -> bool:
 
 __all__ = [
     "parse_managed_acronym_numeric_code_candidate",
+    "parse_managed_acronym_numeric_code_surface",
     "scan_managed_acronym_numeric_code_candidates",
 ]

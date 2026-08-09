@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from engine.span_engine.lexicon import LETTER_READINGS
-from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_number_text
 
 _TAIL_MAX_LENGTH = 2
@@ -94,6 +94,85 @@ def parse_single_letter_alnum_code_candidate(
         return None
     reading = candidate.metadata.get("reading")
     return reading if isinstance(reading, str) else None
+
+
+def parse_single_letter_alnum_code_surface(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "single_letter_alnum_code":
+        return None
+    raw = raw_text[candidate.core_span.start : candidate.core_span.end]
+    match = _FULL_RE.fullmatch(raw)
+    reading = _reading(raw)
+    if match is None or reading is None:
+        return None
+    letter, hyphen, number, tail = match.groups()
+    letter_reading = _LETTER_READINGS.get(letter)
+    number_reading = numeric_code_number_reading(number)
+    if letter_reading is None or number_reading is None:
+        return None
+
+    cursor = candidate.core_span.start
+    pieces = [
+        RenderPiece(
+            text=letter_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(cursor, cursor + len(letter)),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    ]
+    cursor += len(letter)
+    if hyphen:
+        pieces.append(
+            RenderPiece(
+                text=hyphen,
+                provenance="ORIGINAL_BOUNDARY",
+                source_span=SourceSpan(cursor, cursor + 1),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+        cursor += 1
+    pieces.append(
+        RenderPiece(
+            text=number_reading if hyphen else f" {number_reading}",
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(cursor, cursor + len(number)),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        )
+    )
+    cursor += len(number)
+    if tail:
+        tail_reading = _tail_reading(tail)
+        if tail_reading is None:
+            return None
+        pieces.append(
+            RenderPiece(
+                text=f" {tail_reading}",
+                provenance="GENERATED_READING",
+                source_span=SourceSpan(cursor, cursor + len(tail)),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+
+    return Surface(
+        surface_type=candidate.surface_type or "SINGLE_LETTER_ALNUM_CODE_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=(
+            f"{letter_reading}{hyphen}{number_reading}"
+            if hyphen
+            else f"{letter_reading} {number_reading}"
+        ) + (
+            f" {_tail_reading(tail)}" if tail else ""
+        ),
+        render_pieces=pieces,
+        metadata={"reason": candidate.reason},
+    )
 
 
 def _reading(raw: str) -> str | None:
@@ -247,5 +326,6 @@ def _is_code_identifier_char(char: str) -> bool:
 __all__ = [
     "numeric_code_number_reading",
     "parse_single_letter_alnum_code_candidate",
+    "parse_single_letter_alnum_code_surface",
     "scan_single_letter_alnum_code_candidates",
 ]

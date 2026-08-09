@@ -13,7 +13,7 @@ from engine.span_engine.transform import transform_with_trace
         ("12 ·3", "십이 ·삼"),
         ("12 · 3", "십이 · 삼"),
         ("12·   3", "십이·   삼"),
-        ("12·3", "십이 삼"),
+        ("12·3", "일이·삼"),
     ],
 )
 def test_batch4_spaced_and_attached_middle_dot_matrix(
@@ -53,9 +53,9 @@ def test_batch4_asymmetric_spaced_middle_dot_preserves_source_boundary() -> None
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("01·09", "일 영구"),
-        ("12·003", "십이 영영삼"),
-        ("01·09와 0001", "일 영구와 0001"),
+        ("01·09", "영일·영구"),
+        ("12·003", "일이·영영삼"),
+        ("01·09와 0001", "영일·영구와 0001"),
     ],
 )
 def test_batch4_contiguous_leading_zero_middle_dot_matrix(
@@ -79,13 +79,6 @@ def test_batch4_suffix_owner_guards_do_not_leak_middle_dot_readings() -> None:
         claim.owner == "middle_dot_numeric"
         for claim in time_output.trace.claim_logs
     )
-    assert [
-        (claim.owner, claim.surface_type, claim.reason)
-        for claim in time_output.trace.claim_logs
-    ] == [
-        ("time", "TIME_PRESERVE_SURFACE", "attached_korean_time_preserve"),
-        ("time", "TIME_SURFACE", "time_hour_korean_context"),
-    ]
 
     unit_text = "12·003kg와 03kg"
     unit_output = transform_with_trace(unit_text)

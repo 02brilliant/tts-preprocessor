@@ -109,7 +109,7 @@ def test_backticked_curl_command_does_not_block_neighbors() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["피에이치 칠쩜사", "이십오도", "에이 십 씨"],
+        expected_transformed=["피에이치 칠쩜사", "이십오도", "에이-십 씨"],
         expected_preserved=["curl -X POST http://localhost:8010/api/transform"],
     )
 

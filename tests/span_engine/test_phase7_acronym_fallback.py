@@ -26,7 +26,7 @@ def test_acronym_fallback_preserves_unsafe_tokens(text: str) -> None:
 
 
 def test_two_block_hyphen_code_handles_single_letter_prefix() -> None:
-    assert transform("A-1") == "에이 원"
+    assert transform("A-1") == "에이-원"
 
 
 def test_dictionary_owner_wins_before_acronym_fallback() -> None:

@@ -21,8 +21,10 @@ from engine.span_engine.brackets import (
     apply_final_bracket_filter,
     find_bracket_ranges,
     find_incomplete_bracket_ranges,
+    is_code_like_curly_bracket,
     is_span_inside_parenthesis,
     is_span_inside_protected_bracket,
+    protect_non_parenthesis_brackets_before_claim,
     protect_square_brackets_before_claim,
 )
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
@@ -282,9 +284,11 @@ __all__ = [
     "find_incomplete_bracket_ranges",
     "final_hangul_syllable",
     "has_jongseong",
+    "is_code_like_curly_bracket",
     "is_span_inside_parenthesis",
     "is_span_inside_protected_bracket",
     "jongseong_index",
+    "protect_non_parenthesis_brackets_before_claim",
     "protect_square_brackets_before_claim",
     "render_piece_to_dict",
     "render_tokens_with_surfaces",

@@ -1,7 +1,6 @@
 import pytest
 
 from engine.main import transform
-from engine.main import transform
 from tests._policy_case import TextCase, assert_exact
 
 
@@ -70,7 +69,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-single-middle-dot-structured",
         text="7·25",
-        expected="칠 이오",
+        expected="칠·이오",
         rule="regression / middle dot structured",
         reason="A single middle dot now follows the structured parser and must not collapse into decimal reading.",
         classification="middle_dot",
@@ -78,7 +77,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-three-block-middle-dot-structured",
         text="1·2·3",
-        expected="일 이 삼",
+        expected="일·이·삼",
         rule="regression / middle dot structured",
         reason="A three-block middle-dot form must keep block boundaries without reading the middle dots as points.",
         classification="middle_dot",
@@ -86,7 +85,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-bare-five-eighteen-not-event",
         text="5·18",
-        expected="오 일팔",
+        expected="오·일팔",
         rule="regression / middle dot conflict",
         reason="A bare 5·18 form is no longer an event-number parse and must normalize through the structured middle-dot rule.",
         classification="conflict",

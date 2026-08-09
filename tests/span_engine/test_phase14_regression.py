@@ -22,7 +22,7 @@ from engine.span_engine import transform
         ("3.14", "삼쩜일사"),
         ("12.12", "십이쩜일이"),
         ("2025.01.03", "이천이십오년 일월 삼일"),
-        ("5·18", "오 일팔"),
+        ("5·18", "오·일팔"),
     ],
 )
 def test_phase14_expected_owner_outputs(text: str, expected: str) -> None:

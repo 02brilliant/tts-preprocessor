@@ -543,7 +543,12 @@ def acronym_hangul_hyphen_render_pieces(
 
 
 def _acronym_hangul_left_reading(left: str) -> str | None:
-    return dictionary_reading(left)
+    fixed = dictionary_reading(left)
+    if fixed is not None:
+        return fixed
+    if len(left) >= 2 and all(_is_ascii_upper(char) for char in left):
+        return spell_uppercase_acronym(left)
+    return None
 
 
 def _safe_acronym_hangul_left_boundary(raw_text: str, start: int) -> bool:
@@ -669,11 +674,15 @@ def _safe_ampersand_acronym_boundary(
     prev_char = raw_text[start - 1] if start > 0 else None
     next_char = raw_text[end] if end < len(raw_text) else None
     if prev_char is not None and (
-        _is_identifier_neighbor(prev_char) or prev_char in {".", "&"}
+        (prev_char.isascii() and prev_char.isalnum())
+        or "\u3130" <= prev_char <= "\u318f"
+        or prev_char in {"_", "-", "/", ".", "&"}
     ):
         return False
     if next_char is not None and (
-        _is_identifier_neighbor(next_char) or next_char in {".", "&"}
+        (next_char.isascii() and next_char.isalnum())
+        or "\u3130" <= next_char <= "\u318f"
+        or next_char in {"_", "-", "/", ".", "&"}
     ):
         return False
     return True

@@ -24,6 +24,6 @@ def test_bare_middle_dot_event_normalizes_as_fallback() -> None:
     output = transform_with_trace("5·18")
 
     # Phase 28B: Expected to fail until Phase 28C
-    assert output.normalized_text == "오 일팔"
+    assert output.normalized_text == "오·일팔"
     assert not any(claim.owner == "event" for claim in output.trace.claim_logs)
     # It should be claimed by middle-dot numeric owner (to be implemented)

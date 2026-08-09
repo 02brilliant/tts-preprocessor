@@ -60,6 +60,7 @@ ARITHMETIC_OPERATOR_POLICIES: dict[str, tuple[str, str]] = {
 _UNSIGNED_NUMERIC_PREFIX_RE = re.compile(
     r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
 )
+_UPPERCASE_STOCK_CODE_TOKEN_RE = re.compile(r"[A-Z]{2,}\(\d{6}\)")
 _OPERATORS = frozenset(ARITHMETIC_OPERATOR_POLICIES)
 _UNSUPPORTED_EXPRESSION_MARKERS = frozenset({"X", "*", "^", "(", ")"})
 _ARITHMETIC_MARKERS = _OPERATORS | _UNSUPPORTED_EXPRESSION_MARKERS | frozenset({"=", "/"})
@@ -253,6 +254,10 @@ def unsupported_parenthesized_arithmetic_spans(raw_text: str) -> list[SourceSpan
         spans.append(SourceSpan(match.start(), match.end()))
 
     for match in _FUNCTION_CALL_TOKEN_RE.finditer(raw_text):
+        # A listed-company code is editorial parenthesis content, not a
+        # function call.  Leave it to the final parenthesis filter.
+        if _UPPERCASE_STOCK_CODE_TOKEN_RE.fullmatch(match.group(0)):
+            continue
         span = SourceSpan(match.start(), match.end())
         if any(span.start < current.end and current.start < span.end for current in spans):
             continue

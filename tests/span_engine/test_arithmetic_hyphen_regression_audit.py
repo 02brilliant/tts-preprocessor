@@ -131,14 +131,14 @@ def test_two_block_numeric_code_separator_precedes_arithmetic(
         ("2025-13-03", "이공이오 일삼 공삼", "date"),
         ("1-2kg", "일에서 이 킬로그램", "range_with_unit"),
         ("3-5km", "삼에서 오 킬로미터", "range_with_unit"),
-        ("B-2.5", "비 이쩜오", "single_letter_alnum_code"),
-        ("A-3.14", "에이 삼쩜일사", "single_letter_alnum_code"),
-        ("x-3", "엑스 삼", "two_block_hyphen_code"),
-        ("가-3.14", "가 삼쩜일사", "two_block_hyphen_code"),
-        ("ㄱ-2.5", "기역 이쩜오", "two_block_hyphen_code"),
-        ("GPT-4", "지피티 포", "managed_acronym_numeric_code"),
-        ("version-1.5", "버전 일쩜오", "managed_acronym_numeric_code"),
-        ("K-1.5", "케이 일쩜오", "single_letter_alnum_code"),
+        ("B-2.5", "비-이쩜오", "single_letter_alnum_code"),
+        ("A-3.14", "에이-삼쩜일사", "single_letter_alnum_code"),
+        ("x-3", "엑스-삼", "two_block_hyphen_code"),
+        ("가-3.14", "가-삼쩜일사", "two_block_hyphen_code"),
+        ("ㄱ-2.5", "기역-이쩜오", "two_block_hyphen_code"),
+        ("GPT-4", "지피티-포", "managed_acronym_numeric_code"),
+        ("version-1.5", "버전-일쩜오", "managed_acronym_numeric_code"),
+        ("K-1.5", "케이-일쩜오", "single_letter_alnum_code"),
     ],
 )
 def test_existing_hyphen_structured_owners_remain_authoritative(
@@ -183,11 +183,11 @@ def test_protected_hyphen_contexts_block_arithmetic_reentry(
 
 def test_hangul_code_left_keeps_original_provenance_and_shadow_validation() -> None:
     debug = transform_debug("가-3.14")["debug"]
-    assert debug["normalized_text"] == "가 삼쩜일사"
+    assert debug["normalized_text"] == "가-삼쩜일사"
     pieces = debug["render_pieces"]
     assert [(piece["text"], piece["provenance"]) for piece in pieces] == [
         ("가", "ORIGINAL_KOREAN"),
-        (" ", "GENERATED_READING"),
+        ("-", "ORIGINAL_BOUNDARY"),
         ("삼쩜일사", "GENERATED_READING"),
     ]
     assert all(log["passed"] for log in debug["trace"]["validation_logs"])

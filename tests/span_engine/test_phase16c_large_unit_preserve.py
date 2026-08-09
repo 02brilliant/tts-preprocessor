@@ -11,7 +11,6 @@ from engine.span_engine import transform
         "03만",
         "001만",
         "3만-4만",
-        "3~8만",
         "만",
         "억",
         "조",
@@ -19,6 +18,10 @@ from engine.span_engine import transform
 )
 def test_large_unit_atomic_preserve_and_forbidden(text: str) -> None:
     assert transform(text) == text
+
+
+def test_compact_large_unit_range_uses_range_reading() -> None:
+    assert transform("3~8만") == "삼에서 팔만"
 
 
 @pytest.mark.parametrize(

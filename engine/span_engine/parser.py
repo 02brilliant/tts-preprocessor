@@ -8,14 +8,13 @@ from engine.span_engine.compound_unit import (
     parse_compound_exact_unit_candidate,
     parse_compound_slash_unit_candidate,
 )
+from engine.span_engine.corporate_marker import parse_corporate_marker_candidate
 from engine.span_engine.contextual_number_unit import (
     parse_contextual_number_unit_candidate,
 )
 from engine.span_engine.code_separator import (
     parse_mixed_alnum_code_separator_candidate,
     parse_spaced_hyphen_numeric_candidate,
-    parse_single_letter_alnum_code_candidate,
-    parse_two_block_hyphen_code_candidate,
 )
 from engine.span_engine.date_time import parse_date_candidate, parse_time_candidate
 from engine.span_engine.decimal import parse_decimal_candidate
@@ -48,7 +47,7 @@ from engine.span_engine.lexicon import (
     spell_uppercase_acronym,
 )
 from engine.span_engine.managed_numeric_code import (
-    parse_managed_acronym_numeric_code_candidate,
+    parse_managed_acronym_numeric_code_surface,
 )
 from engine.span_engine.middle_dot import parse_middle_dot_candidate
 from engine.span_engine.mixed_integer import parse_mixed_integer_candidate
@@ -62,14 +61,20 @@ from engine.span_engine.numeric_dae import (
     parse_ambiguous_numeric_dae_preserve_candidate,
 )
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
+from engine.span_engine.ordinal import parse_ordinal_candidate
+from engine.span_engine.parenthesized_hangul_alias import (
+    parse_parenthesized_hangul_alias_candidate,
+)
 from engine.span_engine.ph import parse_ph_candidate
 from engine.span_engine.percent_point import parse_percent_point_candidate
 from engine.span_engine.public_number import parse_public_number_candidate
 from engine.span_engine.phone import phone_reading
 from engine.span_engine.range import parse_range_candidate
 from engine.span_engine.signed import parse_signed_candidate
+from engine.span_engine.single_letter_code import parse_single_letter_alnum_code_surface
 from engine.span_engine.units import (
     parse_caret_literal_unit_candidate,
+    parse_korean_numeric_unit_candidate,
     parse_unit_candidate,
 )
 
@@ -112,7 +117,11 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     raw = raw_text[candidate.core_span.start : candidate.core_span.end]
     reading: str | None = None
 
-    if candidate.owner == "dictionary":
+    if candidate.owner == "corporate_marker":
+        reading = parse_corporate_marker_candidate(raw_text, candidate)
+    elif candidate.owner == "parenthesized_hangul_alias":
+        return parse_parenthesized_hangul_alias_candidate(raw_text, candidate)
+    elif candidate.owner == "dictionary":
         reading = dictionary_reading(raw)
     elif candidate.owner == "finance_index":
         reading = parse_finance_index_numeric_suffix_candidate(raw_text, candidate)
@@ -131,15 +140,11 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     elif candidate.owner == "mixed_alnum_code_separator":
         reading = parse_mixed_alnum_code_separator_candidate(raw_text, candidate)
     elif candidate.owner == "single_letter_alnum_code":
-        reading = parse_single_letter_alnum_code_candidate(raw_text, candidate)
+        return parse_single_letter_alnum_code_surface(raw_text, candidate)
     elif candidate.owner == "managed_acronym_numeric_code":
-        reading = parse_managed_acronym_numeric_code_candidate(raw_text, candidate)
+        return parse_managed_acronym_numeric_code_surface(raw_text, candidate)
     elif candidate.owner == "two_block_hyphen_code":
-        if _is_hangul_two_block_hyphen_code(candidate):
-            return _make_hangul_two_block_hyphen_code_surface(
-                raw_text, candidate, raw
-            )
-        reading = parse_two_block_hyphen_code_candidate(raw_text, candidate)
+        return _make_two_block_hyphen_code_surface(raw_text, candidate, raw)
     elif candidate.owner == "number":
         reading = read_spaced_integer_text(raw)
     elif candidate.owner == "decimal":
@@ -191,16 +196,22 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_spaced_hyphen_numeric_candidate(raw_text, candidate)
     elif candidate.owner in {"caret_power_unit", "simple_unit", "special_unit"}:
         reading = parse_unit_candidate(raw_text, candidate)
+    elif candidate.owner == "korean_numeric_unit":
+        return parse_korean_numeric_unit_candidate(raw_text, candidate)
     elif candidate.owner == "caret_literal_unit":
         return parse_caret_literal_unit_candidate(raw_text, candidate)
     elif candidate.owner == "numeric_suffix":
         reading = parse_numeric_suffix_candidate(raw_text, candidate)
+    elif candidate.owner == "ordinal":
+        return parse_ordinal_candidate(raw_text, candidate)
     elif candidate.owner == "contextual_number_unit":
         return parse_contextual_number_unit_candidate(raw_text, candidate)
     elif candidate.owner == "counter_noun":
         if candidate.metadata.get("full_counter_claim") is True:
             return _make_counter_surface(raw_text, candidate, raw)
         reading = parse_counter_candidate(raw_text, candidate)
+    elif candidate.owner == "range" and candidate.reason == "range_compact_large_unit_suffix_gate":
+        return _make_compact_large_unit_range_surface(raw_text, candidate, raw)
     elif candidate.owner in {
         "range",
         "range_with_unit",
@@ -240,39 +251,82 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     )
 
 
-def _is_hangul_two_block_hyphen_code(candidate: SurfaceCandidate) -> bool:
-    left = candidate.metadata.get("left")
-    return isinstance(left, str) and bool(left) and all(
-        "\uac00" <= char <= "\ud7a3" for char in left
+def _make_compact_large_unit_range_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    reading = candidate.metadata.get("reading")
+    suffix = candidate.metadata.get("suffix")
+    suffix_span = candidate.metadata.get("suffix_span")
+    if not (
+        isinstance(reading, str)
+        and isinstance(suffix, str)
+        and isinstance(suffix_span, SourceSpan)
+        and reading.endswith(suffix)
+        and candidate.core_span.start < suffix_span.start < suffix_span.end == candidate.core_span.end
+    ):
+        return None
+    prefix_span = SourceSpan(candidate.core_span.start, suffix_span.start)
+    pieces = [
+        RenderPiece(
+            text=reading[: -len(suffix)],
+            provenance="GENERATED_READING",
+            source_span=prefix_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=suffix,
+            provenance="ORIGINAL_KOREAN",
+            source_span=suffix_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+    return Surface(
+        surface_type=candidate.surface_type or "RANGE_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
+        metadata=_surface_metadata(candidate),
     )
 
 
-def _make_hangul_two_block_hyphen_code_surface(
+def _make_two_block_hyphen_code_surface(
     raw_text: str,
     candidate: SurfaceCandidate,
     raw: str,
 ) -> Surface | None:
     left = candidate.metadata.get("left")
+    left_reading = candidate.metadata.get("left_reading")
     number = candidate.metadata.get("number")
     number_reading = candidate.metadata.get("number_reading")
-    if not all(isinstance(value, str) for value in (left, number, number_reading)):
+    if not all(
+        isinstance(value, str) for value in (left, left_reading, number, number_reading)
+    ):
         return None
     assert isinstance(left, str)
+    assert isinstance(left_reading, str)
     assert isinstance(number, str)
     assert isinstance(number_reading, str)
     hyphen_start = candidate.core_span.start + len(left)
     number_start = hyphen_start + 1
     render_pieces = [
         RenderPiece(
-            text=left,
-            provenance="ORIGINAL_KOREAN",
+            text=left_reading,
+            provenance=(
+                "ORIGINAL_KOREAN"
+                if all("\uac00" <= char <= "\ud7a3" for char in left)
+                else "GENERATED_READING"
+            ),
             source_span=SourceSpan(candidate.core_span.start, hyphen_start),
             owner=candidate.owner,
             metadata={"surface_type": candidate.surface_type},
         ),
         RenderPiece(
-            text=" ",
-            provenance="GENERATED_READING",
+            text="-",
+            provenance="ORIGINAL_BOUNDARY",
             source_span=SourceSpan(hyphen_start, number_start),
             owner=candidate.owner,
             metadata={"surface_type": candidate.surface_type},
@@ -288,7 +342,7 @@ def _make_hangul_two_block_hyphen_code_surface(
     return _make_core_render_surface(
         candidate,
         raw,
-        f"{left} {number_reading}",
+        f"{left_reading}-{number_reading}",
         render_pieces,
         default_surface_type="CODE_SEPARATOR_BLOCK_SURFACE",
     )
