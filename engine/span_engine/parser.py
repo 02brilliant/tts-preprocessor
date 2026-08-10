@@ -60,6 +60,7 @@ from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.numeric_dae import (
     parse_ambiguous_numeric_dae_preserve_candidate,
 )
+from engine.span_engine.news import parse_standalone_news_candidate
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ordinal import parse_ordinal_candidate
 from engine.span_engine.parenthesized_hangul_alias import (
@@ -121,6 +122,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_corporate_marker_candidate(raw_text, candidate)
     elif candidate.owner == "parenthesized_hangul_alias":
         return parse_parenthesized_hangul_alias_candidate(raw_text, candidate)
+    elif candidate.owner == "standalone_news":
+        reading = parse_standalone_news_candidate(raw_text, candidate)
     elif candidate.owner == "dictionary":
         reading = dictionary_reading(raw)
     elif candidate.owner == "finance_index":

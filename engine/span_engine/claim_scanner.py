@@ -69,6 +69,7 @@ from engine.span_engine.multiplier import scan_multiplier_candidates
 from engine.span_engine.numeric_dae import (
     scan_ambiguous_numeric_dae_preserve_candidates,
 )
+from engine.span_engine.news import scan_standalone_news_candidates
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
 from engine.span_engine.ordinal import scan_ordinal_candidates
 from engine.span_engine.parenthesized_hangul_alias import (
@@ -228,6 +229,7 @@ CLAIM_ORDER_DOC = (
     "protected_literal",
     "corporate_marker",
     "parenthesized_hangul_alias",
+    "standalone_news",
     "dictionary",
     "finance_index",
     "contextual_acronym",
@@ -396,6 +398,11 @@ def claim_surfaces(
             scan_parenthesized_hangul_alias_candidates(raw_text),
             registry,
             excluded_ranges,
+        )
+    )
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_standalone_news_candidates(raw_text), registry, excluded_ranges
         )
     )
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))

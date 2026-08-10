@@ -8,6 +8,29 @@
 
 ---
 
+## Space-delimited `뉴스` reading exception
+
+1단계는 원칙적으로 입력 한글 literal을 변경하지 않는다. 유일한 이 정책의
+영문 읽기 예외는 양쪽이 ASCII 공백 한 칸으로 분리된 정확한 `뉴스` surface다. 이때만
+`standalone_news` owner가 `뉴스 -> news`를 생성한다.
+
+이 owner는 `(?<= )뉴스(?= )`와 동등한 양쪽 ASCII 공백 경계를 요구하며,
+문장 처음·끝, 조사/어미 결합, 한글 복합어, 고유명사 내부에는 적용하지 않는다.
+따라서 `빌뉴스`, `뉴스타`, `뉴스입니다`, `뉴스` 단독 입력은 모두 원문 보존이다.
+URL, 파일명, 코드, 인용 보호 구간은 다른 absolute preserve owner가 먼저
+점유하므로 이 예외의 대상이 아니다.
+
+`standalone_news`가 소비한 세 한글 음절은 source-span과 owner를 남긴
+`GENERATED_READING`으로만 검증 예외를 가진다. 다른 한글 literal의 보존
+불변식, 공백 보존, 조사 예외 정책은 변경하지 않는다.
+
+2단계 LLM 호출 직전 서버는 양쪽 ASCII 공백으로 분리된 `news`를 내부 잠금 토큰으로
+치환한다. LLM은 토큰을 정확히 보존해야 하며, 검증 뒤에만 `news`로 복원한다.
+이 잠금은 API 내부 구현이며 외부 요청에 provenance나 잠금 선택권을 추가하지
+않는다.
+
+---
+
 ## Contextual Number-Unit Decision Contract
 
 문맥에 따라 수사 체계가 달라지는 숫자+단위는 기본 transform에서 즉시
@@ -2185,7 +2208,7 @@ Regression tests:
 
 본 문서의 최우선 정의는 다음이다.
 
-- 한글 literal은 절대 변경하지 않는다.
+- 한글 literal은 `standalone_news`의 정확한 ` 뉴스 ` surface를 제외하고 절대 변경하지 않는다.
 - 사용자가 입력한 한글과 한글 사이 공백은 절대 변경하지 않는다.
 - 사용자가 입력한 한글 뒤 punctuation은 절대 변경하지 않는다.
 - 사용자가 입력한 조사는 기본적으로 생성, 수정, 교정, 치환, 삭제하지 않는다. 단, 본 문서의 `Safe Post-Surface Particle Exception`에 정의된 숫자/단위/영문/기호 surface 직후 Safe 조사군은 오독 방지를 위해 제한적으로 교정할 수 있다.
@@ -2721,7 +2744,7 @@ class SpanToken:
 
 | kind | 의미 | 수정 가능 여부 |
 |---|---|---|
-| `KOREAN_LITERAL` | 사용자가 입력한 한글 literal | 절대 수정 금지 |
+| `KOREAN_LITERAL` | 사용자가 입력한 한글 literal | `standalone_news`의 정확한 ` 뉴스 ` 세 음절만 예외, 그 밖에는 절대 수정 금지 |
 | `SPACE_LOCK` | 한글-한글 사이 공백 또는 보호 대상 공백 | 절대 수정 금지 |
 | `PUNCT_LOCK` | 한글 뒤 쉼표/문장부호 | 절대 수정 금지 |
 | `BOUNDARY_LITERAL` | 사용자 입력 괄호, 특수기호 등 | owner 없으면 preserve |
@@ -2905,7 +2928,7 @@ class SurfaceCandidate:
 - `full_span`은 core와 attach tail 또는 suffix를 포함하는 후보 전체 범위다.
 - claim registry의 non-reentry claim은 기본적으로 `core_span`에 등록한다.
 - `trailing_particle_span`은 attach metadata로만 보관하며, 원문 provenance를 유지한다.
-- 한글 literal span을 generated reading으로 덮어쓰는 claim은 금지한다.
+- 한글 literal span을 generated reading으로 덮어쓰는 claim은 금지한다. 단, 본문 `Space-delimited 뉴스 reading exception`의 `standalone_news`는 예외다.
 - `acronym_suffix`, `lexical_compound`, `administrative_suffix`처럼 한글 suffix가 surface body 일부로 포함되는 경우에는 parser가 반드시 piece별 provenance를 반환해야 한다.
 
 예:
@@ -6703,7 +6726,7 @@ Gate를 통과한 surface만 parser가 처리한다.
 2. gate가 필요한 경우 gate를 통과해야 한다.
 3. full consume해야 한다.
 4. raw residue를 남기면 안 된다.
-5. 한글 literal을 rewrite하면 안 된다.
+5. 한글 literal을 rewrite하면 안 된다. 단, `standalone_news`의 정확한 ` 뉴스 ` surface는 예외다.
 6. 실패하면 preserve 또는 명시 fallback만 허용한다.
 7. parser 결과는 `Surface`로 생성한다.
 8. parser 결과는 provenance를 유지할 수 있어야 한다.
@@ -6899,7 +6922,7 @@ Render는 surface를 최종 문자열 조각으로 바꾸는 단계다.
 - 원본 punctuation은 `ORIGINAL_PUNCT` provenance
 - 원본 boundary literal은 `ORIGINAL_BOUNDARY` provenance
 - surface 내부에 prosody 삽입 금지
-- render 단계에서 한글 literal rewrite 금지
+- render 단계에서 한글 literal rewrite 금지. 단, `standalone_news`의 정확한 ` 뉴스 ` surface는 예외다.
 
 ### 13.2 Particle Attach
 
@@ -8203,7 +8226,7 @@ docs/2025/13/03/report.md -> docs/2025/13/03/report.md
 [2025.13.03] -> 2025.13.03
 ```
 
-18. **Lexical Rewrite**: 사용자가 입력한 한글 literal, 한글 간 공백, 한글 뒤 punctuation을 수정하는 출력은 금지한다.
+18. **Lexical Rewrite**: `standalone_news`의 정확한 ` 뉴스 ` surface를 제외하고, 사용자가 입력한 한글 literal, 한글 간 공백, 한글 뒤 punctuation을 수정하는 출력은 금지한다.
 
 ```text
 비상계엄 -> 비상게엄       # 금지
@@ -9340,7 +9363,7 @@ Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 Guardr
 
 이 시스템의 최적 구조는 다음이다.
 
-> 원본 입력을 span 단위로 보존하고, 변환 가능한 수치·기호 구간만 owner가 먼저 점유한 뒤, gate를 통과한 typed surface만 full consume 방식으로 발음화하며, 최종 render 후 shadow validation으로 원본 한글 literal·공백·문장부호·조사 보존을 검증하되, 명시된 Safe post-surface particle exception은 별도 provenance로 검증하는 TTS 전처리 파이프라인.
+> 원본 입력을 span 단위로 보존하고, 변환 가능한 수치·기호 구간과 명시된 `standalone_news` 예외만 owner가 먼저 점유한 뒤, gate를 통과한 typed surface만 full consume 방식으로 발음화하며, 최종 render 후 shadow validation으로 원본 한글 literal·공백·문장부호·조사 보존을 검증하되, 명시된 Safe post-surface particle exception은 별도 provenance로 검증하는 TTS 전처리 파이프라인.
 
 이 구조는 물리적 보호, 계층적 탐지, non-reentry, context-aware gate, shadow validation을 모두 살리면서도, 문자열 태그 충돌, parser context 손실, 무제한 조사 교정 부활, broad heuristic, 기존 정책 불일치를 제거한다.
 

@@ -880,6 +880,7 @@ def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> se
                     "large_unit_atomic",
                     "mixed_integer_atomic",
                     "mixed_decimal_atomic",
+                    "standalone_news",
                 }
                 and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
             ):

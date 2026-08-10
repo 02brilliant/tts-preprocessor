@@ -133,6 +133,51 @@ def test_local_transform_returns_integrated_contract(monkeypatch) -> None:
     }
 
 
+def test_llm_stage_preserves_space_delimited_news_with_an_internal_lock(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    captured = {}
+
+    def fake_generate(*, model, prompt, settings):
+        captured["prompt"] = prompt
+        return GenerationResult(
+            text="오늘 <LOCK_0001> 보도입니다.", elapsed_ms=1.0
+        )
+
+    monkeypatch.setattr(server_module, "generate", fake_generate)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    result = endpoint(
+        LLMTransformRequest(
+            normalized_text="오늘 news 보도입니다.", model="gemma4:e4b"
+        )
+    )
+
+    assert result["speech_text"] == "오늘 news 보도입니다."
+    assert captured["prompt"] == "INTEGRATED INPUT: 오늘 <LOCK_0001> 보도입니다."
+
+
+def test_llm_stage_rejects_a_changed_space_delimited_news_lock(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    monkeypatch.setattr(
+        server_module,
+        "generate",
+        lambda **_kwargs: GenerationResult(text="오늘 뉴스 보도입니다.", elapsed_ms=1.0),
+    )
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="오늘 news 보도입니다.", model="gemma4:e4b"
+            )
+        )
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail["message"] == "LLM response changed a locked token."
+
+
 def test_local_transform_uses_31b_default(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")

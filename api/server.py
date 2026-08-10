@@ -61,6 +61,7 @@ from LLM.prompt_template import (
     PromptTemplateError,
     build_prompt,
 )
+from LLM.locked_news import lock_standalone_news, restore_locked_news
 from LLM.response_validation import (
     LLMStageContractError,
     validate_response,
@@ -159,12 +160,15 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         if model_definition is None:
             raise HTTPException(status_code=400, detail="Unsupported LLM model.")
 
-        prompt = build_prompt(req.normalized_text)
+        locked_news = lock_standalone_news(req.normalized_text)
+        prompt = build_prompt(locked_news.text)
         result = _generate_with_provider(model_definition, prompt)
-        speech_text = validate_response(
-            req.normalized_text,
+        locked_speech_text = validate_response(
+            locked_news.text,
             result.text,
         )
+        speech_text = restore_locked_news(locked_speech_text, locked_news)
+        validate_response(req.normalized_text, speech_text)
     except HTTPException:
         raise
     except ConfigurationError as exc:
