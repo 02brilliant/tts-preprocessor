@@ -10,15 +10,13 @@ def test_frontend_has_llm_toggle_model_control_and_two_stage_outputs() -> None:
     assert "LLM 추가교정 설정" in web
     assert 'class="llm-controls"' in web
     for model in (
-        "gemma4:e4b",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
-        "gpt-5.6-luna (medium)",
-        "gpt-5.6-luna (low)",
-        "gpt-5.6-luna (none)",
     ):
-        assert model not in web
+        assert model in web
+    assert "HIDDEN_LLM_MODELS" in web
+    assert "visibleModels = data.models.filter" in web
 
     for element_id in (
         "stage-1-output",

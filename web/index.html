@@ -613,6 +613,14 @@
     const pipelineStatusEl = document.getElementById("pipeline-status");
     const downloadsStatusEl = document.getElementById("downloads-status");
     const downloadsListEl = document.getElementById("downloads-list");
+    // Temporarily hide exhausted Gemini credits from the UI only. Keep the
+    // backend model configuration unchanged so these options can be restored
+    // here when the credits become available again.
+    const HIDDEN_LLM_MODELS = new Set([
+      "gemini-3.6-flash",
+      "gemini-3.5-flash",
+      "gemini-3.5-flash-lite",
+    ]);
     let modelsLoaded = false;
     let llmEnabled = true;
     let pipelineBusy = false;
@@ -938,11 +946,18 @@
           throw new Error("LLM 모델 목록 응답 형식이 올바르지 않습니다.");
         }
 
-        const preferredModel = data.models.includes("gemma4:31b")
+        const visibleModels = data.models.filter(
+          (model) => !HIDDEN_LLM_MODELS.has(model),
+        );
+        if (visibleModels.length === 0) {
+          throw new Error("현재 선택할 수 있는 LLM 모델이 없습니다.");
+        }
+
+        const preferredModel = visibleModels.includes("gemma4:31b")
           ? "gemma4:31b"
-          : data.default_model;
+          : visibleModels[0];
         modelEl.replaceChildren(
-          ...data.models.map((model) => {
+          ...visibleModels.map((model) => {
             const option = document.createElement("option");
             option.value = model;
             option.textContent = model;
