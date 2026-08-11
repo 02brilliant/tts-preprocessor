@@ -12,6 +12,7 @@ def test_claim_order_documentation_snapshot() -> None:
         "protected_literal",
         "corporate_marker",
         "parenthesized_hangul_alias",
+        "standalone_news",
         "dictionary",
         "finance_index",
         "contextual_acronym",

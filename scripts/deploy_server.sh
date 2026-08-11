@@ -133,7 +133,10 @@ terminate_parallel_builds() {
   echo "[deploy][ERROR] Received $signal_name; terminating parallel build children." >&2
   for child_pid in "$LINUX_BUILD_PID" "$MACOS_BUILD_PID"; do
     if [[ -n "$child_pid" ]] && kill -0 "$child_pid" 2>/dev/null; then
-      kill -TERM -- "-$child_pid" 2>/dev/null || true
+      # Job control normally gives each background build its own process group.
+      # Some non-interactive shells do not, so fall back to the direct child PID
+      # rather than leaving the deployment process blocked in wait.
+      kill -TERM -- "-$child_pid" 2>/dev/null || kill -TERM -- "$child_pid" 2>/dev/null || true
     fi
   done
   set +e
