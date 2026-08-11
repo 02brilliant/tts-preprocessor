@@ -93,7 +93,7 @@ if [[ "$url" == *"/api/llm/models" ]]; then
 elif [[ "$url" == *"/api/llm/transform" ]]; then
   printf '%s\\n' '{"speech_text":"LLM 배포 확인입니다.","model":"gemma4:31b","elapsed_ms":1}' > "$output_file"
 elif [[ "$url" == *"/api/transform" ]]; then
-  printf '%s\\n' '{"normalized_text":"케이 원, 케이푸드, 백십이 명, 유월"}' > "$output_file"
+  printf '%s\\n' '{"normalized_text":"케이-원, 케이푸드, 백십이 명, 유월"}' > "$output_file"
 else
   printf '%s\\n' "ok" > "$output_file"
 fi

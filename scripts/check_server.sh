@@ -45,7 +45,7 @@ check_optional_get() {
 check_post_transform() {
   local output_file="$1"
   local payload='{"text":"K-1, K-푸드, 112명, 6월"}'
-  local expected_normalized='케이 원, 케이푸드, 백십이 명, 유월'
+  local expected_normalized='케이-원, 케이푸드, 백십이 명, 유월'
 
   # Tiny API wiring sanity canary only:
   # this checks the packaged binary path and HTTP wiring are alive.
