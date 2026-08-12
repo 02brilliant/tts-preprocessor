@@ -1,7 +1,7 @@
 [TTS 전처리 실행모듈 사용 안내]
 
-이 실행모듈은 사용자가 입력한 TTS 스크립트를 발음교정 처리하여
-TTS 엔진에서 자연스럽게 읽히도록 변환하는 역할을 합니다.
+이 패키지는 1단계 규칙 기반 전처리와 2단계 LLM 발음교정 실행모듈을 함께
+제공합니다. 운영 서비스는 사용자가 선택한 단계의 실행 파일만 호출합니다.
 
 숫자, 날짜, 시간, 단위, 통화, 약어, 범위, 전화번호, 특수기호 등을
 한국어 TTS가 읽기 좋은 발화 형태로 변환합니다.
@@ -10,22 +10,30 @@ TTS 엔진에서 자연스럽게 읽히도록 변환하는 역할을 합니다.
 ■ 제공 실행모듈
 --------------------------------------------------
 
+모든 OS별 ZIP에는 아래 두 실행 파일과 `README.txt`가 함께 들어 있습니다.
+
+- 1단계: `tts-preprocessor` (`Windows: tts-preprocessor.exe`)
+- 2단계: `tts-llm-stage` (`Windows: tts-llm-stage.exe`)
+
+2단계는 1단계 엔진을 포함하거나 실행하지 않습니다. 반드시 1단계 출력인
+`normalized_text`를 입력으로 받아 LLM 보정 결과만 출력합니다.
+
 현재 실행모듈은 운영체제별로 3가지가 제공됩니다.
 
 1) Linux 실행모듈
    - 배포 ZIP: tts-preprocessor-linux.zip
-   - 파일명: tts-preprocessor
+   - 파일명: tts-preprocessor, tts-llm-stage
    - Linux 서버/API/웹 backend 연동용
    - 예시 경로: ./tts-preprocessor
 
 2) Windows 실행모듈
    - 배포 ZIP: tts-preprocessor-windows.zip
-   - 파일명: tts-preprocessor.exe
+   - 파일명: tts-preprocessor.exe, tts-llm-stage.exe
    - Windows PC 또는 Windows 서버에서 직접 실행 가능
 
 3) macOS 실행모듈
    - 배포 ZIP: tts-preprocessor-macos.zip
-   - 파일명: tts-preprocessor
+   - 파일명: tts-preprocessor, tts-llm-stage
    - Apple Silicon arm64 Mac에서 직접 실행 가능
    - Intel x86_64 및 Universal Binary는 현재 지원 범위가 아닙니다.
    - 서명/공증이 포함되지 않아 최초 실행 시 Gatekeeper 경고가 표시될 수 있습니다.
@@ -36,6 +44,42 @@ TTS 엔진에서 자연스럽게 읽히도록 변환하는 역할을 합니다.
 - Windows/macOS 실행모듈은 보조 배포용이며, 서버 운영 배포 기준은 Linux 실행모듈입니다.
 - 새 Linux 운영 버전 배포 직후 Windows ZIP은 같은 소스 버전의 GitHub Actions
   빌드가 완료될 때까지 일시적으로 제공되지 않을 수 있습니다.
+
+--------------------------------------------------
+■ 2단계 LLM 실행 방법
+--------------------------------------------------
+
+2단계 실행 파일은 LLM 공급자 설정이 필요합니다. 아래 중 선택한 모델에 맞는
+환경변수를 서비스 운영 환경에 설정합니다. 인증정보를 명령행 인자나 파일에 넣지
+마십시오.
+
+- 로컬 모델: `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_TOKEN`
+- Gemini: `GEMINI_API_KEY`
+- OpenAI: `OPENAI_API_KEY`
+
+기본 모델은 패키지에 포함된 모델 설정의 기본값입니다. 다른 모델을 선택하려면
+`--model`에 해당 모델 ID를 전달합니다. `--check`는 네트워크 호출 없이 2단계
+실행 파일에 프롬프트와 모델 설정이 포함됐는지 확인합니다.
+
+Linux/macOS 예시:
+
+```text
+stage1_output=$(./tts-preprocessor --text "KBS 뉴스입니다")
+./tts-llm-stage --text "$stage1_output" --model "gemma4:e4b"
+./tts-llm-stage --check
+```
+
+Windows PowerShell 예시:
+
+```text
+$stage1Output = & .\tts-preprocessor.exe --text "KBS 뉴스입니다"
+.\tts-llm-stage.exe --text $stage1Output --model "gemma4:e4b"
+.\tts-llm-stage.exe --check
+```
+
+2단계는 `--text`, `--input`, 표준입력과 `--output`을 지원합니다. LLM 응답이
+문장 구조·보호 표면·1단계 확정 읽기 계약을 어기면 결과를 보정하지 않고 오류로
+종료합니다.
 
 --------------------------------------------------
 ■ 주요 변환 기능

@@ -67,11 +67,14 @@ def test_windows_workflow_builds_smokes_and_uploads_one_flat_zip() -> None:
     assert "pyinstaller-hooks-contrib==2026.6" in build_requirements
     assert "pyinstaller_runtime_hooks" not in workflow
     assert "tts_preprocessor.spec" in workflow
+    assert "tts_llm_stage.spec" in workflow
     assert "build_binary_entrypoint" in workflow
+    assert "build_llm_stage_entrypoint" in workflow
     assert "dist\\tts-preprocessor.exe" in workflow
+    assert "dist\\tts-llm-stage.exe" in workflow
     assert "Smoke test executable" in workflow
     assert "Extracted Windows executable smoke test failed" in workflow
-    assert '$expected = @("README.txt", "tts-preprocessor.exe")' in workflow
+    assert '$expected = @("README.txt", "tts-llm-stage.exe", "tts-preprocessor.exe")' in workflow
     assert "artifact\\tts-preprocessor-windows.zip" in workflow
     assert len(upload_steps) == 1
     assert upload_steps[0]["with"]["path"] == (

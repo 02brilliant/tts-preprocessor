@@ -17,6 +17,7 @@ dist/
 packages/
 downloads/
 *.spec
+!tts_llm_stage.spec
 
 # Runtime state / logs
 logs/

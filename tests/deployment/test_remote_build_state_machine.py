@@ -30,6 +30,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     scripts_dir.mkdir(parents=True)
     buildenv_bin.mkdir(parents=True)
     (buildsrc / "engine").mkdir(parents=True)
+    (buildsrc / "LLM/docs").mkdir(parents=True)
     (buildsrc / "bin").mkdir()
     (buildsrc / "docs").mkdir()
     (buildsrc / "scripts/probes").mkdir(parents=True)
@@ -41,8 +42,18 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (buildsrc / "bin/build_binary_entrypoint.py").write_text(
         "raise SystemExit('fixture only')\n", encoding="utf-8"
     )
+    (buildsrc / "bin/build_llm_stage_entrypoint.py").write_text(
+        "raise SystemExit('fixture only')\n", encoding="utf-8"
+    )
     (buildsrc / "tts_preprocessor.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
+    )
+    (buildsrc / "tts_llm_stage.spec").write_text(
+        "# fixture spec\n", encoding="utf-8"
+    )
+    (buildsrc / "LLM/models.json").write_text("{}\n", encoding="utf-8")
+    (buildsrc / "LLM/docs/LLM_prompt.txt").write_text(
+        "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
     )
     (buildsrc / "docs/Release_Package_README.txt").write_text(
         "new readme\n", encoding="utf-8"
@@ -54,6 +65,9 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     old_binary = package_dir / "tts-preprocessor"
     old_binary.write_bytes(b"old-package")
     old_binary.chmod(0o755)
+    old_llm_stage_binary = package_dir / "tts-llm-stage"
+    old_llm_stage_binary.write_bytes(b"old-llm-stage-package")
+    old_llm_stage_binary.chmod(0o755)
     (package_dir / "README.txt").write_text("old readme\n", encoding="utf-8")
     (downloads_dir / "tts-preprocessor-linux.zip").write_bytes(b"old-linux-zip")
     (downloads_dir / "tts-preprocessor-macos.zip").write_bytes(b"old-macos")
@@ -109,8 +123,13 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
           exit 0
         fi
         mkdir -p dist
-        printf '%s\n' "new-package" > dist/tts_preprocessor
-        chmod +x dist/tts_preprocessor
+        if [[ "$*" == *"tts_llm_stage.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-llm-stage
+          chmod +x dist/tts-llm-stage
+        else
+          printf '%s\n' "new-package" > dist/tts_preprocessor
+          chmod +x dist/tts_preprocessor
+        fi
         """,
     )
 

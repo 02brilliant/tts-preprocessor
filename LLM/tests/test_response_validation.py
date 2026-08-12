@@ -48,6 +48,13 @@ def test_integrated_response_accepts_insertions_before_existing_spaces() -> None
     assert validate_response(source, output) == output
 
 
+def test_integrated_response_preserves_stage1_confirmed_news_reading() -> None:
+    with pytest.raises(LLMStageContractError, match="confirmed news") as exc_info:
+        validate_response("오늘 news 보도입니다.", "오늘 뉴스 보도입니다.")
+
+    assert exc_info.value.output_text == "오늘 뉴스 보도입니다."
+
+
 def test_integrated_response_rejects_deleted_space_hidden_by_comma() -> None:
     with pytest.raises(LLMStageContractError):
         validate_response("첫 문장.", "첫,문장.")
@@ -74,16 +81,6 @@ def test_integrated_response_still_requires_filename_and_sentence_periods() -> N
             "report_v2.json을 읽었다.",
             "report_v2json을 읽었다.",
         )
-
-
-def test_integrated_response_preserves_lock_tokens_exactly() -> None:
-    with pytest.raises(LLMStageContractError, match="locked token") as exc_info:
-        validate_response(
-            "URL은 <LOCK_0001>입니다.",
-            "유아레른 <LOCK_0002>임니다.",
-        )
-
-    assert exc_info.value.output_text == "유아레른 <LOCK_0002>임니다."
 
 
 @pytest.mark.parametrize(

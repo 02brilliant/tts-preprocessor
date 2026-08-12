@@ -6,10 +6,10 @@ import re
 from LLM.client import LLMResponseError
 
 
-_LOCK_TOKEN_RE = re.compile(r"<LOCK_\d+>")
 _STRUCTURE_CHARACTER_RE = re.compile(
     r"[\s,，.。!?！？:：;；()（）\[\]{}\"'“”‘’…—–]"
 )
+_CONFIRMED_NEWS_RE = re.compile(r"(?<= )news(?= )")
 _OUTPUT_WRAPPERS = (
     "```",
     "~~~",
@@ -89,9 +89,11 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
             output_text=speech_text,
         )
 
-    if _LOCK_TOKEN_RE.findall(normalized_text) != _LOCK_TOKEN_RE.findall(speech_text):
+    if _CONFIRMED_NEWS_RE.findall(normalized_text) != _CONFIRMED_NEWS_RE.findall(
+        speech_text
+    ):
         raise LLMStageContractError(
-            "LLM response changed a locked token.",
+            "LLM response changed a stage-1 confirmed news reading.",
             stage="speech",
             output_text=speech_text,
         )

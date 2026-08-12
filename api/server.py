@@ -27,15 +27,12 @@ from LLM.client import (
     LLMResponseError,
     LLMTimeoutError,
     LLMUpstreamHTTPError,
-    generate,
 )
 from LLM.config import (
     ConfigurationError,
-    load_gemini_settings,
     load_model_config,
-    load_openai_settings,
-    load_runtime_settings,
 )
+from LLM import stage_engine
 from LLM.gemini_client import (
     GeminiAPIKeyRestrictionError,
     GeminiAuthenticationError,
@@ -45,7 +42,6 @@ from LLM.gemini_client import (
     GeminiServiceDisabledError,
     GeminiTimeoutError,
     GeminiUpstreamHTTPError,
-    generate_gemini,
 )
 from LLM.openai_client import (
     OpenAIAuthenticationError,
@@ -55,17 +51,14 @@ from LLM.openai_client import (
     OpenAIResponseError,
     OpenAITimeoutError,
     OpenAIUpstreamHTTPError,
-    generate_openai,
 )
 from LLM.prompt_template import (
     PromptTemplateError,
-    build_prompt,
 )
-from LLM.locked_news import lock_standalone_news, restore_locked_news
 from LLM.response_validation import (
     LLMStageContractError,
-    validate_response,
 )
+from LLM.stage_engine import UnsupportedLLMModelError
 
 app = FastAPI()
 
@@ -154,21 +147,9 @@ def llm_models_api() -> dict:
 @app.api_route("/api/llm/transform", methods=["POST"])
 def llm_transform_api(req: LLMTransformRequest) -> dict:
     try:
-        model_config = load_model_config()
-        model = req.model or model_config.default_model
-        model_definition = model_config.get(model)
-        if model_definition is None:
-            raise HTTPException(status_code=400, detail="Unsupported LLM model.")
-
-        locked_news = lock_standalone_news(req.normalized_text)
-        prompt = build_prompt(locked_news.text)
-        result = _generate_with_provider(model_definition, prompt)
-        locked_speech_text = validate_response(
-            locked_news.text,
-            result.text,
-        )
-        speech_text = restore_locked_news(locked_speech_text, locked_news)
-        validate_response(req.normalized_text, speech_text)
+        result = stage_engine.transform(req.normalized_text, model=req.model)
+    except UnsupportedLLMModelError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except HTTPException:
         raise
     except ConfigurationError as exc:
@@ -220,36 +201,10 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {
-        "speech_text": speech_text,
-        "model": model,
+        "speech_text": result.speech_text,
+        "model": result.model,
         "elapsed_ms": round(result.elapsed_ms, 3),
     }
-
-
-def _generate_with_provider(model_definition, prompt: str):
-    if model_definition.provider == "local":
-        return generate(
-            model=model_definition.upstream_model,
-            prompt=prompt,
-            settings=load_runtime_settings(),
-        )
-    if model_definition.provider == "gemini":
-        return generate_gemini(
-            model=model_definition.upstream_model,
-            prompt=prompt,
-            settings=load_gemini_settings(),
-        )
-    if model_definition.provider == "openai":
-        return generate_openai(
-            model=model_definition.upstream_model,
-            prompt=prompt,
-            settings=load_openai_settings(),
-            reasoning_effort=model_definition.reasoning_effort,
-        )
-    raise HTTPException(
-        status_code=500,
-        detail="Configured LLM provider is unsupported.",
-    )
 
 
 def transform_request_payload(payload: dict) -> dict:

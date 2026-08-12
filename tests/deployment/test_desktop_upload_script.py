@@ -58,6 +58,7 @@ def _valid_windows_zip(downloads_dir: Path) -> Path:
         archive,
         {
             "tts-preprocessor.exe": b"windows-binary",
+            "tts-llm-stage.exe": b"windows-llm-stage-binary",
             "README.txt": b"readme",
         },
     )
@@ -105,6 +106,7 @@ def test_windows_validation_rejects_extra_source_and_symlink(
         source_downloads / "tts-preprocessor-windows.zip",
         {
             "tts-preprocessor.exe": b"binary",
+            "tts-llm-stage.exe": b"binary",
             "README.txt": b"readme",
             "engine/main.py": b"source",
         },
@@ -122,6 +124,7 @@ def test_windows_validation_rejects_extra_source_and_symlink(
         link.create_system = 3
         link.external_attr = (stat.S_IFLNK | 0o777) << 16
         archive.writestr(link, "README.txt")
+        archive.writestr("tts-llm-stage.exe", "stage2")
         archive.writestr("README.txt", "readme")
     symlink_result = _run(
         symlink_script, "--platform", "windows", "--validate-only"

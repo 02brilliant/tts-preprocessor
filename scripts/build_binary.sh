@@ -9,8 +9,10 @@ PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
 REQUIRED_PYTHON_SERIES="3.13"
 DIST_DIR="$ROOT_DIR/dist"
 BUILD_DIR="$ROOT_DIR/build"
-SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
-SOURCE_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
+STAGE1_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
+STAGE2_SPEC_FILE="$ROOT_DIR/tts_llm_stage.spec"
+STAGE1_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
+STAGE2_ENTRYPOINT="$ROOT_DIR/bin/build_llm_stage_entrypoint.py"
 SMOKE_TEXT="2천8백28억, 2천8백28억테스트"
 SMOKE_EXPECTED="이천팔백이십팔억, 이천팔백이십팔억 테스트"
 
@@ -36,10 +38,12 @@ if [[ "$PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$SOURCE_ENTRYPOINT" ]]; then
-  echo "Missing build entrypoint: $SOURCE_ENTRYPOINT" >&2
-  exit 1
-fi
+for required_file in "$STAGE1_SPEC_FILE" "$STAGE2_SPEC_FILE" "$STAGE1_ENTRYPOINT" "$STAGE2_ENTRYPOINT"; do
+  if [[ ! -f "$required_file" ]]; then
+    echo "Missing build file: $required_file" >&2
+    exit 1
+  fi
+done
 
 cd "$ROOT_DIR"
 rm -rf "$DIST_DIR" "$BUILD_DIR"
@@ -47,7 +51,7 @@ rm -rf "$DIST_DIR" "$BUILD_DIR"
 "$PYINSTALLER_BIN" \
   --clean \
   --noconfirm \
-  "$SPEC_FILE"
+  "$STAGE1_SPEC_FILE"
 if [[ ! -f "$DIST_DIR/tts_preprocessor" ]]; then
   echo "Binary build failed: $DIST_DIR/tts_preprocessor not found" >&2
   exit 1
@@ -64,4 +68,17 @@ if [[ "$SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
 fi
 echo "[OK] local dist binary smoke"
 
-echo "Built binary: $DIST_DIR/tts_preprocessor"
+TTS_LLM_STAGE_EXECUTABLE_NAME="tts-llm-stage" \
+  "$PYINSTALLER_BIN" \
+    --clean \
+    --noconfirm \
+    "$STAGE2_SPEC_FILE"
+if [[ ! -f "$DIST_DIR/tts-llm-stage" || ! -x "$DIST_DIR/tts-llm-stage" ]]; then
+  echo "LLM stage binary build failed: $DIST_DIR/tts-llm-stage not found" >&2
+  exit 1
+fi
+"$DIST_DIR/tts-llm-stage" --check >/dev/null
+echo "[OK] LLM stage runtime asset check"
+
+echo "Built stage 1 binary: $DIST_DIR/tts_preprocessor"
+echo "Built stage 2 binary: $DIST_DIR/tts-llm-stage"

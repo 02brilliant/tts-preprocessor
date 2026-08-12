@@ -34,7 +34,7 @@ def use_valid_prompt_template(monkeypatch):
     """Keep routing tests independent from the operator-editable prompt file."""
 
     monkeypatch.setattr(
-        server_module,
+        server_module.stage_engine,
         "build_prompt",
         lambda text: f"INTEGRATED INPUT: {text}",
     )
@@ -111,7 +111,7 @@ def test_local_transform_returns_integrated_contract(monkeypatch) -> None:
         captured["base_url"] = settings.base_url
         return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=1234.5678)
 
-    monkeypatch.setattr(server_module, "generate", fake_generate)
+    monkeypatch.setattr(server_module.stage_engine, "generate", fake_generate)
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
@@ -133,18 +133,16 @@ def test_local_transform_returns_integrated_contract(monkeypatch) -> None:
     }
 
 
-def test_llm_stage_preserves_space_delimited_news_with_an_internal_lock(monkeypatch) -> None:
+def test_llm_stage_sends_space_delimited_news_without_an_internal_token(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     captured = {}
 
     def fake_generate(*, model, prompt, settings):
         captured["prompt"] = prompt
-        return GenerationResult(
-            text="오늘 <LOCK_0001> 보도입니다.", elapsed_ms=1.0
-        )
+        return GenerationResult(text="오늘 news 보도입니다.", elapsed_ms=1.0)
 
-    monkeypatch.setattr(server_module, "generate", fake_generate)
+    monkeypatch.setattr(server_module.stage_engine, "generate", fake_generate)
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
@@ -154,14 +152,14 @@ def test_llm_stage_preserves_space_delimited_news_with_an_internal_lock(monkeypa
     )
 
     assert result["speech_text"] == "오늘 news 보도입니다."
-    assert captured["prompt"] == "INTEGRATED INPUT: 오늘 <LOCK_0001> 보도입니다."
+    assert captured["prompt"] == "INTEGRATED INPUT: 오늘 news 보도입니다."
 
 
-def test_llm_stage_rejects_a_changed_space_delimited_news_lock(monkeypatch) -> None:
+def test_llm_stage_rejects_changed_confirmed_news_without_internal_token(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     monkeypatch.setattr(
-        server_module,
+        server_module.stage_engine,
         "generate",
         lambda **_kwargs: GenerationResult(text="오늘 뉴스 보도입니다.", elapsed_ms=1.0),
     )
@@ -175,7 +173,9 @@ def test_llm_stage_rejects_a_changed_space_delimited_news_lock(monkeypatch) -> N
         )
 
     assert exc_info.value.status_code == 502
-    assert exc_info.value.detail["message"] == "LLM response changed a locked token."
+    assert exc_info.value.detail["message"] == (
+        "LLM response changed a stage-1 confirmed news reading."
+    )
 
 
 def test_local_transform_uses_31b_default(monkeypatch) -> None:
@@ -187,7 +187,7 @@ def test_local_transform_uses_31b_default(monkeypatch) -> None:
         captured["model"] = model
         return GenerationResult(text="원고", elapsed_ms=1.0)
 
-    monkeypatch.setattr(server_module, "generate", fake_generate)
+    monkeypatch.setattr(server_module.stage_engine, "generate", fake_generate)
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(LLMTransformRequest(normalized_text="원고"))
@@ -206,7 +206,11 @@ def test_gemini_transform_routes_to_gemini_client(monkeypatch) -> None:
         captured["api_key_present"] = bool(settings.api_key)
         return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=234.5)
 
-    monkeypatch.setattr(server_module, "generate_gemini", fake_generate_gemini)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_gemini",
+        fake_generate_gemini,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
@@ -239,7 +243,11 @@ def test_openai_transform_routes_to_responses_client(monkeypatch) -> None:
         captured["reasoning_effort"] = reasoning_effort
         return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=345.6)
 
-    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_openai",
+        fake_generate_openai,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     result = endpoint(
@@ -266,7 +274,7 @@ def test_contract_violation_maps_to_bad_gateway(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     monkeypatch.setattr(
-        server_module,
+        server_module.stage_engine,
         "generate",
         lambda **_kwargs: GenerationResult(text="다른 원고", elapsed_ms=1.0),
     )
@@ -351,7 +359,7 @@ def test_upstream_timeout_maps_to_gateway_timeout(monkeypatch) -> None:
     def fake_generate(**_kwargs):
         raise LLMTimeoutError("Local LLM server request timed out.")
 
-    monkeypatch.setattr(server_module, "generate", fake_generate)
+    monkeypatch.setattr(server_module.stage_engine, "generate", fake_generate)
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -374,7 +382,11 @@ def test_gemini_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
             "Gemini API quota or rate limit was exceeded."
         )
 
-    monkeypatch.setattr(server_module, "generate_gemini", fake_generate_gemini)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_gemini",
+        fake_generate_gemini,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -399,7 +411,11 @@ def test_openai_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
             "OpenAI API quota or rate limit was exceeded."
         )
 
-    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_openai",
+        fake_generate_openai,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -424,7 +440,11 @@ def test_openai_permission_error_maps_to_service_unavailable(monkeypatch) -> Non
             "OpenAI API key does not have permission to use the selected model."
         )
 
-    monkeypatch.setattr(server_module, "generate_openai", fake_generate_openai)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_openai",
+        fake_generate_openai,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -450,7 +470,11 @@ def test_gemini_service_disabled_maps_to_service_unavailable(monkeypatch) -> Non
             "Enable Generative Language API and retry."
         )
 
-    monkeypatch.setattr(server_module, "generate_gemini", fake_generate_gemini)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_gemini",
+        fake_generate_gemini,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:
@@ -477,7 +501,11 @@ def test_gemini_api_key_restriction_maps_to_service_unavailable(monkeypatch) -> 
             "Restrict or replace the key for Gemini API and retry."
         )
 
-    monkeypatch.setattr(server_module, "generate_gemini", fake_generate_gemini)
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_gemini",
+        fake_generate_gemini,
+    )
     endpoint = get_endpoint("/api/llm/transform", "POST")
 
     with pytest.raises(HTTPException) as exc_info:

@@ -30,7 +30,7 @@ validate_windows_archive() (
   fi
   unzip -tq "$WINDOWS_ARCHIVE"
   contents="$(unzip -Z1 "$WINDOWS_ARCHIVE" | LC_ALL=C sort)"
-  expected=$'README.txt\ntts-preprocessor.exe'
+  expected=$'README.txt\ntts-llm-stage.exe\ntts-preprocessor.exe'
   if [[ "$contents" != "$expected" ]]; then
     echo "[windows-upload][ERROR] Unexpected Windows ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -42,8 +42,10 @@ validate_windows_archive() (
   unzip -q "$WINDOWS_ARCHIVE" -d "$extract_dir"
   if [[ ! -f "$extract_dir/README.txt" \
     || ! -f "$extract_dir/tts-preprocessor.exe" \
+    || ! -f "$extract_dir/tts-llm-stage.exe" \
     || -L "$extract_dir/README.txt" \
     || -L "$extract_dir/tts-preprocessor.exe" \
+    || -L "$extract_dir/tts-llm-stage.exe" \
     || -n "$(find "$extract_dir" -type l -print -quit)" ]]; then
     echo "[windows-upload][ERROR] Windows ZIP payload is missing or contains a symlink." >&2
     return 1
@@ -144,7 +146,7 @@ cleanup_temp() {
 trap cleanup_temp EXIT
 unzip -tq "$temp_path"
 contents="$(unzip -Z1 "$temp_path" | LC_ALL=C sort)"
-expected=$'README.txt\ntts-preprocessor.exe'
+expected=$'README.txt\ntts-llm-stage.exe\ntts-preprocessor.exe'
 [[ "$contents" == "$expected" ]] || {
   echo "[windows-upload][ERROR] Unexpected uploaded Windows ZIP contents." >&2
   exit 1

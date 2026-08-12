@@ -24,10 +24,9 @@ URL, 파일명, 코드, 인용 보호 구간은 다른 absolute preserve owner�
 `GENERATED_READING`으로만 검증 예외를 가진다. 다른 한글 literal의 보존
 불변식, 공백 보존, 조사 예외 정책은 변경하지 않는다.
 
-2단계 LLM 호출 직전 서버는 양쪽 ASCII 공백으로 분리된 `news`를 내부 잠금 토큰으로
-치환한다. LLM은 토큰을 정확히 보존해야 하며, 검증 뒤에만 `news`로 복원한다.
-이 잠금은 API 내부 구현이며 외부 요청에 provenance나 잠금 선택권을 추가하지
-않는다.
+2단계 LLM 호출은 1단계 `normalized_text`를 임시 토큰이나 provenance 없이
+그대로 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 1단계가 확정한 읽기이므로,
+활성 프롬프트가 문자와 공백을 정확히 보존하도록 지시한다.
 
 ---
 
@@ -423,10 +422,10 @@ model을 계속 선택할 수 있다.
 입력 형태 그대로 유지한다. 새로 확정하는 정상 decimal은 규칙 엔진과
 같은 compact `쩜` Sino reading을 사용하고, 다의 단위의 spacing은 가장
 자연스러운 의미에 맞춘다. malformed, code-like, identifier,
-URL/path/file/JSON, 잠금 구간은 정책상 보호 대상으로 부분 변환 없이
+URL/path/file/JSON, 보호 구간은 정책상 보호 대상으로 부분 변환 없이
 보존한다.
 
-규칙 확정 읽기를 강제하기 위한 별도 lock token이나 provenance metadata는
+규칙 확정 읽기를 강제하기 위한 별도 임시 token이나 provenance metadata는
 후단 요청에 추가하지 않는다. 보존 의무는 활성 프롬프트와 기존 응답
 검증 계약으로 유지하며, 반복 생성 안정성 측정·자동 재시도는 현재 범위에
 포함하지 않는다.
@@ -434,7 +433,7 @@ URL/path/file/JSON, 잠금 구간은 정책상 보호 대상으로 부분 변환
 활성 프롬프트는 실제 `normalized_text`를 형식 설명이나 fenced code
 example 안에 배치하지 않고 현재 실행 payload로 명시한다. 비어 있지 않은
 실제 입력을 받은 모델이 입력을 다시 요청하거나 지시 확인문을 출력해서는
-안 된다. 응답 검증기는 lock token뿐 아니라 원문의 URL, path, filename,
+안 된다. 응답 검증기는 원문의 URL, path, filename,
 JSON-like block, Markdown inline code, SKU-like identifier가 source-exact로
 남아 있는지 확인하며, 하나라도 변경·삭제된 응답은 성공으로 반환하지
 않는다.
@@ -2346,9 +2345,11 @@ def transform_with_trace(text: str) -> TransformOutput:
 
 - 사용자가 입력한 한글 문자열은 절대 변경하지 않는다. 단, 사용자가 문장
   중간의 시각적 줄바꿈으로 넣은 newline run은 15.5의 문장 경계 정책에 따라
-  한 칸 공백으로 정규화할 수 있다.
+  그 줄바꿈 전후의 horizontal whitespace를 포함해 한 칸 공백으로 정규화할 수
+  있다.
 - 사용자가 입력한 한글과 한글 사이 공백은 절대 변경하지 않는다. 위 newline
-  run의 의미 정규화로 생성하는 한 칸 공백은 이 불변성의 예외다.
+  run 및 바로 인접한 horizontal whitespace의 의미 정규화로 생성하는 한 칸
+  공백은 이 불변성의 예외다.
 - 사용자가 입력한 한글 바로 뒤에 공백 없이 붙은 쉼표는 절대 변경하지 않는다.
 - 사용자가 입력한 한글 뒤 문장부호 `.`, `,`, `!`, `?`는 절대 변경하지 않는다.
 - 사용자가 입력한 조사는 기본적으로 교정하지 않는다.
@@ -7482,7 +7483,8 @@ Paragraph split 전에 사용자 개행의 문장 경계 의미를 먼저 판정
 - 기존 sentence-final slash punctuation alias(`/`, `//`)도 마침표와 같은
   paragraph boundary로 유지한다.
 - 그 밖의 일반 텍스트 newline run은 시각적 줄바꿈으로 보고 제거한다. 양쪽에
-  공백이 없으면 ASCII 공백 한 칸으로 연결하며, 기존 쉼표와 마침표는 보존한다.
+  내용이 있으면 newline run과 바로 앞뒤의 horizontal whitespace를 ASCII 공백
+  한 칸으로 정규화한다. 기존 쉼표와 마침표는 보존한다.
 - matched ASCII `"..."` 또는 `'...'` 내부 newline run은 내부 마침표·쉼표와
   관계없이 항상 문장 내부 연결로 처리한다. English apostrophe(`don't`)는
   quote delimiter가 아니다.

@@ -111,8 +111,11 @@ validate_build_sources() {
 
   for required_source in \
     "$BUILD_SRC_DIR/engine" \
+    "$BUILD_SRC_DIR/LLM" \
     "$BUILD_SRC_DIR/bin/build_binary_entrypoint.py" \
+    "$BUILD_SRC_DIR/bin/build_llm_stage_entrypoint.py" \
     "$BUILD_SRC_DIR/tts_preprocessor.spec" \
+    "$BUILD_SRC_DIR/tts_llm_stage.spec" \
     "$README_TEMPLATE_PATH" \
     "$SEMANTIC_PROBE_RUNNER"; do
     if [[ ! -e "$required_source" ]]; then
@@ -129,7 +132,7 @@ validate_linux_archive() {
 
   unzip -tq "$archive_path"
   contents="$(unzip -Z1 "$archive_path" | LC_ALL=C sort)"
-  expected=$'tts-preprocessor/README.txt\ntts-preprocessor/tts-preprocessor'
+  expected=$'tts-preprocessor/README.txt\ntts-preprocessor/tts-llm-stage\ntts-preprocessor/tts-preprocessor'
   if [[ "$contents" != "$expected" ]]; then
     echo "[remote-build][ERROR] Unexpected Linux ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -183,6 +186,7 @@ validate_prepare_marker() {
   fi
   if [[ ! -d "$PREPARED_PACKAGE_DIR" \
     || ! -x "$PREPARED_PACKAGE_DIR/tts-preprocessor" \
+    || ! -x "$PREPARED_PACKAGE_DIR/tts-llm-stage" \
     || ! -f "$PREPARED_ARCHIVE" ]]; then
     echo "[remote-build][ERROR] Prepared Linux artifacts are incomplete for deploy ID: $DEPLOY_ID" >&2
     return 1
@@ -218,6 +222,8 @@ report_publish_failure() {
     echo "[remote-build][ERROR] The operational package or Linux ZIP may be partially updated." >&2
     printf '[remote-build][ERROR] Current package executable: %s\n' \
       "$([[ -x "$PACKAGE_DIR/tts-preprocessor" ]] && printf present || printf missing)" >&2
+    printf '[remote-build][ERROR] Current package stage 2 executable: %s\n' \
+      "$([[ -x "$PACKAGE_DIR/tts-llm-stage" ]] && printf present || printf missing)" >&2
     printf '[remote-build][ERROR] Current Linux ZIP: %s\n' \
       "$([[ -f "$ARCHIVE_PATH" ]] && printf present || printf missing)" >&2
     echo "[remote-build][ERROR] Fix the reported issue and run the full deployment again." >&2
@@ -243,7 +249,23 @@ with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         package_dir / "tts-preprocessor",
         "tts-preprocessor/tts-preprocessor",
     )
+    archive.write(
+        package_dir / "tts-llm-stage",
+        "tts-preprocessor/tts-llm-stage",
+    )
 PY
+}
+
+run_llm_stage_asset_check() {
+  local binary_path="$1"
+  local label="$2"
+
+  if [[ ! -f "$binary_path" || ! -x "$binary_path" ]]; then
+    echo "[remote-build][ERROR] Missing executable $label: $binary_path" >&2
+    return 1
+  fi
+  "$binary_path" --check >/dev/null
+  echo "[remote-build][OK] $label bundled assets passed."
 }
 
 prepare_linux_release() {
@@ -266,17 +288,28 @@ prepare_linux_release() {
       --clean \
       --noconfirm \
       "$BUILD_SRC_DIR/tts_preprocessor.spec"
+    TTS_LLM_STAGE_EXECUTABLE_NAME="tts-llm-stage" \
+      "$PYINSTALLER_BIN" \
+        --clean \
+        --noconfirm \
+        "$BUILD_SRC_DIR/tts_llm_stage.spec"
   )
 
   run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"
+  run_llm_stage_asset_check "$BUILD_SRC_DIR/dist/tts-llm-stage" "dist stage 2 binary"
 
   mkdir -p "$PREPARED_PACKAGE_DIR"
   cp "$README_TEMPLATE_PATH" "$PREPARED_PACKAGE_DIR/README.txt"
   cp "$BUILD_SRC_DIR/dist/tts_preprocessor" "$PREPARED_PACKAGE_DIR/tts-preprocessor"
+  cp "$BUILD_SRC_DIR/dist/tts-llm-stage" "$PREPARED_PACKAGE_DIR/tts-llm-stage"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor"
+  chmod +x "$PREPARED_PACKAGE_DIR/tts-llm-stage"
   run_semantic_probe_set \
     "$PREPARED_PACKAGE_DIR/tts-preprocessor" \
     "staging packaged binary"
+  run_llm_stage_asset_check \
+    "$PREPARED_PACKAGE_DIR/tts-llm-stage" \
+    "staging packaged stage 2 binary"
 
   create_prepared_archive
   validate_linux_archive "$PREPARED_ARCHIVE"
@@ -325,6 +358,7 @@ publish_linux_release() {
   mv -- "$PREPARED_ARCHIVE" "$ARCHIVE_PATH"
 
   run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor" "published packaged binary"
+  run_llm_stage_asset_check "$PACKAGE_DIR/tts-llm-stage" "published packaged stage 2 binary"
   printf 'deploy_id=%s\n' "$DEPLOY_ID" > "$PUBLISHED_MARKER"
   PUBLISH_SUCCEEDED=true
   trap - EXIT

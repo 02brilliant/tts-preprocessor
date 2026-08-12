@@ -127,6 +127,14 @@ def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
         assert superseded_reading not in prompt
 
 
+def test_active_prompt_preserves_confirmed_space_delimited_news_without_tokens() -> None:
+    prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "`news`도\n   확정된 읽기다" in prompt
+    assert "그대로 복사한다. 출력에는 Markdown 굵게" in prompt
+    assert "<LOCK_0001>" not in prompt
+
+
 def test_active_prompt_injects_only_plain_normalized_text() -> None:
     normalized_text = "3번 확인했고 5분이 남았다."
 

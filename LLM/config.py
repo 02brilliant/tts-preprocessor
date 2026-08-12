@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
-MODEL_CONFIG_PATH = Path(__file__).resolve().parent / "models.json"
-LLM_PROMPT_PATH = Path(__file__).resolve().parent / "docs" / "LLM_prompt.txt"
+_RUNTIME_ROOT = Path(
+    getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)
+)
+MODEL_CONFIG_PATH = _RUNTIME_ROOT / "LLM" / "models.json"
+LLM_PROMPT_PATH = _RUNTIME_ROOT / "LLM" / "docs" / "LLM_prompt.txt"
 REASONING_EFFORTS = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 
 

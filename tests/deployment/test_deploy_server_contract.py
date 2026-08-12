@@ -56,7 +56,9 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/json_like_protected_spans.py",
         "scripts/probes/contextual_number_units.py",
         "tts_preprocessor.spec",
+        "tts_llm_stage.spec",
         "bin/build_binary_entrypoint.py",
+        "bin/build_llm_stage_entrypoint.py",
         "docs/Release_Package_README.txt",
         "LLM/__init__.py",
         "LLM/client.py",
@@ -66,6 +68,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/models.json",
         "LLM/prompt_template.py",
         "LLM/response_validation.py",
+        "LLM/stage_engine.py",
         "LLM/docs/LLM_prompt.txt",
     ):
         target = tmp_path / relative
@@ -96,6 +99,10 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         executable.create_system = 3
         executable.external_attr = (stat.S_IFREG | 0o755) << 16
         archive.writestr(executable, b"mac-binary")
+        stage2_executable = zipfile.ZipInfo("tts-llm-stage")
+        stage2_executable.create_system = 3
+        stage2_executable.external_attr = (stat.S_IFREG | 0o755) << 16
+        archive.writestr(stage2_executable, b"mac-stage2-binary")
         archive.writestr("README.txt", b"readme")
 
     fake_bin = tmp_path / "fake-bin"

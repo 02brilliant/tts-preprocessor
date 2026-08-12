@@ -15,6 +15,25 @@ def test_comma_is_preserved_while_visual_newline_joins() -> None:
     assert transform("오키나와,\n타이완") == "오키나와, 타이완"
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("지역에 대해  \n   미국의 새 전략", "지역에 대해 미국의 새 전략"),
+        ("오키나와,\n   타이완", "오키나와, 타이완"),
+        ('"인용문  \n   계속"', '"인용문 계속"'),
+    ],
+)
+def test_visual_newline_join_collapses_only_boundary_whitespace(
+    text: str, expected: str
+) -> None:
+    assert normalize_user_newline_semantics(text) == expected
+    assert transform(text) == expected
+
+
+def test_in_line_spaces_without_a_newline_remain_source_exact() -> None:
+    assert transform("한글  사이") == "한글  사이"
+
+
 def test_period_before_newline_keeps_existing_paragraph_boundary() -> None:
     assert transform("첫 문장입니다.\n다음 문장입니다.") == "첫 문장입니다.\n\n다음 문장입니다."
 

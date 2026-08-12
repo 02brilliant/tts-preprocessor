@@ -31,12 +31,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements/build.txt
 
-      - name: Verify official PyInstaller spec
+      - name: Verify official PyInstaller specs
         shell: pwsh
         run: |
-          $spec = Get-Content -LiteralPath "tts_preprocessor.spec" -Raw
-          if ($spec -notmatch 'bin.+build_binary_entrypoint\.py') {
+          $stage1Spec = Get-Content -LiteralPath "tts_preprocessor.spec" -Raw
+          $stage2Spec = Get-Content -LiteralPath "tts_llm_stage.spec" -Raw
+          if ($stage1Spec -notmatch 'bin.+build_binary_entrypoint\.py') {
             throw "Official binary entrypoint is missing from tts_preprocessor.spec"
+          }
+          if ($stage2Spec -notmatch 'bin.+build_llm_stage_entrypoint\.py') {
+            throw "Stage 2 entrypoint is missing from tts_llm_stage.spec"
           }
 
       - name: Build executable
@@ -49,6 +53,14 @@ jobs:
             "$env:GITHUB_WORKSPACE\tts_preprocessor.spec"
           if (-not (Test-Path -LiteralPath "dist\tts-preprocessor.exe" -PathType Leaf)) {
             throw "Built executable not found: dist\tts-preprocessor.exe"
+          }
+          $env:TTS_LLM_STAGE_EXECUTABLE_NAME = "tts-llm-stage"
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            "$env:GITHUB_WORKSPACE\tts_llm_stage.spec"
+          if (-not (Test-Path -LiteralPath "dist\tts-llm-stage.exe" -PathType Leaf)) {
+            throw "Built stage 2 executable not found: dist\tts-llm-stage.exe"
           }
 
       - name: Smoke test executable
@@ -63,6 +75,10 @@ jobs:
           if ($actual -ne $expected) {
             throw "Windows executable smoke mismatch. Expected '$expected', got '$actual'"
           }
+          & ".\dist\tts-llm-stage.exe" --check | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows stage 2 executable asset check failed"
+          }
 
       - name: Create Windows ZIP
         shell: pwsh
@@ -74,6 +90,7 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path package, artifact | Out-Null
           Copy-Item -LiteralPath "dist\tts-preprocessor.exe" -Destination "package\tts-preprocessor.exe"
+          Copy-Item -LiteralPath "dist\tts-llm-stage.exe" -Destination "package\tts-llm-stage.exe"
           Copy-Item -LiteralPath $readme -Destination "package\README.txt"
 
           $zip = "artifact\tts-preprocessor-windows.zip"
@@ -95,7 +112,7 @@ jobs:
               } |
               Sort-Object
           )
-          $expected = @("README.txt", "tts-preprocessor.exe")
+          $expected = @("README.txt", "tts-llm-stage.exe", "tts-preprocessor.exe")
           $difference = Compare-Object -ReferenceObject $expected -DifferenceObject $actual
           if ($difference) {
             $difference | Format-Table | Out-String | Write-Host
@@ -115,6 +132,10 @@ jobs:
           $actualSmoke = (& ".\verify-windows\tts-preprocessor.exe" --text $smokeText | Out-String).TrimEnd()
           if ($LASTEXITCODE -ne 0 -or $actualSmoke -ne $expectedSmoke) {
             throw "Extracted Windows executable smoke test failed."
+          }
+          & ".\verify-windows\tts-llm-stage.exe" --check | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Extracted Windows stage 2 executable asset check failed."
           }
 
       - name: Upload Windows ZIP

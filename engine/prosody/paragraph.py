@@ -10,6 +10,7 @@ CONDITIONAL_TRANSITIONS = {"하지만", "그러나", "그래서", "다만"}
 DEMONSTRATIVES = ("이", "그", "저", "해당")
 QUOTE_CHARS = {'"', "'", "“", "”", "‘", "’"}
 _ASCII_QUOTE_CHARS = frozenset({'"', "'"})
+_HORIZONTAL_WHITESPACE = " \t"
 _NEWLINE_RUN_RE = re.compile(r"(?:\r\n|\r|\n)+")
 _CODE_FENCE_RE = re.compile(r"```[^\r\n]*(?:\r?\n)(?:.|\r|\n)*?```", re.DOTALL)
 _INLINE_BACKTICK_MULTILINE_RE = re.compile(r"(?<!`)`(?!`)(?:.|\r|\n)*?(?<!`)`(?!`)", re.DOTALL)
@@ -85,12 +86,16 @@ def normalize_user_newline_semantics(
     for match in _NEWLINE_RUN_RE.finditer(text):
         start, end = match.span()
         parts.append(text[cursor:start])
+        next_cursor = end
         if _range_contains_index(protected_ranges, start):
             parts.append(match.group(0))
         elif _is_structured_code_boundary(text, start, end):
             parts.append(match.group(0))
         elif start in quote_interiors:
-            parts.append(_newline_joiner(text, start, end))
+            joiner, next_cursor = _newline_joiner(text, start, end)
+            if joiner:
+                parts[-1] = parts[-1].rstrip(_HORIZONTAL_WHITESPACE)
+            parts.append(joiner)
         else:
             last_non_space = _last_non_space_index(text, start)
             if last_non_space is not None and (
@@ -99,8 +104,11 @@ def normalize_user_newline_semantics(
             ):
                 parts.append("\n\n" if paragraphize_boundaries else match.group(0))
             else:
-                parts.append(_newline_joiner(text, start, end))
-        cursor = end
+                joiner, next_cursor = _newline_joiner(text, start, end)
+                if joiner:
+                    parts[-1] = parts[-1].rstrip(_HORIZONTAL_WHITESPACE)
+                parts.append(joiner)
+        cursor = next_cursor
     parts.append(text[cursor:])
     return "".join(parts)
 
@@ -109,10 +117,29 @@ def _normalize_user_newlines(text: str) -> str:
     return normalize_user_newline_semantics(text, paragraphize_boundaries=True)
 
 
-def _newline_joiner(text: str, start: int, end: int) -> str:
-    left = text[start - 1] if start > 0 else ""
-    right = text[end] if end < len(text) else ""
-    return " " if left and right and not left.isspace() and not right.isspace() else ""
+def _newline_joiner(text: str, start: int, end: int) -> tuple[str, int]:
+    """Return the visual-line joiner and the first unconsumed input index.
+
+    Horizontal whitespace immediately around a newline belongs to that visual
+    line break.  Consume it only when the newline is joined into a sentence;
+    ordinary in-line whitespace remains source-exact.
+    """
+    left = start
+    while left > 0 and text[left - 1] in _HORIZONTAL_WHITESPACE:
+        left -= 1
+
+    right = end
+    while right < len(text) and text[right] in _HORIZONTAL_WHITESPACE:
+        right += 1
+
+    if (
+        left > 0
+        and right < len(text)
+        and not text[left - 1].isspace()
+        and not text[right].isspace()
+    ):
+        return " ", right
+    return "", end
 
 
 def _last_non_space_index(text: str, end: int) -> int | None:

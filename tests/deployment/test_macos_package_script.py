@@ -56,7 +56,9 @@ def test_macos_script_rejects_non_python313_project_environment(
     shutil.copy2(SCRIPT, script)
     for relative in (
         "tts_preprocessor.spec",
+        "tts_llm_stage.spec",
         "bin/build_binary_entrypoint.py",
+        "bin/build_llm_stage_entrypoint.py",
         "docs/Release_Package_README.txt",
     ):
         target = project_root / relative
@@ -123,8 +125,10 @@ def test_macos_script_uses_project_tools_and_flat_archive_contract() -> None:
     assert 'PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config"' in script
     assert 'ARCHIVE_NAME="tts-preprocessor-macos.zip"' in script
     assert "tts_preprocessor.spec" in script
+    assert "tts_llm_stage.spec" in script
     assert "bin/build_binary_entrypoint.py" in script
+    assert "bin/build_llm_stage_entrypoint.py" in script
     assert "pyinstaller_runtime_hooks" not in script
-    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor'" in script
+    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-llm-stage\\ntts-preprocessor'" in script
     assert 'find "$EXTRACT_DIR" -type l' in script
     assert 'mv -f -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"' in script

@@ -14,7 +14,9 @@ STOP_SERVER_SCRIPT="$ROOT_DIR/scripts/stop_server.sh"
 CHECK_SERVER_SCRIPT="$ROOT_DIR/scripts/check_server.sh"
 LOCAL_SEMANTIC_PROBES_DIR="$ROOT_DIR/scripts/probes"
 LOCAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor.spec"
+LOCAL_LLM_STAGE_SPEC_PATH="$ROOT_DIR/tts_llm_stage.spec"
 LOCAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_binary_entrypoint.py"
+LOCAL_LLM_STAGE_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_stage_entrypoint.py"
 LOCAL_README_TEMPLATE_PATH="$ROOT_DIR/docs/Release_Package_README.txt"
 LOCAL_MACOS_ARCHIVE="$ROOT_DIR/downloads/tts-preprocessor-macos.zip"
 
@@ -90,7 +92,7 @@ validate_local_macos_archive() (
   fi
   unzip -tq "$LOCAL_MACOS_ARCHIVE"
   contents="$(unzip -Z1 "$LOCAL_MACOS_ARCHIVE" | LC_ALL=C sort)"
-  expected=$'README.txt\ntts-preprocessor'
+  expected=$'README.txt\ntts-llm-stage\ntts-preprocessor'
   if [[ "$contents" != "$expected" ]]; then
     echo "[deploy][ERROR] Unexpected macOS ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -102,8 +104,10 @@ validate_local_macos_archive() (
   unzip -q "$LOCAL_MACOS_ARCHIVE" -d "$extract_dir"
   if [[ ! -f "$extract_dir/README.txt" \
     || ! -x "$extract_dir/tts-preprocessor" \
+    || ! -x "$extract_dir/tts-llm-stage" \
     || -L "$extract_dir/README.txt" \
     || -L "$extract_dir/tts-preprocessor" \
+    || -L "$extract_dir/tts-llm-stage" \
     || -n "$(find "$extract_dir" -type l -print -quit)" ]]; then
     echo "[deploy][ERROR] macOS ZIP payload is missing, non-executable, or contains a symlink." >&2
     return 1
@@ -270,7 +274,9 @@ for required_local_file in \
   "$PROJECT_PYTHON" \
   "$PROJECT_PYINSTALLER" \
   "$LOCAL_SPEC_PATH" \
+  "$LOCAL_LLM_STAGE_SPEC_PATH" \
   "$LOCAL_ENTRYPOINT_PATH" \
+  "$LOCAL_LLM_STAGE_ENTRYPOINT_PATH" \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$REMOTE_BUILD_SCRIPT" \
   "$MACOS_BUILD_SCRIPT" \
@@ -407,9 +413,15 @@ rsync "${RSYNC_COMMON_ARGS[@]}" \
   --exclude="tests/" \
   --exclude="docs/info_Local_LLM_server.txt" \
   "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_LLM_DIR/"
+rsync "${RSYNC_COMMON_ARGS[@]}" \
+  --exclude="tests/" \
+  --exclude="docs/info_Local_LLM_server.txt" \
+  "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/LLM/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
 rsync -avz "$LOCAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_binary_entrypoint.py"
+rsync -avz "$LOCAL_LLM_STAGE_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_stage_entrypoint.py"
 rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
+rsync -avz "$LOCAL_LLM_STAGE_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_llm_stage.spec"
 rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_BUILD_SRC_DOCS_DIR/Release_Package_README.txt"
@@ -540,7 +552,7 @@ trap cleanup_temp EXIT
 [[ "$(stat -c '%s' "$temp_path")" == "$expected_size" ]]
 unzip -tq "$temp_path"
 contents="$(unzip -Z1 "$temp_path" | LC_ALL=C sort)"
-expected=$'README.txt\ntts-preprocessor'
+expected=$'README.txt\ntts-llm-stage\ntts-preprocessor'
 [[ "$contents" == "$expected" ]] || {
   echo "[deploy][ERROR] Unexpected uploaded macOS ZIP contents." >&2
   exit 1

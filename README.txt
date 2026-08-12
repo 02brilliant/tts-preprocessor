@@ -4,7 +4,9 @@
 
 - `engine/` 소스는 개발과 테스트용이다.
 - 제품 변환은 PyInstaller 실행 파일을 통해 수행한다.
-- 공식 PyInstaller entrypoint는 `bin/build_binary_entrypoint.py`다.
+- 1단계 공식 entrypoint는 `bin/build_binary_entrypoint.py`다.
+- 2단계 LLM 공식 entrypoint는 `bin/build_llm_stage_entrypoint.py`이며,
+  1단계 엔진에 의존하지 않고 `normalized_text`만 입력으로 받는다.
 - 웹서버/API는 `TTS_PREPROCESSOR_BINARY`로 지정한
   `packages/tts-preprocessor/tts-preprocessor`를 호출한다.
 - `check_server.sh`는 health/sanity check이며 semantic regression 대체물이 아니다.
@@ -65,9 +67,10 @@ bash scripts/build_macos_package.sh
 산출물:
 
 - `build/macos/dist/tts-preprocessor`
+- `build/macos/dist/tts-llm-stage`
 - `downloads/tts-preprocessor-macos.zip`
 
-ZIP 루트에는 `tts-preprocessor`, `README.txt`만 포함된다. 현재 빌드는
+ZIP 루트에는 `tts-preprocessor`, `tts-llm-stage`, `README.txt`만 포함된다. 현재 빌드는
 Apple Silicon arm64 전용이며 Intel x86_64 및 Universal Binary는 지원
 범위가 아니다. 코드 서명·공증이 없으므로 Gatekeeper 경고가 발생할 수 있다.
 통합 배포에서는 이 스크립트를 직접 실행할 필요 없이 `deploy_server.sh`가
