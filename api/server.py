@@ -52,6 +52,15 @@ from LLM.openai_client import (
     OpenAITimeoutError,
     OpenAIUpstreamHTTPError,
 )
+from LLM.vllm_client import (
+    VllmAuthenticationError,
+    VllmConnectionError,
+    VllmPermissionError,
+    VllmRateLimitError,
+    VllmResponseError,
+    VllmTimeoutError,
+    VllmUpstreamHTTPError,
+)
 from LLM.prompt_template import (
     PromptTemplateError,
 )
@@ -197,6 +206,19 @@ def llm_transform_api(req: LLMTransformRequest) -> dict:
         OpenAIConnectionError,
         OpenAIUpstreamHTTPError,
         OpenAIResponseError,
+    ) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except VllmTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except VllmRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except VllmPermissionError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (
+        VllmAuthenticationError,
+        VllmConnectionError,
+        VllmUpstreamHTTPError,
+        VllmResponseError,
     ) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

@@ -1,1 +1,1 @@
-"""Local-LLM support for the TTS comparison API."""
+"""LLM support for the TTS comparison API."""

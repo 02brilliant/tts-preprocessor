@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 from fastapi import HTTPException
 from pydantic import ValidationError
 import pytest
@@ -15,6 +17,10 @@ from LLM.gemini_client import (
 from LLM.openai_client import (
     OpenAIPermissionError,
     OpenAIRateLimitError,
+)
+from LLM.vllm_client import (
+    VllmPermissionError,
+    VllmRateLimitError,
 )
 
 
@@ -47,6 +53,7 @@ def test_existing_and_llm_api_routes_are_registered() -> None:
             "gemma4:31b",
             "gemma4:26b",
             "gemma4:e4b",
+            "gemma4-31B-it (vLLM)",
             "gemini-3.6-flash",
             "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
@@ -334,6 +341,105 @@ def test_missing_runtime_configuration_is_local_only_error(monkeypatch) -> None:
     assert "LOCAL_LLM_BASE_URL" in exc_info.value.detail
 
 
+def test_vllm_transform_routes_to_vllm_client(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    captured = {}
+
+    def fake_generate_vllm(*, model, prompt, settings):
+        captured["model"] = model
+        captured["prompt"] = prompt
+        captured["base_url"] = settings.base_url
+        captured["token_present"] = bool(settings.token)
+        return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=456.7)
+
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_vllm",
+        fake_generate_vllm,
+    )
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    result = endpoint(
+        LLMTransformRequest(
+            normalized_text="국물은 좋습니다.",
+            model="gemma4-31B-it (vLLM)",
+        )
+    )
+
+    assert result == {
+        "speech_text": "궁무른, 조씀니다.",
+        "model": "gemma4-31B-it (vLLM)",
+        "elapsed_ms": 456.7,
+    }
+    assert captured == {
+        "model": "google/gemma-4-31B-it",
+        "prompt": "INTEGRATED INPUT: 국물은 좋습니다.",
+        "base_url": "http://vllm.invalid/v1",
+        "token_present": True,
+    }
+
+
+def test_vllm_transform_runs_paragraphs_concurrently(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    captured = {"prompts": [], "max_inflight": 0}
+    inflight = 0
+    lock = threading.Lock()
+    barrier = threading.Barrier(2, timeout=2)
+
+    def fake_generate_vllm(*, model, prompt, settings):
+        nonlocal inflight
+        captured["prompts"].append(prompt)
+        with lock:
+            inflight += 1
+            captured["max_inflight"] = max(captured["max_inflight"], inflight)
+        barrier.wait()
+        with lock:
+            inflight -= 1
+        if "국물은 좋습니다." in prompt:
+            return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=40.0)
+        if "밥은 따뜻합니다." in prompt:
+            return GenerationResult(text="바븐, 따뜨탐니다.", elapsed_ms=50.0)
+        raise AssertionError(f"unexpected prompt: {prompt}")
+
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_vllm",
+        fake_generate_vllm,
+    )
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    result = endpoint(
+        LLMTransformRequest(
+            normalized_text="국물은 좋습니다.\n\n밥은 따뜻합니다.",
+            model="gemma4-31B-it (vLLM)",
+        )
+    )
+
+    assert result["speech_text"] == "궁무른, 조씀니다.\n\n바븐, 따뜨탐니다."
+    assert result["model"] == "gemma4-31B-it (vLLM)"
+    assert captured["max_inflight"] == 2
+    assert len(captured["prompts"]) == 2
+
+
+def test_missing_vllm_configuration_is_vllm_only_error(monkeypatch) -> None:
+    monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLLM_TOKEN", raising=False)
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gemma4-31B-it (vLLM)",
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert "VLLM_BASE_URL" in exc_info.value.detail
+
+
 def test_missing_openai_configuration_is_openai_only_error(monkeypatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     endpoint = get_endpoint("/api/llm/transform", "POST")
@@ -429,6 +535,66 @@ def test_openai_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
     assert exc_info.value.status_code == 429
     assert exc_info.value.detail == (
         "OpenAI API quota or rate limit was exceeded."
+    )
+
+
+def test_vllm_rate_limit_maps_to_too_many_requests(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+
+    def fake_generate_vllm(**_kwargs):
+        raise VllmRateLimitError(
+            "vLLM server quota or rate limit was exceeded."
+        )
+
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_vllm",
+        fake_generate_vllm,
+    )
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gemma4-31B-it (vLLM)",
+            )
+        )
+
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.detail == (
+        "vLLM server quota or rate limit was exceeded."
+    )
+
+
+def test_vllm_permission_error_maps_to_service_unavailable(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+
+    def fake_generate_vllm(**_kwargs):
+        raise VllmPermissionError(
+            "vLLM token does not have permission to use the selected model."
+        )
+
+    monkeypatch.setattr(
+        server_module.stage_engine,
+        "generate_vllm",
+        fake_generate_vllm,
+    )
+    endpoint = get_endpoint("/api/llm/transform", "POST")
+
+    with pytest.raises(HTTPException) as exc_info:
+        endpoint(
+            LLMTransformRequest(
+                normalized_text="원고",
+                model="gemma4-31B-it (vLLM)",
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == (
+        "vLLM token does not have permission to use the selected model."
     )
 
 

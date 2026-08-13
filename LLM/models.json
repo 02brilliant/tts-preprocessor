@@ -16,6 +16,11 @@
       "upstream_model": "gemma4:e4b"
     },
     {
+      "id": "gemma4-31B-it (vLLM)",
+      "provider": "vllm",
+      "upstream_model": "google/gemma-4-31B-it"
+    },
+    {
       "id": "gemini-3.6-flash",
       "provider": "gemini",
       "upstream_model": "gemini-3.6-flash"

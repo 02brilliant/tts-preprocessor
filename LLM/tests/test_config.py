@@ -12,6 +12,7 @@ from LLM.config import (
     load_model_config,
     load_openai_settings,
     load_runtime_settings,
+    load_vllm_settings,
 )
 
 
@@ -22,6 +23,7 @@ def test_model_config_has_fixed_models_and_default() -> None:
         "gemma4:31b",
         "gemma4:26b",
         "gemma4:e4b",
+        "gemma4-31B-it (vLLM)",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
@@ -31,6 +33,8 @@ def test_model_config_has_fixed_models_and_default() -> None:
     )
     assert config.default_model == "gemma4:31b"
     assert config.get("gemma4:e4b").provider == "local"
+    assert config.get("gemma4-31B-it (vLLM)").provider == "vllm"
+    assert config.get("gemma4-31B-it (vLLM)").upstream_model == "google/gemma-4-31B-it"
     assert config.get("gemini-3.6-flash").provider == "gemini"
     assert config.get("gpt-5.6-luna (medium)").provider == "openai"
     assert config.get("gpt-5.6-luna (medium)").reasoning_effort == "medium"
@@ -144,6 +148,55 @@ def test_gemini_settings_load_key_and_timeout(monkeypatch) -> None:
     assert settings.timeout_seconds == 12.5
 
 
+def test_vllm_settings_require_base_url_and_token(monkeypatch) -> None:
+    monkeypatch.delenv("VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("VLLM_TOKEN", raising=False)
+
+    with pytest.raises(ConfigurationError, match="VLLM_BASE_URL"):
+        load_vllm_settings()
+
+
+def test_vllm_settings_require_token(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.delenv("VLLM_TOKEN", raising=False)
+
+    with pytest.raises(ConfigurationError, match="VLLM_TOKEN"):
+        load_vllm_settings()
+
+
+def test_vllm_settings_load_base_url_token_and_timeout(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1/")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    monkeypatch.setenv("VLLM_TIMEOUT_SECONDS", "45.5")
+    monkeypatch.delenv("VLLM_MAX_PARALLEL_PARAGRAPHS", raising=False)
+
+    settings = load_vllm_settings()
+
+    assert settings.base_url == "http://vllm.invalid/v1"
+    assert settings.token == "dummy-vllm-test-token"
+    assert settings.timeout_seconds == 45.5
+    assert settings.max_parallel_paragraphs == 8
+
+
+def test_vllm_settings_load_max_parallel_paragraphs(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    monkeypatch.setenv("VLLM_MAX_PARALLEL_PARAGRAPHS", "4")
+
+    settings = load_vllm_settings()
+
+    assert settings.max_parallel_paragraphs == 4
+
+
+def test_vllm_settings_reject_invalid_max_parallel_paragraphs(monkeypatch) -> None:
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    monkeypatch.setenv("VLLM_MAX_PARALLEL_PARAGRAPHS", "0")
+
+    with pytest.raises(ConfigurationError, match="VLLM_MAX_PARALLEL_PARAGRAPHS"):
+        load_vllm_settings()
+
+
 def test_openai_settings_require_api_key(monkeypatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
@@ -194,6 +247,7 @@ def test_deprecated_stage_prompts_are_not_runtime_dependencies() -> None:
         Path("api/server.py"),
         Path("LLM/tests/smoke_gemini.py"),
         Path("LLM/tests/smoke_openai.py"),
+        Path("LLM/tests/smoke_vllm.py"),
     )
 
     for source_path in runtime_sources:

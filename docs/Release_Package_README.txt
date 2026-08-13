@@ -56,6 +56,7 @@
 - 로컬 모델: `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_TOKEN`
 - Gemini: `GEMINI_API_KEY`
 - OpenAI: `OPENAI_API_KEY`
+- vLLM: `VLLM_BASE_URL`, `VLLM_TOKEN`, 선택 `VLLM_MAX_PARALLEL_PARAGRAPHS`
 
 기본 모델은 패키지에 포함된 모델 설정의 기본값입니다. 다른 모델을 선택하려면
 `--model`에 해당 모델 ID를 전달합니다. `--check`는 네트워크 호출 없이 2단계

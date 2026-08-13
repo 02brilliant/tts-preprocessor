@@ -133,6 +133,9 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert 'GEMINI_API_KEY' in start_server
     assert 'OPENAI_LLM_CONFIGURED=false' in start_server
     assert 'OPENAI_API_KEY' in start_server
+    assert 'VLLM_LLM_CONFIGURED=false' in start_server
+    assert 'VLLM_BASE_URL' in start_server
+    assert 'VLLM_TOKEN' in start_server
     assert (
         'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"'
         in remote_build

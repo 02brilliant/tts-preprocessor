@@ -68,6 +68,14 @@ class OpenAISettings:
     reasoning_effort: str
 
 
+@dataclass(frozen=True)
+class VllmSettings:
+    base_url: str
+    token: str
+    timeout_seconds: float
+    max_parallel_paragraphs: int = 8
+
+
 def _load_positive_timeout(environment_name: str, default: str = "300") -> float:
     timeout_raw = os.getenv(environment_name, default).strip()
     try:
@@ -77,6 +85,17 @@ def _load_positive_timeout(environment_name: str, default: str = "300") -> float
     if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ConfigurationError(f"{environment_name} must be greater than zero.")
     return timeout_seconds
+
+
+def _load_positive_int(environment_name: str, default: str) -> int:
+    raw_value = os.getenv(environment_name, default).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ConfigurationError(f"{environment_name} must be an integer.") from exc
+    if value <= 0:
+        raise ConfigurationError(f"{environment_name} must be greater than zero.")
+    return value
 
 
 def load_model_config(path: Path = MODEL_CONFIG_PATH) -> ModelConfig:
@@ -106,7 +125,7 @@ def load_model_config(path: Path = MODEL_CONFIG_PATH) -> ModelConfig:
         if (
             not isinstance(model_id, str)
             or not model_id.strip()
-            or provider not in {"local", "gemini", "openai"}
+            or provider not in {"local", "gemini", "openai", "vllm"}
             or not isinstance(upstream_model, str)
             or not upstream_model.strip()
             or (
@@ -169,6 +188,29 @@ def load_gemini_settings() -> GeminiSettings:
     return GeminiSettings(
         api_key=api_key,
         timeout_seconds=_load_positive_timeout("GEMINI_TIMEOUT_SECONDS"),
+    )
+
+
+def load_vllm_settings() -> VllmSettings:
+    base_url = os.getenv("VLLM_BASE_URL", "").strip()
+    token = os.getenv("VLLM_TOKEN", "").strip()
+    if not base_url:
+        raise ConfigurationError(
+            "Required environment variable VLLM_BASE_URL is missing."
+        )
+    if not token:
+        raise ConfigurationError(
+            "Required environment variable VLLM_TOKEN is missing."
+        )
+
+    return VllmSettings(
+        base_url=base_url.rstrip("/"),
+        token=token,
+        timeout_seconds=_load_positive_timeout("VLLM_TIMEOUT_SECONDS"),
+        max_parallel_paragraphs=_load_positive_int(
+            "VLLM_MAX_PARALLEL_PARAGRAPHS",
+            "8",
+        ),
     )
 
 

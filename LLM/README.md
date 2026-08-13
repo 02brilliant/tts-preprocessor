@@ -1,4 +1,4 @@
-# Local, Gemini, and OpenAI LLM API integration
+# Local, Gemini, OpenAI, and vLLM API integration
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
 포트에서 `/api/llm/models`와 `/api/llm/transform`을 제공한다.
@@ -39,6 +39,7 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
   읽기·발음·운율 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
 - `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
+- `vllm_client.py`: vLLM OpenAI-compatible Chat Completions 호출 및 응답/오류 처리
 - `response_validation.py`: 통합 LLM 출력 불변 조건 검증
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
@@ -98,11 +99,33 @@ GET /api/llm/models
 - `OPENAI_TIMEOUT_SECONDS`: OpenAI API 제한시간(초), 기본값 `300`
 - `OPENAI_REASONING_EFFORT`: GPT-5.6 추론 강도. `none`, `low`, `medium`,
   `high`, `xhigh`, `max` 중 하나이며 기본값은 `medium`
+- `VLLM_BASE_URL`: vLLM OpenAI-compatible base URL
+- `VLLM_TOKEN`: vLLM bearer token
+- `VLLM_TIMEOUT_SECONDS`: vLLM 제한시간(초), 기본값 `300`
+- `VLLM_MAX_PARALLEL_PARAGRAPHS`: vLLM 문단 동시 요청 수, 기본값 `8`
 
 토큰과 API 키를 소스, 명령행 인자, Git 또는 브라우저에 넣지 않는다. Gemini
 호출은 기존 API 서버가 `x-goog-api-key` 헤더를 사용해 서버 측에서만 수행한다.
-OpenAI 호출도 기존 API 서버가 `Authorization: Bearer` 헤더를 사용해 서버
-측에서만 수행한다.
+OpenAI와 vLLM 호출도 기존 API 서버가 `Authorization: Bearer` 헤더를 사용해
+서버 측에서만 수행한다.
+
+## vLLM Gemma 4 31B IT
+
+웹 모델 선택기에는 `gemma4-31B-it (vLLM)`을 별도 항목으로 제공하며, upstream
+모델 ID는 서버가 공개한 `google/gemma-4-31B-it`이다. 기존 로컬 `gemma4:31b`와는
+다른 공급자이며, 호출에는 OpenAI-compatible
+`POST {VLLM_BASE_URL}/v1/chat/completions`를 사용한다. `VLLM_BASE_URL`이 이미
+`/v1` 또는 `/v1/chat/completions`로 끝나면 경로를 중복하지 않는다.
+`/api/v1/apps/...`처럼 중간에 `/v1`이 있어도 앱 base URL로 두고 뒤에
+`/v1/chat/completions`를 붙인다. 입력 `normalized_text`에 문단 구분 줄바꿈이
+있으면 문단마다 통합 프롬프트를 만들어 동시에 요청한다. 코드 펜스·JSON-like
+객체 내부 줄바꿈은 문단 경계로 나누지 않는다. 응답은 원래 줄바꿈을 그대로
+끼워 맞춘 뒤 기존 `response_validation.py` 계약을 문서 전체에 적용한다.
+문단이 하나이거나 동시 요청 한도가 1이면 기존처럼 한 번만 호출한다.
+`VLLM_MAX_PARALLEL_PARAGRAPHS`로 동시 요청 수를 조절한다. 각 요청은 chat
+`user` 메시지로 프롬프트를 전달하고, 응답의 첫 `choices[].message.content`를
+사용한다. 이 서비스는 요청 간 대화 상태를 사용하지 않으므로 `stream=false`로
+호출한다.
 
 ## OpenAI GPT-5.6 Luna
 
@@ -142,10 +165,11 @@ editor ~/tts-preprocessor/config/llm.env
 ```
 
 파일에는 로컬 LLM용 `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_TOKEN`, Gemini용
-`GEMINI_API_KEY` 또는 OpenAI용 `OPENAI_API_KEY` 중 사용할 공급자의 설정을
-`KEY=value` 형식으로 둔다. 필요하면 각 공급자의 timeout과 OpenAI 추론 강도를
-설정한다. 최소 한 공급자가 완전히 설정되어야 서버가 시작된다. 이후에는
-기존과 같이 `bash scripts/deploy_server.sh`를 실행한다.
+`GEMINI_API_KEY`, OpenAI용 `OPENAI_API_KEY`, vLLM용 `VLLM_BASE_URL`과
+`VLLM_TOKEN` 중 사용할 공급자의 설정을 `KEY=value` 형식으로 둔다. 필요하면
+각 공급자의 timeout과 OpenAI 추론 강도를 설정한다. 최소 한 공급자가 완전히
+설정되어야 서버가 시작된다. 이후에는 기존과 같이 `bash scripts/deploy_server.sh`를
+실행한다.
 시작 스크립트가 이 파일을 읽어 기존 API 서버 프로세스에만 환경변수로 전달한다.
 
 OpenAI만 사용할 때의 예시는 다음과 같다. 실제 키 값은 운영 서버에서 직접
@@ -188,6 +212,25 @@ PYTHONPATH=. .venv/bin/python LLM/tests/smoke_openai.py
 이 smoke 검증은 설정된 OpenAI 모델마다 통합 요청을 한 번 전송하므로 API
 사용량이 발생한다. 성공 시 모델 ID, 출력 길이, 소요 시간만 출력하며 응답
 본문과 API 키는 출력하지 않는다.
+
+실제 vLLM 연결은 `VLLM_BASE_URL`과 `VLLM_TOKEN`이 설정된 셸에서 다음으로
+확인한다.
+
+```sh
+PYTHONPATH=. .venv/bin/python LLM/tests/smoke_vllm.py
+```
+
+이 smoke 검증은 설정된 vLLM 모델마다 통합 요청을 한 번 전송한다. 성공 시
+모델 ID, 출력 길이, 소요 시간만 출력하며 응답 본문과 토큰은 출력하지 않는다.
+
+### vLLM 오류
+
+- `vLLM server authentication failed.`: `VLLM_TOKEN` 값과 서버 인증 설정을
+  확인한다.
+- `vLLM token does not have permission ...`: 토큰이 선택한 upstream 모델에
+  접근할 수 있는지 확인한다.
+- `vLLM server quota or rate limit was exceeded.`: 서버 사용 한도와 rate
+  limit을 확인한 뒤 재시도한다.
 
 ### OpenAI 오류
 
