@@ -18,61 +18,19 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from api.binary_runtime import (
     BinaryRuntimeError,
+    LLMStageRuntimeError,
+    list_llm_stage_models,
     resolve_binary_path,
+    resolve_llm_stage_binary_path,
+    run_llm_stage_binary,
     run_transform_binary,
     run_transform_binary_debug,
 )
-from LLM.client import (
-    LLMConnectionError,
-    LLMResponseError,
-    LLMTimeoutError,
-    LLMUpstreamHTTPError,
-)
-from LLM.config import (
-    ConfigurationError,
-    load_model_config,
-)
-from LLM import stage_engine
-from LLM.gemini_client import (
-    GeminiAPIKeyRestrictionError,
-    GeminiAuthenticationError,
-    GeminiConnectionError,
-    GeminiRateLimitError,
-    GeminiResponseError,
-    GeminiServiceDisabledError,
-    GeminiTimeoutError,
-    GeminiUpstreamHTTPError,
-)
-from LLM.openai_client import (
-    OpenAIAuthenticationError,
-    OpenAIConnectionError,
-    OpenAIPermissionError,
-    OpenAIRateLimitError,
-    OpenAIResponseError,
-    OpenAITimeoutError,
-    OpenAIUpstreamHTTPError,
-)
-from LLM.vllm_client import (
-    VllmAuthenticationError,
-    VllmConnectionError,
-    VllmPermissionError,
-    VllmRateLimitError,
-    VllmResponseError,
-    VllmTimeoutError,
-    VllmUpstreamHTTPError,
-)
-from LLM.prompt_template import (
-    PromptTemplateError,
-)
-from LLM.response_validation import (
-    LLMStageContractError,
-)
-from LLM.stage_engine import UnsupportedLLMModelError
 
 app = FastAPI()
 
-# Production /api/transform calls the packaged runtime binary. LLM support is
-# isolated under LLM/ and routes only to the selected configured provider.
+# Production /api/transform and /api/llm/transform call packaged binaries.
+# LLM provider credentials stay in process environment from llm.env.
 
 # ✅ web과 downloads를 함께 공개
 app.mount("/web", StaticFiles(directory="web", html=True), name="web")
@@ -143,89 +101,30 @@ def transform_api(req: TransformRequest) -> dict:
 @app.get("/api/llm/models")
 def llm_models_api() -> dict:
     try:
-        model_config = load_model_config()
-    except ConfigurationError as exc:
+        return list_llm_stage_models()
+    except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {
-        "models": list(model_config.models),
-        "default_model": model_config.default_model,
-    }
+    except BinaryRuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.api_route("/api/llm/transform", methods=["POST"])
 def llm_transform_api(req: LLMTransformRequest) -> dict:
     try:
-        result = stage_engine.transform(req.normalized_text, model=req.model)
-    except UnsupportedLLMModelError as exc:
+        result = run_llm_stage_binary(req.normalized_text, model=req.model)
+    except TypeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except HTTPException:
-        raise
-    except ConfigurationError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except PromptTemplateError as exc:
+    except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    except LLMTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except (LLMConnectionError, LLMUpstreamHTTPError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except LLMStageContractError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "message": str(exc),
-                "stage": exc.stage,
-                f"{exc.stage}_text": exc.output_text,
-            },
-        ) from exc
-    except LLMResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except GeminiTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except GeminiRateLimitError as exc:
-        raise HTTPException(status_code=429, detail=str(exc)) from exc
-    except GeminiServiceDisabledError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except GeminiAPIKeyRestrictionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except (
-        GeminiAuthenticationError,
-        GeminiConnectionError,
-        GeminiUpstreamHTTPError,
-        GeminiResponseError,
-    ) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except OpenAITimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except OpenAIRateLimitError as exc:
-        raise HTTPException(status_code=429, detail=str(exc)) from exc
-    except OpenAIPermissionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except (
-        OpenAIAuthenticationError,
-        OpenAIConnectionError,
-        OpenAIUpstreamHTTPError,
-        OpenAIResponseError,
-    ) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except VllmTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except VllmRateLimitError as exc:
-        raise HTTPException(status_code=429, detail=str(exc)) from exc
-    except VllmPermissionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except (
-        VllmAuthenticationError,
-        VllmConnectionError,
-        VllmUpstreamHTTPError,
-        VllmResponseError,
-    ) as exc:
+    except LLMStageRuntimeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except BinaryRuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return {
-        "speech_text": result.speech_text,
-        "model": result.model,
-        "elapsed_ms": round(result.elapsed_ms, 3),
+        "speech_text": result["speech_text"],
+        "model": result["model"],
+        "elapsed_ms": round(result["elapsed_ms"], 3),
     }
 
 
@@ -258,7 +157,9 @@ def main() -> None:
     host = os.getenv("TTS_PREPROCESSOR_HOST", "0.0.0.0")
     port = int(os.getenv("TTS_PREPROCESSOR_PORT", "8010"))
     binary_path = resolve_binary_path()
+    llm_stage_binary_path = resolve_llm_stage_binary_path()
     print(f"Using runtime binary: {binary_path}")
+    print(f"Using LLM stage binary: {llm_stage_binary_path}")
     uvicorn.run(app, host=host, port=port)
 
 

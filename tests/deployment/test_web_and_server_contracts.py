@@ -125,8 +125,10 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
 
     assert "from api.binary_runtime import" in api_server
     assert "from engine" not in api_server
+    assert "from LLM" not in api_server
     assert 'app.mount("/downloads"' in api_server
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
+    assert 'TTS_LLM_STAGE_BINARY="$LATEST_LLM_STAGE"' in start_server
     assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
     assert 'LOCAL_LLM_CONFIGURED=false' in start_server
     assert 'GEMINI_LLM_CONFIGURED=false' in start_server

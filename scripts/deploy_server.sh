@@ -298,6 +298,7 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/openai_client.py" \
   "$ROOT_DIR/LLM/vllm_client.py" \
   "$ROOT_DIR/LLM/paragraph_parallel.py" \
+  "$ROOT_DIR/LLM/cli_protocol.py" \
   "$ROOT_DIR/LLM/models.json" \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/response_validation.py" \

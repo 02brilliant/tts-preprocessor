@@ -171,12 +171,13 @@ JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
 This validation is a safety gate; it does not authorize rewriting protected
 surfaces or falling back to an unvalidated model response.
 
-`LLM/docs/LLM_prompt.txt` is the single active prompt and is deployed with the
-API runtime, independently of the packaged rule binary. Prompt-only policy
-updates therefore require deploying the current `LLM/` runtime files; rebuilding
-the rule binary is neither required nor evidence that the new prompt is live.
-After deployment, the active server must be checked through
-`/api/llm/transform` when provider credentials and model access are available.
+`LLM/docs/LLM_prompt.txt` is packaged inside `tts-llm-stage`. Production API
+MUST invoke that executable for `/api/llm/models` and `/api/llm/transform`
+instead of importing `LLM.*` source. Prompt or model-registry updates therefore
+require rebuilding and replacing `tts-llm-stage`. Provider credentials remain
+in `config/llm.env` and MUST NOT be embedded in either executable. After
+deployment, the active server must be checked through `/api/llm/transform`
+when provider credentials and model access are available.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

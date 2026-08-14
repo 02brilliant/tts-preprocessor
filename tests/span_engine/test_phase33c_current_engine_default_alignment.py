@@ -58,6 +58,8 @@ def test_phase33c_api_server_does_not_import_engine_source_directly() -> None:
     assert "from api.binary_runtime import" in text
     assert "from engine." not in text
     assert "import engine." not in text
+    assert "from LLM" not in text
+    assert "import LLM" not in text
 
 
 def test_phase33c_start_server_allows_binary_override_without_breaking_packaged_default() -> None:

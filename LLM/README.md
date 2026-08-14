@@ -1,7 +1,9 @@
 # Local, Gemini, OpenAI, and vLLM API integration
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
-포트에서 `/api/llm/models`와 `/api/llm/transform`을 제공한다.
+포트에서 `/api/llm/models`와 `/api/llm/transform`을 제공하며, 두 경로 모두
+패키징된 `tts-llm-stage` 실행모듈을 호출한다. 공급자 URL·토큰은 실행모듈에
+넣지 않고 `llm.env`에서 API 프로세스 환경으로 전달한다.
 
 규칙 기반 엔진과 LLM은 다음 순서로만 연결한다.
 
@@ -12,7 +14,8 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 LLM은 선택 모델로 한 번만 호출한다. 규칙 기반 `normalized_text` 계약과
 source-free binary runtime은 이 통합으로 변경되지 않는다.
-model을 생략하면 기본 로컬 모델 `gemma4:31b`를 사용한다. 규칙 확정
+운영 API는 1단계 `tts-preprocessor`와 2단계 `tts-llm-stage` 실행모듈만
+교체하면 된다. model을 생략하면 기본 로컬 모델 `gemma4:31b`를 사용한다. 규칙 확정
 읽기를 위한 일반 provenance 전달, 반복 안정성 측정, 자동 재시도는
 사용하지 않는다. 서버는 1단계의 `normalized_text`를 임시 토큰 치환 없이
 그대로 LLM에 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
@@ -44,8 +47,8 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
 
-활성 프롬프트는 요청마다 UTF-8로 다시 읽는다. 파일을 수정하면 서버를
-재시작하지 않아도 다음 요청부터 반영된다.
+활성 프롬프트는 2단계 실행모듈에 패키징된다. 프롬프트나 모델 목록을 바꾸려면
+`tts-llm-stage`를 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
 
 ## API 계약
 

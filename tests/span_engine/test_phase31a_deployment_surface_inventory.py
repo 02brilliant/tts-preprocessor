@@ -89,6 +89,7 @@ def test_phase31a_api_server_routes_through_binary_runtime_without_direct_engine
 
     assert "api.binary_runtime" in imports
     assert all(not name.startswith("engine") for name in imports)
+    assert all(not name.startswith("LLM") for name in imports)
     assert "/api/transform" in post_routes
     assert "/web" in mounts
     assert "/downloads" in mounts
@@ -124,6 +125,7 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     assert '"$downloads_dir/tts-preprocessor-windows.zip"' in deploy_script
     assert "subprocess.run" in binary_runtime
     assert "TTS_PREPROCESSOR_BINARY" in binary_runtime
+    assert "TTS_LLM_STAGE_BINARY" in binary_runtime
 
 
 def test_phase31a_build_package_is_packaging_only() -> None:

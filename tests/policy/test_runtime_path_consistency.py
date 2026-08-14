@@ -35,6 +35,9 @@ def test_runtime_entrypoints_do_not_import_engine_sources():
         assert not any(module == "engine" or module.startswith("engine.") for module in imports), (
             f"{path} imports engine sources directly: {sorted(imports)}"
         )
+        assert not any(module == "LLM" or module.startswith("LLM.") for module in imports), (
+            f"{path} imports LLM sources directly: {sorted(imports)}"
+        )
 
 
 def test_api_server_delegates_to_binary_runtime(monkeypatch):
@@ -58,15 +61,24 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
         seen.append("resolved")
         return PROJECT_ROOT / "dist" / "tts_preprocessor"
 
+    def fake_resolve_llm_stage_binary_path() -> Path:
+        seen.append("resolved-llm")
+        return PROJECT_ROOT / "dist" / "tts-llm-stage"
+
     def fake_uvicorn_run(*args, **kwargs) -> None:
         seen.append("uvicorn")
 
     monkeypatch.setattr(api_server, "resolve_binary_path", fake_resolve_binary_path)
+    monkeypatch.setattr(
+        api_server,
+        "resolve_llm_stage_binary_path",
+        fake_resolve_llm_stage_binary_path,
+    )
     monkeypatch.setattr(api_server.uvicorn, "run", fake_uvicorn_run)
 
     api_server.main()
 
-    assert seen == ["resolved", "uvicorn"]
+    assert seen == ["resolved", "resolved-llm", "uvicorn"]
 
 
 def test_cli_wrapper_delegates_to_binary_runtime(monkeypatch, capsys):

@@ -43,6 +43,15 @@ else
     exit 1
   fi
 fi
+if [[ -n "${TTS_LLM_STAGE_BINARY:-}" ]]; then
+  LATEST_LLM_STAGE="$TTS_LLM_STAGE_BINARY"
+else
+  LATEST_LLM_STAGE="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-llm-stage"
+fi
+if [[ ! -f "$LATEST_LLM_STAGE" || ! -x "$LATEST_LLM_STAGE" ]]; then
+  echo "No packaged LLM stage binary found at $LATEST_LLM_STAGE" >&2
+  exit 1
+fi
 
 if [[ -f "$PID_FILE" ]]; then
   EXISTING_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
@@ -94,13 +103,14 @@ nohup env \
   TTS_PREPROCESSOR_HOST="$HOST" \
   TTS_PREPROCESSOR_PORT="$PORT" \
   TTS_PREPROCESSOR_BINARY="$LATEST_BINARY" \
+  TTS_LLM_STAGE_BINARY="$LATEST_LLM_STAGE" \
   "$PYTHON_BIN" -m api.server >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 
 for _ in $(seq 1 20); do
   if curl -fsS "http://127.0.0.1:${PORT}/web/" >/dev/null 2>&1; then
-    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY"
+    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY LLM_STAGE=$LATEST_LLM_STAGE"
     exit 0
   fi
   sleep 1
