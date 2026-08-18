@@ -102,9 +102,6 @@ def test_batch4_apartment_identifier_allowlist() -> None:
     "text",
     [
         "01부",
-        "+3동",
-        "-3호",
-        "1.5판",
         "1,00단",
         "3A등",
         "01척",
@@ -121,6 +118,20 @@ def test_batch4_malformed_surfaces_defer_without_partial_conversion(
     log = debug["trace"]["contextual_decision_logs"][0]
     assert log["decision"] == "deferred"
     assert log["blocking_reason"]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3동", "플러스 삼 동"),
+        ("-3호", "마이너스 삼 호"),
+        ("1.5판", "일쩜오 판"),
+    ],
+)
+def test_batch4_signed_and_decimal_use_residual_reading(
+    text: str, expected: str
+) -> None:
+    assert _debug(text)["normalized_text"] == expected
 
 
 @pytest.mark.parametrize(

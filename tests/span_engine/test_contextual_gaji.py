@@ -54,11 +54,8 @@ def test_gaji_particles_multiple_surfaces_and_hangul_preserve(
     "text",
     [
         "01가지",
-        "+4가지",
-        "-4가지",
         "1,00가지",
         "4A가지",
-        "제4가지",
     ],
 )
 def test_gaji_malformed_surface_is_deferred_atomically(text: str) -> None:
@@ -73,6 +70,24 @@ def test_gaji_malformed_surface_is_deferred_atomically(text: str) -> None:
         in {"number", "signed_number", "decimal", "numeric_suffix", "counter_noun"}
         for claim in claims
     )
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+4가지", "플러스 사 가지"),
+        ("-4가지", "마이너스 사 가지"),
+    ],
+)
+def test_gaji_signed_surfaces_use_residual_reading(text: str, expected: str) -> None:
+    assert transform(text) == expected
+
+
+def test_gaji_prefixed_ordinal_uses_attached_sino_reading() -> None:
+    debug = transform_debug("제4가지")
+    assert debug["normalized_text"] == "제 사가지"
+    claims = debug["debug"]["trace"]["claim_logs"]
+    assert any(claim["owner"] == "numeric_suffix" for claim in claims)
 
 
 def test_gaji_valid_decimal_uses_sino_decimal_reading() -> None:

@@ -30,7 +30,7 @@ def test_hybrid_counter_positive_and_boundary_cases(text: str, expected: str):
         ("21원", "이십일 원"),
         ("57개", "오십칠 개"),
         ("100명", "백 명"),
-        ("101권", "101권"),
+        ("101권", "백일 권"),
     ],
 )
 def test_hybrid_counter_negative_and_regression_cases(text: str, expected: str):

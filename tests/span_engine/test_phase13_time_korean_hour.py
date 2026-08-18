@@ -139,29 +139,29 @@ def test_korean_hour_time_safe_context_tail(text: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected"),
     [
-        "3시리즈",
-        "A3시",
-        "3시abc",
-        "99시",
-        "99시23분45초",
-        "12시리즈",
-        "12시스템",
-        "12시장",
-        "12시험",
-        "12시즌",
-        "12시abc",
-        "낮 12시리즈",
-        "낮 12시스템",
-        "낮 12시장",
-        "낮 12시험",
-        "낮 12시즌",
-        "낮 12시abc",
+        ("3시리즈", "삼 시리즈"),
+        ("A3시", "A3시"),
+        ("3시abc", "3시abc"),
+        ("99시", "구십구 시"),
+        ("99시23분45초", "99시23분45초"),
+        ("12시리즈", "십이 시리즈"),
+        ("12시스템", "십이 시스템"),
+        ("12시장", "십이 시장"),
+        ("12시험", "십이 시험"),
+        ("12시즌", "십이 시즌"),
+        ("12시abc", "12시abc"),
+        ("낮 12시리즈", "낮 십이 시리즈"),
+        ("낮 12시스템", "낮 십이 시스템"),
+        ("낮 12시장", "낮 십이 시장"),
+        ("낮 12시험", "낮 십이 시험"),
+        ("낮 12시즌", "낮 십이 시즌"),
+        ("낮 12시abc", "낮 12시abc"),
     ],
 )
-def test_invalid_or_attached_korean_time_preserve(text: str) -> None:
-    assert transform(text) == text
+def test_invalid_or_attached_korean_time_preserve(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 def test_korean_hour_time_safe_tail_trace() -> None:

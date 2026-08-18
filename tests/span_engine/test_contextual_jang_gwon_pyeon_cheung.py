@@ -31,6 +31,13 @@ def _debug(text: str) -> dict:
         ("3층에 산다", "삼 층에 산다", "floor_location"),
         ("3층에서 만났다", "삼 층에서 만났다", "floor_location"),
         ("지하 3층", "지하 삼 층", "floor_location"),
+        ("지상 3층", "지상 삼 층", "floor_location"),
+        (
+            "지하 1층부터 지상 3층까지",
+            "지하 일 층부터 지상 삼 층까지",
+            "floor_location",
+        ),
+        ("지상3층", "지상삼 층", "floor_location"),
     ],
 )
 def test_batch5_exact_anchors_confirm_meaning(
@@ -49,6 +56,21 @@ def test_batch5_exact_anchors_confirm_meaning(
     assert log["reentry_blocked"] is True
 
 
+def test_basement_to_above_ground_floor_span_confirms_both_floors() -> None:
+    debug = _debug("지하 1층부터 지상 3층까지")
+    assert debug["normalized_text"] == "지하 일 층부터 지상 삼 층까지"
+    cheung_logs = [
+        log
+        for log in debug["trace"]["contextual_decision_logs"]
+        if log["unit"] == "층"
+    ]
+    assert [log["decision"] for log in cheung_logs] == ["confirmed", "confirmed"]
+    assert {log["matched_anchor"] for log in cheung_logs} == {
+        "location_prefix:지하",
+        "location_prefix:지상",
+    }
+
+
 @pytest.mark.parametrize(
     "text",
     [
@@ -62,6 +84,7 @@ def test_batch5_exact_anchors_confirm_meaning(
         "3층을 내려갔다",
         "3층이 무너졌다",
         "건물은 3층이다",
+        "1층부터 3층까지",
     ],
 )
 def test_batch5_bare_or_ambiguous_surfaces_defer_atomically(text: str) -> None:
@@ -82,7 +105,7 @@ def test_batch5_bare_or_ambiguous_surfaces_defer_atomically(text: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["01장", "+3권", "-3편", "1.5층", "1,00장", "3A권"],
+    ["01장", "1,00장", "3A권"],
 )
 def test_batch5_malformed_surfaces_defer_without_partial_conversion(
     text: str,
@@ -93,6 +116,20 @@ def test_batch5_malformed_surfaces_defer_without_partial_conversion(
         "contextual_number_unit"
     ]
     assert debug["trace"]["contextual_decision_logs"][0]["decision"] == "deferred"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3권", "플러스 삼 권"),
+        ("-3편", "마이너스 삼 편"),
+        ("1.5층", "일쩜오 층"),
+    ],
+)
+def test_batch5_signed_and_decimal_use_residual_reading(
+    text: str, expected: str
+) -> None:
+    assert _debug(text)["normalized_text"] == expected
 
 
 @pytest.mark.parametrize(

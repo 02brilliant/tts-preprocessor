@@ -51,6 +51,8 @@ check_post_transform() {
   # this checks the packaged binary path and HTTP wiring are alive.
   # It is not a semantic regression gate; feature validation belongs in
   # scripts/probes/run_semantic_probes.py --suite core --runtime api --api ...
+  # Registered unit freshness such as ㎘, 1만㎡, 수 km, and 지상 3층 is
+  # owned by that core suite, not by this wiring canary.
   echo "[check] API transform: ${TRANSFORM_URL}"
   if ! curl -fsS \
     -X POST "$TRANSFORM_URL" \
@@ -84,7 +86,7 @@ check_llm_models() {
     exit 1
   fi
 
-  if ! grep -Fq '"default_model":"gemma4:31b"' "$output_file"; then
+  if ! grep -Fq '"default_model":"gemma4-31B-it (vLLM)"' "$output_file"; then
     echo "[FAIL] LLM model list response does not contain the configured default model" >&2
     exit 1
   fi
@@ -92,7 +94,7 @@ check_llm_models() {
 
 check_post_llm_transform() {
   local output_file="$1"
-  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4:31b"}'
+  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4-31B-it (vLLM)"}'
 
   echo "[check] Integrated LLM transform: ${LLM_TRANSFORM_URL}"
   if ! curl -fsS \

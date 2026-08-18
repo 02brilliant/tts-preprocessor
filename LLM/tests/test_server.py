@@ -37,7 +37,7 @@ def test_existing_and_llm_api_routes_are_registered(monkeypatch) -> None:
                 "gpt-5.6-luna (low)",
                 "gpt-5.6-luna (none)",
             ],
-            "default_model": "gemma4:31b",
+            "default_model": "gemma4-31B-it (vLLM)",
         },
     )
     assert get_endpoint("/api/transform", "POST")
@@ -54,7 +54,7 @@ def test_existing_and_llm_api_routes_are_registered(monkeypatch) -> None:
             "gpt-5.6-luna (low)",
             "gpt-5.6-luna (none)",
         ],
-        "default_model": "gemma4:31b",
+        "default_model": "gemma4-31B-it (vLLM)",
     }
     assert get_endpoint("/api/llm/transform", "POST")
 
@@ -155,7 +155,7 @@ def test_llm_transform_uses_default_model_when_omitted(monkeypatch) -> None:
         captured["model"] = model
         return {
             "speech_text": "원고",
-            "model": "gemma4:31b",
+            "model": "gemma4-31B-it (vLLM)",
             "elapsed_ms": 1.0,
         }
 
@@ -168,7 +168,7 @@ def test_llm_transform_uses_default_model_when_omitted(monkeypatch) -> None:
 
     result = endpoint(LLMTransformRequest(normalized_text="원고"))
 
-    assert result["model"] == "gemma4:31b"
+    assert result["model"] == "gemma4-31B-it (vLLM)"
     assert captured["model"] is None
 
 

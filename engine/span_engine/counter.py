@@ -542,6 +542,8 @@ def _character_ja_candidate(
     left = raw_text[:number_start]
     right = raw_text[counter_end:]
     je_prefix = _has_bounded_je_prefix(raw_text, number_start)
+    if je_prefix:
+        return None
     name_context = _has_name_context(left)
     count_context = _has_character_context(
         left,

@@ -29,8 +29,8 @@ def test_leading_zero_counter_override_only_for_month_day(
     [
         ("112명", "백십이 명"),
         ("119건", "백십구 건"),
-        ("112개", "백십이개"),
-        ("119명", "백십구명"),
+        ("112개", "백십이 개"),
+        ("119명", "백십구 명"),
     ],
 )
 def test_emergency_ambiguous_allowed_counter_fallbacks_use_counter_policy(
@@ -44,7 +44,7 @@ def test_emergency_ambiguous_allowed_counter_fallbacks_use_counter_policy(
     [
         ("112명", "일일이명"),
         ("112명", "백십이명"),
-        ("119개", "백십구 개"),
+        ("119개", "일일이구개"),
     ],
 )
 def test_emergency_counter_forbidden_signatures_do_not_appear(
@@ -85,10 +85,21 @@ def test_unsupported_counter_nouns_do_not_use_native_counter(
 
 @pytest.mark.parametrize(
     "text",
-    ["21명abc", "21명kg", "03명", "-3명", "+3명"],
+    ["21명abc", "21명kg", "03명"],
 )
 def test_counter_full_consume_unsafe_patterns_preserve(text: str) -> None:
     assert transform(text) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("-3명", "마이너스 삼 명"),
+        ("+3명", "플러스 삼 명"),
+    ],
+)
+def test_signed_person_counter_uses_residual_reading(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 def test_decimal_registered_counter_suffix_now_transforms() -> None:

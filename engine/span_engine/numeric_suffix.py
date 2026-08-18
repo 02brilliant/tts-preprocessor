@@ -8,14 +8,17 @@ from engine.span_engine.numeric_reading import (
 )
 
 ORDINAL_ONLY_SUFFIXES = frozenset({"차", "과"})
-PREFIXED_ORDINAL_EXCLUDED_SUFFIXES = frozenset(
-    {"쪽", "부", "냥", "되", "섬", "돈", "말", "발", "푼"}
+PREFIXED_ONLY_EXTRA_SUFFIXES = frozenset(
+    {"조", "번", "부", "단", "등", "쪽", "자"}
 )
-PREFIXED_SUFFIXES_DEFERRED_TO_GENERIC_NUMBER = frozenset({"자"})
+SOURCE_SPACED_PREFIXED_SUFFIXES = frozenset({"조"})
+SPACED_UNPREFIXED_NUMERIC_SUFFIXES = frozenset({"시리즈"})
 ORDINAL_SUFFIXES = (
-    frozenset(SUPPORTED_COUNTERS) | ORDINAL_ONLY_SUFFIXES
-) - PREFIXED_ORDINAL_EXCLUDED_SUFFIXES
-NON_PREFIXED_NUMERIC_SUFFIXES = frozenset({"초", "선", "분기"})
+    frozenset(SUPPORTED_COUNTERS)
+    | ORDINAL_ONLY_SUFFIXES
+    | PREFIXED_ONLY_EXTRA_SUFFIXES
+)
+NON_PREFIXED_NUMERIC_SUFFIXES = frozenset({"초", "선", "분기", "시리즈"})
 NUMERIC_SUFFIXES = NON_PREFIXED_NUMERIC_SUFFIXES | ORDINAL_SUFFIXES
 PREFIXED_ONLY_SUFFIXES = ORDINAL_SUFFIXES - NON_PREFIXED_NUMERIC_SUFFIXES
 _ORDERED_SUFFIXES = sorted(NUMERIC_SUFFIXES, key=len, reverse=True)
@@ -40,10 +43,9 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
         suffix_start = _consume_optional_ascii_space(raw_text, number_end)
         matched_suffix = False
         for suffix in _ORDERED_SUFFIXES:
-            if suffix in PREFIXED_ONLY_SUFFIXES and ordinal_prefix_span is not None:
-                suffix_start = number_end
-            else:
-                suffix_start = _consume_optional_ascii_space(raw_text, number_end)
+            suffix_start = _suffix_start_for_match(
+                raw_text, number_end, suffix, ordinal_prefix_span
+            )
             if not raw_text.startswith(suffix, suffix_start):
                 continue
             matched_suffix = True
@@ -115,7 +117,11 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                         metadata={
                             "number": number,
                             "suffix": suffix,
-                            "reading": f"제 {reading}{suffix}",
+                            "reading": _prefixed_ordinal_reading(
+                                reading,
+                                suffix,
+                                unit_space=suffix_start > number_end,
+                            ),
                         },
                     )
                 )
@@ -131,7 +137,14 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                     metadata={
                         "number": number,
                         "suffix": suffix,
-                        "reading": reading,
+                        "reading": (
+                            f"{reading} "
+                            if (
+                                suffix in SPACED_UNPREFIXED_NUMERIC_SUFFIXES
+                                and suffix_start == number_end
+                            )
+                            else reading
+                        ),
                     },
                 )
             )
@@ -139,26 +152,52 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
         if (
             ordinal_prefix_span is not None
             and not _has_candidate_at(candidates, ordinal_prefix_span.start)
-            and not any(
-                raw_text.startswith(suffix, number_end)
-                for suffix in PREFIXED_SUFFIXES_DEFERRED_TO_GENERIC_NUMBER
-            )
         ):
-            preserve_end = _prefixed_ordinal_like_token_end(raw_text, number_start)
-            if preserve_end is not None:
-                candidates.append(
-                    SurfaceCandidate(
-                        core_span=SourceSpan(ordinal_prefix_span.start, preserve_end),
-                        full_span=SourceSpan(ordinal_prefix_span.start, preserve_end),
-                        owner="preserve",
-                        surface_type="NUMERIC_SUFFIX_PRESERVE_SURFACE",
-                        reason=(
-                            "prefixed_ordinal_numeric_suffix_invalid"
-                            if matched_suffix
-                            else "prefixed_ordinal_numeric_suffix_unregistered"
-                        ),
+            number = raw_text[number_start:number_end]
+            next_char = raw_text[number_end] if number_end < len(raw_text) else None
+            code_like_tail = next_char is not None and (
+                (next_char.isascii() and next_char.isalnum())
+                or next_char in {",", ".", "-", "_", "/"}
+            )
+            if matched_suffix or "." in number or code_like_tail:
+                preserve_end = _prefixed_ordinal_like_token_end(raw_text, number_start)
+                if preserve_end is not None:
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=SourceSpan(
+                                ordinal_prefix_span.start, preserve_end
+                            ),
+                            full_span=SourceSpan(
+                                ordinal_prefix_span.start, preserve_end
+                            ),
+                            owner="preserve",
+                            surface_type="NUMERIC_SUFFIX_PRESERVE_SURFACE",
+                            reason=(
+                                "prefixed_ordinal_numeric_suffix_invalid"
+                                if matched_suffix
+                                else "prefixed_ordinal_numeric_suffix_unregistered"
+                            ),
+                        )
                     )
-                )
+            else:
+                reading = read_number_text(number)
+                if reading is not None and _valid_left_boundary(
+                    raw_text, ordinal_prefix_span.start
+                ):
+                    full_span = SourceSpan(ordinal_prefix_span.start, number_end)
+                    candidates.append(
+                        SurfaceCandidate(
+                            core_span=full_span,
+                            full_span=full_span,
+                            owner="numeric_suffix",
+                            surface_type="NUMERIC_SUFFIX_SURFACE",
+                            reason="prefixed_ordinal_numeric_core",
+                            metadata={
+                                "number": number,
+                                "reading": f"제 {reading}",
+                            },
+                        )
+                    )
         index = max(number_end, index + 1)
     return candidates
 
@@ -172,6 +211,14 @@ def parse_numeric_suffix_candidate(
     if isinstance(reading, str):
         return reading
     return read_number_text(raw_text[candidate.core_span.start : candidate.core_span.end])
+
+
+def has_ordinal_je_prefix(raw_text: str, number_start: int) -> bool:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if not isinstance(number_start, int):
+        raise TypeError("number_start must be int")
+    return _ordinal_prefix_span(raw_text, number_start) is not None
 
 
 def starts_with_longer_registered_numeric_suffix(
@@ -229,6 +276,26 @@ def _consume_digits(raw_text: str, start: int) -> int:
     while index < len(raw_text) and _is_ascii_digit(raw_text[index]):
         index += 1
     return index
+
+
+def _prefixed_ordinal_reading(
+    number_reading: str, suffix: str, *, unit_space: bool
+) -> str:
+    joiner = " " if suffix in SOURCE_SPACED_PREFIXED_SUFFIXES and unit_space else ""
+    return f"제 {number_reading}{joiner}{suffix}"
+
+
+def _suffix_start_for_match(
+    raw_text: str,
+    number_end: int,
+    suffix: str,
+    ordinal_prefix_span: SourceSpan | None,
+) -> int:
+    if ordinal_prefix_span is not None and suffix in SOURCE_SPACED_PREFIXED_SUFFIXES:
+        return _consume_optional_ascii_space(raw_text, number_end)
+    if suffix in PREFIXED_ONLY_SUFFIXES and ordinal_prefix_span is not None:
+        return number_end
+    return _consume_optional_ascii_space(raw_text, number_end)
 
 
 def _consume_optional_ascii_space(raw_text: str, start: int) -> int:
@@ -314,6 +381,7 @@ def _is_complete_hangul(char: str) -> bool:
 __all__ = [
     "NUMERIC_SUFFIXES",
     "ORDINAL_SUFFIXES",
+    "has_ordinal_je_prefix",
     "parse_numeric_suffix_candidate",
     "scan_numeric_suffix_candidates",
     "starts_with_longer_registered_numeric_suffix",

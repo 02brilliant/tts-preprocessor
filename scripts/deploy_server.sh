@@ -330,6 +330,13 @@ if [[ "$PROJECT_PYTHON_ARCH" != "arm64" ]]; then
 fi
 
 SOURCE_REVISION="$(git -C "$ROOT_DIR" rev-parse --short=7 HEAD)"
+PACKAGED_TREE_STATUS="$(
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- \
+    engine bin LLM tts_preprocessor.spec tts_llm_stage.spec scripts/probes
+)"
+if [[ -n "$PACKAGED_TREE_STATUS" ]]; then
+  SOURCE_REVISION="${SOURCE_REVISION}-dirty"
+fi
 DEPLOY_ID="$(date -u '+%Y%m%dT%H%M%SZ')-$$-$SOURCE_REVISION"
 if [[ ! "$DEPLOY_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "[deploy][ERROR] Generated invalid deploy ID: $DEPLOY_ID" >&2
@@ -339,6 +346,20 @@ LINUX_BUILD_LOG="$DEPLOY_LOG_DIR/linux-prepare-$DEPLOY_ID.log"
 MACOS_BUILD_LOG="$DEPLOY_LOG_DIR/macos-build-$DEPLOY_ID.log"
 REMOTE_MACOS_TEMP="$REMOTE_DOWNLOADS_DIR/.tts-preprocessor-macos.zip.upload-$DEPLOY_ID"
 echo "[deploy] Deploy ID: $DEPLOY_ID"
+if [[ -n "$PACKAGED_TREE_STATUS" ]]; then
+  echo "[deploy] Packaging uncommitted or untracked files from the worktree."
+  echo "[deploy] Production serves the rebuilt binary, not live engine source."
+  printf '%s\n' "$PACKAGED_TREE_STATUS"
+fi
+
+echo "[deploy] Validating the local worktree with core semantic probes..."
+if ! PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" \
+  "$LOCAL_SEMANTIC_PROBES_DIR/run_semantic_probes.py" \
+  --suite core; then
+  echo "[deploy][ERROR] Local core semantic probes failed." >&2
+  echo "[deploy][ERROR] The worktree was not synced or published." >&2
+  exit 1
+fi
 
 echo "[deploy] Checking the existing remote Linux build environment..."
 ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_BASE_DIR" <<'REMOTE'

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_fraction_text
+from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.signed_numeric import (
     SIGNED_OWNER_POLICIES,
     apply_sign_profile,
@@ -206,7 +207,11 @@ def parse_fraction_candidate(raw_text: str, candidate: SurfaceCandidate) -> str 
     if candidate.owner != "fraction":
         return None
     reading = candidate.metadata.get("reading")
-    return reading if isinstance(reading, str) else None
+    if not isinstance(reading, str):
+        return None
+    if needs_residual_hangul_space(raw_text, candidate.core_span.end):
+        return f"{reading} "
+    return reading
 
 
 def parse_textual_fraction_candidate(

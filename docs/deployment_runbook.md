@@ -159,25 +159,29 @@ bash scripts/deploy_server.sh
 
 1. Darwin arm64, 표준 GIL Python 3.13 `.venv`, PyInstaller, 로컬 명령과
    필수 파일 검사
-2. 서버의 기존 Python 3.13 `.venv`/`buildenv`와 필수 원격 명령 검사
-3. 새 원격 `buildsrc`에 entrypoint, `engine/`, spec, 전체
+2. 패키징 대상(`engine/`, `bin/`, `LLM/`, spec, `scripts/probes/`)이
+   dirty이면 deploy ID에 `-dirty`를 붙이고 해당 경로를 출력한다
+3. 로컬 작업 트리에서 canonical core semantic probe를 source facade로
+   실행한다. 실패하면 rsync와 원격 빌드를 시작하지 않는다
+4. 서버의 기존 Python 3.13 `.venv`/`buildenv`와 필수 원격 명령 검사
+5. 새 원격 `buildsrc`에 entrypoint, `engine/`, spec, 전체
    `scripts/probes/` canonical probe set, release README와 다음 시작에 쓸
    server control script 전송
-4. 고유 deploy ID로 원격 Linux `prepare`와 로컬 macOS arm64 빌드를 병렬 시작
-5. 두 PID를 모두 `wait`하고 각 종료 코드 확인
-6. 두 작업 모두 성공한 경우에만 로컬 macOS ZIP 재검증
-7. 서버 중지
-8. 검증된 Linux staging package와 ZIP publish
-9. staging된 `start_server.sh`, `stop_server.sh`를 운영 scripts에 설치
-10. 기존 `tts-preprocessor-macos.zip`과
+6. 고유 deploy ID로 원격 Linux `prepare`와 로컬 macOS arm64 빌드를 병렬 시작
+7. 두 PID를 모두 `wait`하고 각 종료 코드 확인
+8. 두 작업 모두 성공한 경우에만 로컬 macOS ZIP 재검증
+9. 서버 중지
+10. 검증된 Linux staging package와 ZIP publish
+11. staging된 `start_server.sh`, `stop_server.sh`를 운영 scripts에 설치
+12. 기존 `tts-preprocessor-macos.zip`과
    `tts-preprocessor-windows.zip`만 정확히 삭제
-11. 새 macOS ZIP을 숨김 임시 이름으로 전송
-12. 원격 크기, ZIP 무결성, 정확한 두 파일을 확인한 뒤 최종 이름으로 `mv`
-13. 운영 `app/`에 남은 `engine/`, `docs/` 제거
-14. 서버 시작
-15. Web, Linux ZIP, macOS ZIP, API docs, API transform sanity 검증
-16. 실행 중인 API에 canonical core semantic probe 전체 실행
-17. 해당 deploy ID의 staging과 임시 `buildsrc` 정리
+13. 새 macOS ZIP을 숨김 임시 이름으로 전송
+14. 원격 크기, ZIP 무결성, 정확한 두 파일을 확인한 뒤 최종 이름으로 `mv`
+15. 운영 `app/`에 남은 `engine/`, `docs/` 제거
+16. 서버 시작
+17. Web, Linux ZIP, macOS ZIP, API docs, API transform sanity 검증
+18. 실행 중인 API에 canonical core semantic probe 전체 실행
+19. 해당 deploy ID의 staging과 임시 `buildsrc` 정리
 
 Windows ZIP은 이 통합 배포에서 만들거나 업로드하지 않는다.
 
@@ -231,6 +235,7 @@ publish 단계에는 backup 또는 자동 rollback이 없다. publish 실패 시
 
 | 실패 단계 | 서버 상태 | Linux 반영 | macOS/Windows ZIP | 자동 rollback | 사용자 조치 |
 |---|---|---|---|---|---|
+| 로컬 core semantic probe | 기존 서버 실행 유지 | 기존 artifact | 기존 상태 유지 | 없음 | 작업 트리와 probe 기댓값을 맞춘 뒤 전체 배포 재실행 |
 | 로컬/원격 preflight | 기존 서버 실행 유지 | 기존 artifact | 기존 상태 유지 | 없음 | 누락 조건 수정 후 전체 배포 재실행 |
 | Linux prepare 또는 macOS build | 기존 서버 실행 유지 | 기존 artifact | 기존 상태 유지 | 없음 | 로그 확인 후 전체 배포 재실행 |
 | server stop | 중지 여부를 확인해야 함 | 기존 artifact | 기존 상태 유지 | 없음 | 서버 상태 확인 후 전체 배포 재실행 |
@@ -329,7 +334,9 @@ bash scripts/check_server.sh
 - `GET /downloads/tts-preprocessor-windows.zip`
 
 Windows ZIP 부재는 실패가 아니다. `check_server.sh`는 health/sanity이며
-canonical semantic regression 대신 사용하지 않는다.
+canonical semantic regression 대신 사용하지 않는다. 등록 단위 문장
+(`1㎘당`, `1만㎡`, `수 km`, `지상 3층`, `3.5만kg`)은 core probe
+`registered_unit_surface.py`가 검사한다.
 
 API core semantic probe:
 

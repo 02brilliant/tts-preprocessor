@@ -25,7 +25,7 @@ from engine.main import transform, transform_debug
         ("학생을 3조로 나눴다", "학생을 세 조로 나눴다"),
         ("총 3조를 편성했다", "총 세 조를 편성했다"),
         ("3조가 발표했다", "세 조가 발표했다"),
-        ("제3조", "제3조"),
+        ("제3조", "제 삼조"),
     ],
 )
 def test_contextual_core_unit_canonical(text: str, expected: str) -> None:
@@ -47,12 +47,8 @@ def test_multiple_meanings_and_units_can_coexist() -> None:
     "text",
     [
         "01분",
-        "+3번",
-        "-3점",
         "1,00조",
         "3A번",
-        "1.5분",
-        "2.5번",
     ],
 )
 def test_contextual_core_malformed_is_atomic_defer(text: str) -> None:
@@ -62,6 +58,21 @@ def test_contextual_core_malformed_is_atomic_defer(text: str) -> None:
     assert len(claims) == 1
     assert claims[0]["owner"] == "contextual_number_unit"
     assert claims[0]["claim_type"] == "preserve"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3번", "플러스 삼 번"),
+        ("-3점", "마이너스 삼 점"),
+        ("1.5분", "일쩜오 분"),
+        ("2.5번", "이쩜오 번"),
+    ],
+)
+def test_contextual_signed_and_decimal_use_residual_reading(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
 
 
 def test_valid_decimal_large_unit_keeps_existing_large_unit_owner() -> None:

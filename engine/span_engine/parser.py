@@ -16,7 +16,11 @@ from engine.span_engine.code_separator import (
     parse_mixed_alnum_code_separator_candidate,
     parse_spaced_hyphen_numeric_candidate,
 )
-from engine.span_engine.date_time import parse_date_candidate, parse_time_candidate
+from engine.span_engine.date_time import (
+    parse_clock_hour_direction_surface,
+    parse_date_candidate,
+    parse_time_candidate,
+)
 from engine.span_engine.decimal import parse_decimal_candidate
 from engine.span_engine.decimal_registered_suffix import (
     parse_decimal_registered_suffix_candidate,
@@ -60,6 +64,7 @@ from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.numeric_dae import (
     parse_ambiguous_numeric_dae_preserve_candidate,
 )
+from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.news import parse_standalone_news_candidate
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ordinal import parse_ordinal_candidate
@@ -150,6 +155,10 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         return _make_two_block_hyphen_code_surface(raw_text, candidate, raw)
     elif candidate.owner == "number":
         reading = read_spaced_integer_text(raw)
+        if reading is not None and needs_residual_hangul_space(
+            raw_text, candidate.core_span.end
+        ):
+            reading = f"{reading} "
     elif candidate.owner == "decimal":
         reading = parse_decimal_candidate(raw_text, candidate)
     elif candidate.owner == "decimal_registered_suffix":
@@ -159,6 +168,9 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
     elif candidate.owner == "date":
         reading = parse_date_candidate(raw_text, candidate)
     elif candidate.owner == "time":
+        direction_surface = parse_clock_hour_direction_surface(raw_text, candidate)
+        if direction_surface is not None:
+            return direction_surface
         reading = parse_time_candidate(raw_text, candidate)
     elif candidate.owner == "duration":
         reading = parse_duration_candidate(raw_text, candidate)
@@ -215,6 +227,10 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_counter_candidate(raw_text, candidate)
     elif candidate.owner == "range" and candidate.reason == "range_compact_large_unit_suffix_gate":
         return _make_compact_large_unit_range_surface(raw_text, candidate, raw)
+    elif candidate.reason == "range_compact_large_unit_with_unit_gate":
+        return _make_compact_large_unit_range_with_unit_surface(raw_text, candidate, raw)
+    elif candidate.reason == "range_paired_large_unit_with_unit_gate":
+        return _make_paired_large_unit_range_with_unit_surface(raw_text, candidate, raw)
     elif candidate.owner in {
         "range",
         "range_with_unit",
@@ -287,6 +303,171 @@ def _make_compact_large_unit_range_surface(
     ]
     return Surface(
         surface_type=candidate.surface_type or "RANGE_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
+        metadata=_surface_metadata(candidate),
+    )
+
+
+def _make_compact_large_unit_range_with_unit_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    reading = candidate.metadata.get("reading")
+    prefix_reading = candidate.metadata.get("prefix_reading")
+    suffix = candidate.metadata.get("suffix")
+    suffix_span = candidate.metadata.get("suffix_span")
+    unit_reading = candidate.metadata.get("unit_reading")
+    unit_start = candidate.metadata.get("unit_start")
+    if not (
+        isinstance(reading, str)
+        and isinstance(prefix_reading, str)
+        and isinstance(suffix, str)
+        and isinstance(suffix_span, SourceSpan)
+        and isinstance(unit_reading, str)
+        and isinstance(unit_start, int)
+        and candidate.core_span.start < suffix_span.start < suffix_span.end <= unit_start < candidate.core_span.end
+    ):
+        return None
+    pieces = [
+        RenderPiece(
+            text=prefix_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(candidate.core_span.start, suffix_span.start),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=suffix,
+            provenance="ORIGINAL_KOREAN",
+            source_span=suffix_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=" " + unit_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(unit_start, candidate.core_span.end),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+    return Surface(
+        surface_type=candidate.surface_type or "RANGE_WITH_UNIT_SURFACE",
+        owner=candidate.owner,
+        raw=raw,
+        span=candidate.core_span,
+        reading=reading,
+        render_pieces=pieces,
+        metadata=_surface_metadata(candidate),
+    )
+
+
+def _make_paired_large_unit_range_with_unit_surface(
+    raw_text: str, candidate: SurfaceCandidate, raw: str
+) -> Surface | None:
+    reading = candidate.metadata.get("reading")
+    left_numeric_reading = candidate.metadata.get("left_numeric_reading")
+    right_numeric_reading = candidate.metadata.get("right_numeric_reading")
+    left_numeric_span = candidate.metadata.get("left_numeric_span")
+    right_numeric_span = candidate.metadata.get("right_numeric_span")
+    left_suffix_span = candidate.metadata.get("left_suffix_span")
+    right_suffix_span = candidate.metadata.get("right_suffix_span")
+    left_has_decimal = candidate.metadata.get("left_has_decimal") is True
+    right_has_decimal = candidate.metadata.get("right_has_decimal") is True
+    separator_span = candidate.metadata.get("separator_span")
+    unit_reading = candidate.metadata.get("unit_reading")
+    unit_start = candidate.metadata.get("unit_start")
+    if not (
+        isinstance(reading, str)
+        and isinstance(left_numeric_reading, str)
+        and isinstance(right_numeric_reading, str)
+        and isinstance(left_numeric_span, SourceSpan)
+        and isinstance(right_numeric_span, SourceSpan)
+        and isinstance(left_suffix_span, SourceSpan)
+        and isinstance(right_suffix_span, SourceSpan)
+        and isinstance(separator_span, SourceSpan)
+        and isinstance(unit_reading, str)
+        and isinstance(unit_start, int)
+        and unit_start < candidate.core_span.end
+    ):
+        return None
+    pieces = [
+        RenderPiece(
+            text=left_numeric_reading,
+            provenance="GENERATED_READING",
+            source_span=left_numeric_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+    ]
+    if left_has_decimal:
+        pieces.append(
+            RenderPiece(
+                text=" ",
+                provenance="GENERATED_READING",
+                source_span=left_suffix_span,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+    pieces.extend(
+        [
+        RenderPiece(
+            text=raw_text[left_suffix_span.start : left_suffix_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=left_suffix_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text="에서 ",
+            provenance="GENERATED_READING",
+            source_span=separator_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=right_numeric_reading,
+            provenance="GENERATED_READING",
+            source_span=right_numeric_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        ]
+    )
+    if right_has_decimal:
+        pieces.append(
+            RenderPiece(
+                text=" ",
+                provenance="GENERATED_READING",
+                source_span=right_suffix_span,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+    pieces.extend(
+        [
+        RenderPiece(
+            text=raw_text[right_suffix_span.start : right_suffix_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=right_suffix_span,
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        RenderPiece(
+            text=" " + unit_reading,
+            provenance="GENERATED_READING",
+            source_span=SourceSpan(unit_start, candidate.core_span.end),
+            owner=candidate.owner,
+            metadata={"surface_type": candidate.surface_type},
+        ),
+        ]
+    )
+    return Surface(
+        surface_type=candidate.surface_type or "RANGE_WITH_UNIT_SURFACE",
         owner=candidate.owner,
         raw=raw,
         span=candidate.core_span,

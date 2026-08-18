@@ -54,5 +54,5 @@
       "reasoning_effort": "none"
     }
   ],
-  "default_model": "gemma4:31b"
+  "default_model": "gemma4-31B-it (vLLM)"
 }

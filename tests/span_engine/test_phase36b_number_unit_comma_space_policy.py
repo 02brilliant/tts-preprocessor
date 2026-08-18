@@ -63,8 +63,8 @@ def test_phase36b_valid_comma_currency(text: str, expected: str) -> None:
         ("1,200 건", "천이백 건"),
         ("8,500명", "팔천오백 명"),
         ("8,500 명", "팔천오백 명"),
-        ("1,200점", "1,200점"),
-        ("1,200 점", "1,200 점"),
+        ("1,200점", "천이백 점"),
+        ("1,200 점", "천이백 점"),
     ],
 )
 def test_phase36b_valid_comma_counters(text: str, expected: str) -> None:

@@ -10,25 +10,30 @@ from engine.span_engine.numeric_reading import (
     read_number_text,
     read_sino_time_suffix_number_text,
 )
-from engine.span_engine.numeric_suffix import (
-    starts_with_longer_registered_numeric_suffix,
+from engine.span_engine.sign_aliases import (
+    MINUS_SIGN_ALIASES,
+    PLUS_SIGN,
+    is_signed_numeric_sign,
+)
+from engine.span_engine.numeric_suffix import has_ordinal_je_prefix
+from engine.span_engine.signed_numeric import (
+    SignProfile,
+    apply_sign_profile,
+    parse_sign_surface,
 )
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
 _FRACTION_RE = rf"{_INTEGER_RE}/{_INTEGER_RE}"
 _NUMBER_RE = rf"(?:{_FRACTION_RE}|{_DECIMAL_RE}|{_INTEGER_RE})"
+_SIGN_RE = re.escape("".join(sorted({PLUS_SIGN, *MINUS_SIGN_ALIASES})))
+_SIGNED_NUMBER_RE = rf"[{_SIGN_RE}]?{_NUMBER_RE}"
 _DURATION_RE = re.compile(
-    rf"(?P<hour>{_NUMBER_RE})시간(?P<space>\s*)(?P<minute>{_NUMBER_RE})분|"
-    rf"(?P<hour_only>{_NUMBER_RE})시간|"
-    rf"(?P<minute_only>{_NUMBER_RE})분"
+    rf"(?P<hour>{_SIGNED_NUMBER_RE})시간(?P<space>\s*)(?P<minute>{_SIGNED_NUMBER_RE})분|"
+    rf"(?P<hour_only>{_SIGNED_NUMBER_RE})시간|"
+    rf"(?P<minute_only>{_SIGNED_NUMBER_RE})분"
 )
 _YEAR_PERIOD_RE = re.compile(rf"(?P<year>{_INTEGER_RE})년간")
-_NEGATIVE_DURATION_RE = re.compile(
-    rf"-(?:{_NUMBER_RE})시간(?:\s*-?(?:{_NUMBER_RE})분)?|"
-    rf"(?:{_NUMBER_RE})시간\s*-(?:{_NUMBER_RE})분|"
-    rf"-(?:{_NUMBER_RE})분"
-)
 _PREV_BLOCKERS = frozenset("+.,~:/_")
 _MINUTE_DURATION_NEXT_ANCHORS = (
     "뒤",
@@ -58,7 +63,6 @@ def scan_duration_candidates(
         excluded_ranges = []
 
     candidates: list[SurfaceCandidate] = []
-    candidates.extend(_scan_negative_preserve_candidates(raw_text, excluded_ranges))
     candidates.extend(_scan_year_period_candidates(raw_text, excluded_ranges))
     for match in _DURATION_RE.finditer(raw_text):
         span = SourceSpan(match.start(), match.end())
@@ -66,9 +70,28 @@ def scan_duration_candidates(
             continue
         if not _valid_boundary(raw_text, span):
             continue
+        if _duration_has_je_prefix(match):
+            continue
         if match.group("hour") is not None:
             hour = match.group("hour")
             minute = match.group("minute")
+            if not _valid_unary_sign_left_boundary(raw_text, match.start("hour")):
+                continue
+            if not _valid_unary_sign_left_boundary(raw_text, match.start("minute")):
+                hour_reading = _duration_amount_reading(hour, "시간")
+                if hour_reading is None:
+                    continue
+                hour_full_end = match.end("hour") + len("시간")
+                candidates.append(
+                    _duration_candidate(
+                        match.start("hour"),
+                        match.end("hour"),
+                        SourceSpan(match.start("hour"), hour_full_end),
+                        f"{hour_reading} ",
+                        "duration_hour_numeric_gate",
+                    )
+                )
+                continue
             hour_reading = _duration_amount_reading(hour, "시간")
             minute_reading = _duration_amount_reading(minute, "분")
             if hour_reading is None or minute_reading is None:
@@ -93,6 +116,8 @@ def scan_duration_candidates(
             )
             continue
         elif match.group("hour_only") is not None:
+            if not _valid_unary_sign_left_boundary(raw_text, match.start("hour_only")):
+                continue
             hour = match.group("hour_only")
             hour_reading = _duration_amount_reading(hour, "시간")
             if hour_reading is None:
@@ -109,6 +134,8 @@ def scan_duration_candidates(
             continue
         else:
             if not _has_explicit_minute_duration_context(raw_text, span):
+                continue
+            if not _valid_unary_sign_left_boundary(raw_text, match.start("minute_only")):
                 continue
             minute = match.group("minute_only")
             minute_reading = _duration_amount_reading(minute, "분")
@@ -141,35 +168,6 @@ def parse_duration_candidate(raw_text: str, candidate: SurfaceCandidate) -> str 
         return None
     reading = candidate.metadata.get("reading")
     return reading if isinstance(reading, str) else None
-
-
-def _scan_negative_preserve_candidates(
-    raw_text: str, excluded_ranges: list[BracketRange]
-) -> list[SurfaceCandidate]:
-    candidates: list[SurfaceCandidate] = []
-    for match in _NEGATIVE_DURATION_RE.finditer(raw_text):
-        span = SourceSpan(match.start(), match.end())
-        if _span_overlaps_excluded_range(span, excluded_ranges):
-            continue
-        short_suffix = raw_text[span.end - 1 : span.end]
-        if starts_with_longer_registered_numeric_suffix(
-            raw_text,
-            span.end - len(short_suffix),
-            short_suffix,
-        ):
-            continue
-        if not _valid_boundary(raw_text, span):
-            continue
-        candidates.append(
-            SurfaceCandidate(
-                core_span=span,
-                full_span=span,
-                owner="preserve",
-                surface_type="DURATION_PRESERVE_SURFACE",
-                reason="negative_duration_preserve",
-            )
-        )
-    return candidates
 
 
 def _scan_year_period_candidates(
@@ -263,7 +261,41 @@ def _duration_candidate(
     )
 
 
+def _duration_has_je_prefix(match: re.Match[str]) -> bool:
+    for name in ("hour", "hour_only", "minute_only"):
+        start = match.start(name)
+        if start == -1:
+            continue
+        if has_ordinal_je_prefix(match.string, start):
+            return True
+    return False
+
+
+def _valid_unary_sign_left_boundary(raw_text: str, start: int) -> bool:
+    if start < 0 or start >= len(raw_text):
+        return False
+    if not is_signed_numeric_sign(raw_text[start]):
+        return True
+    if start == 0:
+        return True
+    prev_char = raw_text[start - 1]
+    return prev_char.isspace() or prev_char in {"(", "[", "{", '"', "'"}
+
+
 def _duration_amount_reading(raw: str, unit: str) -> str | None:
+    if raw and is_signed_numeric_sign(raw[0]):
+        sign = parse_sign_surface(raw[0])
+        unsigned = raw[1:]
+        if sign is None or not unsigned:
+            return None
+        unsigned_reading = _duration_amount_reading(unsigned, unit)
+        if unsigned_reading is None:
+            return None
+        return apply_sign_profile(
+            unsigned_reading.rstrip(),
+            sign,
+            sign_profile=SignProfile.DEFAULT,
+        )
     if "/" in raw:
         numerator, denominator = raw.split("/", 1)
         return read_fraction_text(numerator, denominator)

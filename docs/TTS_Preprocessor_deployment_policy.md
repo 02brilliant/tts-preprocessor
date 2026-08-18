@@ -107,7 +107,10 @@ upload Windows.
 
 ## Validation ownership
 
-Source tests alone are not sufficient. The remote Linux build MUST run the
+Source tests alone are not sufficient. Before the Darwin deployer rsyncs
+build sources, it MUST run the canonical core semantic suite against the
+local worktree source facade. This catches probe/engine drift before any
+remote package is built. The remote Linux build MUST then run the same
 canonical core semantic runner against:
 
 - the dist binary
@@ -126,6 +129,15 @@ Deployment MUST transfer the complete `scripts/probes/` directory as one
 canonical probe set; maintaining a second filename allowlist in the deployment
 script is forbidden because it can omit a newly registered core probe.
 Remote deployment uses binary-only probes and MUST NOT use a source fallback.
+The local pre-rsync gate uses the worktree source facade and MUST NOT be
+treated as a substitute for the later binary and live-API gates.
+
+Uncommitted and untracked files under `engine/`, `bin/`, `LLM/`, the
+PyInstaller spec files, and `scripts/probes/` are part of the packaged
+worktree. When any of those paths are dirty, the deploy ID MUST include a
+`-dirty` marker and the deployer MUST print the packaged-path status. A
+clean HEAD commit hash alone MUST NOT be read as proof that the running
+binary matches the operator's latest local edits.
 
 ## Retired transition surfaces
 
@@ -147,7 +159,10 @@ After the server starts, deployment MUST run the same core suite through the
 live API before deleting temporary `buildsrc`. This API gate verifies that the
 running process actually selected the just-published
 `TTS_PREPROCESSOR_BINARY`; download checks and a single wiring canary are not
-sufficient to detect a stale executable. A live API semantic failure retains
+sufficient to detect a stale executable. Core probes MUST include registered
+unit surfaces that a committed-HEAD binary would leave literal, currently
+`1㎘당`, `1만㎡`, `수 km`, `지상 3층`, `3.5만kg`, and `45~50만kg`. A live API
+semantic failure retains
 the temporary probe/build sources for diagnosis and fails the deployment.
 
 The packaged binary's `--include-debug` payload and API
@@ -160,7 +175,7 @@ The optional second-stage LLM receives only the ordinary `normalized_text`
 string. Deployment MUST NOT attach `contextual_decision_logs`, candidates,
 decision markers, or other rule-engine metadata to that request. The rule
 endpoint remains independently usable as a final TTS input path.
-The configured default model is `gemma4:31b`; callers may still select another
+The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not add rule-reading lock
 metadata, repeated stability sampling, or automatic retry/fallback generation.
 

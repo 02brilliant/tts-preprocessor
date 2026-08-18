@@ -106,16 +106,16 @@ DISALLOWED_SUFFIX_CASES = [
     TextCase(
         case_id="emergency-disallowed-beon",
         text="긴급 신고는 112번으로 한다",
-        expected="긴급 신고는 112번으로 한다",
-        rule="contextual number-unit / deferred",
-        reason="번 is disallowed as an emergency tail and has no exact contextual meaning anchor.",
+        expected="긴급 신고는 백십이 번으로 한다",
+        rule="contextual number-unit / residual",
+        reason="번 is disallowed as an emergency tail, so residual numeric policy reads the number as Sino 번.",
     ),
     TextCase(
         case_id="emergency-disallowed-ho",
         text="119호는 비상구 옆이다",
-        expected="119호는 비상구 옆이다",
-        rule="contextual number-unit / deferred",
-        reason="호 is disallowed as an emergency tail and has no exact identifier anchor.",
+        expected="백십구 호는 비상구 옆이다",
+        rule="contextual number-unit / residual",
+        reason="호 is disallowed as an emergency tail, so residual numeric policy reads the number as Sino 호.",
     ),
     TextCase(
         case_id="emergency-disallowed-alpha-tail",

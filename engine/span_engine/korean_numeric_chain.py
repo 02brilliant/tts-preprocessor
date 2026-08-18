@@ -5,6 +5,7 @@ import re
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_spaced_integer_text
 from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
+from engine.span_engine.residual_spacing import is_clock_hour_residual_tail
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9가-힣ㄱ-ㅎㅏ-ㅣ_./\\+=:-]+")
 _SAFE_CHAIN_RE = re.compile(r"[가-힣0-9]+")
@@ -146,6 +147,8 @@ def _is_eligible_safe_chain(raw: str) -> bool:
     numeric_blocks = list(_DIGIT_RE.finditer(raw))
     if raw[0].isdigit() and len(numeric_blocks) == 1:
         tail = raw[numeric_blocks[0].end():]
+        if is_clock_hour_residual_tail(tail):
+            return False
         return len(tail) == 1 and _is_hangul(tail)
     return True
 

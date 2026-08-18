@@ -33,6 +33,45 @@ def test_clock_hour_suffix_reading(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
+        ("0시부로", "영 시부로"),
+        ("1시부로", "한 시부로"),
+        ("9시께", "아홉 시께"),
+        ("1시반", "한 시반"),
+        ("12시반", "열두 시반"),
+        ("3시방향", "세 시 방향"),
+        ("1시부터는", "한 시부터는"),
+        ("2시까지로", "두 시까지로"),
+        ("1시입니다만", "한 시입니다만"),
+        ("3시방향으로", "세 시 방향으로"),
+        ("1시반도", "한 시반도"),
+        ("13시부로", "십삼 시부로"),
+    ],
+)
+def test_clock_hour_meaning_tails_and_particle_chain(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("3시리즈", "삼 시리즈"),
+        ("6분께", "6분께"),
+        ("6분께서", "6분께서"),
+        ("3초반", "3초반"),
+        ("3시회의", "3시회의"),
+    ],
+)
+def test_clock_hour_meaning_tails_do_not_expand_unrelated_surfaces(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
         ("오전 9시 5분", "오전 아홉 시 오분"),
         ("오후 3시 20분", "오후 세 시 이십분"),
         ("23시 59분", "이십삼 시 오십구분"),

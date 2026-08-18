@@ -33,6 +33,7 @@ from engine.span_engine.units import (
     SPECIAL_UNIT_READINGS,
     range_compatible_unit_reading,
     range_compatible_units_by_length,
+    unit_allows_space_before,
 )
 
 RANGE_SEPARATORS = frozenset({"~", "∼", "～", "〜"})
@@ -259,11 +260,98 @@ def scan_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
 
 
 def scan_compact_large_unit_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
-    return [
+    compact_candidates = [
         candidate
         for candidate in scan_range_candidates(raw_text)
-        if candidate.reason == "range_compact_large_unit_suffix_gate"
+        if candidate.reason
+        in {
+            "range_compact_large_unit_suffix_gate",
+            "range_compact_large_unit_with_unit_gate",
+        }
     ]
+    return compact_candidates + scan_paired_large_unit_range_with_unit_candidates(raw_text)
+
+
+def scan_paired_large_unit_range_with_unit_candidates(
+    raw_text: str,
+) -> list[SurfaceCandidate]:
+    """Read ``1억~2억kg``-style ranges before large-unit English-tail preserve."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    from engine.span_engine.large_unit import parse_large_unit_quantity_core_at
+
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if not _is_ascii_digit(raw_text[index]):
+            index += 1
+            continue
+        left = parse_large_unit_quantity_core_at(raw_text, index, allow_sign=False)
+        if left is None:
+            index += 1
+            continue
+        if left.end >= len(raw_text) or not is_range_separator(raw_text[left.end]):
+            index = left.end
+            continue
+        right_start = left.end + 1
+        right = parse_large_unit_quantity_core_at(raw_text, right_start, allow_sign=False)
+        if right is None:
+            index = left.end
+            continue
+        unit_start = right.end
+        had_space = unit_start < len(raw_text) and raw_text[unit_start] == " "
+        if had_space:
+            unit_start += 1
+        matched = False
+        for unit in _UNITS_BY_LENGTH:
+            if had_space and not unit_allows_space_before(unit):
+                continue
+            if not raw_text.startswith(unit, unit_start):
+                continue
+            full_end = unit_start + len(unit)
+            full_span = SourceSpan(index, full_end)
+            if not _valid_after_surface(raw_text, full_span):
+                candidates.append(
+                    _preserve_candidate(
+                        SourceSpan(index, _range_like_token_end(raw_text, full_end)),
+                        "range_paired_large_unit_with_unit_invalid_tail_preserve",
+                    )
+                )
+                index = full_end
+                matched = True
+                break
+            unit_reading = _UNIT_READINGS[unit]
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=full_span,
+                    full_span=full_span,
+                    owner="range_with_unit",
+                    surface_type="RANGE_WITH_UNIT_SURFACE",
+                    suffix_spans=[left.suffix_span, right.suffix_span],
+                    reason="range_paired_large_unit_with_unit_gate",
+                    metadata={
+                        "unit": unit,
+                        "unit_reading": unit_reading,
+                        "unit_start": unit_start,
+                        "left_numeric_reading": left.numeric_reading,
+                        "right_numeric_reading": right.numeric_reading,
+                        "left_numeric_span": left.numeric_span,
+                        "right_numeric_span": right.numeric_span,
+                        "left_suffix_span": left.suffix_span,
+                        "right_suffix_span": right.suffix_span,
+                        "left_has_decimal": left.has_decimal,
+                        "right_has_decimal": right.has_decimal,
+                        "separator_span": SourceSpan(left.end, right_start),
+                        "reading": f"{left.reading}에서 {right.reading} {unit_reading}",
+                    },
+                )
+            )
+            index = full_end
+            matched = True
+            break
+        if not matched:
+            index = left.end
+    return candidates
 
 
 def scan_numeric_delimited_hyphen_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -660,6 +748,12 @@ def _hyphen_unit_candidate(
     for unit in range_compatible_units_by_length():
         if not raw_text.startswith(unit, suffix_start):
             continue
+        if (
+            suffix_start > 0
+            and raw_text[suffix_start - 1] in {" ", "\t"}
+            and not unit_allows_space_before(unit)
+        ):
+            continue
         full_end = suffix_start + len(unit)
         full_span = SourceSpan(left_start, full_end)
         if not _valid_after_surface(raw_text, full_span):
@@ -844,6 +938,43 @@ def _compact_large_unit_suffix_candidate(
         if not raw_text.startswith(suffix, right_end):
             continue
         suffix_span = SourceSpan(right_end, right_end + len(suffix))
+        if suffix in {"만", "억", "조", "경"}:
+            unit_start = suffix_span.end
+            had_space = unit_start < len(raw_text) and raw_text[unit_start] == " "
+            if had_space:
+                unit_start += 1
+            for unit in _UNITS_BY_LENGTH:
+                if had_space and not unit_allows_space_before(unit):
+                    continue
+                if not raw_text.startswith(unit, unit_start):
+                    continue
+                full_end = unit_start + len(unit)
+                full_span = SourceSpan(left_start, full_end)
+                if not _valid_after_surface(raw_text, full_span):
+                    return _preserve_candidate(
+                        SourceSpan(left_start, _range_like_token_end(raw_text, full_end)),
+                        "range_compact_large_unit_with_unit_invalid_tail_preserve",
+                    )
+                unit_reading = _UNIT_READINGS[unit]
+                return SurfaceCandidate(
+                    core_span=full_span,
+                    full_span=full_span,
+                    owner="range_with_unit",
+                    surface_type="RANGE_WITH_UNIT_SURFACE",
+                    suffix_spans=[suffix_span],
+                    reason="range_compact_large_unit_with_unit_gate",
+                    metadata={
+                        "left": left,
+                        "right": right,
+                        "suffix": suffix,
+                        "suffix_span": suffix_span,
+                        "unit": unit,
+                        "unit_reading": unit_reading,
+                        "unit_start": unit_start,
+                        "prefix_reading": _range_reading(left, right),
+                        "reading": _range_reading(left, right) + suffix + " " + unit_reading,
+                    },
+                )
         if not _valid_after_korean_suffix(raw_text, suffix_span):
             return None
         return SurfaceCandidate(
@@ -1693,6 +1824,7 @@ __all__ = [
     "render_numeric_delimited_number",
     "scan_colon_semantic_pair_candidates",
     "scan_compact_large_unit_range_candidates",
+    "scan_paired_large_unit_range_with_unit_candidates",
     "scan_multi_colon_numeric_candidates",
     "scan_numeric_delimited_hyphen_range_candidates",
     "scan_range_candidates",

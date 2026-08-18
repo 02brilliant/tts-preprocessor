@@ -13,20 +13,20 @@ from engine.span_engine.transform import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("제3자", "제삼자"),
+        ("제3자", "제 삼자"),
         ("제 3자", "제 삼자"),
-        ("제12자", "제십이자"),
+        ("제12자", "제 십이자"),
         ("제 12자", "제 십이자"),
     ],
 )
-def test_je_prefixed_ja_uses_general_sino_reading_and_preserves_prefix_space(
+def test_je_prefixed_ja_uses_general_sino_reading_and_canonical_je_space(
     source: str, expected: str
 ) -> None:
     output = transform_with_trace(source)
 
     assert output.normalized_text == expected
     assert output.trace is not None
-    assert not any(
+    assert any(
         log.owner == "numeric_suffix"
         and log.reason == "prefixed_ordinal_numeric_suffix"
         for log in output.trace.claim_logs
@@ -203,7 +203,7 @@ def test_character_ja_spacing_invalid_and_protected_boundaries(source: str) -> N
     result = transform(source)
 
     if source == "제3 자":
-        assert result == "제삼 자"
+        assert result == "제 삼 자"
     elif source == "제 3 자":
         assert result == "제 삼 자"
     else:

@@ -35,11 +35,22 @@ def test_broadcast_time_title_core_marker_accepts_complete_hangul_tail(
 
 
 @pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("24시리즈", "이십사 시리즈"),
+        ("24시스템", "이십사 시스템"),
+    ],
+)
+def test_broadcast_time_lexical_si_words_use_residual_number_reading(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
     "text",
     [
-        "24시리즈",
         "24시점",
-        "24시스템",
         "24시뉴스abc",
         "24시뉴스v2",
         "24시뉴스룸abc",

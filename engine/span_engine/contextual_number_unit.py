@@ -20,6 +20,7 @@ from engine.span_engine.numeric_reading import (
     read_sino_time_suffix_number_text,
     read_spaced_integer_text,
 )
+from engine.span_engine.residual_spacing import valid_unary_sign_left_boundary
 from engine.span_engine.sign_aliases import SIGNED_NUMERIC_SIGN_ALIASES
 from engine.span_engine.signed_numeric import (
     parse_signed_numeric_core,
@@ -49,6 +50,9 @@ _SUPPORTED_UNITS = (
     "편",
     "층",
 )
+_NATIVE_THROUGH_99_RESIDUAL_UNITS = frozenset({"가지", "분"})
+_DEFAULT_RESIDUAL_SINO_THRESHOLD = 40
+_NATIVE_THROUGH_99_RESIDUAL_SINO_THRESHOLD = 100
 _UNIT_PATTERN = "|".join(sorted(_SUPPORTED_UNITS, key=len, reverse=True))
 _SIGN_PATTERN = re.escape("".join(sorted(SIGNED_NUMERIC_SIGN_ALIASES)))
 _BROAD_SURFACE_RE = re.compile(
@@ -333,6 +337,7 @@ PYEON_STRUCTURE_NOUNS = frozenset(
 CHEUNG_LOCATION_NOUNS = frozenset(
     {"회의실", "사무실", "로비", "식당"}
 )
+CHEUNG_LOCATION_PREFIXES = frozenset({"지하", "지상"})
 CHEUNG_ACCESS_NOUNS = frozenset({"계단"})
 CHEUNG_MOVEMENT_ACTIONS = frozenset({"올라", "내려"})
 
@@ -349,11 +354,11 @@ def scan_contextual_malformed_candidates(raw_text: str) -> list[SurfaceCandidate
             continue
         if _is_existing_specific_decimal(raw_text, unit, match):
             continue
-        if match.group("prefix") == "제" and unit != "가지":
+        if match.group("prefix") == "제":
             continue
         if unit == "분" and _is_structured_duration_minute(raw_text, match.start()):
             continue
-        if unit != "가지" and _preceded_by_spaced_ordinal(
+        if _preceded_by_spaced_ordinal(
             raw_text, match.start()
         ):
             continue
@@ -427,7 +432,7 @@ def _scan_standard_candidates(
         if match.group("prefix") == "제":
             # Existing explicit ordinal/preserve owners keep their canonical.
             continue
-        if unit != "가지" and _preceded_by_spaced_ordinal(
+        if _preceded_by_spaced_ordinal(
             raw_text, match.start()
         ):
             continue
@@ -444,6 +449,18 @@ def _evaluate_standard_match(
     tail = match.group("tail")
     previous = _previous_word(raw_text, match.start())
     following = _next_word(raw_text, match.end())
+
+    if unit == "조" and (
+        _is_existing_jo_owner_context(raw_text, match)
+        or _jo_specific_owner_context(
+            previous,
+            following,
+            tail,
+            match.end() == len(raw_text),
+        )
+        or _is_followed_by_large_unit_number(raw_text, match)
+    ):
+        return None
 
     if unit == "가지":
         if tail not in _GAJI_TAILS:
@@ -989,7 +1006,7 @@ def _evaluate_standard_match(
         )
         if (
             tail.startswith(("에", "에서"))
-            or previous == "지하"
+            or previous in CHEUNG_LOCATION_PREFIXES
             or location_noun is not None
             or (
                 _matching_noun_anchor(previous, CHEUNG_ACCESS_NOUNS)
@@ -1002,8 +1019,8 @@ def _evaluate_standard_match(
             anchor = (
                 f"location_particle:{tail}"
                 if tail.startswith(("에", "에서"))
-                else "location_prefix:지하"
-                if previous == "지하"
+                else f"location_prefix:{previous}"
+                if previous in CHEUNG_LOCATION_PREFIXES
                 else f"access_movement:{previous}+{following}"
                 if _matching_noun_anchor(previous, CHEUNG_ACCESS_NOUNS)
                 is not None
@@ -1159,7 +1176,17 @@ def _deferred(
     match: re.Match[str],
     semantic_type: str,
     blocking_reason: str,
-) -> SurfaceCandidate:
+) -> SurfaceCandidate | None:
+    if _uses_residual_sino_reading(match):
+        confirmed = _confirmed(
+            raw_text,
+            match,
+            "residual_numeric_unit",
+            "sino",
+            "residual_numeric_policy",
+        )
+        if confirmed is not None:
+            return confirmed
     return _candidate(
         raw_text,
         match,
@@ -1323,10 +1350,10 @@ def _number_reading(
     *,
     prefix: str | None = None,
 ) -> str | None:
-    if "." in raw_number:
+    if prefix in SIGNED_NUMERIC_SIGN_ALIASES or "." in raw_number:
         raw_amount = f"{prefix or ''}{raw_number}"
         core = parse_signed_numeric_core(raw_amount)
-        if core is None or not core.has_decimal:
+        if core is None:
             return None
         return render_signed_numeric(core)
     if mode == "sino":
@@ -1353,6 +1380,8 @@ def _number_reading(
 
 def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:
     unit = match.group("unit")
+    if semantic_type == "residual_numeric_unit":
+        return " "
     if semantic_type == "major_item":
         return match.group("space")
     if semantic_type == "duration_minute":
@@ -1525,10 +1554,33 @@ def _is_valid_supported_number_match(match: re.Match[str]) -> bool:
         return True
     prefix = match.group("prefix")
     number = match.group("number")
-    if prefix == "제" or "." not in number or any(char.isalpha() for char in number):
+    if prefix == "제" or any(char.isalpha() for char in number):
         return False
     core = parse_signed_numeric_core(f"{prefix or ''}{number}")
-    return core is not None and core.has_decimal
+    return core is not None
+
+
+def _uses_residual_sino_reading(match: re.Match[str]) -> bool:
+    prefix = match.group("prefix")
+    if prefix == "제":
+        return False
+    number = match.group("number")
+    if any(char.isalpha() for char in number):
+        return False
+    core = parse_signed_numeric_core(f"{prefix or ''}{number}")
+    if core is None:
+        return False
+    if prefix in SIGNED_NUMERIC_SIGN_ALIASES or core.has_decimal:
+        return True
+    value = int(core.integer_digits)
+    if value == 0:
+        return True
+    threshold = (
+        _NATIVE_THROUGH_99_RESIDUAL_SINO_THRESHOLD
+        if match.group("unit") in _NATIVE_THROUGH_99_RESIDUAL_UNITS
+        else _DEFAULT_RESIDUAL_SINO_THRESHOLD
+    )
+    return value >= threshold
 
 
 def _match_has_decimal(match: re.Match[str]) -> bool:
@@ -1560,8 +1612,16 @@ def _eligible_match_boundary(
     start, end = match.start(), match.end()
     prev = raw_text[start - 1] if start > 0 else None
     following = raw_text[end] if end < len(raw_text) else None
-    if prev in _RANGE_DELIMITERS:
+    if match.group("prefix") in SIGNED_NUMERIC_SIGN_ALIASES and not valid_unary_sign_left_boundary(
+        raw_text, start
+    ):
         return False
+    if prev in _RANGE_DELIMITERS:
+        before_delimiter = raw_text[start - 2] if start >= 2 else None
+        if before_delimiter is None or (
+            before_delimiter.isascii() and before_delimiter.isdigit()
+        ):
+            return False
     if prev is not None and (
         prev in _IDENTIFIER_BOUNDARY_BLOCKERS
         or prev.isascii() and prev.isalnum()
@@ -1786,6 +1846,7 @@ __all__ = [
     "CHEOK_LENGTH_NOUNS",
     "CHEOK_SHIP_NOUNS",
     "CHEUNG_LOCATION_NOUNS",
+    "CHEUNG_LOCATION_PREFIXES",
     "DAE_AGE_NOUNS",
     "DAE_GENERATION_NOUNS",
     "DAN_GRADE_NOUNS",

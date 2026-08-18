@@ -17,6 +17,7 @@ from engine.span_engine.numeric_reading import (
     read_decimal_fraction_digits,
     read_integer_text,
 )
+from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.sign_aliases import is_signed_numeric_sign
 from engine.span_engine.span_guards import (
@@ -289,7 +290,11 @@ def parse_decimal_candidate(raw_text: str, candidate: SurfaceCandidate) -> str |
     if candidate.owner != "decimal":
         return None
     reading = candidate.metadata.get("reading")
-    return reading if isinstance(reading, str) else None
+    if not isinstance(reading, str):
+        return None
+    if needs_residual_hangul_space(raw_text, candidate.core_span.end):
+        return f"{reading} "
+    return reading
 
 __all__ = [
     "parse_decimal_candidate",

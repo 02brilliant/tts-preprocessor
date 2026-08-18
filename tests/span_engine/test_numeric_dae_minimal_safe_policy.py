@@ -156,9 +156,9 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
     assert decimal_claim["owner"] == "contextual_number_unit"
     assert decimal_claim["claim_type"] == "surface"
 
-    for text in ("1.5대", "1.5대가"):
+    for text, expected in (("1.5대", "일쩜오 대"), ("1.5대가", "일쩜오 대가")):
         debug = _debug(text)
-        assert debug["normalized_text"] == text
+        assert debug["normalized_text"] == expected
         assert [claim["owner"] for claim in debug["trace"]["claim_logs"]] == [
             "contextual_number_unit"
         ]
@@ -277,7 +277,7 @@ def test_protected_and_code_like_dae_keep_existing_behavior(
         ("3장", "3장"),
         ("1척", "1척"),
         ("21명", "스물한 명"),
-        ("40척", "40척"),
+        ("40척", "사십 척"),
     ],
 )
 def test_other_counters_are_unchanged(text: str, expected: str) -> None:

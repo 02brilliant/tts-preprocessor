@@ -27,8 +27,8 @@ def test_public_number_context_gate(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("110명 참석", "백십명 참석"),
-        ("120명", "백이십명"),
+        ("110명 참석", "백십 명 참석"),
+        ("120명", "백이십 명"),
         ("1339에 문의", "천삼백삼십구에 문의"),
     ],
 )

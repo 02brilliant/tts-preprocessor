@@ -420,9 +420,9 @@ POLICY_CASES = [
     TextCase(
         case_id="special-emergency-context-but-disallowed-tail",
         text="긴급 신고는 112번으로 한다",
-        expected="긴급 신고는 112번으로 한다",
-        rule="contextual number-unit / deferred",
-        reason="An emergency keyword does not authorize an unsupported tail, and the ambiguous 번 surface cannot reenter ordinary number fallback.",
+        expected="긴급 신고는 백십이 번으로 한다",
+        rule="contextual number-unit / residual",
+        reason="An emergency keyword does not authorize an unsupported tail; residual numeric policy still reads 112번 as Sino 번.",
     ),
 ]
 

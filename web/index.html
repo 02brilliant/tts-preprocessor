@@ -953,8 +953,8 @@
           throw new Error("현재 선택할 수 있는 LLM 모델이 없습니다.");
         }
 
-        const preferredModel = visibleModels.includes("gemma4:31b")
-          ? "gemma4:31b"
+        const preferredModel = visibleModels.includes(data.default_model)
+          ? data.default_model
           : visibleModels[0];
         modelEl.replaceChildren(
           ...visibleModels.map((model) => {

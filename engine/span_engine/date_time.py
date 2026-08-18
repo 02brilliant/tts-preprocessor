@@ -6,12 +6,22 @@ import re
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.delimiters import COLON_LIKE_DELIMITERS
-from engine.span_engine.models import SourceSpan, SurfaceCandidate, TraceLogEntry
+from engine.span_engine.models import (
+    RenderPiece,
+    SourceSpan,
+    Surface,
+    SurfaceCandidate,
+    TraceLogEntry,
+)
 from engine.span_engine.number import number_to_korean_under_10000
-from engine.span_engine.numeric_reading import read_sino_time_suffix_number_text
+from engine.span_engine.numeric_reading import (
+    read_number_text,
+    read_sino_time_suffix_number_text,
+)
 from engine.span_engine.numeric_suffix import (
     starts_with_longer_registered_numeric_suffix,
 )
+from engine.span_engine.residual_spacing import CLOCK_HOUR_LEXICAL_WORDS
 from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
@@ -33,7 +43,7 @@ _ANY_COLON_TIME_RE = re.compile(
 _KOREAN_SUFFIX_INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _KOREAN_SUFFIX_NUMBER_RE = rf"(?:{_KOREAN_SUFFIX_INTEGER_RE})(?:\.\d+)?"
 _KOREAN_TIME_RE = re.compile(
-    rf"(?<![A-Za-z0-9가-힣])(\d+)시(?!간)"
+    rf"(?<![A-Za-z0-9가-힣])(?:제 ?)?(\d+)시(?!간)"
     rf"(?:[ \t]*({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*분"
     rf"(?:[ \t]*({_KOREAN_SUFFIX_NUMBER_RE})[ \t]*초)?)?"
 )
@@ -93,6 +103,16 @@ KOREAN_TIME_SAFE_TAILS = tuple(
             "에",
             "마다",
         ),
+        key=len,
+        reverse=True,
+    )
+)
+CLOCK_HOUR_MEANING_TAILS = tuple(
+    sorted(("부로", "께", "반", "방향"), key=len, reverse=True)
+)
+_CLOCK_HOUR_SAFE_TAILS = tuple(
+    sorted(
+        KOREAN_TIME_SAFE_TAILS + CLOCK_HOUR_MEANING_TAILS,
         key=len,
         reverse=True,
     )
@@ -382,6 +402,60 @@ def parse_time_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | No
         return None
     reading = candidate.metadata.get("reading")
     return reading if isinstance(reading, str) else None
+
+
+def parse_clock_hour_direction_surface(
+    raw_text: str, candidate: SurfaceCandidate
+) -> Surface | None:
+    if candidate.owner != "time" or candidate.reason != "time_hour_clock_direction":
+        return None
+    if candidate.metadata.get("compact_si_direction") is not True:
+        return None
+    hour_reading = candidate.metadata.get("hour_reading")
+    number_span = candidate.metadata.get("number_span")
+    si_span = candidate.metadata.get("si_span")
+    if (
+        not isinstance(hour_reading, str)
+        or not isinstance(number_span, SourceSpan)
+        or not isinstance(si_span, SourceSpan)
+    ):
+        return None
+    leading = ""
+    if number_span.start > 0 and raw_text[number_span.start - 1] == "제":
+        leading = " "
+    metadata = {"surface_type": candidate.surface_type}
+    pieces = [
+        RenderPiece(
+            text=f"{leading}{hour_reading} ",
+            provenance="GENERATED_READING",
+            source_span=number_span,
+            owner=candidate.owner,
+            metadata=metadata,
+        ),
+        RenderPiece(
+            text=raw_text[si_span.start : si_span.end],
+            provenance="ORIGINAL_KOREAN",
+            source_span=si_span,
+            owner=candidate.owner,
+            metadata=metadata,
+        ),
+        RenderPiece(
+            text=" ",
+            provenance="GENERATED_READING",
+            source_span=si_span,
+            owner=candidate.owner,
+            metadata=metadata,
+        ),
+    ]
+    return Surface(
+        surface_type=candidate.surface_type or "TIME_SURFACE",
+        owner=candidate.owner,
+        raw=raw_text[candidate.core_span.start : candidate.core_span.end],
+        span=candidate.core_span,
+        reading="".join(piece.text for piece in pieces),
+        render_pieces=pieces,
+        metadata=dict(candidate.metadata),
+    )
 
 
 def is_valid_date(year: int, month: int, day: int) -> bool:
@@ -832,9 +906,24 @@ def _korean_time_candidates(
             match, "invalid_korean_time_suffix_numeric_preserve"
         )
     span = SourceSpan(match.start(), match.end())
+    hour_only = minute_raw is None and second_raw is None
+    has_je = _korean_time_has_je_prefix(match)
+    if has_je and hour_only:
+        return []
+    if hour_only and _starts_with_clock_hour_lexical_word(raw_text, match.start(1)):
+        return []
+    direction_candidates = _clock_hour_direction_candidates(raw_text, match, hour_text)
+    if direction_candidates is not None:
+        return direction_candidates
     if not is_valid_korean_clock_time(hour):
+        if hour_only and int(normalized_hour_text) >= 40:
+            return []
         return _preserve_numeric_groups(match, "invalid_korean_time_preserve")
-    valid_boundary = _valid_korean_time_boundary(raw_text, span)
+    valid_boundary = _valid_korean_time_boundary(
+        raw_text,
+        span,
+        allow_clock_hour_meaning_tails=hour_only,
+    )
     if (
         not valid_boundary
         and minute_raw is not None
@@ -861,6 +950,7 @@ def _korean_time_candidates(
         if prev_char in {"~", "∼", "～", "〜"}:
             return []
         return _preserve_numeric_groups(match, "attached_korean_time_preserve")
+    hour_reading, hour_core = _clock_hour_core(match, hour, hour_text)
     candidates = [
         _numeric_marker_candidate(
             match,
@@ -868,10 +958,8 @@ def _korean_time_candidates(
             "time_hour_korean_context",
             hour,
             owner="time",
-            reading=f"{clock_hour_reading(hour)} ",
-            core_span=SourceSpan(
-                match.start(1), _unit_start_after_group(match, 1, "시")
-            ),
+            reading=hour_reading,
+            core_span=hour_core,
         )
     ]
     if minute_raw is not None:
@@ -1154,7 +1242,12 @@ def _valid_korean_date_boundary(raw_text: str, span: SourceSpan) -> bool:
     return True
 
 
-def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
+def _valid_korean_time_boundary(
+    raw_text: str,
+    span: SourceSpan,
+    *,
+    allow_clock_hour_meaning_tails: bool = False,
+) -> bool:
     prev_char = raw_text[span.start - 1] if span.start > 0 else None
     next_char = raw_text[span.end] if span.end < len(raw_text) else None
     if prev_char in {
@@ -1190,6 +1283,8 @@ def _valid_korean_time_boundary(raw_text: str, span: SourceSpan) -> bool:
             return False
     if "\uac00" <= next_char <= "\ud7a3":
         next_text = raw_text[span.end :]
+        if allow_clock_hour_meaning_tails:
+            return _has_safe_clock_hour_tail(next_text)
         return _has_safe_korean_time_tail(next_text)
     return True
 
@@ -1302,21 +1397,141 @@ def _korean_suffix_like_token_end(raw_text: str, start: int) -> int:
     return index
 
 
+def _starts_with_clock_hour_lexical_word(raw_text: str, number_start: int) -> bool:
+    index = number_start
+    while index < len(raw_text) and raw_text[index].isdigit():
+        index += 1
+    rest = raw_text[index:]
+    return any(rest.startswith(word) for word in CLOCK_HOUR_LEXICAL_WORDS)
+
+
+def _korean_time_has_je_prefix(match: re.Match[str]) -> bool:
+    return match.string[match.start() : match.start(1)].strip() == "제"
+
+
+def _clock_hour_core(
+    match: re.Match[str], hour: int, hour_text: str
+) -> tuple[str, SourceSpan]:
+    has_je = _korean_time_has_je_prefix(match)
+    normalized = hour_text.lstrip("0") or "0"
+    hour_reading = (
+        read_number_text(normalized) if has_je else clock_hour_reading(hour)
+    )
+    leading = ""
+    if has_je:
+        je_text = match.string[match.start() : match.start(1)]
+        if not je_text.endswith(" "):
+            leading = " "
+    return (
+        f"{leading}{hour_reading} ",
+        SourceSpan(match.start(1), _unit_start_after_group(match, 1, "시")),
+    )
+
+
+def _clock_hour_direction_candidates(
+    raw_text: str, match: re.Match[str], hour_text: str
+) -> list[SurfaceCandidate] | None:
+    if match.group(2) is not None or match.group(3) is not None:
+        return None
+    si_start = _unit_start_after_group(match, 1, "시")
+    si_end = si_start + len("시")
+    direction_index = si_end
+    compact = True
+    if direction_index < len(raw_text) and raw_text[direction_index] == " ":
+        direction_index += 1
+        compact = False
+    if not raw_text.startswith("방향", direction_index):
+        return None
+    if not _has_safe_clock_hour_tail(raw_text[direction_index:]):
+        return None
+    span = SourceSpan(match.start(), match.end())
+    if not _valid_korean_time_boundary(
+        raw_text,
+        span,
+        allow_clock_hour_meaning_tails=True,
+    ):
+        return None
+    normalized = hour_text.lstrip("0") or "0"
+    hour = int(normalized)
+    has_je = _korean_time_has_je_prefix(match)
+    if has_je or not (1 <= hour <= 12):
+        hour_reading = read_number_text(normalized)
+    else:
+        hour_reading = clock_hour_reading(hour)
+    if hour_reading is None:
+        return None
+    prefix = ""
+    if has_je:
+        je_text = raw_text[match.start() : match.start(1)]
+        if not je_text.endswith(" "):
+            prefix = " "
+    core_start = match.start(1)
+    core_end = si_end if compact else match.end(1)
+    candidate = _numeric_marker_candidate(
+        match,
+        1,
+        "time_hour_clock_direction",
+        hour,
+        owner="time",
+        reading=f"{prefix}{hour_reading} ",
+        core_span=SourceSpan(core_start, core_end),
+    )
+    candidate.metadata.update(
+        {
+            "hour_reading": hour_reading,
+            "compact_si_direction": compact,
+            "has_je": has_je,
+            "number_span": SourceSpan(match.start(1), match.end(1)),
+            "si_span": SourceSpan(si_start, si_end),
+        }
+    )
+    return [candidate]
+
+
 def _has_safe_korean_time_tail(next_text: str) -> bool:
-    for tail in KOREAN_TIME_SAFE_TAILS:
+    return _has_single_safe_korean_tail(next_text, KOREAN_TIME_SAFE_TAILS)
+
+
+def _has_safe_clock_hour_tail(next_text: str) -> bool:
+    return _has_safe_korean_tail_chain(next_text, _CLOCK_HOUR_SAFE_TAILS)
+
+
+def _has_single_safe_korean_tail(next_text: str, tails: tuple[str, ...]) -> bool:
+    for tail in tails:
         if not next_text.startswith(tail):
             continue
-        tail_end = len(tail)
-        if tail_end >= len(next_text):
-            return True
-        next_char = next_text[tail_end]
-        if next_char.isspace():
-            return True
-        if next_char in {".", ",", "!", "?", ";", ":", "。", "，", "！", "？"}:
-            return True
-        if next_char == "/" and is_sentence_final_slash_boundary(next_text, tail_end):
+        if _safe_korean_tail_boundary(next_text, len(tail)):
             return True
     return False
+
+
+def _has_safe_korean_tail_chain(next_text: str, tails: tuple[str, ...]) -> bool:
+    index = 0
+    matched_any = False
+    while index < len(next_text):
+        rest = next_text[index:]
+        matched = next(
+            (tail for tail in tails if rest.startswith(tail)),
+            None,
+        )
+        if matched is None:
+            break
+        index += len(matched)
+        matched_any = True
+    return matched_any and _safe_korean_tail_boundary(next_text, index)
+
+
+def _safe_korean_tail_boundary(next_text: str, tail_end: int) -> bool:
+    if tail_end >= len(next_text):
+        return True
+    next_char = next_text[tail_end]
+    if next_char.isspace():
+        return True
+    if next_char in {".", ",", "!", "?", ";", ":", "。", "，", "！", "？"}:
+        return True
+    return next_char == "/" and is_sentence_final_slash_boundary(
+        next_text, tail_end
+    )
 
 
 def _starts_with_time_title_suffix(raw_text: str, index: int) -> bool:
@@ -1413,6 +1628,8 @@ def _overlaps_any(span: SourceSpan, spans: list[SourceSpan]) -> bool:
 
 
 __all__ = [
+    "CLOCK_HOUR_LEXICAL_WORDS",
+    "CLOCK_HOUR_MEANING_TAILS",
     "DATE_CONTEXT_KEYWORDS",
     "KOREAN_TIME_SAFE_TAILS",
     "SCORE_CONTEXT_KEYWORDS",
@@ -1425,6 +1642,7 @@ __all__ = [
     "is_strong_time_like_colon",
     "is_valid_date",
     "is_valid_time",
+    "parse_clock_hour_direction_surface",
     "parse_date_candidate",
     "parse_time_candidate",
     "scan_date_candidates",

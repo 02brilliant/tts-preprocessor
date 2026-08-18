@@ -25,7 +25,7 @@ def test_positive_gate_owner_claims(text: str, expected: str, owner: str):
     ("text", "expected", "blocked_owner"),
     [
         ("score 12:30", "score 12:30", "time"),
-        ("긴급 신고는 112번으로 한다", "긴급 신고는 112번으로 한다", "emergency"),
+        ("긴급 신고는 112번으로 한다", "긴급 신고는 백십이 번으로 한다", "emergency"),
     ],
 )
 def test_negative_gate_paths_do_not_claim_blocked_owner(

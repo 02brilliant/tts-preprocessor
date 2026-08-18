@@ -53,6 +53,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/decimal_fractional_zero.py",
         "scripts/probes/colon_time_like_policy.py",
         "scripts/probes/large_unit_numeric_surface.py",
+        "scripts/probes/registered_unit_surface.py",
         "scripts/probes/json_like_protected_spans.py",
         "scripts/probes/contextual_number_units.py",
         "tts_preprocessor.spec",
@@ -83,9 +84,17 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         project_bin / "python",
         """
         #!/usr/bin/env bash
+        if [[ "${1:-}" == *run_semantic_probes.py ]]; then
+          if [[ "${FAKE_LOCAL_PROBE_STATUS:-0}" != "0" ]]; then
+            printf '[semantic-probes][FAIL] fixture\\n' >&2
+            exit "${FAKE_LOCAL_PROBE_STATUS}"
+          fi
+          printf '[semantic-probes][OK] core semantic probe suite passed\\n'
+          exit 0
+        fi
         case "${2:-}" in
-          *platform.machine*) printf 'arm64\n' ;;
-          *Py_GIL_DISABLED*) printf '3.13:0\n' ;;
+          *platform.machine*) printf 'arm64\\n' ;;
+          *Py_GIL_DISABLED*) printf '3.13:0\\n' ;;
           *os.path.getsize*) wc -c < "$3" | tr -d ' ' ;;
           *) exit 1 ;;
         esac
@@ -122,7 +131,14 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         fake_bin / "git",
         """
         #!/usr/bin/env bash
-        printf 'd7bb338\n'
+        while [[ "${1:-}" == "-C" ]]; do
+          shift 2
+        done
+        case "${1:-}" in
+          rev-parse) printf 'd7bb338\\n' ;;
+          status) exit 0 ;;
+          *) printf 'd7bb338\\n' ;;
+        esac
         """,
     )
     _write_executable(
@@ -292,9 +308,15 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     check = deploy.index('bash "$CHECK_SERVER_SCRIPT"')
     api_semantic = deploy.index("if ! run_remote_api_semantic_probes")
     cleanup = deploy.rindex("if ! run_remote_build_action cleanup")
+    local_probes = deploy.index("Validating the local worktree with core semantic probes")
+    remote_preflight = deploy.index(
+        "Checking the existing remote Linux build environment"
+    )
+    rsync_engine = deploy.index('"$ROOT_DIR/engine/"')
 
     assert linux_start < first_wait
     assert macos_start < first_wait
+    assert local_probes < remote_preflight < rsync_engine < linux_start
     assert (
         first_wait
         < stop
@@ -320,7 +342,11 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert "--delete-excluded" not in deploy
     assert '"$LOCAL_SEMANTIC_PROBES_DIR/"' in deploy
     assert '"$SSH_TARGET:$REMOTE_BUILD_SRC_PROBES_DIR/"' in deploy
+    assert '"$LOCAL_SEMANTIC_PROBES_DIR/run_semantic_probes.py"' in deploy
+    assert "Validating the local worktree with core semantic probes" in deploy
+    assert "Packaging uncommitted or untracked files from the worktree" in deploy
     assert "contextual_number_units.py" not in deploy
+    assert "registered_unit_surface.py" not in deploy
 
 
 @pytest.mark.skipif(
@@ -343,6 +369,30 @@ def test_remote_preflight_failure_stops_before_source_sync(tmp_path: Path) -> No
         "macos-build-start",
         "server-stop",
     )
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_local_probe_failure_stops_before_source_sync(tmp_path: Path) -> None:
+    script, env, calls = _prepare_deploy_tree(tmp_path)
+    env["FAKE_LOCAL_PROBE_STATUS"] = "41"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode != 0
+    assert "Local core semantic probes failed" in result.stderr
+    if calls.exists():
+        events = _events(calls)
+        _assert_not_run(
+            events,
+            "remote-preflight",
+            "rsync",
+            "linux-prepare-start",
+            "macos-build-start",
+            "server-stop",
+        )
 
 
 @pytest.mark.skipif(
@@ -576,6 +626,7 @@ def test_successful_deploy_orders_all_operations_and_cleanup(tmp_path: Path) -> 
     result = _run_deploy(script, env)
 
     assert result.returncode == 0, result.stderr
+    assert "Validating the local worktree with core semantic probes" in result.stdout
     events = _events(calls)
     stop = events.index("server-stop")
     publish = events.index("linux-publish")

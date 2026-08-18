@@ -100,5 +100,5 @@ def test_prefixed_ordinal_unsafe_preserve(
     assert transform(source) == expected
 
 
-def test_prefixed_ordinal_does_not_apply_to_arbitrary_hangul_suffix() -> None:
-    assert transform("제2아무말") == "제2아무말"
+def test_prefixed_ordinal_reads_sino_before_arbitrary_hangul_suffix() -> None:
+    assert transform("제2아무말") == "제 이아무말"

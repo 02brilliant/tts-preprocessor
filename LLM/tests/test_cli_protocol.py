@@ -66,7 +66,7 @@ def test_entrypoint_list_models_prints_json(monkeypatch, capsys) -> None:
 
     assert entrypoint.run() == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["default_model"] == "gemma4:31b"
+    assert payload["default_model"] == "gemma4-31B-it (vLLM)"
     assert "gemma4-31B-it (vLLM)" in payload["models"]
 
 

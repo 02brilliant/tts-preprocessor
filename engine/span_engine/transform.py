@@ -912,8 +912,21 @@ def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> se
             if (
                 getattr(surface, "owner", None) == "numeric_suffix"
                 and getattr(surface, "metadata", {}).get("reason")
-                == "prefixed_ordinal_numeric_suffix"
+                in {
+                    "prefixed_ordinal_numeric_suffix",
+                    "prefixed_ordinal_numeric_core",
+                }
                 and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
+            ):
+                consumed.add((unit.span.start, unit.span.end))
+                continue
+            if (
+                getattr(surface, "owner", None) == "time"
+                and getattr(surface, "metadata", {}).get("compact_si_direction")
+                is True
+                and _spans_overlap(
+                    surface.span.start, surface.span.end, unit.span.start, unit.span.end
+                )
             ):
                 consumed.add((unit.span.start, unit.span.end))
     return consumed

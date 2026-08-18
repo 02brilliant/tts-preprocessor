@@ -31,7 +31,7 @@ def test_model_config_has_fixed_models_and_default() -> None:
         "gpt-5.6-luna (low)",
         "gpt-5.6-luna (none)",
     )
-    assert config.default_model == "gemma4:31b"
+    assert config.default_model == "gemma4-31B-it (vLLM)"
     assert config.get("gemma4:e4b").provider == "local"
     assert config.get("gemma4-31B-it (vLLM)").provider == "vllm"
     assert config.get("gemma4-31B-it (vLLM)").upstream_model == "google/gemma-4-31B-it"

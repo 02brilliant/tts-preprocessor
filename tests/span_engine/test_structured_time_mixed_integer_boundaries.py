@@ -28,12 +28,15 @@ def test_structured_time_allows_approximate_kke_tail(
     [
         "6분께",
         "6분께서",
-        "9시께",
         "3분개발",
     ],
 )
-def test_non_structured_minute_or_hour_kke_tail_preserves(text: str) -> None:
+def test_non_structured_minute_kke_tail_preserves(text: str) -> None:
     assert transform(text) == text
+
+
+def test_hour_only_kke_tail_uses_clock_hour_owner() -> None:
+    assert transform("9시께") == "아홉 시께"
 
 
 def test_structured_time_kke_trace_uses_time_owner_not_preserve() -> None:
@@ -95,9 +98,8 @@ def test_mixed_integer_full_core_reads_across_safe_hangul_boundaries(
         "1천2천",
         "5천8300",
         "5백830",
-        "5십30",
-        "제6천원",
-        "https://example.com/6천",
+            "5십30",
+            "https://example.com/6천",
         "`6천5백`",
         "A5천830.13",
         "01천830.13",
@@ -109,6 +111,10 @@ def test_mixed_integer_full_core_reads_across_safe_hangul_boundaries(
 )
 def test_mixed_integer_unsafe_or_malformed_surfaces_preserve(text: str) -> None:
     assert transform(text) == text
+
+
+def test_prefixed_ordinal_reads_sino_before_mixed_integer_hangul() -> None:
+    assert transform("제6천원") == "제 육천원"
 
 
 def test_mixed_integer_trace_full_claim_and_original_unit_provenance() -> None:

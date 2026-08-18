@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engine.main import transform, transform_debug
+from engine.main import transform
 from engine.span_engine.transform import transform_with_trace
 
 
@@ -34,9 +34,9 @@ def test_valid_decimal_contextual_units_use_sino_decimal_reading(
     [
         ("5.5분이 남았다", "오쩜오 분이 남았다"),
         ("2.35번 확인했다", "이쩜삼오 번 확인했다"),
-        ("2.35권이 놓였다", "2.35권이 놓였다"),
-        ("2.35편이 공개됐다", "2.35편이 공개됐다"),
-        ("2.35층이 남았다", "2.35층이 남았다"),
+        ("2.35권이 놓였다", "이쩜삼오 권이 놓였다"),
+        ("2.35편이 공개됐다", "이쩜삼오 편이 공개됐다"),
+        ("2.35층이 남았다", "이쩜삼오 층이 남았다"),
     ],
 )
 def test_decimal_contextual_units_follow_expanded_exact_anchors_or_defer(
@@ -185,21 +185,8 @@ def test_decimal_unit_expansion_keeps_protected_surfaces(source: str) -> None:
     assert transform(source) == expected
 
 
-def test_contextual_decimal_decision_log_and_provenance() -> None:
+def test_signed_decimal_beon_keeps_residual_reading_and_spacing() -> None:
     source = "총 +2.35번"
-    debug = transform_debug(source)
-    logs = debug["debug"]["trace"]["contextual_decision_logs"]
-    log = next(item for item in logs if item["input_surface"] == "+2.35번")
-
-    assert log["decision"] == "confirmed"
-    assert log["semantic_type"] == "occurrence"
-    assert log["confirmed_reading"] == "플러스 이쩜삼오 번"
-    assert log["reentry_blocked"] is True
-
+    assert transform(source) == "총 플러스 이쩜삼오 번"
     result = transform_with_trace(source)
-    assert result.normalized_text == "총 플러스 이쩜삼오 번"
-    assert any(
-        piece.owner == "contextual_number_unit"
-        and piece.provenance == "GENERATED_READING"
-        for piece in result.render_pieces
-    )
+    assert any(piece.provenance == "GENERATED_READING" for piece in result.render_pieces)

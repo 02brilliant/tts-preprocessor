@@ -127,8 +127,9 @@ PROBLEM_PARAGRAPH_2 = (
     "제2대, 제2석, 제2표, 제2매, 제2세트, 제2팩, 제2봉, 제2종류가 차례로 배치됐습니다. spaced form 검증을 "
     "위해 제 2문항과 제 15권도 같은 문단에 넣었으며, 이들은 등록된 한글표기단위에 한정된 ordinal-like prefixed "
     "numeric suffix 정책으로 처리되어야 합니다. 하지만 A제2문항, A제 2문항, 제2문항abc, 제2문항A, 제2항목abc, "
-    "제2-문항, 제2G, 제2.5문항, 제2아무말은 각각 ASCII/code-like prefix, unsafe tail, unsupported suffix 또는 "
-    "비대상 구조이므로 preserve 또는 fallback 경계를 확인해야 합니다."
+    "제2-문항, 제2G, 제2.5문항은 각각 ASCII/code-like prefix, unsafe tail 또는 "
+    "비대상 구조이므로 preserve 또는 fallback 경계를 확인해야 합니다. 제2아무말은 "
+    "미등록 한글이어도 제 접두 한자어로 읽습니다."
 )
 
 PROBLEM_PARAGRAPH_3 = (

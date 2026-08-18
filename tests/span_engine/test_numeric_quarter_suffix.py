@@ -33,6 +33,8 @@ def test_registered_quarter_suffix_reads_only_the_numeric_core(
         ("1.5분기", "일쩜오 분기"),
         ("+1.5분기", "플러스 일쩜오 분기"),
         ("-1.5분기", "마이너스 일쩜오 분기"),
+        ("+1분기", "플러스 일분기"),
+        ("-1분기", "마이너스 일분기"),
     ),
 )
 def test_quarter_suffix_preserves_attachment_and_reuses_decimal_policy(
@@ -49,8 +51,6 @@ def test_quarter_suffix_preserves_attachment_and_reuses_decimal_policy(
         "1.분기",
         "1..5분기",
         "1,00분기",
-        "+1분기",
-        "-1분기",
         "4A분기",
         "1분기abc",
         "A1분기",

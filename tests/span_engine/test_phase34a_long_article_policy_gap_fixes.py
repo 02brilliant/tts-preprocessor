@@ -54,7 +54,7 @@ def test_phase34a_duration_time_units(text: str, expected: str) -> None:
     [
         ("15건", "열다섯 건"),
         ("59건", "오십구 건"),
-        ("120점", "120점"),
+        ("120점", "백이십 점"),
         ("8곳", "여덟 곳"),
     ],
 )

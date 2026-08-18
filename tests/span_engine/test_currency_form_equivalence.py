@@ -214,13 +214,16 @@ def test_registered_non_krw_currency_smoke_equivalence() -> None:
         "--₩1,000",
         "₩--1,000",
         "KRW+-1,000",
-        "+-1,000원",
     ],
 )
 def test_invalid_currency_numeric_blocks_preserve_without_partial_fallback(
     source: str,
 ) -> None:
     assert transform(source) == source
+
+
+def test_compound_plus_minus_currency_amount_uses_residual_signed_reading() -> None:
+    assert transform("+-1,000원") == "플러스 마이너스 천원"
 
 
 @pytest.mark.parametrize(

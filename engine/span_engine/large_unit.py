@@ -333,34 +333,76 @@ class MixedIntegerCoreParse:
     value: int
 
 
+@dataclass(frozen=True)
+class LargeUnitQuantityCoreParse:
+    end: int
+    reading: str
+    has_decimal: bool
+    has_sign: bool
+    integer_value: int | None
+    numeric_reading: str
+    numeric_span: SourceSpan
+    suffix_span: SourceSpan
+    reading_includes_suffix: bool
+
+
 def parse_large_unit_integer_core_at(
     raw_text: str, start: int
 ) -> MixedIntegerCoreParse | None:
     """Parse a complete unsigned integer core containing a Korean large unit."""
+    parsed = parse_large_unit_quantity_core_at(raw_text, start, allow_sign=False)
+    if (
+        parsed is None
+        or parsed.has_decimal
+        or parsed.has_sign
+        or parsed.integer_value is None
+        or parsed.integer_value < 0
+    ):
+        return None
+    return MixedIntegerCoreParse(
+        end=parsed.end,
+        reading=parsed.reading,
+        value=parsed.integer_value,
+    )
+
+
+def parse_large_unit_quantity_core_at(
+    raw_text: str, start: int, *, allow_sign: bool = True
+) -> LargeUnitQuantityCoreParse | None:
+    """Parse an unsigned or signed large-unit core, including decimal forms."""
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be str")
     if not isinstance(start, int):
         raise TypeError("start must be int")
     if start < 0 or start >= len(raw_text):
         return None
-    if raw_text[start] in _LARGE_UNIT_SIGNS:
+    if raw_text[start] in _LARGE_UNIT_SIGNS and not allow_sign:
         return None
 
     parsed = _parse_large_unit_at(raw_text, start)
-    if (
-        parsed is None
-        or parsed.has_decimal
-        or parsed.integer_value is None
-        or parsed.integer_value < 0
-    ):
+    if parsed is None:
         return None
-    reading = parsed.reading
-    if not parsed.reading_includes_suffix:
-        reading = f"{reading}{raw_text[parsed.suffix_span.start:parsed.suffix_span.end]}"
-    return MixedIntegerCoreParse(
+    has_sign = bool(parsed.sign_surface)
+    if has_sign and not allow_sign:
+        return None
+    suffix = raw_text[parsed.suffix_span.start : parsed.suffix_span.end]
+    numeric_reading = parsed.reading.rstrip()
+    if parsed.reading_includes_suffix:
+        reading = parsed.reading
+    elif parsed.has_decimal:
+        reading = f"{numeric_reading} {suffix}"
+    else:
+        reading = f"{numeric_reading}{suffix}"
+    return LargeUnitQuantityCoreParse(
         end=parsed.core_span.end,
         reading=reading,
-        value=parsed.integer_value,
+        has_decimal=parsed.has_decimal,
+        has_sign=has_sign,
+        integer_value=parsed.integer_value,
+        numeric_reading=numeric_reading,
+        numeric_span=parsed.numeric_span,
+        suffix_span=parsed.suffix_span,
+        reading_includes_suffix=parsed.reading_includes_suffix,
     )
 
 
@@ -775,6 +817,8 @@ def _large_unit_like_preserve_candidate(
         return None
     if not _has_plausible_large_unit_suffix(token) and not _has_invalid_small_unit_order_token(token):
         return None
+    if _preceded_by_ordinal_je(raw_text, token_start):
+        return None
     if _valid_large_unit_token(raw_text, token_start, token_end):
         return None
     span = SourceSpan(token_start, token_end)
@@ -994,6 +1038,16 @@ def _is_ascii_digits(text: str) -> bool:
     return bool(text) and all(_is_ascii_digit(char) for char in text)
 
 
+def _preceded_by_ordinal_je(raw_text: str, number_start: int) -> bool:
+    if (
+        number_start > 1
+        and raw_text[number_start - 1] == " "
+        and raw_text[number_start - 2] == "제"
+    ):
+        return number_start == 2 or raw_text[number_start - 3].isspace()
+    return False
+
+
 def _valid_boundaries(raw_text: str, core_span: SourceSpan, unit_char: str) -> bool:
     prev_char = raw_text[core_span.start - 1] if core_span.start > 0 else None
     next_char = raw_text[core_span.end] if core_span.end < len(raw_text) else None
@@ -1004,6 +1058,8 @@ def _valid_boundaries(raw_text: str, core_span: SourceSpan, unit_char: str) -> b
         if "\uac00" <= prev_char <= "\ud7a3":
             return False
         if prev_char in _PREV_BLOCKERS:
+            return False
+        if prev_char.isspace() and _preceded_by_ordinal_je(raw_text, core_span.start):
             return False
     if next_char is None:
         return True
@@ -1023,11 +1079,13 @@ def _valid_boundaries(raw_text: str, core_span: SourceSpan, unit_char: str) -> b
 __all__ = [
     "LARGE_UNIT_ATOMIC_INVENTORY",
     "MixedIntegerCoreParse",
+    "LargeUnitQuantityCoreParse",
     "is_large_unit",
     "is_unsafe_large_unit_tail",
     "large_unit_render_pieces",
     "parse_large_unit_candidate",
     "parse_large_unit_integer_core_at",
+    "parse_large_unit_quantity_core_at",
     "parse_mixed_integer_core_at",
     "scan_large_unit_candidates",
 ]

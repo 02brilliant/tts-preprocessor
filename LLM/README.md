@@ -15,7 +15,7 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 LLM은 선택 모델로 한 번만 호출한다. 규칙 기반 `normalized_text` 계약과
 source-free binary runtime은 이 통합으로 변경되지 않는다.
 운영 API는 1단계 `tts-preprocessor`와 2단계 `tts-llm-stage` 실행모듈만
-교체하면 된다. model을 생략하면 기본 로컬 모델 `gemma4:31b`를 사용한다. 규칙 확정
+교체하면 된다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
 읽기를 위한 일반 provenance 전달, 반복 안정성 측정, 자동 재시도는
 사용하지 않는다. 서버는 1단계의 `normalized_text`를 임시 토큰 치환 없이
 그대로 LLM에 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가

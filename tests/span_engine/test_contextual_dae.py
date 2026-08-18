@@ -36,7 +36,7 @@ def test_dae_machine_registry_remains_exact_and_central() -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["03대", "+3대", "-3대", "3.5대", "1,00대", "3A대"],
+    ["03대", "1,00대", "3A대"],
 )
 def test_contextual_dae_malformed_deferred(text: str) -> None:
     debug = transform_debug(text)
@@ -45,6 +45,20 @@ def test_contextual_dae_malformed_deferred(text: str) -> None:
     assert len(claims) == 1
     assert claims[0]["owner"] == "contextual_number_unit"
     assert claims[0]["claim_type"] == "preserve"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3대", "플러스 삼 대"),
+        ("-3대", "마이너스 삼 대"),
+        ("3.5대", "삼쩜오 대"),
+    ],
+)
+def test_contextual_dae_signed_and_decimal_use_residual_reading(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(
