@@ -34,9 +34,34 @@ URL, 파일명, 코드, 인용 보호 구간은 다른 absolute preserve owner�
 
 문맥에 따라 수사 체계가 달라지는 숫자+단위는 기본 transform에서 즉시
 판정한다. 별도 호환 모드나 rollout mode는 두지 않는다. 규칙만으로 의미를
-확정하지 못하면 숫자·원래 공백·단위·붙은 조사/접사를 포함한 인식 surface
-전체를 원문으로 출력하고 terminal claim으로 종료한다. 따라서 LLM이
-비활성화된 호출에서도 raw 숫자가 남을 수 있다.
+확정하지 못하면 아래 residual numeric 규칙을 평가한다. residual 대상이
+아니면 숫자·원래 공백·단위·붙은 조사/접사를 포함한 인식 surface 전체를
+원문으로 출력한다. 코드·URL·malformed·leading-zero, URL/code
+보호 표면은 계속 원문이다.
+
+residual numeric 규칙:
+
+- 확정 owner가 이미 읽은 표면은 기존 canonical spacing을 유지한다.
+- 의미 미확정 잔여만 숫자 읽기와 한글 단위 사이에 ASCII 공백 한 칸을 둔다.
+- `분`, `가지`의 부호 없는 정수 `1~99`는 기존처럼 의미 문맥이 있을 때만
+  읽고, 없으면 원문 유보다.
+- 그 밖의 한글 단위는 정수 `40` 이상이면 의미와 관계없이 한자어로 읽는다.
+- `분`, `가지`는 정수 `100` 이상, `0`, 소수, 분수, 부호 있는 수를 한자어
+  잔여로 읽는다.
+- 정책에 정의되지 않은 한글이 숫자에 바로 붙으면 숫자 core만 현재 숫자
+  읽기 정책으로 읽고 한글은 원문 유지한다. 붙임형 `시` 뒤 등록 어휘
+  `시스템·시장·시험·시즌`이 이 경우에 해당한다. `시리즈`는 등록
+  numeric suffix로 한자어+공백 읽기다.
+  `3시회의`처럼 미등록 꼬리를 가진 `1~12시`는 시각 의미를 확정하지 못해
+  원문을 유지한다. 앞에 `제`가 있으면 미등록 한글 꼬리여도 숫자는
+  한자어다. `제3시회의 -> 제 삼시회의`. 유효 시각 범위 밖이면서 `40`
+  이상인 붙임형 `N시`는 한자어 잔여로 읽는다.
+- 단독 숫자는 명시 보존이 아니면 현재 숫자 정책으로 읽는다.
+
+정수 부호는 소수와 같은 기본 signed 계약을 쓴다. 좌경계는 문장 시작, 공백,
+열림 괄호/인용부호만 허용하며 부호와 숫자 사이 공백은 허용하지 않는다.
+`+-N`과 `±N`은 `플러스 마이너스` + 숫자 읽기다. `-+N`은 이 규칙의 대상이
+아니다. `F-35`, `가-3`처럼 한글/영문 뒤 붙임 하이픈은 기존 원문 경계다.
 
 내부 판정은 다음 네 typed outcome을 사용한다.
 
@@ -50,9 +75,10 @@ URL, 파일명, 코드, 인용 보호 구간은 다른 absolute preserve owner�
 - `not_applicable`: 현재 contextual owner의 대상이 아니므로 다음 owner
   평가를 허용한다.
 
-`confirmed`와 `deferred`는 모두 비재진입 claim이다. 특히 deferred span의
-숫자가 `numeric_suffix`, generic counter 또는 일반 number fallback으로
-다시 처리되어서는 안 된다. 기존 날짜·시간·전화번호·통화·백분율·온도·
+`confirmed`와 의미 미확정 원문 유보는 구분한다. 의미 미확정 표면이
+residual numeric 대상이면 다음 숫자 규칙이 읽을 수 있다. leading-zero,
+malformed comma, alphanumeric core, URL/code-like는 계속
+재진입하지 않는 보존이다. 기존 날짜·시간·전화번호·통화·백분율·온도·
 분수·범위·점수 관계·측정 단위처럼 더 구체적인 owner가 항상 먼저다.
 
 production facade는 계속 `engine.main.transform(text)`와
@@ -119,8 +145,9 @@ renderer, 정수 `0`과 `100+`는 기존 Sino/large-integer renderer를
 3~4가지 -> 세 가지에서 네 가지
 ```
 
-`01가지`, `+4가지`, `-4가지`, `1,00가지`, `4A가지`,
-`제4가지`는 surface 전체를 deferred claim으로 원문 보존한다. URL, path,
+`01가지`, `1,00가지`, `4A가지`는 surface 전체를 deferred claim으로
+원문 보존한다. `제4가지`와 `제 3가지`는 서수 접두 `제` 때문에 한자어로 읽고
+`제 사가지`, `제 삼가지`가 된다. URL, path,
 filename, JSON-like, backtick, identifier 내부는 absolute preserve가
 먼저다. 이미 한글인 `네 가지`, `여러 가지`, `몇 가지`는 비대상이다.
 
@@ -189,13 +216,18 @@ decimal `N.N점`은 기존 decimal-score owner가 먼저다.
 large-unit owner가 우선한다. group count는 `총`/`모두` 또는 직접
 action `나누`, `나눴`, `편성`, `구성`, `배정`, `만들`, `발표` 구조에서만
 native로 확정한다. 조사가 붙었으나 이 anchor가 없는 표면은 유보한다.
-`제N조`는 기존 조문 preserve canonical을 유지한다.
+`제N조`는 조문·조 단위 충돌과 무관하게 한자어로 읽는다. `제` 다음은
+한 칸을 두고, 숫자와 `조` 사이 공백은 입력을 따른다. `제3조 -> 제 삼조`,
+`제3 조 -> 제 삼 조`. 접두 `제`가 없는 `1~39` 붙임형 `N조`는
+기존처럼 의미 충돌로 원문 유보다.
 
 ```text
 3조 원 -> 삼조 원
 학생을 3조로 나눴다 -> 학생을 세 조로 나눴다
 3조가 발표했다 -> 세 조가 발표했다
-제3조 -> 제3조
+제3조 -> 제 삼조
+제3 조 -> 제 삼 조
+3조 -> 3조
 ```
 
 네 단위 모두 leading zero, malformed comma, alphanumeric numeric core와
@@ -305,7 +337,7 @@ alphanumeric numeric core와 anchor 없는 decimal은 표면 전체를 유보한
   direct noun은 native work count다. 앞 명사 `시리즈·법전·문서·상편·하편`
   direct structure는 Sino part number다.
 - `층`: tail `에·에서`, direct next location noun
-  `회의실·사무실·로비·식당`, direct previous `지하`, 또는
+  `회의실·사무실·로비·식당`, direct previous `지하`/`지상`, 또는
   `계단+으로 N층+을 올라/내려` 구조에서 Sino floor location으로 확정한다.
 
 ```text
@@ -316,6 +348,9 @@ alphanumeric numeric core와 anchor 없는 decimal은 표면 전체를 유보한
 영화 3편 -> 영화 세 편
 시리즈 3편 -> 시리즈 삼 편
 3층 회의실 -> 삼 층 회의실
+지하 3층 -> 지하 삼 층
+지상 3층 -> 지상 삼 층
+지하 1층부터 지상 3층까지 -> 지하 일 층부터 지상 삼 층까지
 3층을 올라갔다 -> 3층을 올라갔다
 3층이 무너졌다 -> 3층이 무너졌다
 ```
@@ -335,7 +370,8 @@ decimal과 comma-decimal을 공통 Sino decimal renderer로 읽는다. `kHz`와
 plain/comma 표기 여부와 무관하게 동일하게 허용하므로
 `10000.5kg -> 만쩜오 킬로그램`이다.
 
-exact compound unit `Mbps`, `Gbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi`도
+exact compound unit `Kbps`, `kbps`, `Mbps`, `mbps`, `Gbps`, `gbps`,
+`Tbps`, `tbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi`도
 정상 decimal/comma-decimal을 full-claim한다. compound slash unit의 기존
 unsigned/sign 정책과 URL/path/unsafe-tail 보호는 바꾸지 않는다.
 
@@ -379,7 +415,7 @@ canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자
 
 | 단위 | 제외한 anchor/구조 |
 |---|---|
-| `가지` | ordinal `제N가지`, signed integer/leading-zero/malformed/alphanumeric surface; valid decimal은 포함 |
+| `가지` | leading-zero/malformed/alphanumeric surface; valid decimal은 포함. `제N가지`는 한자어 서수 |
 | `분` | 등록되지 않은 사람 명사, bare `N분`, `남다` 외 동사만으로 사람/시간을 추론하는 구조 |
 | `번` | 미등록 번호 명사, 미등록 occurrence action, bare `N번` |
 | `점` | 미등록 action만 있는 구조, 미등록 작품 범주 |
@@ -406,7 +442,7 @@ canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자
 candidate, `contextual_decision_logs` 또는 다른 hidden metadata를 서비스
 문자열에 추가하지 않는다. `/api/llm/transform`은 지금처럼 순수
 `normalized_text` 문자열과 선택 model만 입력받는다.
-로컬 기본 model은 `gemma4:31b`다. 호출자가 model을 명시하면 등록된 다른
+기본 model은 `gemma4-31B-it (vLLM)`이다. 호출자가 model을 명시하면 등록된 다른
 model을 계속 선택할 수 있다.
 
 후단 LLM은 규칙 엔진이 source-exact로 남긴 숫자+다의 단위를 발견하더라도
@@ -1882,6 +1918,10 @@ Volume and speed:
 
 ```text
 ℓ -> 리터
+㎕ -> 마이크로리터
+㎖ -> 밀리리터
+㎗ -> 데시리터
+㎘ -> 킬로리터
 ㎧ -> m/s와 동일한 "초속 {number} 미터"
 ```
 
@@ -1907,17 +1947,32 @@ Separately registered symbol unit:
 55㎫ -> 오십오 메가파스칼
 55㎆ -> 오십오 메가바이트
 55㎧ -> 초속 오십오 미터
+1㎕ -> 일 마이크로리터
+55㎕ -> 오십오 마이크로리터
+1㎗ -> 일 데시리터
+55㎗ -> 오십오 데시리터
+1㎘ -> 일 킬로리터
+55㎘ -> 오십오 킬로리터
+55㎛ -> 오십오 마이크로미터
+55㎚ -> 오십오 나노미터
+55㎍ -> 오십오 마이크로그램
+55㎔ -> 오십오 테라헤르츠
+55㎸ -> 오십오 킬로볼트
+55㎩ -> 오십오 파스칼
+55㎪ -> 오십오 킬로파스칼
+55㎼ -> 오십오 마이크로와트
+55㎳ -> 오십오 밀리초
+55㎲ -> 오십오 마이크로초
 55‰ -> 오십오 퍼밀
 ```
 
 이 별칭은 전역 NFKC 정규화나 전역 문자열 치환으로 구현하지 않는다.
-등록 owner가 숫자와 완전한 기호를 full-claim할 때만 적용한다. 현재 알파벳
-단위 레지스트리에 대응하지 않는 `㎩`(Pa), `㎺`(pW), `㎸`(kV),
-`㎙`(fm)는 읽기를 임의로 추론하지 않고 숫자를 포함한 단위형 surface를
-원문 보존한다. 특히 `㎙`는 Unicode상 미터가 아니라 femtometer 기호이므로
-`미터` 별칭으로 사용하지 않는다. Unicode에는 `MPa`와 같은 `㎫`는 있지만
-`mPa`와 같은 단일 호환 기호는 없으며, `㎩`는 `Pa`이므로 `mPa` 별칭으로
-사용하지 않는다.
+등록 owner가 숫자와 완전한 기호를 full-claim할 때만 적용한다. ASCII
+단위가 살아 있으면 같은 읽기의 CJK 호환 기호를 owner-local alias로
+붙인다. `㎙`(fm)와 `㎺`(pW)는 대응하는 ASCII 단위를 열지 않았으므로
+숫자를 포함한 단위형 surface를 원문 보존한다. 특히 `㎙`는 Unicode상
+미터가 아니라 femtometer 기호이므로 `미터` 별칭으로 사용하지 않는다.
+`㎩`는 `Pa`이지 `mPa`가 아니다.
 
 #### Fullwidth Latin meter unit alias
 
@@ -4549,7 +4604,7 @@ KBS 11시뉴스입니다 -> 케이비에스 열한시뉴스입니다
 KBS 24시뉴스이었습니다 -> 케이비에스 이십사시뉴스이었습니다
 24시뉴스룸 -> 이십사시뉴스룸
 24시뉴스abc -> preserve
-3시리즈 -> preserve
+3시리즈 -> 삼 시리즈
 11시점 -> preserve
 11시스템 -> preserve
 ```
@@ -4656,12 +4711,20 @@ tail is an existing attached particle/ending form.
 2,345억테스트 -> 이천삼백사십오억 테스트
 ```
 
-English tail literal preservation applies after reading a valid large-unit core:
-the core is read, and the following English tail is kept literally without
+Registered simple/special units after a valid large-unit integer core are read
+by `korean_numeric_unit`, with the same generated space before the unit reading
+as mixed cores such as `5천kg`. Unregistered English tails stay literal without
 inserted spacing. Code-like English prefixes before a large-unit core are
 preserved as whole surfaces.
 
 ```text
+3만kg -> 삼만 킬로그램
+3만 kg -> 삼만 킬로그램
+3만km -> 삼만 킬로미터
+3.5만kg -> 삼쩜오 만 킬로그램
+300만㎡ -> 삼백만 제곱미터
+45~50만kg -> 사십오에서 오십만 킬로그램
+1억~2억kg -> 일억에서 이억 킬로그램
 2천8백28억abc -> 이천팔백이십팔억abc
 2,345억abc -> 이천삼백사십오억abc
 25.50억abc -> 이십오쩜오영 억abc
@@ -4709,40 +4772,74 @@ Simple Unit Inventory:
 | `m` | `미터` | numeric prefix 필요 |
 | `ｍ` | `미터` | numeric prefix 필요, owner-local alias only |
 | `km` | `킬로미터` | numeric prefix 필요 |
+| `µm`, `μm`, `um` | `마이크로미터` | numeric prefix 필요. `um`은 한글 문맥 제외 |
+| `nm` | `나노미터` | numeric prefix 필요. `pm`은 시각 표기 충돌로 미등록 |
+| `in` | `인치` | 붙임형 numeric prefix만. `10 in`은 전치사 충돌로 단위 읽기 금지 |
+| `ft` | `피트` | numeric prefix 필요 |
+| `min` | `분` | numeric prefix 필요. 한글 `분`과 별개의 영문 단위. 한글 문맥 제외 |
+| `sec`, `Sec`, `secs` | `초` | numeric prefix 필요. 한글 `초`와 별개의 영문 단위. `s`/`S`/`SEC` 제외. `secs`는 한글 문맥 제외 |
+| `ms`, `msec` | `밀리초` | numeric prefix 필요. `MS` 제외 |
+| `µs`, `μs`, `us`, `µsec`, `μsec`, `usec` | `마이크로초` | numeric prefix 필요. `US` 제외. `us`/`usec`는 한글 문맥 제외 |
+| `ns`, `nsec` | `나노초` | numeric prefix 필요 |
+| `ps` | `피코초` | numeric prefix 필요. 한글 문맥 제외 |
 | `mg` | `밀리그램` | numeric prefix 필요 |
 | `g` | `그램` | numeric prefix 필요 |
 | `kg` | `킬로그램` | numeric prefix 필요 |
+| `µg`, `μg`, `ug` | `마이크로그램` | numeric prefix 필요. `ug`는 한글 문맥 제외 |
+| `ng` | `나노그램` | numeric prefix 필요 |
+| `pg` | `피코그램` | numeric prefix 필요. 한글 문맥 제외 |
 | `t` | `톤` | live simple-unit skip |
 | `mL` | `밀리리터` | numeric prefix 필요 |
+| `µL`, `μL`, `uL` | `마이크로리터` | numeric prefix 필요 |
+| `nL` | `나노리터` | numeric prefix 필요. `NL`/`nl` 제외 |
+| `pL` | `피코리터` | numeric prefix 필요. `PL`/`pl`/`ul` 제외 |
+| `dL`, `dl` | `데시리터` | numeric prefix 필요. `DL` 제외 |
+| `kL`, `kl` | `킬로리터` | numeric prefix 필요. `KL` 제외 |
 | `L` | `리터` | numeric prefix 필요 |
 | `V` | `볼트` | ambiguous single-letter guard |
 | `mV` | `밀리볼트` | numeric prefix 필요, lowercase `m` |
+| `kV`, `kv` | `킬로볼트` | numeric prefix 필요. `KV` 제외 |
+| `µV`, `μV`, `uV` | `마이크로볼트` | numeric prefix 필요 |
+| `nV` | `나노볼트` | numeric prefix 필요 |
 | `MV` | `메가볼트` | numeric prefix 필요, uppercase `M` |
 | `A` | `암페어` | ambiguous single-letter guard |
 | `W` | `와트` | numeric prefix 필요 |
-| `kW` | `킬로와트` | numeric prefix 필요 |
+| `kW`, `kw` | `킬로와트` | numeric prefix 필요. `KW` 제외 |
 | `mW` | `밀리와트` | numeric prefix 필요, lowercase `m` |
+| `µW`, `μW`, `uW` | `마이크로와트` | numeric prefix 필요 |
 | `MW` | `메가와트` | numeric prefix 필요 |
+| `GW` | `기가와트` | numeric prefix 필요. 한글 문맥은 왼쪽 한글만 |
+| `TW` | `테라와트` | numeric prefix 필요. 한글 문맥은 왼쪽 한글만 |
 | `Wh` | `와트시` | numeric prefix 필요 |
 | `kWh` | `킬로와트시` | numeric prefix 필요 |
+| `mWh` | `밀리와트시` | numeric prefix 필요, lowercase `m` |
 | `MWh` | `메가와트시` | numeric prefix 필요 |
+| `GWh` | `기가와트시` | numeric prefix 필요 |
+| `TWh` | `테라와트시` | numeric prefix 필요 |
+| `Pa` | `파스칼` | numeric prefix 필요 |
+| `hPa` | `헥토파스칼` | numeric prefix 필요 |
+| `kPa` | `킬로파스칼` | numeric prefix 필요. `KPA` 제외 |
 | `mPa` | `밀리파스칼` | numeric prefix 필요, lowercase `m` |
 | `MPa` | `메가파스칼` | numeric prefix 필요, uppercase `M`; `MPA` 제외 |
+| `GPa` | `기가파스칼` | numeric prefix 필요. `GPA` 제외 |
 | `Hz`, `hz` | `헤르츠` | numeric prefix 필요 |
 | `dB` | `데시벨` | numeric prefix 필요 |
-| `bit` | `비트` | numeric prefix 필요 |
-| `Byte` | `바이트` | numeric prefix 필요 |
+| `bit` | `비트` | numeric prefix, 단독 입력, 한글 접미 허용. `a bit` 제외 |
+| `Byte` | `바이트` | live simple-unit skip |
 | `KB` | `킬로바이트` | numeric prefix 필요 |
 | `MB` | `메가바이트` | numeric prefix 필요 |
 | `GB` | `기가바이트` | numeric prefix 필요 |
-| `TB` | `테라바이트` | numeric prefix 필요 |
+| `TB` | `테라바이트` | numeric prefix 필요. 한국어 큰수 핵 `3만TB` 포함. 단독 `TB`는 원문, `TB는`는 두문자어 |
 | `PB` | `페타바이트` | numeric prefix 필요 |
 | `mHz` | `밀리헤르츠` | numeric prefix 필요, lowercase `m` |
-| `kHz` | `킬로헤르츠` | numeric prefix 필요 |
-| `MHz` | `메가헤르츠` | numeric prefix 필요, uppercase `M` |
+| `kHz`, `KHz`, `khz` | `킬로헤르츠` | numeric prefix 필요 |
+| `MHz`, `Mhz`, `mhz` | `메가헤르츠` | numeric prefix 필요, uppercase `M` |
 | `GHz`, `Ghz`, `ghz` | `기가헤르츠` | numeric prefix 필요 |
-| `Gbps` | `기가비피에스` | numeric prefix 필요 |
-| `Tbps` | `테라비피에스` | numeric prefix 필요 |
+| `THz`, `Thz`, `thz` | `테라헤르츠` | numeric prefix 필요 |
+| `Gbps`, `gbps` | `기가비피에스` | numeric prefix 필요 |
+| `Kbps`, `kbps` | `킬로비피에스` | numeric prefix 필요 |
+| `Mbps`, `mbps` | `메가비피에스` | numeric prefix 필요 |
+| `Tbps`, `tbps` | `테라비피에스` | numeric prefix 필요 |
 | `도` | `도` | numeric prefix 필요 |
 
 Special Unit Inventory:
@@ -4752,9 +4849,19 @@ Special Unit Inventory:
 | `㎜` | `밀리미터` |
 | `㎝` | `센티미터` |
 | `㎞` | `킬로미터` |
+| `㎛` | `마이크로미터` |
+| `㎚` | `나노미터` |
+| `㎳` | `밀리초` |
+| `㎲` | `마이크로초` |
+| `㎱` | `나노초` |
+| `㎰` | `피코초` |
 | `㎎` | `밀리그램` |
 | `㎏` | `킬로그램` |
+| `㎍` | `마이크로그램` |
+| `㎕` | `마이크로리터` |
 | `㎖` | `밀리리터` |
+| `㎗` | `데시리터` |
+| `㎘` | `킬로리터` |
 | `ℓ` | `리터` |
 | `㎅` | `킬로바이트` |
 | `㎆` | `메가바이트` |
@@ -4763,21 +4870,31 @@ Special Unit Inventory:
 | `㎑` | `킬로헤르츠` |
 | `㎒` | `메가헤르츠` |
 | `㎓` | `기가헤르츠` |
+| `㎔` | `테라헤르츠` |
 | `㏈` | `데시벨` |
+| `㎩` | `파스칼` |
+| `㎪` | `킬로파스칼` |
 | `㎫` | `메가파스칼` |
+| `㎵` | `나노볼트` |
+| `㎶` | `마이크로볼트` |
 | `㎷` | `밀리볼트` |
+| `㎸` | `킬로볼트` |
 | `㎹` | `메가볼트` |
+| `㎼` | `마이크로와트` |
 | `㎽` | `밀리와트` |
 | `㎾` | `킬로와트` |
 | `㎿` | `메가와트` |
 | `‰` | `퍼밀` |
 | `㎡` | `제곱미터` |
+| `㎟` | `제곱밀리미터` |
 | `㎥` | `세제곱미터` |
+| `㎣` | `세제곱밀리미터` |
 | `%` | `퍼센트` |
 | `％` | `퍼센트` |
 | `°` | `도` |
 
-`㎙`는 `fm`(femtometer) 기호이므로 미터 별칭에서 제외한다. `‰`는
+`㎙`는 `fm`(femtometer) 기호이므로 미터 별칭에서 제외한다. `㎺`는
+`pW`이므로 와트 별칭에서 제외한다. `‰`는
 `%`와 의미가 같은 호환 표기는 아니지만, 별도 등록된 퍼밀 단위로 읽는다.
 
 Area / Volume Unit Inventory:
@@ -4788,22 +4905,77 @@ Area / Volume Unit Inventory:
 | `m2` | `제곱미터` | numeric prefix 필요 |
 | `cm²` | `제곱센티미터` | numeric prefix 필요 |
 | `cm2` | `제곱센티미터` | numeric prefix 필요 |
+| `mm²` | `제곱밀리미터` | numeric prefix 필요 |
+| `mm2` | `제곱밀리미터` | numeric prefix 필요. 한글 문맥 제외 |
 | `km²` | `제곱킬로미터` | numeric prefix 필요 |
 | `km2` | `제곱킬로미터` | numeric prefix 필요 |
 | `m³` | `세제곱미터` | numeric prefix 필요 |
 | `m3` | `세제곱미터` | numeric prefix 필요 |
 | `cm³` | `세제곱센티미터` | numeric prefix 필요 |
 | `cm3` | `세제곱센티미터` | numeric prefix 필요 |
+| `mm³` | `세제곱밀리미터` | numeric prefix 필요 |
+| `mm3` | `세제곱밀리미터` | numeric prefix 필요. 한글 문맥 제외 |
+
+숫자 접두에는 순수 아라비아 숫자뿐 아니라 `300만㎡`, `3만kg`, `3.5만kg`,
+`45~50만kg`처럼 한국어 만/억 큰수 핵과 큰수 구간도 포함한다. 등록
+simple/special unit은 규칙 엔진의 `korean_numeric_unit` 또는
+`range_with_unit`이 읽는다. 미등록 영문 꼬리(`3만abc`)만 원문 유지한다.
+
+한글 문맥 단위: 위 표의 등록 simple/special unit 가운데 한글 문맥 허용
+목록은 숫자 접두가 없어도 읽는다. 한글 음절이 단위에 직접 닿거나 ASCII
+공백 하나를 사이에 두면 단위 owner가 claim한다. 왼쪽에 한글이 붙어 있으면
+단위 읽기 앞에 생성 공백 한 칸을 둔다. 단독 입력과 영문 전용 문맥은
+원문을 유지한다. 대문자 전용 라틴 단위는 왼쪽 한글이 있을 때만 이 경로를
+쓰고, 오른쪽에만 한글이 붙은 두문자어는 기존 acronym 읽기를 유지한다.
+
+```text
+수 km을 달려왔다 -> 수 킬로미터를 달려왔다
+수km을 달려왔다 -> 수 킬로미터를 달려왔다
+연면적 1만㎡ 규모로 조성된다. -> 연면적 일만 제곱미터 규모로 조성된다.
+연면적 ㎡ 규모로 조성된다. -> 연면적 제곱미터 규모로 조성된다.
+수 GB -> 수 기가바이트
+수 GW -> 수 기가와트
+수 nm -> 수 나노미터
+수 sec -> 수 초
+수 ms -> 수 밀리초
+수 ㎘ -> 수 킬로리터
+수 ㎕ -> 수 마이크로리터
+수 ㎗ -> 수 데시리터
+한글 km 한글 -> 한글 킬로미터 한글
+km -> km
+the kg -> the kg
+GB그룹 -> 지비그룹
+GW는 -> 지더블유는
+```
+
+한글 문맥에서 숫자 없이 읽지 않는 등록 단위는 단일 문자(`m`, `g`, `L`,
+`W` 및 전각 `ｍ`), 퍼센트, ASCII 지수 별칭(`m2`, `cm2`, `km2`, `mm2`,
+`m3`, `cm3`, `km3`, `mm3`), 온도/도수 기호, 은행 두문자어 `KB`,
+기계학습 `ML`, 뮤직비디오 `MV`, 영어 단어 단위 `in`/`ft`/`min`,
+그리고 충돌형 별칭 `um`/`ug`/`pg`/`us`/`usec`/`ps`/`secs`이다. `in`은 숫자와
+붙여 쓴 경우만 인치로 읽는다. `bit`/`bits`는 단독 입력과 한글 접미에서도
+`비트`로 읽되 `a bit`는 유지한다. 슬래시 복합 단위와 caret 제곱/세제곱은
+숫자 핵이 있는 기존 template만 사용한다. 숫자+한글에 바로 붙은 영문
+단위(`21명kg`, `3가kg`)는 한글 문맥 단위로 떼어 읽지 않고 기존
+unsafe-tail preserve를 따른다.
 
 canonical output:
 
 ```text
 45㎡ -> 사십오 제곱미터
+300만㎡ -> 삼백만 제곱미터
+3만kg -> 삼만 킬로그램
+3.5만kg -> 삼쩜오 만 킬로그램
+45~50만kg -> 사십오에서 오십만 킬로그램
 45m² -> 사십오 제곱미터
 45m2 -> 사십오 제곱미터
 45㎥ -> 사십오 세제곱미터
 45m³ -> 사십오 세제곱미터
 45m3 -> 사십오 세제곱미터
+1㎕ -> 일 마이크로리터
+1㎗ -> 일 데시리터
+1㎘ -> 일 킬로리터
+55kL -> 오십오 킬로리터
 ```
 
 금지:
@@ -4914,14 +5086,28 @@ generic Hangul suffix fallback.
 - `제` followed by an integer and a registered Hangul counter/suffix is normalized as an ordinal-like prefixed numeric suffix.
 - The numeric part is always read in Sino-Korean.
 - The canonical output is `제 ` + Sino-Korean number + suffix.
+- Number-unit spacing stays attached except `조`, which preserves the source space between number and unit.
 - This applies to both `제N+suffix` and `제 N+suffix`.
-- This rule is limited to the engine's registered Hangul counter/suffix inventory and does not apply to arbitrary Hangul strings.
+- Prefixed `제` still reads the number in Sino-Korean when the following Hangul is an unregistered unit or other Hangul tail.
 - `제` 뒤에 숫자와 엔진에 등록된 한글표기단위가 붙으면 ordinal-like prefixed numeric suffix로 처리한다.
 - 숫자는 counter의 고유어/hybrid 정책과 관계없이 항상 한자어로 읽는다.
-- 출력은 `제 ` + 한자어 숫자 + 단위로 통일한다.
+- 출력은 기본적으로 `제 ` + 한자어 숫자 + 단위로 통일한다.
+- `제`와 숫자 사이는 입력 공백과 관계없이 ASCII 공백 한 칸이다.
+- 숫자와 단위 사이는 기존 제 접두 붙임형을 유지한다. `제3개 -> 제 삼개`,
+  `제3시리즈 -> 제 삼시리즈`, `제3조각 -> 제 삼조각`,
+  `제4가지 -> 제 사가지`, `제 3가지 -> 제 삼가지`.
+- `조`만 입력의 숫자-단위 공백을 보존한다. `제3조 -> 제 삼조`,
+  `제3 조 -> 제 삼 조`.
+- `자`는 숫자와 단위를 붙인다. `제3자 -> 제 삼자`, `제 3자 -> 제 삼자`.
+- `제3시`와 `제3시방향`은 한자어이므로 숫자와 `시`/`시방향`을 붙인다.
+  `제3시 -> 제 삼시`, `제3시방향 -> 제 삼시방향`. `제`가 없는
+  `3시`/`3시방향`의 띄어쓰기와는 다르다.
+- 미등록 한글 꼬리도 `제`가 있으면 숫자만 한자어로 읽는다.
+  `제3시점 -> 제 삼시점`, `제3시회의 -> 제 삼시회의`,
+  `제3항 -> 제 삼항`.
+- `분기`처럼 기존 붙임형 서수는 붙여 쓴다. `제1분기 -> 제 일분기`.
 - `제N+단위`와 `제 N+단위` 모두 같은 canonical로 처리한다.
-- 대상은 등록된 한글표기단위로 제한하며 임의의 모든 한글 문자열로 확장하지 않는다.
-- 숫자와 단위 사이가 띄어져 있거나 ASCII/code-like prefix가 붙은 경우는 이 collapse 대상이 아니다. unsafe tail은 preserve한다.
+- ASCII/code-like prefix나 영숫자 꼬리는 이 collapse 대상이 아니다.
 - unsupported suffix는 즉시 Absolute Preserve하지 않고 generic numeric+suffix owner 후보로 평가할 수 있다.
 - unsafe tail, ASCII identifier-left context, invalid comma는 Absolute Preserve 또는 Terminal Fallback Preserve로 처리한다.
 
@@ -4939,12 +5125,23 @@ numeric suffix다. 숫자 core는 기존 한자어 renderer로 생성하고 `분
 1.5분기 -> 일쩜오 분기
 +1.5분기 -> 플러스 일쩜오 분기
 -1.5분기 -> 마이너스 일쩜오 분기
++1분기 -> 플러스 일분기
+-1분기 -> 마이너스 일분기
+```
+
+`시리즈`도 등록 non-prefixed numeric suffix다. 숫자는 한자어로 읽고
+단위 앞을 한 칸 띄운다. 부호 정수도 같은 한자어 경로다.
+
+```text
+3시리즈 -> 삼 시리즈
++3시리즈 -> 플러스 삼 시리즈
+제3시리즈 -> 제 삼시리즈
 ```
 
 시간 owner의 짧은 `분` prefix는 더 긴 등록 suffix `분기`를 선점하거나
 unsafe time tail preserve로 종료하면 안 된다. longest registered suffix를
 먼저 인정한 뒤 `numeric_suffix` 또는 `decimal_registered_suffix`가
-claim한다. `01분기`, `1..5분기`, `1,00분기`, signed integer,
+claim한다. `01분기`, `1..5분기`, `1,00분기`,
 ASCII/alphanumeric unsafe tail은 전체 suffix-like token을 보존하여 짧은
 `분` counter나 generic number fallback의 부분 변환을 막는다. `이번 분기`
 같이 숫자 core가 없는 기존 한글 표현은 비대상이다.
@@ -5322,12 +5519,11 @@ Canonical reading table:
 40자녀 -> 사십 자녀
 ```
 
-`제N자`와 `제 N자`에는 별도의 ordinal reading owner를 두지 않는다.
-일반 `N자` 한자어 읽기를 그대로 적용하고 `제`와 숫자 사이의 원문
-공백을 보존한다. 숫자와 `자` 사이는 붙어 있어야 한다.
+`제N자`와 `제 N자`는 다른 제 접두 단위와 같이 `제 ` + 한자어 + 붙임
+`자`로 읽는다. 숫자와 `자` 사이는 붙어 있어야 한다.
 
 ```text
-제3자 -> 제삼자
+제3자 -> 제 삼자
 제 3자 -> 제 삼자
 ```
 
@@ -5434,7 +5630,7 @@ Counter Policy Table:
 | `공기` | hybrid | 39 | `39공기 -> 서른아홉 공기` | 40부터 sino |
 | `잔` | hybrid | 39 | `39잔 -> 서른아홉 잔` | 40부터 sino |
 | `병` | hybrid | 39 | `39병 -> 서른아홉 병` | 40부터 sino |
-| `조각` | hybrid | 39 | `39조각 -> 서른아홉 조각` | 40부터 sino |
+| `조각` | hybrid | 39 | `39조각 -> 서른아홉 조각`; 부호 `+3조각 -> 플러스 세 조각`, `+40조각 -> 플러스 사십 조각` | 40부터 sino, 접두 `제`는 한자어+공백 |
 | `차례` | hybrid | 39 | `39차례 -> 서른아홉 차례` | 40부터 sino |
 | `건` | hybrid | 39 | `39건 -> 서른아홉 건` | 40부터 sino |
 | `곳` | hybrid | 39 | `39곳 -> 서른아홉 곳` | 40부터 sino |
@@ -5466,7 +5662,7 @@ Counter Policy Table:
 | `냥` | hybrid | 39 | `3냥 -> 석냥` | `N냥` 자체로 단위 확정; 3=`석`, 4=`넉`; 입력 공백 보존 |
 | `되`, `섬` | hybrid | 39 | `쌀 4되 -> 쌀 넉 되` | 명확한 전통 단위 문맥에서 3=`석`, 4=`넉` |
 | `돈`, `말`, `발`, `푼` | hybrid | 39 | `쌀 3말 -> 쌀 서 말` | 명확한 전통 단위 문맥에서 3=`서`, 4=`너` |
-| `층` | contextual | - | `3층 회의실 -> 삼 층 회의실` | bare/이동·개수 가능 표현 유보 |
+| `층` | contextual | - | `지하 3층 -> 지하 삼 층`, `지상 3층 -> 지상 삼 층` | bare/이동·개수 가능 표현 유보 |
 | `호` | contextual | - | `3호실 -> 삼 호실` | bare는 식별/가구 수량 충돌로 유보 |
 | `동` | contextual | - | `3동 502호 -> 삼 동 오백이 호` | bare는 주소/건물 수량 충돌로 유보 |
 | `년` | sino_only | - | `21년 -> 이십일년` | native 금지 |
@@ -8683,11 +8879,19 @@ USB300 -> 유에스비 삼백
 
 ```text
 45㎡ -> 사십오 제곱미터
+300만㎡ -> 삼백만 제곱미터
+3만kg -> 삼만 킬로그램
+3.5만kg -> 삼쩜오 만 킬로그램
+45~50만kg -> 사십오에서 오십만 킬로그램
 45m² -> 사십오 제곱미터
 45m2 -> 사십오 제곱미터
 45㎥ -> 사십오 세제곱미터
 45m³ -> 사십오 세제곱미터
 45m3 -> 사십오 세제곱미터
+1㎕ -> 일 마이크로리터
+1㎗ -> 일 데시리터
+1㎘ -> 일 킬로리터
+55kL -> 오십오 킬로리터
 ```
 
 Forbidden:
@@ -10463,7 +10667,9 @@ ver 2025.01.03 -> preserve
 사전 기반 교정은 많이 추가하되, 대부분을 조건부로 둔다. 핵심은 다음이다.
 
 1. 고정 약어는 boundary 기반 사전 처리
-2. 단위는 numeric prefix required
+2. 단위는 numeric prefix required. 다만 등록 simple/special unit의
+   한글 문맥 허용 목록은 한글 음절이 단위에 직접 닿거나 ASCII 공백
+   하나를 사이에 두면 숫자 접두 없이도 읽는다.
 3. 통화는 symbol/code + number full consume
 4. 공공번호는 context + allowed tail required
 5. 사건형 날짜는 immediate event keyword 또는 fixed event surface required
@@ -10513,7 +10719,7 @@ class LexiconEntry:
 | 등급 | 의미 | 예 |
 |---|---|---|
 | S0 | 조건 없이 boundary만 맞으면 교정 가능 | `AI`, `TTS`, `PDF`, `KOSPI` |
-| S1 | 숫자 prefix가 있을 때만 교정 | `kg`, `cm`, `Hz`, `Mbps` |
+| S1 | 숫자 prefix가 있을 때만 교정. 등록 simple/special unit의 한글 문맥 허용 목록은 한글 이웃이 있으면 예외 | `kg`, `cm`, `Hz`, `Mbps` |
 | S2 | 특정 context가 있을 때만 교정 | `110`, `120`, `1339`, 사건형 날짜 |
 | S3 | profile이 있을 때만 교정 | `5G`, `4K`, `REST`, `RAM` 일부 |
 | S4 | 기본 preserve 권장 | 단일 문자 `A`, `V`, `m`, `L`, `R`, `C` |
@@ -10527,11 +10733,11 @@ class LexiconEntry:
 | `mm`, `㎜` | 밀리미터 | numeric prefix required |
 | `cm`, `㎝` | 센티미터 | numeric prefix required |
 | `m`, `ｍ` | 미터 | numeric prefix required, single-letter strict, `ｍ` is owner-local alias only |
-| `km`, `㎞` | 킬로미터 | numeric prefix required |
-| `µm`, `μm` | 마이크로미터 | numeric prefix required |
-| `nm` | 나노미터 | numeric prefix required |
-| `pm` | 피코미터 | numeric prefix required |
-| `in` | 인치 | numeric prefix required, English word collision guard |
+| `km`, `㎞` | 킬로미터 | numeric prefix required; Korean large-unit cores such as `3만km` are included |
+| `µm`, `μm`, `um`, `㎛` | 마이크로미터 | numeric prefix required; `um` is Hangul-context excluded |
+| `nm`, `㎚` | 나노미터 | numeric prefix required |
+| `pm` | 피코미터 | live skip: clock-time collision with `5pm` |
+| `in` | 인치 | attached numeric prefix only; spaced `10 in` keeps the English preposition |
 | `ft` | 피트 | numeric prefix required |
 | `yd` | 야드 | numeric prefix required |
 | `mi` | 마일 | numeric prefix required |
@@ -10540,23 +10746,32 @@ class LexiconEntry:
 
 | 입력 | reading | 조건 |
 |---|---|---|
-| `㎡`, `m²`, `m2` | 제곱미터 | numeric prefix required |
+| `㎡`, `m²`, `m2` | 제곱미터 | numeric prefix required; Korean large-unit cores such as `300만㎡` are included |
 | `㎢`, `km²`, `km2` | 제곱킬로미터 | numeric prefix required |
 | `㎠`, `cm²`, `cm2` | 제곱센티미터 | numeric prefix required |
+| `㎟`, `mm²`, `mm2` | 제곱밀리미터 | numeric prefix required; ASCII `mm2` is Hangul-context excluded |
 | `㎥`, `m³`, `m3` | 세제곱미터 | numeric prefix required |
 | `㎤`, `cm³`, `cm3` | 세제곱센티미터 | numeric prefix required |
+| `㎣`, `mm³`, `mm3` | 세제곱밀리미터 | numeric prefix required; ASCII `mm3` is Hangul-context excluded |
 | `cc` | 씨씨 | numeric prefix required |
 | `L`, `ℓ`, `l` | 리터 | numeric prefix required, single-letter strict |
 | `mL`, `ml`, `ML`, `㎖` | 밀리리터 | numeric prefix required |
-| `dL` | 데시리터 | numeric prefix required |
+| `µL`, `μL`, `uL`, `㎕` | 마이크로리터 | numeric prefix required |
+| `nL` | 나노리터 | numeric prefix required; `NL`/`nl` are not unit aliases |
+| `pL` | 피코리터 | numeric prefix required; `PL`/`pl`/`ul` are not unit aliases |
+| `dL`, `dl`, `㎗` | 데시리터 | numeric prefix required; `DL` is not a unit alias |
+| `kL`, `kl`, `㎘` | 킬로리터 | numeric prefix required; `KL` is not a unit alias |
 
 #### 질량 / 무게 단위
 
 | 입력 | reading | 조건 |
 |---|---|---|
 | `mg`, `㎎` | 밀리그램 | numeric prefix required |
+| `µg`, `μg`, `ug`, `㎍` | 마이크로그램 | numeric prefix required; `ug` is Hangul-context excluded |
+| `ng` | 나노그램 | numeric prefix required |
+| `pg` | 피코그램 | numeric prefix required; Hangul-context excluded (`page` collision) |
 | `g` | 그램 | numeric prefix required |
-| `kg`, `㎏` | 킬로그램 | numeric prefix required |
+| `kg`, `㎏` | 킬로그램 | numeric prefix required; Korean large-unit cores such as `3만kg`, `3.5만kg`, and `45~50만kg` are included |
 | `t` | 톤 | numeric prefix required, single-letter strict |
 | `ton` | 톤 | numeric prefix required |
 | `oz` | 온스 | numeric prefix required |
@@ -10566,9 +10781,13 @@ class LexiconEntry:
 
 | 입력 | reading | 조건 |
 |---|---|---|
-| `ms` | 밀리초 | numeric prefix required |
-| `s`, `sec` | 초 | numeric prefix required, `s` strict |
-| `min` | 분 | numeric prefix required |
+| `ms`, `msec`, `㎳` | 밀리초 | numeric prefix required; `MS` is not a unit alias |
+| `s` | 초 | live skip: single-letter collision |
+| `sec`, `Sec`, `secs` | 초 | numeric prefix required; `SEC` and `second(s)` are not unit aliases; `secs` is Hangul-context excluded |
+| `µs`, `μs`, `us`, `µsec`, `μsec`, `usec`, `㎲` | 마이크로초 | numeric prefix required; `US` is not a unit alias; `us`/`usec` are Hangul-context excluded |
+| `ns`, `nsec`, `㎱` | 나노초 | numeric prefix required |
+| `ps`, `㎰` | 피코초 | numeric prefix required; Hangul-context excluded |
+| `min` | 분 | numeric prefix required; live English unit, distinct from Korean `분` |
 | `h`, `hr`, `hrs` | 시간 | numeric prefix required, `h` strict |
 | `d`, `day` | 일 | numeric prefix required, `d` strict |
 | `wk` | 주 | numeric prefix required |
@@ -10579,10 +10798,25 @@ class LexiconEntry:
 
 | 입력 | reading | 조건 |
 |---|---|---|
-| `mV`, `㎷`, `MV`, `㎹` | 밀리볼트 / 밀리볼트 / 메가볼트 / 메가볼트 | numeric prefix required; prefix case-sensitive |
-| `A`, `mA` | 암페어 / 밀리암페어 | numeric prefix required |
-| `W`, `mW`, `㎽`, `kW`, `㎾`, `MW`, `㎿` | 와트 / 밀리와트 / 밀리와트 / 킬로와트 / 킬로와트 / 메가와트 / 메가와트 | numeric prefix required; prefix case-sensitive |
-| `Wh`, `kWh`, `MWh` | 와트시 / 킬로와트시 / 메가와트시 | numeric prefix required |
+| `mV`, `㎷` | 밀리볼트 | numeric prefix required, lowercase `m` |
+| `kV`, `kv`, `㎸` | 킬로볼트 | numeric prefix required; `KV` is not a unit alias |
+| `µV`, `μV`, `uV`, `㎶` | 마이크로볼트 | numeric prefix required |
+| `nV`, `㎵` | 나노볼트 | numeric prefix required |
+| `MV`, `㎹` | 메가볼트 | numeric prefix required, uppercase `M` |
+| `A`, `mA` | 암페어 / 밀리암페어 | live skip; ambiguous single-letter / unopened family |
+| `W` | 와트 | numeric prefix required |
+| `µW`, `μW`, `uW`, `㎼` | 마이크로와트 | numeric prefix required |
+| `mW`, `㎽` | 밀리와트 | numeric prefix required, lowercase `m` |
+| `kW`, `kw`, `㎾` | 킬로와트 | numeric prefix required; `KW` is not a unit alias |
+| `MW`, `㎿` | 메가와트 | numeric prefix required |
+| `GW` | 기가와트 | numeric prefix required; Hangul-context needs left Hangul |
+| `TW` | 테라와트 | numeric prefix required; Hangul-context needs left Hangul |
+| `Wh` | 와트시 | numeric prefix required |
+| `mWh` | 밀리와트시 | numeric prefix required, lowercase `m` |
+| `kWh` | 킬로와트시 | numeric prefix required |
+| `MWh` | 메가와트시 | numeric prefix required, uppercase `M` |
+| `GWh` | 기가와트시 | numeric prefix required |
+| `TWh` | 테라와트시 | numeric prefix required |
 | `J`, `kJ` | 줄 / 킬로줄 | numeric prefix required |
 | `cal`, `kcal` | 칼로리 / 킬로칼로리 | numeric prefix required |
 | `Ω`, `ohm`, `mΩ`, `kΩ` | 옴 / 옴 / 밀리옴 / 킬로옴 | numeric prefix required |
@@ -10593,7 +10827,7 @@ class LexiconEntry:
 | 입력 | reading | 조건 |
 |---|---|---|
 | `Hz`, `hz`, `㎐` | 헤르츠 | numeric prefix required |
-| `mHz`, `kHz`, `㎑`, `MHz`, `㎒`, `GHz`, `㎓` | 밀리헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 메가헤르츠 / 메가헤르츠 / 기가헤르츠 / 기가헤르츠 | numeric prefix required; prefix case-sensitive |
+| `mHz`, `kHz`, `KHz`, `khz`, `㎑`, `MHz`, `Mhz`, `mhz`, `㎒`, `GHz`, `Ghz`, `ghz`, `㎓`, `THz`, `Thz`, `thz`, `㎔` | 밀리헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 메가헤르츠 / 메가헤르츠 / 메가헤르츠 / 메가헤르츠 / 기가헤르츠 / 기가헤르츠 / 기가헤르츠 / 기가헤르츠 / 테라헤르츠 / 테라헤르츠 / 테라헤르츠 / 테라헤르츠 | numeric prefix required; prefix case-sensitive |
 | `dB`, `㏈` | 데시벨 | numeric prefix required |
 | `dBm` | 디비엠 | numeric prefix required |
 | `dBi` | 디비아이 | numeric prefix required |
@@ -10617,12 +10851,17 @@ class LexiconEntry:
 
 | 입력 | reading | 조건 |
 |---|---|---|
+| `Pa`, `㎩` | 파스칼 | numeric prefix required |
+| `hPa` | 헥토파스칼 | numeric prefix required |
+| `kPa`, `㎪` | 킬로파스칼 | numeric prefix required; `KPA` is not a unit alias |
 | `mPa` | 밀리파스칼 | numeric prefix required, lowercase `m` |
 | `MPa`, `㎫` | 메가파스칼 | numeric prefix required, uppercase `M`; `㎫` is an owner-local alias |
+| `GPa` | 기가파스칼 | numeric prefix required; `GPA` is not a unit alias |
 
 `MPA`는 `MPa`의 대소문자 alias가 아니다. Unit owner는 exact `MPa`만
 소유하며 `MPA`는 news/acronym 처리 경로에 남긴다. 현재 standalone
-`MPA`는 `엠피에이`, 숫자와 붙은 `55MPA`는 원문 보존이다.
+`MPA`는 `엠피에이`, 숫자와 붙은 `55MPA`는 원문 보존이다. 같은 이유로
+`GPA`는 `GPa`의 alias가 아니다.
 
 ### 35.4 Slash compound unit dictionary
 
@@ -11005,11 +11244,11 @@ full consume 실패 후 raw residue 유지
 
 | 입력 | reading | 조건 |
 |---|---|---|
-| `bit`, `bits` | 비트 | numeric prefix required |
+| `bit`, `bits` | 비트 | numeric prefix, standalone token, or Hangul tail; `a bit`/`the bit` preserve |
 | `b` | 비트 | numeric prefix required, strict |
 | `B` | 바이트 | numeric prefix required, strict |
 | `Byte`, `Bytes` | 바이트 | numeric prefix required |
-| `KB`, `㎅`, `MB`, `㎆`, `GB`, `㎇`, `PB` | 킬로바이트 / 킬로바이트 / 메가바이트 / 메가바이트 / 기가바이트 / 기가바이트 / 페타바이트 | numeric prefix required; Unicode forms are owner-local aliases |
+| `KB`, `㎅`, `MB`, `㎆`, `GB`, `㎇`, `TB`, `PB` | 킬로바이트 / 킬로바이트 / 메가바이트 / 메가바이트 / 기가바이트 / 기가바이트 / 테라바이트 / 페타바이트 | numeric prefix required; Unicode forms are owner-local aliases; bare `TB` stays literal like `GB`, while `TB는` keeps the acronym reading |
 
 #### 이진 접두어
 
@@ -11455,14 +11694,15 @@ boundary로 추가한다. 이미 있는 horizontal whitespace는 원문대로 �
 9시 5분 15초께 -> 아홉 시 오분 십오초께
 ```
 
-Approximate tail `께`는 임의 `N분` 또는 `N시`의 broad safe-tail이 아니다.
+Approximate tail `께`는 임의 `N분`의 broad safe-tail이 아니다.
 `N시 N분`, `N분 N초`, `N시 N분 N초` 중 하나가 full-consume된 경우에만
 structured time owner가 마지막 `분` 또는 `초` 뒤의 `께`를 허용한다.
-따라서 `6분께`, `6분께서`, `9시께`는 현재 preserve하며, 이번 정책은
+따라서 `6분께`, `6분께서`는 현재 preserve하며, 이번 정책은
 `6분께 -> 여섯 분께`와 같은 존칭 인원 counter 읽기를 추가하지 않는다.
-`께` 뒤에는 end, whitespace, sentence punctuation 또는 기존
-sentence-final slash boundary가 와야 하며, 임의 한글·ASCII continuation은
-허용하지 않는다.
+붙임형 clock-hour `N시`의 `께`는 아래 clock-hour meaning tail로 허용한다.
+`께` 뒤에는 end, whitespace, sentence punctuation, 기존
+sentence-final slash boundary, 또는 이미 허용된 조사/어미 연쇄가 와야 하며,
+임의 한글·ASCII continuation은 허용하지 않는다.
 
 붙임형 `N시`는 clock-hour policy를 따른다. 유효 범위는 `0..24`다.
 `0`은 `영`, `1..12`는 고유어 clock-hour form, `13..24`는 한자어
@@ -11517,8 +11757,37 @@ preserve-first다. 특히 unsupported compact 또는 malformed compound에서
 
 Clock-hour `N시` may be followed by a safe attached Korean tail. The original tail is preserved verbatim; the preprocessor does not correct Korean particles or endings.
 Safe tails include `은/는/이/가/을/를/로/으로/와/과/도/만/부터/까지/에/에는/에서/에도/보다/처럼/마다`
-and `다/이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`.
-Lexical/code-like continuations such as `시리즈`, `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain preserve-first.
+and `다/이다/입니다/인/이면/면/이라면/라면/이라고/라고/인데/였다/이었다`,
+plus clock-hour meaning tails `부로`, `께`, `반`. `방향`/`시방향`은 아래
+clock-hour direction 규칙을 따른다.
+A clock-hour safe tail may be followed by one or more additional tails from this
+same allowed set, so `1시부터는`, `2시까지로`, `1시입니다만`
+remain clock-hour surfaces. The chain must still end at end, whitespace,
+sentence punctuation, or an existing sentence-final slash boundary.
+Lexical/code-like continuations such as `시스템`, `시장`, `시험`, `시즌`, and `시abc` remain residual or preserve-first. `시리즈` is a registered Sino numeric suffix with a generated space.
+
+붙임형 `N시방향`과 띄어 쓴 `N시 방향`은 같은 방향 읽기다. 부호 없는
+정수 `1~12`만 기존 clock-hour 고유어를 쓰고, 그 밖의 숫자는 한자어다.
+출력은 항상 `시`와 `방향` 사이에 ASCII 공백 한 칸을 둔다. 접두 `제`가
+있으면 시각 고유어를 쓰지 않고 한자어다.
+
+```text
+0시부로 -> 영 시부로
+1시부로 -> 한 시부로
+9시께 -> 아홉 시께
+1시반 -> 한 시반
+3시방향 -> 세 시 방향
+1시방향 -> 한 시 방향
+12시방향 -> 열두 시 방향
+13시방향 -> 십삼 시 방향
+0시방향 -> 영 시 방향
+25시방향 -> 이십오 시 방향
+99시방향 -> 구십구 시 방향
+3시방향으로 -> 세 시 방향으로
+제3시방향 -> 제 삼시방향
+1시부터는 -> 한 시부터는
+2시까지로 -> 두 시까지로
+```
 
 
 The space shown above is canonical ownership, not optional phonetic smoothing:
@@ -11638,7 +11907,7 @@ fraction이 이어지면 `mixed_decimal_atomic` owner가 generic decimal보다
 - `01천` 같은 leading-zero core
 - `1천2천` 같은 반복·역순 단위 또는 parser가 끝까지 소비하지 못한 core
 - 바로 앞 Korean unit 이상인 후행 Arabic block (`5천8300`, `5백830`, `5십30`)
-- `제6천원` 같은 prefixed ordinal-like surface
+- `제6천원`처럼 `제`+숫자 뒤의 한글은 숫자를 한자어로 읽고 한글은 원문 유지한다. `제6천원 -> 제 육천원`.
 - 숫자 단위 직후의 numeric residue를 남기는 partial match
 
 숫자 block은 `GENERATED_READING`, 원문의 `십/백/천/만/억/조/경`은
@@ -11663,9 +11932,11 @@ EURA 300 -> EURA 300
 
 ### 37.4 Data, power, and frequency units
 
-`MB`, `GB`, `PB`, 전력 계열 `W`, `mW`, `kW`, `MW`, `Wh`, `kWh`, `MWh`,
-전압 계열 `mV`, `MV`, 압력 계열 `mPa`, `MPa`, 주파수 계열 `Hz`, `hz`,
-`mHz`, `MHz`, `GHz`, 그리고 `Gbps`는 numeric prefix가
+`MB`, `GB`, `PB`, 전력 계열 `W`, `µW`, `mW`, `kW`, `MW`, `GW`, `TW`,
+`Wh`, `mWh`, `kWh`, `MWh`, `GWh`, `TWh`, 전압 계열 `µV`, `mV`, `kV`,
+`nV`, `MV`, 압력 계열 `Pa`, `hPa`, `kPa`, `mPa`, `MPa`, `GPa`, 주파수
+계열 `Hz`, `hz`, `mHz`, `kHz`, `MHz`, `GHz`, `THz`, 그리고 `Kbps`,
+`Mbps`, `Gbps`, `Tbps`는 numeric prefix가
 있을 때만 변환한다. 정수, valid comma, 소수를 허용한다. 전력
 simple-unit의 숫자와 단위 사이는 붙이거나 ASCII space 한 칸을 둘 수
 있고, 다른 단위는 각각의 기존 owner-local spacing 정책을 유지한다.
@@ -11689,6 +11960,13 @@ token preserve다.
 60Hz -> 육십 헤르츠
 120 Hz -> 백이십 헤르츠
 3.2GHz -> 삼쩜이 기가헤르츠
+2.5THz -> 이쩜오 테라헤르츠
+2.5kV -> 이쩜오 킬로볼트
+1013hPa -> 천십삼 헥토파스칼
+2.5GW -> 이쩜오 기가와트
+2.5Pa -> 이쩜오 파스칼
+10Kbps -> 십 킬로비피에스
+2Tbps -> 이 테라비피에스
 5Hzabc -> 5Hzabc
 3MWtest -> 3MWtest
 등록된 ASCII-letter 단위 바로 뒤에 `^2` 또는 `^3`이 붙으면 같은 단위
@@ -11714,9 +11992,20 @@ SI 접두어 `m`(milli)과 `M`(mega)은 case-sensitive하게 적용한다.
 `mW/MW`, `mV/MV`, `mPa/MPa`, `mHz/MHz`는 각각 밀리/메가 reading을
 구분한다. 기존 `MB`, `Mbps`, `MB/s`의 `메가~` reading도 유지한다.
 `ML`은 기존 milliliter alias이므로 `메가리터`로 재해석하지 않는다.
+`kL`, `kl`, `㎘`는 기존 milliliter/liter와 같은 numeric-prefix 규칙으로
+`킬로리터`를 읽는다. `KL`은 두문자어 충돌 때문에 단위 alias로 등록하지
+않는다. `µL`, `μL`, `uL`, `㎕`는 `마이크로리터`이고 `nL`은
+`나노리터`, `pL`은 `피코리터`, `dL`, `dl`, `㎗`는
+`데시리터`다. `DL`/`NL`/`PL`/`ul`은 단위 alias로 등록하지 않는다.
+길이 계열 `µm`/`μm`/`um`/`㎛`와 `nm`/`㎚`는 같은 numeric-prefix
+규칙이다. `pm`은 시각 표기 충돌로 등록하지 않는다.
+영문 초 계열은 한 글자 `s`를 열지 않고 `sec`/`ms`/`µs`와 CJK `㎳`/`㎲`를
+같은 numeric-prefix 규칙으로 읽는다. `MS`/`US`/`SEC`는 단위 alias가
+아니다.
 `MA`, `MJ`, `Mm`, `Mg`는 news 약어, 식별자, 마그네슘 기호 또는 기존
-단위 정책과 충돌할 수 있어 자동 확장하지 않는다. `MPA`도 단위 alias로
-등록하지 않는다. 단독 `MW`는 숫자+단위 owner가
+단위 정책과 충돌할 수 있어 자동 확장하지 않는다. `MPA`와 `GPA`,
+`KW`, `KV`도 단위 alias로
+등록하지 않는다. 단독 `MW`와 `GW`는 숫자+단위 owner가
 아니므로 acronym fallback으로 철자 읽기하지 않고 원문을 보존한다.
 
 ### 37.5 pH

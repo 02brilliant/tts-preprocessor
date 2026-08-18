@@ -7,9 +7,11 @@ from engine.span_engine.sign_aliases import (
     is_signed_numeric_sign,
     strip_signed_numeric_sign,
 )
+from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.signed_numeric import (
     SIGNED_OWNER_POLICIES,
     SignProfile,
+    apply_sign_profile,
     parse_sign_surface,
     parse_signed_numeric_core,
     render_signed_numeric,
@@ -52,6 +54,31 @@ _SIGN_CHARS = SIGNED_NUMERIC_SIGN_ALIASES
 _BARE_DEGREE_UNITS = frozenset({"°", "º"})
 _SIGNED_TEMPERATURE_UNITS = tuple(
     sorted(_CELSIUS_UNITS | _FAHRENHEIT_UNITS, key=len, reverse=True)
+)
+_CONTEXTUAL_HANGUL_NUMERIC_UNITS = frozenset(
+    {
+        "가지",
+        "분",
+        "번",
+        "점",
+        "조",
+        "대",
+        "부",
+        "동",
+        "호",
+        "판",
+        "단",
+        "등",
+        "척",
+        "장",
+        "권",
+        "편",
+        "층",
+        "시",
+        "시간",
+        "시리즈",
+        "분기",
+    }
 )
 
 
@@ -151,6 +178,79 @@ def scan_signed_number_candidates(
     raw_text: str, excluded_ranges: list[BracketRange] | None = None
 ) -> list[SurfaceCandidate]:
     return _scan_signed_candidates(raw_text, excluded_ranges, "", "signed_number")
+
+
+_PLUS_MINUS_SYMBOL = "\u00b1"
+
+
+def scan_compound_signed_number_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if excluded_ranges is None:
+        excluded_ranges = []
+
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        if raw_text.startswith("+-", index):
+            sign_len = 2
+        elif raw_text[index] == _PLUS_MINUS_SYMBOL:
+            sign_len = 1
+        else:
+            index += 1
+            continue
+        if _is_blocked_start(raw_text, index, "signed_number"):
+            index += 1
+            continue
+        number_start = index + sign_len
+        number_end = _consume_digits_and_commas(raw_text, number_start)
+        if number_end == number_start:
+            index += 1
+            continue
+        if number_end < len(raw_text) and raw_text[number_end] == ".":
+            fraction_end = _consume_digits(raw_text, number_end + 1)
+            if fraction_end == number_end + 1:
+                index += 1
+                continue
+            number_end = fraction_end
+        span = SourceSpan(index, number_end)
+        if (
+            _span_overlaps_excluded_range(span, excluded_ranges)
+            or not _valid_boundaries(raw_text, span, "")
+        ):
+            index += 1
+            continue
+        tail = raw_text[span.end :]
+        if not _tail_is_allowed_for_owner(tail, "signed_number"):
+            index += 1
+            continue
+        core = parse_signed_numeric_core(raw_text[number_start:number_end])
+        number_reading = render_signed_numeric(core) if core is not None else None
+        if number_reading is None:
+            index += 1
+            continue
+        reading = f"플러스 마이너스 {number_reading}"
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="signed_number",
+                surface_type="COMPOUND_SIGNED_NUMBER_SURFACE",
+                reason="compound_plus_minus_signed_number_surface",
+                metadata={
+                    "reading": reading,
+                    "tail": _tail_prefix(tail),
+                    "sign_profile": SignProfile.DEFAULT.value,
+                    "numeric_form": core.numeric_form,
+                    "sign_surface": raw_text[index : index + sign_len],
+                    "compound_sign_sequence": True,
+                },
+            )
+        )
+        index = span.end
+    return candidates
 
 
 def scan_invalid_signed_numeric_preserve_candidates(
@@ -259,6 +359,12 @@ def _consume_signed_looking_token(raw_text: str, start: int) -> int:
 
 
 def parse_signed_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | None:
+    compound_reading = candidate.metadata.get("reading")
+    if (
+        candidate.metadata.get("compound_sign_sequence") is True
+        and isinstance(compound_reading, str)
+    ):
+        return _with_residual_hangul_spacing(raw_text, candidate, compound_reading)
     raw = raw_text[candidate.core_span.start : candidate.core_span.end]
     parsed = _parse_signed_surface(raw)
     if parsed is None:
@@ -287,8 +393,41 @@ def parse_signed_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | 
         )
         if core is None:
             return None
-        return render_signed_numeric(core, sign_profile=policy.sign_profile)
+        tail = raw_text[candidate.core_span.end :]
+        if tail.startswith("조각"):
+            piece_reading = _signed_piece_reading(core, policy.sign_profile)
+            if piece_reading is not None:
+                return piece_reading
+        reading = render_signed_numeric(core, sign_profile=policy.sign_profile)
+        if reading is None:
+            return None
+        return _with_residual_hangul_spacing(raw_text, candidate, reading)
     return None
+
+
+def _with_residual_hangul_spacing(
+    raw_text: str, candidate: SurfaceCandidate, reading: str
+) -> str:
+    if needs_residual_hangul_space(raw_text, candidate.core_span.end):
+        return f"{reading} "
+    return reading
+
+
+def _signed_piece_reading(core, sign_profile: SignProfile) -> str | None:
+    if not core.has_decimal:
+        from engine.span_engine.counter import counter_number_reading
+
+        counter_reading = counter_number_reading(core.integer_raw, "조각")
+        if counter_reading is not None:
+            return apply_sign_profile(
+                counter_reading,
+                core.sign_kind,
+                sign_profile=sign_profile,
+            )
+    reading = render_signed_numeric(core, sign_profile=sign_profile)
+    if reading is None:
+        return None
+    return f"{reading} "
 
 
 def _scan_signed_candidates(
@@ -319,6 +458,13 @@ def _scan_signed_candidates(
             index += 1
             continue
         tail = raw_text[span.end :]
+        if (
+            owner == "signed_number"
+            and _signed_span_is_decimal(raw_text, span)
+            and _tail_starts_with_registered_numeric_suffix(tail)
+        ):
+            index += 1
+            continue
         if not _tail_is_allowed_for_owner(tail, owner):
             index += 1
             continue
@@ -744,10 +890,44 @@ def _is_valid_signed_degree_surface(raw_text: str, start: int, span: SourceSpan)
     return _signed_temperature_degree_tail_is_allowed(raw_text[span.end :])
 
 
+def _signed_span_is_decimal(raw_text: str, span: SourceSpan) -> bool:
+    return "." in raw_text[span.start : span.end]
+
+
+def _tail_starts_with_registered_numeric_suffix(tail: str) -> bool:
+    return any(tail.startswith(suffix) for suffix in ("분기", "시리즈"))
+
+
 def _tail_is_allowed_for_owner(tail: str, owner: str) -> bool:
     if owner in {"signed_temperature", "signed_degree"}:
         return _signed_temperature_degree_tail_is_allowed(tail)
+    if owner == "signed_number":
+        return _signed_number_tail_is_allowed(tail)
     return _tail_is_allowed(tail)
+
+
+def _signed_number_tail_is_allowed(tail: str) -> bool:
+    if _tail_is_allowed(tail):
+        return True
+    if not tail or not _is_hangul_syllable(tail[0]):
+        return False
+    for prefix in _registered_hangul_numeric_prefixes():
+        if not tail.startswith(prefix):
+            continue
+        return _tail_is_allowed(tail[len(prefix) :])
+    return True
+
+
+def _registered_hangul_numeric_prefixes() -> tuple[str, ...]:
+    from engine.span_engine.counter import COUNTERS_BY_LENGTH
+
+    return tuple(
+        sorted(
+            set(COUNTERS_BY_LENGTH) | _CONTEXTUAL_HANGUL_NUMERIC_UNITS,
+            key=len,
+            reverse=True,
+        )
+    )
 
 
 def _tail_is_allowed(tail: str) -> bool:
@@ -798,6 +978,7 @@ def _span_overlaps_excluded_range(
 __all__ = [
     "parse_signed_candidate",
     "parse_signed_numeric",
+    "scan_compound_signed_number_candidates",
     "scan_invalid_signed_numeric_preserve_candidates",
     "scan_signed_degree_candidates",
     "scan_signed_number_candidates",

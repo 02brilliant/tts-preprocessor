@@ -109,6 +109,7 @@ from engine.span_engine.range import (
     scan_range_candidates,
 )
 from engine.span_engine.signed import (
+    scan_compound_signed_number_candidates,
     scan_invalid_signed_numeric_preserve_candidates,
     scan_signed_degree_candidates,
     scan_signed_temperature_candidates,
@@ -120,6 +121,7 @@ from engine.span_engine.units import (
     scan_caret_literal_unit_candidates,
     scan_simple_unit_candidates,
     scan_special_unit_candidates,
+    scan_hangul_context_unit_candidates,
     scan_korean_numeric_unit_candidates,
     scan_unit_contamination_preserve_candidates,
     supported_unit_prefix_length,
@@ -186,12 +188,16 @@ _ACRONYM_FALLBACK_BLOCKLIST = frozenset(
         "DB",
         "GB",
         "GHZ",
+        "GPA",
         "G",
+        "GW",
+        "HPA",
         "HZ",
         "KB",
         "KG",
         "KHZ",
         "KM",
+        "KPA",
         "L",
         "M",
         "MB",
@@ -200,6 +206,11 @@ _ACRONYM_FALLBACK_BLOCKLIST = frozenset(
         "ML",
         "MM",
         "MW",
+        "PA",
+        "PB",
+        "TB",
+        "THZ",
+        "TW",
         "AUD",
         "AM",
         "BTC",
@@ -274,6 +285,7 @@ CLAIM_ORDER_DOC = (
     "signed_temperature",
     "signed_degree",
     "ph",
+    "compound_signed_number",
     "signed_number",
     "compound_slash_unit",
     "compound_exact_unit",
@@ -333,7 +345,13 @@ def claim_surfaces(
         raw_text, excluded_ranges
     )
     simple_unit_candidates = scan_simple_unit_candidates(raw_text)
+    hangul_context_unit_candidates = scan_hangul_context_unit_candidates(raw_text)
     korean_numeric_unit_candidates = scan_korean_numeric_unit_candidates(raw_text)
+    unit_guard_candidates = [
+        *simple_unit_candidates,
+        *hangul_context_unit_candidates,
+        *korean_numeric_unit_candidates,
+    ]
     unit_contamination_candidates = scan_unit_contamination_preserve_candidates(
         raw_text
     )
@@ -419,7 +437,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(
         _claim_uppercase_hangul_fallback(
-            raw_text, registry, excluded_ranges, simple_unit_candidates
+            raw_text, registry, excluded_ranges, unit_guard_candidates
         )
     )
     candidates.extend(
@@ -427,13 +445,15 @@ def claim_surfaces(
             tokens,
             registry,
             excluded_ranges,
-            simple_unit_candidates,
+            unit_guard_candidates,
         )
     )
+    candidates.extend(_claim_scanned_candidates(scan_compound_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_collision_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_compact_large_unit_range_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(korean_numeric_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_large_unit_candidates(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_currency_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(middle_dot_korean_suffix_candidates, registry, excluded_ranges))
@@ -484,7 +504,9 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(scan_compound_exact_unit_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_special_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(simple_unit_candidates, registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(korean_numeric_unit_candidates, registry, excluded_ranges))
+    # After numeric simple/special units and after acronym owners, so
+    # `3kg` and attached `GB그룹` keep their existing claims.
+    candidates.extend(_claim_scanned_candidates(hangul_context_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_number_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ordinal_candidates(raw_text), registry, excluded_ranges))

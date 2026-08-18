@@ -17,6 +17,11 @@ from engine.span_engine.units import SIMPLE_UNIT_READINGS
         ("55MPa", "오십오 메가파스칼"),
         ("55mHz", "오십오 밀리헤르츠"),
         ("55MHz", "오십오 메가헤르츠"),
+        ("55mWh", "오십오 밀리와트시"),
+        ("55MWh", "오십오 메가와트시"),
+        ("55kV", "오십오 킬로볼트"),
+        ("55Pa", "오십오 파스칼"),
+        ("55GPa", "오십오 기가파스칼"),
         ("2.5 mW", "이쩜오 밀리와트"),
         ("2.5 MV", "이쩜오 메가볼트"),
         ("1,000.50mPa", "천쩜오영 밀리파스칼"),
@@ -44,6 +49,8 @@ def test_milli_and_mega_prefixes_are_case_sensitive(
         "55mHzabc",
         "55MW/h",
         "55MPA",
+        "55GPA",
+        "55KV",
     ],
 )
 def test_case_sensitive_unit_unsafe_or_excluded_forms_preserve(source: str) -> None:
@@ -77,4 +84,11 @@ def test_case_sensitive_unit_registry_is_policy_aligned() -> None:
         "MPa": "메가파스칼",
         "mHz": "밀리헤르츠",
         "MHz": "메가헤르츠",
+        "mWh": "밀리와트시",
+        "MWh": "메가와트시",
+        "kV": "킬로볼트",
+        "Pa": "파스칼",
+        "GPa": "기가파스칼",
     }.items() <= SIMPLE_UNIT_READINGS.items()
+    assert "KV" not in SIMPLE_UNIT_READINGS
+    assert "GPA" not in SIMPLE_UNIT_READINGS

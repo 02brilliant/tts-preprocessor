@@ -32,7 +32,7 @@ _IDENTIFIER_LIKE_RE = re.compile(
 )
 _VERSION_SIGNED_RANGE_RE = re.compile(
     r"(?<![A-Za-z0-9_.-])"
-    r"[Vv]-\d+(?:\.\d+)?[~～∼〜]-?\d+(?:\.\d+)?[A-Za-z가-힣%℃㎜㎝㎞㎎㎏㎖]*"
+    r"[Vv]-\d+(?:\.\d+)?[~～∼〜]-?\d+(?:\.\d+)?[A-Za-z가-힣%℃㎜㎝㎞㎛㎚㎳㎲㎱㎰㎎㎏㎍㎕㎖㎗㎘㎔㎩㎪㎵㎶㎸㎼㎟㎣]*"
     r"(?![A-Za-z0-9_.-])"
 )
 _MATH_TERM = r"(?:[A-Za-z][A-Za-z0-9_]*|\d+(?:\.\d+)?)"

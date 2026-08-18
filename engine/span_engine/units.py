@@ -16,28 +16,72 @@ from engine.span_engine.signed_numeric import (
 )
 
 SIMPLE_UNIT_READINGS: dict[str, str] = {
+    "THz": "테라헤르츠",
+    "Thz": "테라헤르츠",
+    "thz": "테라헤르츠",
     "kHz": "킬로헤르츠",
+    "KHz": "킬로헤르츠",
+    "khz": "킬로헤르츠",
     "MHz": "메가헤르츠",
+    "Mhz": "메가헤르츠",
+    "mhz": "메가헤르츠",
     "GHz": "기가헤르츠",
     "Ghz": "기가헤르츠",
     "ghz": "기가헤르츠",
     "mL": "밀리리터",
     "ml": "밀리리터",
     "ML": "밀리리터",
+    "µL": "마이크로리터",
+    "μL": "마이크로리터",
+    "uL": "마이크로리터",
+    "nL": "나노리터",
+    "pL": "피코리터",
+    "dL": "데시리터",
+    "dl": "데시리터",
+    "kL": "킬로리터",
+    "kl": "킬로리터",
+    "GPa": "기가파스칼",
+    "kPa": "킬로파스칼",
+    "hPa": "헥토파스칼",
     "mPa": "밀리파스칼",
     "MPa": "메가파스칼",
+    "Pa": "파스칼",
+    "GWh": "기가와트시",
+    "TWh": "테라와트시",
+    "mWh": "밀리와트시",
     "MWh": "메가와트시",
     "kWh": "킬로와트시",
     "Wh": "와트시",
+    "µW": "마이크로와트",
+    "μW": "마이크로와트",
+    "uW": "마이크로와트",
     "mW": "밀리와트",
     "MW": "메가와트",
     "kW": "킬로와트",
+    "kw": "킬로와트",
+    "GW": "기가와트",
+    "TW": "테라와트",
     "W": "와트",
+    "kV": "킬로볼트",
+    "kv": "킬로볼트",
+    "µV": "마이크로볼트",
+    "μV": "마이크로볼트",
+    "uV": "마이크로볼트",
+    "nV": "나노볼트",
     "mV": "밀리볼트",
     "MV": "메가볼트",
+    "µm": "마이크로미터",
+    "μm": "마이크로미터",
+    "um": "마이크로미터",
+    "nm": "나노미터",
     "mm": "밀리미터",
     "cm": "센티미터",
     "km": "킬로미터",
+    "µg": "마이크로그램",
+    "μg": "마이크로그램",
+    "ug": "마이크로그램",
+    "ng": "나노그램",
+    "pg": "피코그램",
     "mg": "밀리그램",
     "kg": "킬로그램",
     "Hz": "헤르츠",
@@ -47,7 +91,27 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "KB": "킬로바이트",
     "MB": "메가바이트",
     "GB": "기가바이트",
+    "TB": "테라바이트",
     "PB": "페타바이트",
+    "bits": "비트",
+    "bit": "비트",
+    "msec": "밀리초",
+    "µsec": "마이크로초",
+    "μsec": "마이크로초",
+    "usec": "마이크로초",
+    "nsec": "나노초",
+    "secs": "초",
+    "sec": "초",
+    "Sec": "초",
+    "ms": "밀리초",
+    "µs": "마이크로초",
+    "μs": "마이크로초",
+    "us": "마이크로초",
+    "ns": "나노초",
+    "ps": "피코초",
+    "min": "분",
+    "ft": "피트",
+    "in": "인치",
     "m": "미터",
     "ｍ": "미터",
     "g": "그램",
@@ -75,17 +139,34 @@ SPECIAL_UNIT_READINGS: dict[str, str] = {
     "㎜": "밀리미터",
     "㎝": "센티미터",
     "㎞": "킬로미터",
+    "㎛": "마이크로미터",
+    "㎚": "나노미터",
+    "㎳": "밀리초",
+    "㎲": "마이크로초",
+    "㎱": "나노초",
+    "㎰": "피코초",
     "㎎": "밀리그램",
     "㎏": "킬로그램",
+    "㎍": "마이크로그램",
+    "㎕": "마이크로리터",
     "㎖": "밀리리터",
+    "㎗": "데시리터",
+    "㎘": "킬로리터",
     "ℓ": "리터",
     "㎅": "킬로바이트",
     "㎆": "메가바이트",
     "㎇": "기가바이트",
     "㎑": "킬로헤르츠",
+    "㎔": "테라헤르츠",
+    "㎩": "파스칼",
+    "㎪": "킬로파스칼",
     "㎫": "메가파스칼",
+    "㎵": "나노볼트",
+    "㎶": "마이크로볼트",
     "㎷": "밀리볼트",
+    "㎸": "킬로볼트",
     "㎹": "메가볼트",
+    "㎼": "마이크로와트",
     "㎽": "밀리와트",
     "㎾": "킬로와트",
     "㎿": "메가와트",
@@ -94,6 +175,9 @@ SPECIAL_UNIT_READINGS: dict[str, str] = {
     "㎡": "제곱미터",
     "m²": "제곱미터",
     "m2": "제곱미터",
+    "㎟": "제곱밀리미터",
+    "mm²": "제곱밀리미터",
+    "mm2": "제곱밀리미터",
     "cm²": "제곱센티미터",
     "cm2": "제곱센티미터",
     "km²": "제곱킬로미터",
@@ -103,6 +187,9 @@ SPECIAL_UNIT_READINGS: dict[str, str] = {
     "㎥": "세제곱미터",
     "m³": "세제곱미터",
     "m3": "세제곱미터",
+    "㎣": "세제곱밀리미터",
+    "mm³": "세제곱밀리미터",
+    "mm3": "세제곱밀리미터",
     "cm³": "세제곱센티미터",
     "cm3": "세제곱센티미터",
     "km³": "세제곱킬로미터",
@@ -137,6 +224,70 @@ RANGE_COMPATIBLE_UNIT_READINGS: dict[str, str] = {
 _SIMPLE_UNITS_BY_LENGTH = sorted(SIMPLE_UNIT_READINGS, key=len, reverse=True)
 _SPECIAL_UNITS_BY_LENGTH = sorted(SPECIAL_UNIT_READINGS, key=len, reverse=True)
 _CARET_POWER_UNITS_BY_LENGTH = sorted(CARET_POWER_UNIT_READINGS, key=len, reverse=True)
+_HANGUL_SYLLABLE_START = 0xAC00
+_HANGUL_SYLLABLE_END = 0xD7A3
+# Hangul-context reading is opt-in per live registered unit. Exclusions are
+# single-letter/code-like/template-bound surfaces plus dual-role acronyms
+# whose Hangul-adjacent reading is already owned elsewhere.
+HANGUL_CONTEXT_UNIT_EXCLUSIONS: frozenset[str] = frozenset(
+    {
+        "m",
+        "ｍ",
+        "g",
+        "L",
+        "W",
+        "%",
+        "％",
+        "﹪",
+        "m2",
+        "cm2",
+        "km2",
+        "m3",
+        "cm3",
+        "km3",
+        "℃",
+        "℉",
+        "º",
+        "ºC",
+        "ºF",
+        "°C",
+        "°F",
+        "º C",
+        "º F",
+        "° C",
+        "° F",
+        "°",
+        "KB",
+        "ML",
+        "MV",
+        "in",
+        "ft",
+        "min",
+        "um",
+        "ug",
+        "pg",
+        "us",
+        "usec",
+        "ps",
+        "secs",
+        "Sec",
+        "mm2",
+        "mm3",
+    }
+)
+# English preposition `in` is only safe when the number is attached.
+_ATTACHED_NUMERIC_ONLY_UNITS = frozenset({"in"})
+# `bit`/`bits` may be read without a number when they are a bare token or
+# sit next to Hangul, but not inside English words such as `a bit`.
+_STANDALONE_CONTEXT_UNITS = frozenset({"bit", "bits"})
+HANGUL_CONTEXT_UNIT_READINGS: dict[str, str] = {
+    unit: reading
+    for unit, reading in {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}.items()
+    if unit not in HANGUL_CONTEXT_UNIT_EXCLUSIONS
+}
+_HANGUL_CONTEXT_UNITS_BY_LENGTH = sorted(
+    HANGUL_CONTEXT_UNIT_READINGS, key=len, reverse=True
+)
 _RANGE_COMPATIBLE_UNITS_BY_LENGTH = sorted(
     RANGE_COMPATIBLE_UNIT_READINGS, key=len, reverse=True
 )
@@ -235,91 +386,24 @@ _DATA_RATE_NUMERATOR_PREFIXES = frozenset(
     {"KB", "Kb", "kb", "MB", "Mb", "mb", "GB", "Gb", "gb", "TB", "Tb", "tb", "PB", "Pb", "pb"}
 )
 _COMPOUND_EXACT_UNIT_SURFACES = frozenset(
-    {"Mbps", "Gbps", "rpm", "fps", "ppm", "ppb", "dBi"}
+    {
+        "Kbps",
+        "kbps",
+        "Mbps",
+        "mbps",
+        "Gbps",
+        "gbps",
+        "Tbps",
+        "tbps",
+        "rpm",
+        "fps",
+        "ppm",
+        "ppb",
+        "dBi",
+    }
 )
 _DECIMAL_AMOUNT_UNIT_SURFACES = frozenset(
-    {
-        "KB",
-        "MB",
-        "GB",
-        "PB",
-        "MWh",
-        "kWh",
-        "Wh",
-        "mW",
-        "MW",
-        "kW",
-        "W",
-        "mV",
-        "MV",
-        "mPa",
-        "MPa",
-        "mm",
-        "cm",
-        "km",
-        "mg",
-        "kg",
-        "mL",
-        "ml",
-        "ML",
-        "dB",
-        "m",
-        "ｍ",
-        "g",
-        "L",
-        "ℓ",
-        "Hz",
-        "hz",
-        "mHz",
-        "kHz",
-        "MHz",
-        "GHz",
-        "Ghz",
-        "ghz",
-        "℃",
-        "℉",
-        "º",
-        "ºC",
-        "ºF",
-        "°",
-        "°C",
-        "°F",
-        "㎡",
-        "m²",
-        "cm²",
-        "km²",
-        "㎠",
-        "㎢",
-        "㎥",
-        "m³",
-        "m3",
-        "cm³",
-        "cm3",
-        "km³",
-        "km3",
-        "㎤",
-        "㎦",
-        "㎐",
-        "㎑",
-        "㎒",
-        "㎓",
-        "㎅",
-        "㎆",
-        "㎇",
-        "㎫",
-        "㎷",
-        "㎹",
-        "㎽",
-        "㎾",
-        "㎿",
-        "‰",
-        "m2",
-        "cm2",
-        "km2",
-        "%",
-        "％",
-        "﹪",
-    }
+    {*SIMPLE_UNIT_READINGS, *SPECIAL_UNIT_READINGS}
 )
 _SPACED_AMOUNT_UNIT_SURFACES = frozenset({"Hz", "hz"})
 
@@ -503,6 +587,62 @@ def scan_special_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return _scan_unit_candidates(raw_text, SPECIAL_UNIT_READINGS, _SPECIAL_UNITS_BY_LENGTH, "special_unit", "SPECIAL_UNIT_SURFACE")
 
 
+def scan_hangul_context_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
+    """Read registered ASCII/symbol units that sit in Hangul prose without a number."""
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+
+    candidates: list[SurfaceCandidate] = []
+    index = 0
+    while index < len(raw_text):
+        matched = False
+        for unit in _HANGUL_CONTEXT_UNITS_BY_LENGTH:
+            if not raw_text.startswith(unit, index):
+                continue
+            end = index + len(unit)
+            if not _valid_hangul_context_unit_boundary(raw_text, index, end):
+                continue
+            if not _has_hangul_context_neighbor(
+                raw_text,
+                index,
+                end,
+                require_left=_requires_left_hangul_context(unit),
+            ) and not (
+                unit in _STANDALONE_CONTEXT_UNITS
+                and _has_standalone_letter_free_context(raw_text, index, end)
+            ):
+                continue
+            unit_reading = HANGUL_CONTEXT_UNIT_READINGS[unit]
+            attached_left = index > 0 and _is_hangul_syllable(raw_text[index - 1])
+            reading = f" {unit_reading}" if attached_left else unit_reading
+            if unit in SPECIAL_UNIT_READINGS:
+                owner = "special_unit"
+                surface_type = "SPECIAL_UNIT_SURFACE"
+            else:
+                owner = "simple_unit"
+                surface_type = "SIMPLE_UNIT_SURFACE"
+            candidates.append(
+                SurfaceCandidate(
+                    core_span=SourceSpan(index, end),
+                    full_span=SourceSpan(index, end),
+                    owner=owner,
+                    surface_type=surface_type,
+                    reason="hangul_context_unit",
+                    metadata={
+                        "unit": unit,
+                        "unit_reading": unit_reading,
+                        "reading": reading,
+                    },
+                )
+            )
+            index = end
+            matched = True
+            break
+        if not matched:
+            index += 1
+    return candidates
+
+
 def scan_korean_numeric_unit_candidates(raw_text: str) -> list[SurfaceCandidate]:
     """Read registered units after narrowly approved Korean numeric forms."""
     if not isinstance(raw_text, str):
@@ -510,19 +650,24 @@ def scan_korean_numeric_unit_candidates(raw_text: str) -> list[SurfaceCandidate]
 
     # Imported lazily because the large-unit parser itself depends on signed
     # unit detection during module initialization.
-    from engine.span_engine.large_unit import parse_mixed_integer_core_at
+    from engine.span_engine.large_unit import (
+        parse_large_unit_quantity_core_at,
+        parse_mixed_integer_core_at,
+    )
 
     inventory = {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}
-    ordered_units = _SIMPLE_UNITS_BY_LENGTH + _SPECIAL_UNITS_BY_LENGTH
+    ordered_units = sorted(inventory, key=len, reverse=True)
     candidates: list[SurfaceCandidate] = []
     index = 0
     while index < len(raw_text):
-        parsed = (
-            parse_mixed_integer_core_at(raw_text, index)
-            if _is_ascii_digit(raw_text[index])
-            and _valid_korean_numeric_unit_left_boundary(raw_text, index)
-            else None
+        at_digit_start = _is_ascii_digit(raw_text[index]) and _valid_korean_numeric_unit_left_boundary(
+            raw_text, index
         )
+        at_large_start = at_digit_start or (
+            is_signed_numeric_sign(raw_text[index])
+            and _valid_korean_numeric_unit_left_boundary(raw_text, index)
+        )
+        parsed = parse_mixed_integer_core_at(raw_text, index) if at_digit_start else None
         if parsed is not None:
             candidate = _korean_numeric_unit_candidate(
                 raw_text,
@@ -532,6 +677,37 @@ def scan_korean_numeric_unit_candidates(raw_text: str) -> list[SurfaceCandidate]
                 inventory,
                 ordered_units,
                 "mixed_arabic_hangul_numeric_unit",
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+                index = candidate.full_span.end
+                continue
+
+        large_parsed = (
+            parse_large_unit_quantity_core_at(raw_text, index) if at_large_start else None
+        )
+        if large_parsed is not None:
+            raw_core = raw_text[index:large_parsed.end]
+            split_core = (
+                large_parsed.has_decimal
+                or large_parsed.has_sign
+                or ("," in raw_core and not large_parsed.reading_includes_suffix)
+            )
+            candidate = _korean_numeric_unit_candidate(
+                raw_text,
+                index,
+                large_parsed.end,
+                large_parsed.reading,
+                inventory,
+                ordered_units,
+                "large_unit_registered_unit",
+                render_core_reading=split_core,
+                extra_metadata={
+                    "numeric_reading": large_parsed.numeric_reading,
+                    "numeric_span": large_parsed.numeric_span,
+                    "suffix_span": large_parsed.suffix_span,
+                    "has_decimal": large_parsed.has_decimal,
+                },
             )
             if candidate is not None:
                 candidates.append(candidate)
@@ -569,6 +745,7 @@ def parse_korean_numeric_unit_candidate(
     number_end = candidate.metadata.get("number_end")
     unit_start = candidate.metadata.get("unit_start")
     unit = candidate.metadata.get("unit")
+    render_core_reading = candidate.metadata.get("render_core_reading") is True
     if not isinstance(reading, str):
         return None
     if not (
@@ -578,6 +755,64 @@ def parse_korean_numeric_unit_candidate(
         and candidate.core_span.start < number_end <= unit_start < candidate.core_span.end
     ):
         return None
+    if render_core_reading:
+        numeric_reading = candidate.metadata.get("numeric_reading")
+        numeric_span = candidate.metadata.get("numeric_span")
+        suffix_span = candidate.metadata.get("suffix_span")
+        has_decimal = candidate.metadata.get("has_decimal") is True
+        if not (
+            isinstance(numeric_reading, str)
+            and numeric_reading
+            and isinstance(numeric_span, SourceSpan)
+            and isinstance(suffix_span, SourceSpan)
+        ):
+            return None
+        pieces = [
+            RenderPiece(
+                text=numeric_reading,
+                provenance="GENERATED_READING",
+                source_span=numeric_span,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        ]
+        if has_decimal:
+            pieces.append(
+                RenderPiece(
+                    text=" ",
+                    provenance="GENERATED_READING",
+                    source_span=suffix_span,
+                    owner=candidate.owner,
+                    metadata={"surface_type": candidate.surface_type},
+                )
+            )
+        pieces.append(
+            RenderPiece(
+                text=raw_text[suffix_span.start : suffix_span.end],
+                provenance="ORIGINAL_KOREAN",
+                source_span=suffix_span,
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+        pieces.append(
+            RenderPiece(
+                text=" " + candidate.metadata["unit_reading"],
+                provenance="GENERATED_READING",
+                source_span=SourceSpan(unit_start, candidate.core_span.end),
+                owner=candidate.owner,
+                metadata={"surface_type": candidate.surface_type},
+            )
+        )
+        return Surface(
+            surface_type=candidate.surface_type or "KOREAN_NUMERIC_UNIT_SURFACE",
+            owner=candidate.owner,
+            raw=raw_text[candidate.core_span.start : candidate.core_span.end],
+            span=candidate.core_span,
+            reading=reading,
+            render_pieces=pieces,
+            metadata={"reason": candidate.reason},
+        )
     pieces: list[RenderPiece] = []
     cursor = candidate.core_span.start
     while cursor < number_end:
@@ -640,27 +875,38 @@ def _korean_numeric_unit_candidate(
     inventory: dict[str, str],
     ordered_units: list[str],
     reason: str,
+    *,
+    render_core_reading: bool = False,
+    extra_metadata: dict[str, object] | None = None,
 ) -> SurfaceCandidate | None:
     unit_start = _consume_optional_ascii_space(raw_text, number_end)
+    has_space_before_unit = unit_start != number_end
     for unit in ordered_units:
+        if has_space_before_unit and not unit_allows_space_before(unit):
+            continue
         if not raw_text.startswith(unit, unit_start):
             continue
         full_span = SourceSpan(start, unit_start + len(unit))
         if not _valid_korean_numeric_unit_boundary(raw_text, full_span):
             return None
+        metadata: dict[str, object] = {
+            "reading": f"{number_reading} {inventory[unit]}",
+            "core_reading": number_reading,
+            "render_core_reading": render_core_reading,
+            "unit": unit,
+            "unit_reading": inventory[unit],
+            "number_end": number_end,
+            "unit_start": unit_start,
+        }
+        if extra_metadata:
+            metadata.update(extra_metadata)
         return SurfaceCandidate(
             core_span=full_span,
             full_span=full_span,
             owner="korean_numeric_unit",
             surface_type="KOREAN_NUMERIC_UNIT_SURFACE",
             reason=reason,
-            metadata={
-                "reading": f"{number_reading} {inventory[unit]}",
-                "unit": unit,
-                "unit_reading": inventory[unit],
-                "number_end": number_end,
-                "unit_start": unit_start,
-            },
+            metadata=metadata,
         )
     return None
 
@@ -689,6 +935,129 @@ def _valid_korean_numeric_unit_boundary(raw_text: str, span: SourceSpan) -> bool
     if next_char.isascii() and next_char.isalnum():
         return False
     return next_char not in {"_", "/", "."}
+
+
+def _is_hangul_syllable(char: str | None) -> bool:
+    return (
+        char is not None
+        and len(char) == 1
+        and _HANGUL_SYLLABLE_START <= ord(char) <= _HANGUL_SYLLABLE_END
+    )
+
+
+def _requires_left_hangul_context(unit: str) -> bool:
+    # All-caps Latin units such as GB/MB also match acronym fallback when a
+    # Hangul tail is attached. Require a Hangul neighbor on the left so
+    # `GB그룹` stays an acronym while `수 GB` can still read as a unit.
+    return bool(unit) and unit.isascii() and unit.isalpha() and unit.isupper() and len(unit) >= 2
+
+
+def _hangul_run_preceded_by_digit(raw_text: str, hangul_index: int) -> bool:
+    if not _is_hangul_syllable(raw_text[hangul_index]):
+        return False
+    index = hangul_index
+    while index >= 0 and _is_hangul_syllable(raw_text[index]):
+        index -= 1
+    return index >= 0 and _is_ascii_digit(raw_text[index])
+
+
+def _is_safe_hangul_context_anchor(raw_text: str, hangul_index: int) -> bool:
+    return _is_hangul_syllable(raw_text[hangul_index]) and not _hangul_run_preceded_by_digit(
+        raw_text, hangul_index
+    )
+
+
+def _has_left_hangul_context_neighbor(raw_text: str, start: int) -> bool:
+    if start > 0 and _is_safe_hangul_context_anchor(raw_text, start - 1):
+        return True
+    return (
+        start >= 2
+        and raw_text[start - 1] == " "
+        and _is_safe_hangul_context_anchor(raw_text, start - 2)
+    )
+
+
+def _has_hangul_context_neighbor(
+    raw_text: str,
+    start: int,
+    end: int,
+    *,
+    require_left: bool = False,
+) -> bool:
+    if _has_left_hangul_context_neighbor(raw_text, start):
+        return True
+    if require_left:
+        return False
+    if end < len(raw_text) and _is_safe_hangul_context_anchor(raw_text, end):
+        return True
+    if (
+        end + 1 < len(raw_text)
+        and raw_text[end] == " "
+        and _is_safe_hangul_context_anchor(raw_text, end + 1)
+    ):
+        return True
+    return False
+
+
+def _ascii_alpha_beyond_optional_space(
+    raw_text: str, index: int, *, toward_left: bool
+) -> bool:
+    if toward_left:
+        if index <= 0:
+            return False
+        previous = raw_text[index - 1]
+        if previous == " ":
+            if index < 2:
+                return False
+            previous = raw_text[index - 2]
+        return previous.isascii() and previous.isalpha()
+    if index >= len(raw_text):
+        return False
+    following = raw_text[index]
+    if following == " ":
+        if index + 1 >= len(raw_text):
+            return False
+        following = raw_text[index + 1]
+    return following.isascii() and following.isalpha()
+
+
+def _has_standalone_letter_free_context(raw_text: str, start: int, end: int) -> bool:
+    return not _ascii_alpha_beyond_optional_space(
+        raw_text, start, toward_left=True
+    ) and not _ascii_alpha_beyond_optional_space(raw_text, end, toward_left=False)
+
+
+def unit_allows_space_before(unit: str) -> bool:
+    if not isinstance(unit, str):
+        raise TypeError("unit must be str")
+    return unit not in _ATTACHED_NUMERIC_ONLY_UNITS
+
+
+def _valid_hangul_context_unit_boundary(raw_text: str, start: int, end: int) -> bool:
+    prev_char = raw_text[start - 1] if start > 0 else None
+    next_char = raw_text[end] if end < len(raw_text) else None
+    next_next = raw_text[end + 1] if end + 1 < len(raw_text) else None
+    next_non_space = raw_text[end:].lstrip()
+    if prev_char is not None:
+        if prev_char.isascii() and prev_char.isalnum():
+            return False
+        if prev_char in _PREV_BLOCKERS or prev_char in _PREV_SYMBOL_BLOCKERS:
+            return False
+        if prev_char in {"_"}:
+            return False
+    if next_char is None:
+        return True
+    if next_char in _SUPERSCRIPT_EXPONENTS:
+        return False
+    if next_char.isspace() and next_non_space.startswith("/"):
+        return False
+    if next_char.isascii() and next_char.isalnum():
+        return False
+    if next_char in _NEXT_BLOCKERS and next_char != ",":
+        return False
+    if next_char == ".":
+        return not (next_next is not None and next_next.isdigit())
+    return next_char not in {"_"}
 
 
 def scan_unit_contamination_preserve_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -799,6 +1168,8 @@ def _scan_unit_candidates(
         for unit in ordered_units:
             unit_name = inventory[unit]
             if not raw_text.startswith(unit, unit_start):
+                continue
+            if has_space_before_unit and not unit_allows_space_before(unit):
                 continue
             if has_decimal_amount and not _unit_allows_decimal_amount(unit, owner):
                 continue
@@ -1375,6 +1746,8 @@ def _scan_spaced_caret_literal_preserves(
 
 __all__ = [
     "CARET_POWER_UNIT_READINGS",
+    "HANGUL_CONTEXT_UNIT_EXCLUSIONS",
+    "HANGUL_CONTEXT_UNIT_READINGS",
     "RANGE_COMPATIBLE_UNIT_READINGS",
     "SIMPLE_UNIT_READINGS",
     "SPECIAL_UNIT_READINGS",
@@ -1387,8 +1760,10 @@ __all__ = [
     "scan_caret_literal_unit_candidates",
     "scan_simple_unit_candidates",
     "scan_special_unit_candidates",
+    "scan_hangul_context_unit_candidates",
     "scan_korean_numeric_unit_candidates",
     "scan_unit_contamination_preserve_candidates",
     "supported_unit_prefix_length",
     "starts_with_supported_unit",
+    "unit_allows_space_before",
 ]

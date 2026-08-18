@@ -54,8 +54,14 @@ for _unit, _reading in list(COMPOUND_SLASH_UNIT_READINGS.items()):
     if "/" in _unit:
         COMPOUND_SLASH_UNIT_READINGS.setdefault(_unit.replace("/", "／"), _reading)
 COMPOUND_EXACT_UNIT_READINGS: dict[str, str] = {
+    "Kbps": "{number} 킬로비피에스",
+    "kbps": "{number} 킬로비피에스",
     "Mbps": "{number} 메가비피에스",
+    "mbps": "{number} 메가비피에스",
     "Gbps": "{number} 기가비피에스",
+    "gbps": "{number} 기가비피에스",
+    "Tbps": "{number} 테라비피에스",
+    "tbps": "{number} 테라비피에스",
     "rpm": "{number} 알피엠",
     "fps": "{number} 에프피에스",
     "ppm": "{number} 피피엠",

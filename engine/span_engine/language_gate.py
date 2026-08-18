@@ -44,16 +44,25 @@ _COMPOUND_SLASH = r"[/／]"
 _PERCENT = r"[%％﹪]"
 _TEMP_UNIT = r"(?:℃|℉|º|ºC|ºF|°C|°F|°\s*C|°\s*F|º\s*C|º\s*F)"
 _SIMPLE_UNIT = (
-    r"(?:㎠|㎢|㎤|㎦|㎜|㎝|㎞|㎎|㎏|㎖|ℓ|㎅|㎆|㎇|㎡|㎥|㎐|㎑|㎒|㎓|㎫|㎷|㎹|㎽|㎾|㎿|㏈|‰|"
-    r"m²|m2|cm²|cm2|km²|km2|m³|cm³|km³|m3|cm3|km3|mHz|kHz|MHz|GHz|Ghz|ghz|mL|ml|ML|mPa|MPa|MWh|kWh|Wh|mW|MW|kW|W|mV|MV|mm|cm|km|"
-    r"mg|kg|Hz|hz|dB|KB|MB|GB|PB|m|g|L|%)"
+    r"(?:㎠|㎢|㎤|㎦|㎟|㎣|㎜|㎝|㎞|㎛|㎚|㎳|㎲|㎱|㎰|㎎|㎏|㎍|㎕|㎖|㎗|㎘|ℓ|"
+    r"µL|μL|uL|nL|pL|µW|μW|uW|µV|μV|uV|µg|μg|ug|µm|μm|µsec|μsec|µs|μs|"
+    r"㎅|㎆|㎇|㎡|㎥|㎐|㎑|㎒|㎓|㎔|㎩|㎪|㎫|㎵|㎶|㎷|㎸|㎹|㎼|㎽|㎾|㎿|㏈|‰|"
+    r"mm²|mm2|mm³|mm3|m²|m2|cm²|cm2|km²|km2|m³|cm³|km³|m3|cm3|km3|"
+    r"THz|Thz|thz|mHz|kHz|KHz|khz|MHz|Mhz|mhz|GHz|Ghz|ghz|"
+    r"mL|ml|ML|kL|kl|dL|dl|GPa|kPa|hPa|mPa|MPa|Pa|"
+    r"GWh|TWh|mWh|MWh|kWh|Wh|mW|MW|kW|kw|GW|TW|W|"
+    r"kV|kv|nV|mV|MV|"
+    r"bits|bit|msec|nsec|usec|secs|sec|Sec|ms|us|ns|ps|min|um|nm|mm|cm|km|"
+    r"ng|pg|mg|kg|Hz|hz|dB|KB|MB|GB|TB|PB|ft|in|m|g|L|%)"
 )
 _COMPOUND_UNIT = (
     r"(?:(?:km|㎞|m|cm|㎝|mg|㎎|g|KB|MB|GB|TB|PB)"
     rf"{_COMPOUND_SLASH}"
     r"(?:h|hr|min|s|sec|L|l|ℓ|dL)|㎧)"
 )
-_EXACT_COMPOUND = r"(?:Mbps|Gbps|rpm|fps|ppm|ppb|dBi)"
+_EXACT_COMPOUND = (
+    r"(?:Kbps|kbps|Mbps|mbps|Gbps|gbps|Tbps|tbps|rpm|fps|ppm|ppb|dBi)"
+)
 _CURRENCY_PREFIX = r"[$＄﹩€₩￦¥￥£]"
 _CURRENCY_SUFFIX = r"(?:USD|EUR|KRW|JPY|GBP|원|[$＄﹩€₩￦¥￥£])"
 _CURRENCY_CODE = r"(?:USD|EUR|KRW|JPY|GBP)"

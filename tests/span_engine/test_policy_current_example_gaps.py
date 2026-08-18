@@ -142,9 +142,9 @@ def test_news_attached_surface_current_gaps(text: str, expected: str) -> None:
         ("[KTX-이음]", "KTX-이음"),
         ("KTX-2024", "KTX-2024"),
         ("KTX-A", "KTX-A"),
-        ("3시리즈", "3시리즈"),
+        ("3시리즈", "삼 시리즈"),
         ("11시점", "11시점"),
-        ("11시스템", "11시스템"),
+        ("11시스템", "십일 시스템"),
         ("/path/11시뉴스/log", "/path/11시뉴스/log"),
         ("`11시뉴스`", "`11시뉴스`"),
         ("[11시뉴스]", "11시뉴스"),
@@ -470,15 +470,67 @@ def test_fixed_acronym_code_like_guards_preserve(text: str) -> None:
         ("250ml", "이백오십 밀리리터"),
         ("250mL", "이백오십 밀리리터"),
         ("250ML", "이백오십 밀리리터"),
+        ("250µL", "이백오십 마이크로리터"),
+        ("250μL", "이백오십 마이크로리터"),
+        ("250㎕", "이백오십 마이크로리터"),
+        ("250dL", "이백오십 데시리터"),
+        ("250dl", "이백오십 데시리터"),
+        ("250㎗", "이백오십 데시리터"),
+        ("250kL", "이백오십 킬로리터"),
+        ("250kl", "이백오십 킬로리터"),
+        ("250㎘", "이백오십 킬로리터"),
+        ("250uL", "이백오십 마이크로리터"),
+        ("250nL", "이백오십 나노리터"),
+        ("250pL", "이백오십 피코리터"),
     ],
 )
-def test_milliliter_unit_aliases(text: str, expected: str) -> None:
+def test_registered_volume_unit_aliases(text: str, expected: str) -> None:
     assert transform(text) == expected
 
 
-@pytest.mark.parametrize("text", ["250mlabc", "250mLtest"])
-def test_milliliter_unit_alias_unsafe_tail_preserve(text: str) -> None:
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("250µm", "이백오십 마이크로미터"),
+        ("250nm", "이백오십 나노미터"),
+        ("250µg", "이백오십 마이크로그램"),
+        ("1013hPa", "천십삼 헥토파스칼"),
+        ("250GW", "이백오십 기가와트"),
+        ("250kV", "이백오십 킬로볼트"),
+        ("250THz", "이백오십 테라헤르츠"),
+        ("250Kbps", "이백오십 킬로비피에스"),
+        ("250Tbps", "이백오십 테라비피에스"),
+        ("250sec", "이백오십 초"),
+        ("250ms", "이백오십 밀리초"),
+        ("250µs", "이백오십 마이크로초"),
+        ("250μs", "이백오십 마이크로초"),
+    ],
+)
+def test_registered_si_prefix_unit_aliases(text: str, expected: str) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["250mlabc", "250mLtest", "250kLabc", "1KL", "250dLabc", "1DL", "1KW", "1KV", "1GPA"],
+)
+def test_registered_volume_unit_alias_unsafe_or_excluded_forms_preserve(
+    text: str,
+) -> None:
     assert transform(text) == text
+
+
+def test_kiloliter_cjk_symbol_reuses_registered_volume_unit_rules() -> None:
+    source = (
+        "생맥주 주세는 1㎘당 17만7200원 오른다. "
+        "20L짜리 생맥주 한 통당 약 5000원의 세금이 추가되고, "
+        "500㎖ 한 잔으로 환산하면 약 127원이 늘어나는 수준이다."
+    )
+    assert transform(source) == (
+        "생맥주 주세는 일 킬로리터당 십칠만칠천이백 원 오른다. "
+        "이십 리터짜리 생맥주 한 통당 약 오천 원의 세금이 추가되고, "
+        "오백 밀리리터 한 잔으로 환산하면 약 백이십칠 원이 늘어나는 수준이다."
+    )
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,7 @@ CORE_PROBES = (
     ROOT_DIR / "scripts" / "probes" / "decimal_fractional_zero.py",
     ROOT_DIR / "scripts" / "probes" / "colon_time_like_policy.py",
     ROOT_DIR / "scripts" / "probes" / "large_unit_numeric_surface.py",
+    ROOT_DIR / "scripts" / "probes" / "registered_unit_surface.py",
     ROOT_DIR / "scripts" / "probes" / "json_like_protected_spans.py",
     ROOT_DIR / "scripts" / "probes" / "contextual_number_units.py",
 )

@@ -196,7 +196,6 @@ def test_international_phone_with_korean_tail_is_not_blocked_by_invalid_preserve
         "-1.",
         "++1",
         "--1",
-        "+-1",
         "-+1",
         "+1,00",
         "-1,0000",
@@ -221,27 +220,18 @@ def test_invalid_signed_surface_is_atomically_preserved(text: str) -> None:
     )
 
 
-@pytest.mark.parametrize("text", ["+3대", "-3대", "차량 증감 +3대", "+2명", "-3개"])
-def test_signed_counter_support_is_not_expanded(text: str) -> None:
-    assert transform(text) == text
-    debug = transform_debug(text)["debug"]
-    claims = debug["trace"]["claim_logs"]
-    if text.endswith("대"):
-        assert any(
-            claim["owner"] == "contextual_number_unit"
-            and claim["reason"] == "contextual_number_unit_deferred"
-            for claim in claims
-        )
-    else:
-        assert any(
-            claim["reason"]
-            == "invalid_or_unsupported_signed_numeric_surface_preserve"
-            for claim in claims
-        )
-    assert not any(
-        claim["owner"] in {"signed_number", "counter_noun", "ambiguous_numeric_dae_preserve"}
-        for claim in claims
-    )
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("+3대", "플러스 삼 대"),
+        ("-3대", "마이너스 삼 대"),
+        ("차량 증감 +3대", "차량 증감 플러스 삼 대"),
+        ("+2명", "플러스 이 명"),
+        ("-3개", "마이너스 삼 개"),
+    ],
+)
+def test_signed_counter_and_dae_use_residual_reading(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize("text", ["+10km/h", "-3m/s"])
@@ -277,6 +267,6 @@ def test_mixed_signed_numeric_e2e() -> None:
     expected = (
         "값은 플러스 천쩜오영 원, 변화율은 마이너스 이쩜오 퍼센트포인트, "
         "무게는 플러스 일쩜오 킬로그램, 온도는 영하 이십오도, 각도는 플러스 삼십도, "
-        "경기는 플러스 일 대 마이너스 이였고 차량 변화 +3대는 원문으로 기록했다."
+            "경기는 플러스 일 대 마이너스 이였고 차량 변화 플러스 삼 대는 원문으로 기록했다."
     )
     assert transform(text) == expected
