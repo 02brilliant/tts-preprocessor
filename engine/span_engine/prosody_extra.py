@@ -33,6 +33,44 @@ _PREDICATE_LIKE_SUFFIXES = (
     "된다",
     "다",
 )
+_MIN_TIME_FRAME_SENTENCE_VISIBLE = 24
+_MIN_TIME_FRAME_RIGHT_VISIBLE = 16
+_MIN_TIME_FRAME_RIGHT_CHUNKS = 4
+_MIN_PARTICLED_TIME_FRAME_SENTENCE_VISIBLE = 30
+_MIN_PARTICLED_TIME_FRAME_RIGHT_VISIBLE = 20
+_MIN_PARTICLED_TIME_FRAME_RIGHT_CHUNKS = 5
+_RELATIVE_YEAR = r"(?:지난해|올해|내년)"
+_VALID_MONTH = r"(?:1[0-2]|[1-9])월"
+_VALID_DAY = r"(?:3[01]|[12]\d|[1-9])일"
+_VALID_YEAR_PERIOD = rf"(?:상반기|하반기|[1-4]분기|{_VALID_MONTH})"
+_TIME_FRAME_PARTICLE = r"(?:부터는|까지는|에서는|에는|에도|부터|까지|에서|에)"
+_TIME_FRAME_END = r"(?=\s|[,;.!?]|$)"
+_COMPOUND_YEAR_TIME_FRAME_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(
+            rf"^{_RELATIVE_YEAR}\s+{_VALID_MONTH}부터\s+{_VALID_MONTH}까지(?:는)?{_TIME_FRAME_END}"
+        ),
+        "time_month_range",
+    ),
+    (
+        re.compile(
+            rf"^{_RELATIVE_YEAR}\s+{_VALID_MONTH}\s+{_VALID_DAY}(?P<particle>{_TIME_FRAME_PARTICLE})?{_TIME_FRAME_END}"
+        ),
+        "time_full_date",
+    ),
+    (
+        re.compile(
+            rf"^{_RELATIVE_YEAR}\s+{_VALID_YEAR_PERIOD}(?P<particle>{_TIME_FRAME_PARTICLE})?{_TIME_FRAME_END}"
+        ),
+        "time_compound_period",
+    ),
+)
+_RELATIVE_YEAR_PERIOD_CONTINUATION_RE = re.compile(
+    rf"^{_RELATIVE_YEAR}\s+(?:상반기|하반기|\d+분기|\d+월)"
+)
+_UNCONSUMED_TIME_CONTINUATION_RE = re.compile(
+    r"^\s+(?:\d+일|\d+분기|\d+월|상반기|하반기|초|중순|말)(?:\b|[부터까지와과])"
+)
 _TIME_FRAME_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^(오늘|내일|어제)\s+(아침|오전|오후|저녁)\b"), "time_day_part"),
     (re.compile(r"^(오늘|내일)\s+서울에서\b"), "time_place_frame"),
@@ -199,33 +237,110 @@ def _leading_time_frame_candidates(
         return []
 
     trimmed = raw_text[start:sentence_end]
+    for pattern, reason in _COMPOUND_YEAR_TIME_FRAME_PATTERNS:
+        match = pattern.match(trimmed)
+        if match is None:
+            continue
+        if _has_unconsumed_time_continuation(trimmed[match.end() :]):
+            return []
+        return _build_leading_time_frame_candidate(
+            raw_text=raw_text,
+            trimmed=trimmed,
+            match=match,
+            reason=reason,
+            sentence_id=sentence_id,
+            sentence_start=start,
+            sentence_end=sentence_end,
+            safety=safety,
+            has_particle=(
+                reason == "time_month_range"
+                or bool(match.groupdict().get("particle"))
+            ),
+        )
+
+    # A relative year followed by a period-looking token must never fall back
+    # to a shorter bare-year match. Invalid, coordinated, or not-yet-supported
+    # continuations are preserved rather than split after 올해/지난해.
+    if _RELATIVE_YEAR_PERIOD_CONTINUATION_RE.match(trimmed):
+        return []
+
     for pattern, reason in _TIME_FRAME_PATTERNS:
         match = pattern.match(trimmed)
         if match is None:
             continue
-        phrase = match.group(0)
-        visible_len = _visible_len(phrase)
-        if visible_len < 2 or visible_len > 15:
-            return []
-        insert_pos = start + match.end()
-        if not _candidate_boundary_is_safe(raw_text, insert_pos, sentence_end, safety):
-            return []
-        right = raw_text[insert_pos:sentence_end].strip(" \t\r\n.,:;!?")
-        if reason == "time_period" and _starts_with_basic_topic(right):
-            return []
-        if not _has_meaningful_clause(right):
-            return []
-        return [
-            ExtraProsodyCommaCandidate(
-                insert_pos=insert_pos,
-                sentence_id=sentence_id,
-                rule="leading_time_frame",
-                priority=300,
-                confidence=0.94,
-                reason=reason,
-            )
-        ]
+        return _build_leading_time_frame_candidate(
+            raw_text=raw_text,
+            trimmed=trimmed,
+            match=match,
+            reason=reason,
+            sentence_id=sentence_id,
+            sentence_start=start,
+            sentence_end=sentence_end,
+            safety=safety,
+            has_particle=False,
+        )
     return []
+
+
+def _build_leading_time_frame_candidate(
+    *,
+    raw_text: str,
+    trimmed: str,
+    match: re.Match[str],
+    reason: str,
+    sentence_id: int,
+    sentence_start: int,
+    sentence_end: int,
+    safety: _ExtraProsodySafetyContext,
+    has_particle: bool,
+) -> list[ExtraProsodyCommaCandidate]:
+    phrase = match.group(0)
+    visible_len = _visible_len(phrase)
+    if visible_len < 2 or visible_len > 20:
+        return []
+    insert_pos = sentence_start + match.end()
+    if not _candidate_boundary_is_safe(raw_text, insert_pos, sentence_end, safety):
+        return []
+    right = raw_text[insert_pos:sentence_end].strip(" \t\r\n.,:;!?")
+    if reason == "time_period" and _starts_with_basic_topic(right):
+        return []
+    if not _has_meaningful_clause(right):
+        return []
+    if not _time_frame_pause_is_warranted(trimmed, right, has_particle=has_particle):
+        return []
+    return [
+        ExtraProsodyCommaCandidate(
+            insert_pos=insert_pos,
+            sentence_id=sentence_id,
+            rule="leading_time_frame",
+            priority=300,
+            confidence=0.94,
+            reason=reason,
+        )
+    ]
+
+
+def _has_unconsumed_time_continuation(remainder: str) -> bool:
+    return bool(_UNCONSUMED_TIME_CONTINUATION_RE.match(remainder))
+
+
+def _time_frame_pause_is_warranted(
+    sentence: str, right: str, *, has_particle: bool
+) -> bool:
+    sentence_visible = _visible_len(sentence)
+    right_visible = _visible_len(right)
+    right_chunks = len([chunk for chunk in right.split() if chunk])
+    if has_particle:
+        return (
+            sentence_visible >= _MIN_PARTICLED_TIME_FRAME_SENTENCE_VISIBLE
+            and right_visible >= _MIN_PARTICLED_TIME_FRAME_RIGHT_VISIBLE
+            and right_chunks >= _MIN_PARTICLED_TIME_FRAME_RIGHT_CHUNKS
+        )
+    return (
+        sentence_visible >= _MIN_TIME_FRAME_SENTENCE_VISIBLE
+        and right_visible >= _MIN_TIME_FRAME_RIGHT_VISIBLE
+        and right_chunks >= _MIN_TIME_FRAME_RIGHT_CHUNKS
+    )
 
 
 def _subordinate_marker_candidates(

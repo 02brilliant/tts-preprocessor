@@ -304,6 +304,24 @@
       font-size: 22px;
     }
 
+    .stage-heading-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .copy-output-button {
+      min-height: 40px;
+      padding: 0 16px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .copy-output-button:disabled {
+      cursor: not-allowed;
+    }
+
     .timing {
       color: rgba(43, 36, 27, 0.7);
       font-size: 14px;
@@ -550,7 +568,15 @@
         <section class="stage-section" aria-labelledby="stage-1-title">
           <div class="stage-heading">
             <h2 id="stage-1-title">1단계 · 규칙 기반 발음교정</h2>
-            <div id="stage-1-timing" class="timing">전체 응답시간: -</div>
+            <div class="stage-heading-actions">
+              <div id="stage-1-timing" class="timing">전체 응답시간: -</div>
+              <button
+                id="stage-1-copy"
+                class="copy-output-button"
+                type="button"
+                disabled
+              >1단계 발음교정 텍스트 복사</button>
+            </div>
           </div>
           <div id="stage-1-status" class="status" aria-live="polite"></div>
           <div id="stage-1-error" class="error-box" role="alert"></div>
@@ -573,7 +599,15 @@
         <section class="stage-section" aria-labelledby="stage-2-title">
           <div class="stage-heading">
             <h2 id="stage-2-title">2단계 · LLM 통합 읽기·발음·운율 처리</h2>
-            <div id="stage-2-timing" class="timing">전체 응답시간: -</div>
+            <div class="stage-heading-actions">
+              <div id="stage-2-timing" class="timing">전체 응답시간: -</div>
+              <button
+                id="stage-2-copy"
+                class="copy-output-button"
+                type="button"
+                disabled
+              >2단계 발음교정 텍스트 복사</button>
+            </div>
           </div>
           <div id="stage-2-status" class="status" aria-live="polite"></div>
           <div id="stage-2-error" class="error-box" role="alert"></div>
@@ -632,6 +666,9 @@
         error: document.getElementById("stage-1-error"),
         input: document.getElementById("stage-1-input"),
         output: document.getElementById("stage-1-output"),
+        copyButton: document.getElementById("stage-1-copy"),
+        copyLabel: "1단계 발음교정 텍스트 복사",
+        copyableText: "",
         diffs: [document.getElementById("stage-1-diff")],
       },
       2: {
@@ -639,6 +676,9 @@
         timing: document.getElementById("stage-2-timing"),
         error: document.getElementById("stage-2-error"),
         output: document.getElementById("stage-2-output"),
+        copyButton: document.getElementById("stage-2-copy"),
+        copyLabel: "2단계 발음교정 텍스트 복사",
+        copyableText: "",
         diffs: [
           document.getElementById("stage-2-previous-diff"),
           document.getElementById("stage-2-original-diff"),
@@ -656,12 +696,60 @@
       return `${(milliseconds / 1000).toFixed(2)} s`;
     }
 
+    function setCopyableText(stageNumber, text) {
+      const stage = stageElements[stageNumber];
+      stage.copyableText = typeof text === "string" ? text : "";
+      stage.copyButton.disabled = stage.copyableText.length === 0;
+      stage.copyButton.textContent = stage.copyLabel;
+    }
+
+    function fallbackCopyText(text) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.top = "0";
+      area.style.left = "0";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (!copied) {
+        throw new Error("클립보드 복사에 실패했습니다.");
+      }
+    }
+
+    async function copyStageOutput(stageNumber) {
+      const stage = stageElements[stageNumber];
+      const text = stage.copyableText;
+      if (!text) {
+        return;
+      }
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(text);
+        } else {
+          fallbackCopyText(text);
+        }
+        stage.copyButton.textContent = "복사됨";
+        window.setTimeout(() => {
+          stage.copyButton.textContent = stage.copyLabel;
+        }, 1500);
+      } catch {
+        stage.status.textContent = "텍스트를 클립보드에 복사하지 못했습니다.";
+        stage.status.className = "status error";
+      }
+    }
+
     function resetStage(stageNumber, message = "") {
       const stage = stageElements[stageNumber];
       stage.error.style.display = "none";
       stage.error.textContent = "";
       if (stage.input) stage.input.textContent = "";
       stage.output.textContent = "";
+      setCopyableText(stageNumber, "");
       stage.diffs.forEach((element) => { element.textContent = ""; });
       stage.status.textContent = message;
       stage.status.className = "status";
@@ -765,6 +853,7 @@
           1,
           stage.diffs[0],
         );
+        setCopyableText(1, data.normalized_text);
         stage.status.textContent = "완료";
         stage.status.className = "status";
         return data.normalized_text;
@@ -809,6 +898,7 @@
           2,
           stage.output,
         );
+        setCopyableText(2, data.speech_text);
         stage.status.textContent = "완료";
         stage.status.className = "status";
         const upstreamTiming = Number.isFinite(data.elapsed_ms)
@@ -832,6 +922,7 @@
             stage.output,
             stage.diffs[0],
           );
+          setCopyableText(2, contractOutput);
         }
         showStageError(
           2,
@@ -1058,6 +1149,12 @@
 
     llmToggleButton.addEventListener("click", () => {
       setLLMEnabled(!llmEnabled);
+    });
+    stageElements[1].copyButton.addEventListener("click", () => {
+      copyStageOutput(1);
+    });
+    stageElements[2].copyButton.addEventListener("click", () => {
+      copyStageOutput(2);
     });
     runButton.addEventListener("click", runPipeline);
     setLLMEnabled(true);

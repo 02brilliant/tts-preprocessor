@@ -7611,7 +7611,30 @@ Initial supported leading time-frame patterns are narrow: `오늘 아침`, `오�
 `올해`, `이번 주`, `다음 주`, `지난 N일`, `오늘 서울에서`, and
 `내일 서울에서`. The phrase must occur at sentence start, remain within a
 bounded visible length, be followed by whitespace, and precede a meaningful
-predicate-like clause. Broad topic splitting such as `오늘 회의는 ...` and
+predicate-like clause. Relative-year compound frames additionally support
+`지난해|올해|내년` followed by `상반기`, `하반기`, a valid `1분기` through
+`4분기`, or a valid `1월` through `12월`. A supported attached particle is
+consumed as part of the frame.
+
+Leading time-frame recognition uses a longest-complete-frame rule. A supported
+full date such as `내년 2월 3일` is consumed through the day, and a supported
+month range such as `내년 2월부터 4월까지` is consumed through the range end.
+The adapter must never fall back to a shorter `올해` or `지난해` boundary when a
+period-looking continuation is invalid, coordinated, incomplete, or otherwise
+unsupported. Such input is preserved without a generated time-frame comma.
+
+Recognizing a time frame does not by itself license a comma. For a frame without
+an attached particle, all of the following pause-utility gates must pass:
+
+- the whole sentence has at least 24 visible non-whitespace characters
+- the clause to the right has at least 16 visible non-whitespace characters
+- the clause to the right has at least 4 whitespace-delimited chunks
+
+Attached particles such as `에는`, `에도`, and `부터` already connect the time
+frame to the clause, so they use stricter gates: at least 30 visible sentence
+characters, 20 visible right-clause characters, and 5 right-clause chunks.
+Short, simple sentences remain comma-free even when their time frame is fully
+recognized. Broad topic splitting such as `오늘 회의는 ...` and bare
 `올해 실적은 ...` remains out of scope.
 
 Initial subordinate marker patterns are `고 나서`, clause endings shaped like
@@ -7640,9 +7663,9 @@ The initial extra-layer budget is sentence-local:
 - selected comma positions must be at least 18 visible/source characters apart
 
 Candidate priority is leading time-frame, then subordinate marker, then serial
-list. The short-sentence threshold is lower than earlier policy examples
-because the span-default extra layer is constrained to the narrow patterns above
-and must cover short production utterances such as `오늘 아침 우리는 출발했습니다.`
+list. The sentence-level comma budget remains a final upper bound after the
+leading time-frame-specific length, right-clause, and particle-aware gates have
+been applied.
 
 ### 15.4 Prosody insertion pseudo-code
 

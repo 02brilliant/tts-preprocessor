@@ -9,15 +9,15 @@ from tests._span_prosody import apply_span_prosody
 SENTENCE_LOCAL_CASES = [
     TextCase(
         case_id="sentence-local-leading-time-and-subordinate",
-        text="오늘 아침 우리는 바로 출발한다. 회의를 마치고 나서 우리는 바로 이동한다",
-        expected="오늘 아침, 우리는 바로 출발한다. 회의를 마치고 나서, 우리는 바로 이동한다",
+        text="오늘 아침 우리는 예정된 일정에 따라 목적지를 향해 바로 출발한다. 회의를 마치고 나서 우리는 바로 이동한다",
+        expected="오늘 아침, 우리는 예정된 일정에 따라 목적지를 향해 바로 출발한다. 회의를 마치고 나서, 우리는 바로 이동한다",
         rule="prosody / sentence-local budget",
         reason="Each sentence must be analyzed independently so both local boundaries can survive without a cross-sentence pass.",
     ),
     TextCase(
         case_id="sentence-local-connector-and-time-frame",
-        text="그리고 우리는 바로 출발한다. 내일 서울에서 우리는 다시 만난다",
-        expected="그리고, 우리는 바로 출발한다. 내일 서울에서, 우리는 다시 만난다",
+        text="그리고 우리는 바로 출발한다. 내일 서울에서 우리는 주요 관계자들과 향후 운영 계획을 자세히 논의한다",
+        expected="그리고, 우리는 바로 출발한다. 내일 서울에서, 우리는 주요 관계자들과 향후 운영 계획을 자세히 논의한다",
         rule="prosody / sentence-local budget",
         reason="A connector boundary in one sentence must not change the comma budget of the next sentence.",
     ),
@@ -59,22 +59,71 @@ LEADING_CONNECTOR_POSITIVE_CASES = [
 LEADING_TIME_FRAME_CASES = [
     TextCase(
         case_id="leading-time-frame-two-eojeol",
-        text="오늘 아침 우리는 바로 출발한다",
-        expected="오늘 아침, 우리는 바로 출발한다",
+        text="오늘 아침 우리는 예정된 일정에 따라 목적지를 향해 바로 출발한다",
+        expected="오늘 아침, 우리는 예정된 일정에 따라 목적지를 향해 바로 출발한다",
         rule="prosody / leading time frame",
-        reason="A sentence-initial time frame chunk may take one comma when a full predicate follows.",
+        reason="A sentence-initial time frame may take one comma when the following clause is long enough to benefit from a pause.",
     ),
     TextCase(
         case_id="leading-time-frame-time-plus-frame",
-        text="내일 서울에서 우리는 다시 만난다",
-        expected="내일 서울에서, 우리는 다시 만난다",
+        text="내일 서울에서 우리는 주요 관계자들과 향후 운영 계획을 자세히 논의한다",
+        expected="내일 서울에서, 우리는 주요 관계자들과 향후 운영 계획을 자세히 논의한다",
         rule="prosody / leading time frame",
-        reason="A narrow initial time-plus-frame adverbial may receive one comma before the main clause.",
+        reason="A narrow initial time-plus-frame adverbial may receive one comma before a sufficiently long main clause.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-relative-year-half",
+        text="올해 상반기 국내 주요 시장을 중심으로 매출이 예상보다 크게 늘었습니다.",
+        expected="올해 상반기, 국내 주요 시장을 중심으로 매출이 예상보다 크게 늘었습니다.",
+        rule="prosody / longest leading time frame",
+        reason="A relative year and half-year must be consumed as one complete time frame before pause evaluation.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-relative-year-quarter",
+        text="내년 1분기 전국 주요 지역에서 신규 서비스를 순차적으로 시작할 예정입니다.",
+        expected="내년 1분기, 전국 주요 지역에서 신규 서비스를 순차적으로 시작할 예정입니다.",
+        rule="prosody / longest leading time frame",
+        reason="A valid relative-year quarter is one complete time frame and may precede a long clause.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-full-date",
+        text="내년 2월 3일 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+        expected="내년 2월 3일, 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+        rule="prosody / longest leading time frame",
+        reason="A full date must be consumed through the day rather than split after the month.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-month-range",
+        text="내년 2월부터 4월까지 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+        expected="내년 2월부터 4월까지, 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+        rule="prosody / longest leading time frame",
+        reason="A month range must be consumed through its range endpoint before pause evaluation.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-particle-long-clause",
+        text="올해 상반기에는 국내 주요 시장을 중심으로 매출이 예상보다 크게 늘어날 전망입니다.",
+        expected="올해 상반기에는, 국내 주요 시장을 중심으로 매출이 예상보다 크게 늘어날 전망입니다.",
+        rule="prosody / particle-aware leading time frame",
+        reason="A particled time frame uses a stricter threshold but may receive a comma before a sufficiently long clause.",
     ),
 ]
 
 
 LEADING_TIME_FRAME_NEGATIVE_CASES = [
+    TextCase(
+        case_id="leading-time-frame-short-two-eojeol-frame",
+        text="오늘 아침 우리는 바로 출발한다",
+        expected="오늘 아침 우리는 바로 출발한다",
+        rule="prosody / short leading time frame negative",
+        reason="Recognizing a time frame does not justify a pause before a short main clause.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-short-time-place-frame",
+        text="내일 서울에서 우리는 다시 만난다",
+        expected="내일 서울에서 우리는 다시 만난다",
+        rule="prosody / short leading time frame negative",
+        reason="A short time-plus-place sentence should remain comma-free.",
+    ),
     TextCase(
         case_id="leading-time-frame-short-simple-negative",
         text="오늘 바로 출발한다",
@@ -95,6 +144,48 @@ LEADING_TIME_FRAME_NEGATIVE_CASES = [
         expected="오늘 아침, 우리는 바로 출발한다",
         rule="prosody / leading time frame negative",
         reason="If punctuation already marks the boundary, prosody must not add a second comma.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-short-relative-year-half",
+        text="올해 상반기 매출이 늘었습니다.",
+        expected="올해 상반기 매출이 늘었습니다.",
+        rule="prosody / short compound time frame negative",
+        reason="The complete time frame is recognized, but the short clause does not benefit from a pause.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-short-relative-year-quarter",
+        text="내년 1분기 사업을 시작합니다.",
+        expected="내년 1분기 사업을 시작합니다.",
+        rule="prosody / short compound time frame negative",
+        reason="A short quarter sentence should remain comma-free.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-short-relative-year-month",
+        text="내년 2월 서비스를 출시합니다.",
+        expected="내년 2월 서비스를 출시합니다.",
+        rule="prosody / short compound time frame negative",
+        reason="A short month sentence should remain comma-free.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-short-particle",
+        text="올해 상반기에는 매출이 늘었습니다.",
+        expected="올해 상반기에는 매출이 늘었습니다.",
+        rule="prosody / particle-aware short frame negative",
+        reason="A connective particle makes a pause even less useful in a short sentence.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-coordinated-period-no-short-fallback",
+        text="올해 상반기와 하반기 실적을 자세히 비교해서 새로운 사업 계획을 수립할 예정입니다.",
+        expected="올해 상반기와 하반기 실적을 자세히 비교해서 새로운 사업 계획을 수립할 예정입니다.",
+        rule="prosody / incomplete compound frame negative",
+        reason="An unsupported coordinated period must not fall back to a comma after the bare relative year.",
+    ),
+    TextCase(
+        case_id="leading-time-frame-invalid-month-no-short-fallback",
+        text="올해 13월 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+        expected="올해 13월 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+        rule="prosody / invalid compound frame negative",
+        reason="An invalid month-like continuation must not fall back to a comma after 올해.",
     ),
 ]
 
@@ -505,6 +596,60 @@ def test_leading_time_frame_positive_cases(case: TextCase):
 @pytest.mark.parametrize("case", LEADING_TIME_FRAME_NEGATIVE_CASES, ids=lambda case: case.case_id)
 def test_leading_time_frame_negative_cases(case: TextCase):
     assert_exact(apply_span_prosody(case.text), case)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            "내년 1분기 전국 주요 지역에서 신규 서비스를 순차적으로 시작할 예정입니다.",
+            "내년 일분기, 전국 주요 지역에서 신규 서비스를 순차적으로 시작할 예정입니다.",
+        ),
+        (
+            "내년 2월 3일 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+            "내년 이월 삼일, 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+        ),
+        (
+            "내년 2월부터 4월까지 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+            "내년 이월부터 사월까지, 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+        ),
+        (
+            "내년 2월 서비스를 출시합니다.",
+            "내년 이월 서비스를 출시합니다.",
+        ),
+    ],
+)
+def test_leading_compound_time_frame_full_transform(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        (
+            "올해 상반기 국내 주요 시장을 중심으로 매출이 예상보다 크게 늘었습니다.",
+            "time_compound_period",
+        ),
+        (
+            "내년 2월 3일 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+            "time_full_date",
+        ),
+        (
+            "내년 2월부터 4월까지 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+            "time_month_range",
+        ),
+    ],
+)
+def test_longest_time_frame_trace_reason(text: str, reason: str) -> None:
+    output = transform_with_trace(text)
+    assert any(
+        log.event == "insert_extra_comma"
+        and log.reason == reason
+        and log.metadata.get("rule") == "leading_time_frame"
+        for log in output.trace.prosody_logs
+    )
 
 
 @pytest.mark.parametrize("case", SUBORDINATE_CLAUSE_POSITIVE_CASES, ids=lambda case: case.case_id)

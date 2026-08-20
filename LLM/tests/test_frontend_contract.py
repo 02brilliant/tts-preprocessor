@@ -21,11 +21,18 @@ def test_frontend_has_llm_toggle_model_control_and_two_stage_outputs() -> None:
     for element_id in (
         "stage-1-output",
         "stage-1-diff",
+        "stage-1-copy",
         "stage-2-output",
         "stage-2-previous-diff",
         "stage-2-original-diff",
+        "stage-2-copy",
     ):
         assert f'id="{element_id}"' in web
+    assert "1단계 발음교정 텍스트 복사" in web
+    assert "2단계 발음교정 텍스트 복사" in web
+    assert "setCopyableText(1, data.normalized_text)" in web
+    assert "setCopyableText(2, data.speech_text)" in web
+    assert "navigator.clipboard.writeText" in web
     assert 'id="stage-3-output"' not in web
 
 
