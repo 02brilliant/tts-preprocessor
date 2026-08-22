@@ -5,12 +5,12 @@ from pathlib import Path
 
 ROOT_DIR = Path(SPECPATH).resolve()
 EXECUTABLE_NAME = os.environ.get(
-    "TTS_LLM_STAGE_EXECUTABLE_NAME",
-    "tts-llm-stage",
+    "TTS_PREPROCESSOR_LLM_MINIMAL_EXECUTABLE_NAME",
+    "tts-preprocessor-llm-minimal",
 )
 
 a = Analysis(
-    [str(ROOT_DIR / "bin" / "build_llm_stage_entrypoint.py")],
+    [str(ROOT_DIR / "bin" / "build_llm_minimal_entrypoint.py")],
     pathex=[str(ROOT_DIR)],
     binaries=[],
     datas=[
@@ -28,11 +28,7 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
+    pyz, a.scripts, a.binaries, a.datas, [],
     name=EXECUTABLE_NAME,
     debug=False,
     bootloader_ignore_signals=False,

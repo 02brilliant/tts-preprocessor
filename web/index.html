@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TTS 2단계 전처리 테스트</title>
+  <title>TTS 전처리 단계 테스트</title>
   <style>
     :root {
       color-scheme: light;
@@ -143,35 +143,50 @@
       outline-offset: 2px;
     }
 
-    .llm-controls {
+    .pipeline-controls {
       display: grid;
-      grid-template-columns: max-content max-content minmax(240px, 1fr) max-content;
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 0.65fr) max-content;
       align-items: center;
       gap: 12px;
       margin-top: 18px;
     }
 
-    .llm-settings-label {
-      margin: 0;
-      white-space: nowrap;
+    .correction-level-control {
+      min-width: 0;
     }
 
-    .llm-toggle {
-      min-width: 72px;
-      padding-inline: 16px;
-      background: #1a7f37;
+    .correction-level-control label {
+      margin-bottom: 4px;
     }
 
-    .llm-toggle:hover {
-      background: #116329;
+    #correction-level {
+      width: 100%;
+      accent-color: var(--accent);
     }
 
-    .llm-toggle[aria-pressed="false"] {
-      background: #756b61;
+    .correction-level-labels {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 4px;
+      margin-top: 2px;
     }
 
-    .llm-toggle[aria-pressed="false"]:hover {
-      background: #564d45;
+    .correction-level-labels button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 5px 7px;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .correction-level-labels button[aria-pressed="true"] {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
     }
 
     .llm-run-button {
@@ -229,7 +244,7 @@
     }
 
     .model-status {
-      grid-column: 3 / -1;
+      grid-column: 2 / -1;
       min-height: 20px;
       margin: -4px 0 0;
     }
@@ -497,16 +512,8 @@
         width: 100%;
       }
 
-      .llm-controls {
-        grid-template-columns: 1fr auto;
-      }
-
-      .llm-settings-label {
-        grid-column: 1;
-      }
-
-      .llm-toggle {
-        grid-column: 2;
+      .pipeline-controls {
+        grid-template-columns: 1fr;
       }
 
       #llm-model,
@@ -525,7 +532,7 @@
   <main class="page">
     <section class="panel">
       <div class="page-header">
-        <h1>TTS 2단계 전처리 테스트</h1>
+        <h1>TTS 전처리 단계 테스트</h1>
         <a
           class="workshop-link"
           href="http://10.20.10.162:8011/"
@@ -540,16 +547,20 @@
       <label for="input">사용자 텍스트(TTS 원고)</label>
       <textarea id="input" placeholder="예: AI는 2025-01-03에 3kg 제품을 69% 할인한다">AI는 2025-01-03에 3kg 제품을 69% 할인한다</textarea>
 
-      <div class="llm-controls" aria-label="LLM 추가교정 설정">
-        <span class="llm-settings-label">LLM 추가교정 설정</span>
-        <button
-          id="llm-toggle"
-          class="llm-toggle"
-          type="button"
-          aria-pressed="true"
-        >ON</button>
+      <div class="pipeline-controls" aria-label="교정 단계 설정">
+        <div class="correction-level-control">
+          <label for="correction-level">교정 단계 · <span id="correction-level-current">2단계(규칙기반교정)</span></label>
+          <input id="correction-level" type="range" min="0" max="4" step="1" value="2" aria-label="교정 단계 선택">
+          <div class="correction-level-labels" aria-label="교정 단계 바로 선택">
+            <button type="button" data-correction-level="0" aria-pressed="false">0단계<br>교정안함</button>
+            <button type="button" data-correction-level="1" aria-pressed="false">1단계<br>규칙간소화</button>
+            <button type="button" data-correction-level="2" aria-pressed="true">2단계<br>규칙기반교정</button>
+            <button type="button" data-correction-level="3" aria-pressed="false">3단계<br>LLM최소</button>
+            <button type="button" data-correction-level="4" aria-pressed="false">4단계<br>LLM자연스러운발화</button>
+          </div>
+        </div>
         <label class="sr-only" for="llm-model">LLM 모델 선택</label>
-        <select id="llm-model" disabled aria-describedby="model-status">
+        <select id="llm-model" disabled aria-label="LLM 모델 선택" aria-describedby="model-status">
           <option>모델 목록 불러오는 중...</option>
         </select>
         <button id="run-button" class="llm-run-button" type="button" disabled>실행</button>
@@ -558,8 +569,8 @@
       <div id="pipeline-status" class="status" aria-live="polite"></div>
 
       <div class="legend" aria-label="Diff 색상 범례">
-        <span class="legend-item"><span class="legend-swatch legend-stage-1"></span>1단계 변경</span>
-        <span class="legend-item"><span class="legend-swatch legend-stage-2"></span>2단계 변경</span>
+        <span class="legend-item"><span class="legend-swatch legend-stage-1"></span>규칙 처리 변경</span>
+        <span class="legend-item"><span class="legend-swatch legend-stage-2"></span>LLM 처리 변경</span>
         <span class="legend-item"><span class="legend-swatch legend-deleted"></span>삭제된 원본</span>
         <span class="legend-item"><span class="legend-swatch legend-violation"></span>LLM 계약 위반</span>
       </div>
@@ -567,7 +578,7 @@
       <div class="pipeline-results">
         <section class="stage-section" aria-labelledby="stage-1-title">
           <div class="stage-heading">
-            <h2 id="stage-1-title">1단계 · 규칙 기반 발음교정</h2>
+            <h2 id="stage-1-title">규칙 처리 결과</h2>
             <div class="stage-heading-actions">
               <div id="stage-1-timing" class="timing">전체 응답시간: -</div>
               <button
@@ -575,7 +586,7 @@
                 class="copy-output-button"
                 type="button"
                 disabled
-              >1단계 발음교정 텍스트 복사</button>
+              >규칙 처리 텍스트 복사</button>
             </div>
           </div>
           <div id="stage-1-status" class="status" aria-live="polite"></div>
@@ -590,7 +601,7 @@
               <div id="stage-1-output" class="plain-output"></div>
             </section>
             <section class="result-box">
-              <h3>원본 → 1단계 Diff</h3>
+              <h3>원본 → 규칙 처리 Diff</h3>
               <div id="stage-1-diff" class="diff-output"></div>
             </section>
           </div>
@@ -598,7 +609,7 @@
 
         <section class="stage-section" aria-labelledby="stage-2-title">
           <div class="stage-heading">
-            <h2 id="stage-2-title">2단계 · LLM 통합 읽기·발음·운율 처리</h2>
+            <h2 id="stage-2-title">LLM 처리 결과</h2>
             <div class="stage-heading-actions">
               <div id="stage-2-timing" class="timing">전체 응답시간: -</div>
               <button
@@ -606,7 +617,7 @@
                 class="copy-output-button"
                 type="button"
                 disabled
-              >2단계 발음교정 텍스트 복사</button>
+              >LLM 처리 텍스트 복사</button>
             </div>
           </div>
           <div id="stage-2-status" class="status" aria-live="polite"></div>
@@ -617,11 +628,11 @@
               <div id="stage-2-output" class="plain-output"></div>
             </section>
             <section class="result-box">
-              <h3>1단계 → 2단계 Diff</h3>
+              <h3>규칙 처리 → LLM 처리 Diff</h3>
               <div id="stage-2-previous-diff" class="diff-output"></div>
             </section>
             <section class="result-box">
-              <h3>원본 → 2단계 누적 Diff</h3>
+              <h3>원본 → LLM 처리 누적 Diff</h3>
               <div id="stage-2-original-diff" class="diff-output"></div>
             </section>
           </div>
@@ -630,7 +641,7 @@
       </div>
 
       <section class="downloads result-box">
-        <h2>1단계 '규칙 기반 발음교정' 실행모듈 다운로드</h2>
+        <h2>규칙·LLM 실행모듈 패키지 다운로드</h2>
         <div id="downloads-status" class="status" aria-live="polite"></div>
         <div id="downloads-list" class="downloads-list"></div>
       </section>
@@ -641,7 +652,9 @@
   <script>
     const inputEl = document.getElementById("input");
     const modelEl = document.getElementById("llm-model");
-    const llmToggleButton = document.getElementById("llm-toggle");
+    const correctionLevelEl = document.getElementById("correction-level");
+    const correctionLevelCurrentEl = document.getElementById("correction-level-current");
+    const correctionLevelButtons = Array.from(document.querySelectorAll("[data-correction-level]"));
     const modelStatusEl = document.getElementById("model-status");
     const runButton = document.getElementById("run-button");
     const pipelineStatusEl = document.getElementById("pipeline-status");
@@ -656,7 +669,7 @@
       "gemini-3.5-flash-lite",
     ]);
     let modelsLoaded = false;
-    let llmEnabled = true;
+    let selectedCorrectionLevel = 2;
     let pipelineBusy = false;
 
     const stageElements = {
@@ -667,7 +680,7 @@
         input: document.getElementById("stage-1-input"),
         output: document.getElementById("stage-1-output"),
         copyButton: document.getElementById("stage-1-copy"),
-        copyLabel: "1단계 발음교정 텍스트 복사",
+        copyLabel: "규칙 처리 텍스트 복사",
         copyableText: "",
         diffs: [document.getElementById("stage-1-diff")],
       },
@@ -677,7 +690,7 @@
         error: document.getElementById("stage-2-error"),
         output: document.getElementById("stage-2-output"),
         copyButton: document.getElementById("stage-2-copy"),
-        copyLabel: "2단계 발음교정 텍스트 복사",
+        copyLabel: "LLM 처리 텍스트 복사",
         copyableText: "",
         diffs: [
           document.getElementById("stage-2-previous-diff"),
@@ -771,27 +784,43 @@
 
     function setBusy(busy) {
       pipelineBusy = busy;
-      runButton.disabled = busy || (llmEnabled && !modelsLoaded);
-      modelEl.disabled = busy || !llmEnabled || !modelsLoaded;
-      llmToggleButton.disabled = busy;
+      const usesLLM = selectedCorrectionLevel >= 3;
+      runButton.disabled = busy || (usesLLM && !modelsLoaded);
+      modelEl.disabled = busy || !usesLLM || !modelsLoaded;
+      correctionLevelEl.disabled = busy;
+      correctionLevelButtons.forEach((button) => { button.disabled = busy; });
       if (busy) {
-        pipelineStatusEl.textContent = llmEnabled
-          ? "2단계 파이프라인을 실행하는 중..."
-          : "1단계 규칙 기반 처리를 실행하는 중...";
+        pipelineStatusEl.textContent = usesLLM
+          ? `${selectedCorrectionLevel}단계 파이프라인을 실행하는 중...`
+          : `${selectedCorrectionLevel}단계 처리를 실행하는 중...`;
         pipelineStatusEl.className = "status loading";
       }
     }
 
-    function setLLMEnabled(enabled) {
-      llmEnabled = enabled;
-      llmToggleButton.textContent = enabled ? "ON" : "OFF";
-      llmToggleButton.setAttribute("aria-pressed", String(enabled));
-      runButton.disabled = pipelineBusy || (enabled && !modelsLoaded);
-      modelEl.disabled = pipelineBusy || !enabled || !modelsLoaded;
+    const CORRECTION_LEVEL_LABELS = {
+      0: "0단계(교정안함)",
+      1: "1단계(규칙간소화)",
+      2: "2단계(규칙기반교정)",
+      3: "3단계(LLM최소)",
+      4: "4단계(LLM자연스러운발화)",
+    };
+
+    function setCorrectionLevel(level) {
+      const normalizedLevel = Math.max(0, Math.min(4, Number(level)));
+      selectedCorrectionLevel = normalizedLevel;
+      correctionLevelEl.value = String(normalizedLevel);
+      correctionLevelCurrentEl.textContent = CORRECTION_LEVEL_LABELS[normalizedLevel];
+      correctionLevelButtons.forEach((button) => {
+        button.setAttribute(
+          "aria-pressed",
+          String(Number(button.dataset.correctionLevel) === normalizedLevel),
+        );
+      });
+      const usesLLM = normalizedLevel >= 3;
+      runButton.disabled = pipelineBusy || (usesLLM && !modelsLoaded);
+      modelEl.disabled = pipelineBusy || !usesLLM || !modelsLoaded;
       if (!pipelineBusy) {
-        pipelineStatusEl.textContent = enabled
-          ? "LLM 추가교정이 켜졌습니다."
-          : "LLM 추가교정이 꺼졌습니다. 1단계 규칙 기반 처리만 실행합니다.";
+        pipelineStatusEl.textContent = `${CORRECTION_LEVEL_LABELS[normalizedLevel]}가 선택되었습니다.`;
         pipelineStatusEl.className = "status";
       }
     }
@@ -815,132 +844,9 @@
       return data;
     }
 
-    async function runRuleStage(originalText) {
-      const stage = stageElements[1];
-      const startedAt = performance.now();
-      stage.input.textContent = originalText;
-      stage.status.textContent = "규칙 기반 처리 중...";
-      stage.status.className = "status loading";
-
-      try {
-        const data = await requestJson(
-          `${getBackendBase()}/api/transform`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: originalText }),
-          },
-          "규칙 기반 API 요청에 실패했습니다.",
-        );
-        if (typeof data.normalized_text !== "string") {
-          throw new Error("규칙 기반 API 응답 형식이 올바르지 않습니다.");
-        }
-
-        PipelineDiff.renderStage1Input(
-          originalText,
-          data.normalized_text,
-          stage.input,
-        );
-        PipelineDiff.renderOutputWithStageChanges(
-          originalText,
-          data.normalized_text,
-          1,
-          stage.output,
-        );
-        PipelineDiff.renderAdjacentDiff(
-          originalText,
-          data.normalized_text,
-          1,
-          stage.diffs[0],
-        );
-        setCopyableText(1, data.normalized_text);
-        stage.status.textContent = "완료";
-        stage.status.className = "status";
-        return data.normalized_text;
-      } catch (error) {
-        showStageError(1, error, "1단계 처리 중 알 수 없는 오류가 발생했습니다.");
-        throw error;
-      } finally {
-        stage.timing.textContent =
-          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
-      }
-    }
-
-    async function runLLMStage(normalizedText, model) {
-      const stage = stageElements[2];
-      const startedAt = performance.now();
-      stage.status.textContent = "LLM 통합 처리 중...";
-      stage.status.className = "status loading";
-
-      try {
-        const data = await requestJson(
-          `${getBackendBase()}/api/llm/transform`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              normalized_text: normalizedText,
-              model,
-            }),
-          },
-          "LLM API 요청에 실패했습니다.",
-        );
-        if (typeof data.speech_text !== "string") {
-          throw new Error("LLM API 응답 형식이 올바르지 않습니다.");
-        }
-        if (data.model !== model) {
-          throw new Error("LLM API가 선택한 모델과 다른 모델을 반환했습니다.");
-        }
-
-        PipelineDiff.renderOutputWithStageChanges(
-          normalizedText,
-          data.speech_text,
-          2,
-          stage.output,
-        );
-        setCopyableText(2, data.speech_text);
-        stage.status.textContent = "완료";
-        stage.status.className = "status";
-        const upstreamTiming = Number.isFinite(data.elapsed_ms)
-          ? ` · LLM 서버 처리시간: ${formatDuration(data.elapsed_ms)}`
-          : "";
-        stage.timing.textContent =
-          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}${upstreamTiming}`;
-        return data.speech_text;
-      } catch (error) {
-        const contractOutput = error instanceof Error
-          && error.contractDetail
-          && error.contractDetail.stage === "speech"
-          && typeof error.contractDetail.speech_text === "string"
-          ? error.contractDetail.speech_text
-          : null;
-        if (contractOutput !== null) {
-          error.stageOutput = contractOutput;
-          PipelineDiff.renderSpeechContractViolation(
-            normalizedText,
-            contractOutput,
-            stage.output,
-            stage.diffs[0],
-          );
-          setCopyableText(2, contractOutput);
-        }
-        showStageError(
-          2,
-          error,
-          "2단계 처리 중 알 수 없는 오류가 발생했습니다.",
-        );
-        if (contractOutput !== null) {
-          stage.error.textContent +=
-            "\nLLM 원출력을 표시했습니다. 주황색 테두리는 허용되지 않은 공백·줄바꿈·고정 문장부호 변경이며, 입력에서 사라진 구조는 주황 테두리와 빨간색 취소선으로 표시됩니다.";
-        }
-        stage.timing.textContent =
-          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
-        throw error;
-      }
-    }
-
     async function runPipeline() {
-      if (llmEnabled && (!modelsLoaded || !modelEl.value)) {
+      const usesLLM = selectedCorrectionLevel >= 3;
+      if (usesLLM && (!modelsLoaded || !modelEl.value)) {
         pipelineStatusEl.textContent = "LLM 모델 목록을 먼저 불러와야 합니다.";
         pipelineStatusEl.className = "status error";
         return;
@@ -951,30 +857,58 @@
       resetStage(1);
       resetStage(
         2,
-        llmEnabled ? "1단계 완료 후 실행됩니다." : "LLM 추가교정이 꺼져 있습니다.",
+        usesLLM ? "선택한 통합 실행모듈에서 함께 처리됩니다." : "선택한 단계에서는 LLM을 실행하지 않습니다.",
       );
       setBusy(true);
-
-      let normalizedText;
-      try {
-        normalizedText = await runRuleStage(originalText);
-      } catch {
-        pipelineStatusEl.textContent = "1단계 실패로 2단계를 실행하지 않았습니다.";
-        pipelineStatusEl.className = "status error";
-        setBusy(false);
-        return;
-      }
-
-      if (!llmEnabled) {
-        pipelineStatusEl.textContent =
-          "1단계 처리가 완료되었습니다. LLM 추가교정은 OFF 상태입니다.";
-        pipelineStatusEl.className = "status";
-        setBusy(false);
-        return;
-      }
+      const startedAt = performance.now();
 
       try {
-        const speechText = await runLLMStage(normalizedText, selectedModel);
+        stageElements[1].status.textContent = "선택한 실행모듈 처리 중...";
+        stageElements[1].status.className = "status loading";
+        if (usesLLM) {
+          stageElements[2].status.textContent = "규칙·LLM 통합 처리 중...";
+          stageElements[2].status.className = "status loading";
+        }
+        const requestBody = {
+          text: originalText,
+          level: selectedCorrectionLevel,
+        };
+        if (usesLLM) requestBody.model = selectedModel;
+        const data = await requestJson(
+          `${getBackendBase()}/api/transform`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          },
+          "선택한 단계의 API 요청에 실패했습니다.",
+        );
+        if (typeof data.normalized_text !== "string") {
+          throw new Error("단계 실행 API 응답 형식이 올바르지 않습니다.");
+        }
+        const normalizedText = data.normalized_text;
+        PipelineDiff.renderStage1Input(originalText, normalizedText, stageElements[1].input);
+        PipelineDiff.renderOutputWithStageChanges(originalText, normalizedText, 1, stageElements[1].output);
+        PipelineDiff.renderAdjacentDiff(originalText, normalizedText, 1, stageElements[1].diffs[0]);
+        setCopyableText(1, normalizedText);
+        stageElements[1].status.textContent = selectedCorrectionLevel === 0
+          ? "교정 없이 원문을 출력했습니다."
+          : "완료";
+        stageElements[1].status.className = "status";
+        stageElements[1].timing.textContent =
+          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
+
+        if (!usesLLM) {
+          pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리가 완료되었습니다.`;
+          pipelineStatusEl.className = "status";
+          return;
+        }
+        if (typeof data.speech_text !== "string" || data.model !== selectedModel) {
+          throw new Error("통합 LLM 실행모듈 응답 형식이 올바르지 않습니다.");
+        }
+        const speechText = data.speech_text;
+        PipelineDiff.renderOutputWithStageChanges(normalizedText, speechText, 2, stageElements[2].output);
+        setCopyableText(2, speechText);
         const ledgers = PipelineDiff.buildPipelineLedgers(
           originalText,
           normalizedText,
@@ -991,28 +925,64 @@
           ledgers.stage2,
           stageElements[2].diffs[1],
         );
-        pipelineStatusEl.textContent = "2단계 처리가 완료되었습니다.";
+        stageElements[2].status.textContent = data.llm_called === false
+          ? "LLM 호출 생략 · 규칙 결과 사용"
+          : "완료";
+        stageElements[2].status.className = "status";
+        const upstreamTiming = data.llm_called !== false && Number.isFinite(data.elapsed_ms)
+          ? ` · LLM 서버 처리시간: ${formatDuration(data.elapsed_ms)}`
+          : "";
+        stageElements[2].timing.textContent =
+          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}${upstreamTiming}`;
+        pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리가 완료되었습니다.`;
         pipelineStatusEl.className = "status";
       } catch (error) {
-        if (
-          error instanceof Error
-          && typeof error.stageOutput === "string"
-        ) {
+        const detail = error instanceof Error ? error.contractDetail : null;
+        const failedNormalizedText = detail && typeof detail.normalized_text === "string"
+          ? detail.normalized_text
+          : null;
+        const contractOutput = detail && detail.stage === "speech" && typeof detail.speech_text === "string"
+          ? detail.speech_text
+          : null;
+        if (failedNormalizedText !== null) {
+          PipelineDiff.renderStage1Input(originalText, failedNormalizedText, stageElements[1].input);
+          PipelineDiff.renderOutputWithStageChanges(originalText, failedNormalizedText, 1, stageElements[1].output);
+          PipelineDiff.renderAdjacentDiff(originalText, failedNormalizedText, 1, stageElements[1].diffs[0]);
+          setCopyableText(1, failedNormalizedText);
+          stageElements[1].status.textContent = "규칙 처리는 완료되었습니다.";
+          stageElements[1].status.className = "status";
+        }
+        if (failedNormalizedText !== null && contractOutput !== null) {
+          PipelineDiff.renderSpeechContractViolation(
+            failedNormalizedText,
+            contractOutput,
+            stageElements[2].output,
+            stageElements[2].diffs[0],
+          );
+          setCopyableText(2, contractOutput);
           const invalidStage2Ledgers = PipelineDiff.buildPipelineLedgers(
             originalText,
-            normalizedText,
-            error.stageOutput,
+            failedNormalizedText,
+            contractOutput,
           );
           PipelineDiff.renderCumulativeDiff(
             originalText,
             invalidStage2Ledgers.stage2,
             stageElements[2].diffs[1],
           );
+          showStageError(2, error, "통합 LLM 처리 중 오류가 발생했습니다.");
+          stageElements[2].error.textContent +=
+            "\nLLM 원출력을 표시했습니다. 공백·줄바꿈·고정 문장부호 변경 등 계약 위반은 주황색 테두리로 표시하며, 규칙 처리 결과는 유지됩니다.";
+        } else {
+          showStageError(1, error, "선택한 단계 처리 중 오류가 발생했습니다.");
         }
-        pipelineStatusEl.textContent =
-          "2단계 처리에 실패했습니다. 1단계 결과는 유지됩니다.";
+        pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리에 실패했습니다.`;
         pipelineStatusEl.className = "status error";
       } finally {
+        const elapsed = formatDuration(performance.now() - startedAt);
+        if (stageElements[1].timing.textContent.endsWith("-")) {
+          stageElements[1].timing.textContent = `전체 응답시간: ${elapsed}`;
+        }
         setBusy(false);
       }
     }
@@ -1147,8 +1117,13 @@
           : "";
     }
 
-    llmToggleButton.addEventListener("click", () => {
-      setLLMEnabled(!llmEnabled);
+    correctionLevelEl.addEventListener("input", () => {
+      setCorrectionLevel(correctionLevelEl.value);
+    });
+    correctionLevelButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setCorrectionLevel(button.dataset.correctionLevel);
+      });
     });
     stageElements[1].copyButton.addEventListener("click", () => {
       copyStageOutput(1);
@@ -1157,7 +1132,7 @@
       copyStageOutput(2);
     });
     runButton.addEventListener("click", runPipeline);
-    setLLMEnabled(true);
+    setCorrectionLevel(2);
     loadLLMModels();
     loadDownloads();
   </script>

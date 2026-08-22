@@ -27,6 +27,10 @@ _RELATIVE_FILE_PATH_RE = re.compile(
 _RELATIVE_MULTI_SEGMENT_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_.-])[A-Za-z][A-Za-z0-9_.-]*(?:[\\/][A-Za-z0-9_.-]+){2,}(?![A-Za-z0-9_.-])"
 )
+_FILE_NAME_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])[A-Za-z0-9_]+"
+    r"\.[A-Za-z][A-Za-z0-9]{0,9}(?![A-Za-z0-9_.-])"
+)
 _IDENTIFIER_LIKE_RE = re.compile(
     r"(?<![A-Za-z0-9_])[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+(?![A-Za-z0-9_])"
 )
@@ -115,6 +119,7 @@ def protected_literal_spans(text: str) -> list[SourceSpan]:
         _ABSOLUTE_PATH_RE,
         _RELATIVE_FILE_PATH_RE,
         _RELATIVE_MULTI_SEGMENT_PATH_RE,
+        _FILE_NAME_RE,
         _IDENTIFIER_LIKE_RE,
         _VERSION_SIGNED_RANGE_RE,
         _MATH_ASSIGNMENT_RE,

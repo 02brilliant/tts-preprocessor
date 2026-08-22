@@ -7,6 +7,7 @@ import pytest
 
 from LLM.config import (
     ConfigurationError,
+    LLM_PROMPT_LV2_PATH,
     LLM_PROMPT_PATH,
     load_gemini_settings,
     load_model_config,
@@ -41,6 +42,12 @@ def test_model_config_has_fixed_models_and_default() -> None:
     assert config.get("gpt-5.6-luna (low)").reasoning_effort == "low"
     assert config.get("gpt-5.6-luna (none)").reasoning_effort == "none"
     assert config.get("missing") is None
+
+
+def test_prompt_paths_are_distinct_runtime_assets() -> None:
+    assert LLM_PROMPT_PATH.name == "LLM_prompt.txt"
+    assert LLM_PROMPT_LV2_PATH.name == "LLM_prompt_lv2.txt"
+    assert LLM_PROMPT_PATH != LLM_PROMPT_LV2_PATH
 
 
 def test_invalid_default_model_is_rejected(tmp_path: Path) -> None:

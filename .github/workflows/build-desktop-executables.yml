@@ -35,12 +35,20 @@ jobs:
         shell: pwsh
         run: |
           $stage1Spec = Get-Content -LiteralPath "tts_preprocessor.spec" -Raw
-          $stage2Spec = Get-Content -LiteralPath "tts_llm_stage.spec" -Raw
+          $simplifiedSpec = Get-Content -LiteralPath "tts_preprocessor_simplified.spec" -Raw
+          $minimalSpec = Get-Content -LiteralPath "tts_preprocessor_llm_minimal.spec" -Raw
+          $naturalSpec = Get-Content -LiteralPath "tts_preprocessor_llm_natural.spec" -Raw
           if ($stage1Spec -notmatch 'bin.+build_binary_entrypoint\.py') {
             throw "Official binary entrypoint is missing from tts_preprocessor.spec"
           }
-          if ($stage2Spec -notmatch 'bin.+build_llm_stage_entrypoint\.py') {
-            throw "Stage 2 entrypoint is missing from tts_llm_stage.spec"
+          if ($minimalSpec -notmatch 'bin.+build_llm_minimal_entrypoint\.py') {
+            throw "Level 3 entrypoint is missing"
+          }
+          if ($naturalSpec -notmatch 'bin.+build_llm_natural_entrypoint\.py') {
+            throw "Level 4 entrypoint is missing"
+          }
+          if ($simplifiedSpec -notmatch 'bin.+build_simplified_binary_entrypoint\.py') {
+            throw "Simplified entrypoint is missing from tts_preprocessor_simplified.spec"
           }
 
       - name: Build executable
@@ -54,13 +62,29 @@ jobs:
           if (-not (Test-Path -LiteralPath "dist\tts-preprocessor.exe" -PathType Leaf)) {
             throw "Built executable not found: dist\tts-preprocessor.exe"
           }
-          $env:TTS_LLM_STAGE_EXECUTABLE_NAME = "tts-llm-stage"
+          $env:TTS_PREPROCESSOR_SIMPLIFIED_EXECUTABLE_NAME = "tts-preprocessor-simplified"
           python -m PyInstaller `
             --clean `
             --noconfirm `
-            "$env:GITHUB_WORKSPACE\tts_llm_stage.spec"
-          if (-not (Test-Path -LiteralPath "dist\tts-llm-stage.exe" -PathType Leaf)) {
-            throw "Built stage 2 executable not found: dist\tts-llm-stage.exe"
+            "$env:GITHUB_WORKSPACE\tts_preprocessor_simplified.spec"
+          if (-not (Test-Path -LiteralPath "dist\tts-preprocessor-simplified.exe" -PathType Leaf)) {
+            throw "Built simplified executable not found: dist\tts-preprocessor-simplified.exe"
+          }
+          $env:TTS_PREPROCESSOR_LLM_MINIMAL_EXECUTABLE_NAME = "tts-preprocessor-llm-minimal"
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            "$env:GITHUB_WORKSPACE\tts_preprocessor_llm_minimal.spec"
+          if (-not (Test-Path -LiteralPath "dist\tts-preprocessor-llm-minimal.exe" -PathType Leaf)) {
+            throw "Built level 3 executable not found"
+          }
+          $env:TTS_PREPROCESSOR_LLM_NATURAL_EXECUTABLE_NAME = "tts-preprocessor-llm-natural"
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            "$env:GITHUB_WORKSPACE\tts_preprocessor_llm_natural.spec"
+          if (-not (Test-Path -LiteralPath "dist\tts-preprocessor-llm-natural.exe" -PathType Leaf)) {
+            throw "Built level 4 executable not found"
           }
 
       - name: Smoke test executable
@@ -75,9 +99,17 @@ jobs:
           if ($actual -ne $expected) {
             throw "Windows executable smoke mismatch. Expected '$expected', got '$actual'"
           }
-          & ".\dist\tts-llm-stage.exe" --check | Out-Null
+          & ".\dist\tts-preprocessor-llm-minimal.exe" --check | Out-Null
           if ($LASTEXITCODE -ne 0) {
-            throw "Windows stage 2 executable asset check failed"
+            throw "Windows level 3 executable asset check failed"
+          }
+          & ".\dist\tts-preprocessor-llm-natural.exe" --check | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows level 4 executable asset check failed"
+          }
+          $simplifiedActual = (& ".\dist\tts-preprocessor-simplified.exe" --text "ABC와 3kg" | Out-String).TrimEnd()
+          if ($LASTEXITCODE -ne 0 -or $simplifiedActual -ne "ABC와 삼 킬로그램") {
+            throw "Windows simplified executable smoke test failed."
           }
 
       - name: Create Windows ZIP
@@ -90,7 +122,9 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path package, artifact | Out-Null
           Copy-Item -LiteralPath "dist\tts-preprocessor.exe" -Destination "package\tts-preprocessor.exe"
-          Copy-Item -LiteralPath "dist\tts-llm-stage.exe" -Destination "package\tts-llm-stage.exe"
+          Copy-Item -LiteralPath "dist\tts-preprocessor-simplified.exe" -Destination "package\tts-preprocessor-simplified.exe"
+          Copy-Item -LiteralPath "dist\tts-preprocessor-llm-minimal.exe" -Destination "package\tts-preprocessor-llm-minimal.exe"
+          Copy-Item -LiteralPath "dist\tts-preprocessor-llm-natural.exe" -Destination "package\tts-preprocessor-llm-natural.exe"
           Copy-Item -LiteralPath $readme -Destination "package\README.txt"
 
           $zip = "artifact\tts-preprocessor-windows.zip"
@@ -112,7 +146,7 @@ jobs:
               } |
               Sort-Object
           )
-          $expected = @("README.txt", "tts-llm-stage.exe", "tts-preprocessor.exe")
+          $expected = @("README.txt", "tts-preprocessor-llm-minimal.exe", "tts-preprocessor-llm-natural.exe", "tts-preprocessor-simplified.exe", "tts-preprocessor.exe")
           $difference = Compare-Object -ReferenceObject $expected -DifferenceObject $actual
           if ($difference) {
             $difference | Format-Table | Out-String | Write-Host
@@ -133,9 +167,17 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $actualSmoke -ne $expectedSmoke) {
             throw "Extracted Windows executable smoke test failed."
           }
-          & ".\verify-windows\tts-llm-stage.exe" --check | Out-Null
+          & ".\verify-windows\tts-preprocessor-llm-minimal.exe" --check | Out-Null
           if ($LASTEXITCODE -ne 0) {
-            throw "Extracted Windows stage 2 executable asset check failed."
+            throw "Extracted Windows level 3 executable asset check failed."
+          }
+          & ".\verify-windows\tts-preprocessor-llm-natural.exe" --check | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Extracted Windows level 4 executable asset check failed."
+          }
+          $simplifiedSmoke = (& ".\verify-windows\tts-preprocessor-simplified.exe" --text "ABC와 3kg" | Out-String).TrimEnd()
+          if ($LASTEXITCODE -ne 0 -or $simplifiedSmoke -ne "ABC와 삼 킬로그램") {
+            throw "Extracted Windows simplified executable smoke test failed."
           }
 
       - name: Upload Windows ZIP

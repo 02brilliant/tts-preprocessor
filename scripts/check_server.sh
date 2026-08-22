@@ -12,7 +12,6 @@ WINDOWS_DOWNLOAD_URL="http://${SERVER_HOST}:${SERVER_PORT}/downloads/tts-preproc
 DOCS_URL="http://${SERVER_HOST}:${SERVER_PORT}/docs"
 TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/transform"
 LLM_MODELS_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/models"
-LLM_TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/transform"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -94,15 +93,15 @@ check_llm_models() {
 
 check_post_llm_transform() {
   local output_file="$1"
-  local payload='{"normalized_text":"LLM 배포 확인입니다.","model":"gemma4-31B-it (vLLM)"}'
+  local payload='{"text":"LLM 배포 확인입니다.","level":3,"model":"gemma4-31B-it (vLLM)"}'
 
-  echo "[check] Integrated LLM transform: ${LLM_TRANSFORM_URL}"
+  echo "[check] Integrated level 3 transform: ${TRANSFORM_URL}"
   if ! curl -fsS \
-    -X POST "$LLM_TRANSFORM_URL" \
+    -X POST "$TRANSFORM_URL" \
     -H "Content-Type: application/json" \
     --data "$payload" \
     -o "$output_file"; then
-    echo "[FAIL] LLM transform request failed: ${LLM_TRANSFORM_URL}" >&2
+    echo "[FAIL] Integrated transform request failed: ${TRANSFORM_URL}" >&2
     exit 1
   fi
 
@@ -136,5 +135,5 @@ echo "[OK] macOS release download responded: ${MACOS_DOWNLOAD_URL}"
 echo "[OK] API docs responded: ${DOCS_URL}"
 echo "[OK] API transform responded: ${TRANSFORM_URL}"
 echo "[OK] LLM model list responded: ${LLM_MODELS_URL}"
-echo "[OK] LLM transform responded: ${LLM_TRANSFORM_URL}"
+echo "[OK] Integrated level 3 transform responded: ${TRANSFORM_URL}"
 echo "[OK] Server validation completed successfully."

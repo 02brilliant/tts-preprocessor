@@ -17,13 +17,13 @@ def test_stage_engine_runs_only_from_normalized_text(monkeypatch) -> None:
     def fake_generate(*, model, prompt, settings):
         captured["model"] = model
         captured["prompt"] = prompt
-        return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=12.5)
+        return GenerationResult(text="국물은, 좋습니다.", elapsed_ms=12.5)
 
     monkeypatch.setattr(stage_engine, "generate", fake_generate)
 
     result = stage_engine.transform("국물은 좋습니다.", model="gemma4:e4b")
 
-    assert result.speech_text == "궁무른, 조씀니다."
+    assert result.speech_text == "국물은, 좋습니다."
     assert result.model == "gemma4:e4b"
     assert result.elapsed_ms == 12.5
     assert "<NORMALIZED_TEXT>\n국물은 좋습니다.\n</NORMALIZED_TEXT>" in captured[
@@ -32,7 +32,28 @@ def test_stage_engine_runs_only_from_normalized_text(monkeypatch) -> None:
     assert captured["model"] == "gemma4:e4b"
 
 
-def test_stage_engine_rejects_changed_confirmed_news_without_stage1_dependency(
+def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    captured = {}
+
+    def fake_generate(*, model, prompt, settings):
+        captured["prompt"] = prompt
+        return GenerationResult(text="현장에 있는 기잡니다.", elapsed_ms=2.0)
+
+    monkeypatch.setattr(stage_engine, "generate", fake_generate)
+
+    result = stage_engine.transform(
+        "현장에 있는 기자입니다.",
+        model="gemma4:e4b",
+        prompt_level=2,
+    )
+
+    assert result.speech_text == "현장에 있는 기잡니다."
+    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" in captured["prompt"]
+
+
+def test_stage_engine_rejects_changed_confirmed_kbs_news_without_stage1_dependency(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
@@ -45,8 +66,26 @@ def test_stage_engine_rejects_changed_confirmed_news_without_stage1_dependency(
         ),
     )
 
-    with pytest.raises(LLMStageContractError, match="confirmed news"):
-        stage_engine.transform("오늘 news 보도입니다.", model="gemma4:e4b")
+    with pytest.raises(LLMStageContractError, match="confirmed KBS news"):
+        stage_engine.transform("KBS news 보도입니다.", model="gemma4:e4b")
+
+
+def test_stage_engine_rejects_new_stage1_time_frame_comma(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    monkeypatch.setattr(
+        stage_engine,
+        "generate",
+        lambda **_kwargs: GenerationResult(
+            text="올해 상반기, 매출이 늘었습니다.", elapsed_ms=1.0
+        ),
+    )
+
+    with pytest.raises(LLMStageContractError, match="time-frame"):
+        stage_engine.transform(
+            "올해 상반기 매출이 늘었습니다.",
+            model="gemma4:e4b",
+        )
 
 
 def test_stage_engine_routes_vllm_model_to_vllm_client(monkeypatch) -> None:
@@ -57,7 +96,7 @@ def test_stage_engine_routes_vllm_model_to_vllm_client(monkeypatch) -> None:
     def fake_generate_vllm(*, model, prompt, settings):
         captured["model"] = model
         captured["base_url"] = settings.base_url
-        return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=8.0)
+        return GenerationResult(text="국물은, 좋습니다.", elapsed_ms=8.0)
 
     monkeypatch.setattr(stage_engine, "generate_vllm", fake_generate_vllm)
 
@@ -66,7 +105,7 @@ def test_stage_engine_routes_vllm_model_to_vllm_client(monkeypatch) -> None:
         model="gemma4-31B-it (vLLM)",
     )
 
-    assert result.speech_text == "궁무른, 조씀니다."
+    assert result.speech_text == "국물은, 좋습니다."
     assert result.model == "gemma4-31B-it (vLLM)"
     assert result.elapsed_ms == 8.0
     assert captured == {
@@ -93,9 +132,9 @@ def test_stage_engine_runs_vllm_paragraphs_concurrently(monkeypatch) -> None:
         with lock:
             inflight -= 1
         if "국물은 좋습니다." in prompt:
-            return GenerationResult(text="궁무른, 조씀니다.", elapsed_ms=40.0)
+            return GenerationResult(text="국물은, 좋습니다.", elapsed_ms=40.0)
         if "밥은 따뜻합니다." in prompt:
-            return GenerationResult(text="바븐, 따뜨탐니다.", elapsed_ms=50.0)
+            return GenerationResult(text="밥은, 따뜻합니다.", elapsed_ms=50.0)
         raise AssertionError(f"unexpected prompt: {prompt}")
 
     monkeypatch.setattr(stage_engine, "generate_vllm", fake_generate_vllm)
@@ -105,7 +144,7 @@ def test_stage_engine_runs_vllm_paragraphs_concurrently(monkeypatch) -> None:
         model="gemma4-31B-it (vLLM)",
     )
 
-    assert result.speech_text == "궁무른, 조씀니다.\n\n바븐, 따뜨탐니다."
+    assert result.speech_text == "국물은, 좋습니다.\n\n밥은, 따뜻합니다."
     assert result.model == "gemma4-31B-it (vLLM)"
     assert captured["max_inflight"] == 2
     assert len(captured["prompts"]) == 2

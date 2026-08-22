@@ -9,7 +9,24 @@ from LLM.client import LLMResponseError
 _STRUCTURE_CHARACTER_RE = re.compile(
     r"[\s,，.。!?！？:：;；()（）\[\]{}\"'“”‘’…—–]"
 )
-_CONFIRMED_NEWS_RE = re.compile(r"(?<= )news(?= )")
+_CONFIRMED_KBS_NEWS_RE = re.compile(
+    r"(?<![A-Za-z0-9_])KBS news(?![A-Za-z0-9_])"
+)
+_LEADING_TIME_FRAME_RE = re.compile(
+    r"^[ \t]*(?P<phrase>"
+    r"(?:지난해|올해|내년)\s+(?:"
+    r"[가-힣]+월부터\s+[가-힣]+월까지(?:는)?"
+    r"|[가-힣]+월\s+[가-힣]+일(?:부터는|까지는|에서는|에는|에도|부터|까지|에서|에)?"
+    r"|(?:상반기|하반기|[가-힣]+분기|[가-힣]+월)"
+    r"(?:부터는|까지는|에서는|에는|에도|부터|까지|에서|에)?"
+    r")"
+    r"|(?:오늘|내일|어제)\s+(?:아침|오전|오후|저녁)"
+    r"|(?:오늘|내일)\s+서울에서"
+    r"|(?:지난달|지난해|올해)"
+    r"|(?:이번\s+주|다음\s+주)"
+    r"|지난\s+(?:\d+|[가-힣]+)일"
+    r")(?=\s|,|[.!?]|$)"
+)
 _OUTPUT_WRAPPERS = (
     "```",
     "~~~",
@@ -55,10 +72,17 @@ class LLMStageContractError(LLMResponseError):
         self.output_text = output_text
 
 
-def validate_response(normalized_text: str, speech_text: str) -> str:
+def validate_response(
+    normalized_text: str,
+    speech_text: str,
+    *,
+    prompt_level: int = 2,
+) -> str:
     """Validate the integrated pronunciation and prosody response."""
     if not isinstance(speech_text, str) or not speech_text:
         raise LLMResponseError("LLM response is empty.")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 2}:
+        raise ValueError("prompt_level must be 1 or 2")
 
     source_structure = _required_structure(normalized_text)
     output_structure = _required_structure(speech_text)
@@ -89,11 +113,29 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
             output_text=speech_text,
         )
 
-    if _CONFIRMED_NEWS_RE.findall(normalized_text) != _CONFIRMED_NEWS_RE.findall(
-        speech_text
+    if _CONFIRMED_KBS_NEWS_RE.findall(
+        normalized_text
+    ) != _CONFIRMED_KBS_NEWS_RE.findall(speech_text):
+        raise LLMStageContractError(
+            "LLM response changed a stage-1 confirmed KBS news reading.",
+            stage="speech",
+            output_text=speech_text,
+        )
+
+    if _adds_comma_to_stage1_leading_time_frame(normalized_text, speech_text):
+        raise LLMStageContractError(
+            "LLM response added a comma at a stage-1 confirmed leading "
+            "time-frame boundary.",
+            stage="speech",
+            output_text=speech_text,
+        )
+
+    if prompt_level == 1 and not _preserves_existing_hangul(
+        normalized_text,
+        speech_text,
     ):
         raise LLMStageContractError(
-            "LLM response changed a stage-1 confirmed news reading.",
+            "Level-3 LLM response changed existing Korean spelling.",
             stage="speech",
             output_text=speech_text,
         )
@@ -118,6 +160,19 @@ def validate_response(normalized_text: str, speech_text: str) -> str:
     return speech_text
 
 
+def _preserves_existing_hangul(source: str, output: str) -> bool:
+    source_hangul = [char for char in source if "가" <= char <= "힣"]
+    output_hangul = [char for char in output if "가" <= char <= "힣"]
+    source_index = 0
+    for character in output_hangul:
+        if (
+            source_index < len(source_hangul)
+            and character == source_hangul[source_index]
+        ):
+            source_index += 1
+    return source_index == len(source_hangul)
+
+
 def _protected_literals(text: str) -> Counter[str]:
     literals: Counter[str] = Counter()
     occupied: list[tuple[int, int]] = []
@@ -132,6 +187,63 @@ def _protected_literals(text: str) -> Counter[str]:
             literals[match.group(0)] += 1
             occupied.append(span)
     return literals
+
+
+def _adds_comma_to_stage1_leading_time_frame(
+    normalized_text: str,
+    speech_text: str,
+) -> bool:
+    source_states = _leading_time_frame_comma_states(normalized_text)
+    output_states = _leading_time_frame_comma_states(speech_text)
+    for source_state, output_state in zip(source_states, output_states):
+        if source_state is False and output_state is True:
+            return True
+    return False
+
+
+def _leading_time_frame_comma_states(text: str) -> list[bool | None]:
+    states: list[bool | None] = []
+    for start, end in _sentence_ranges(text):
+        sentence = text[start:end]
+        match = _LEADING_TIME_FRAME_RE.match(sentence)
+        if match is None:
+            states.append(None)
+            continue
+        cursor = match.end()
+        while cursor < len(sentence) and sentence[cursor] in " \t":
+            cursor += 1
+        states.append(cursor < len(sentence) and sentence[cursor] == ",")
+    return states
+
+
+def _sentence_ranges(text: str) -> list[tuple[int, int]]:
+    ranges: list[tuple[int, int]] = []
+    start = 0
+    index = 0
+    while index < len(text):
+        character = text[index]
+        if character == "\n":
+            ranges.append((start, index + 1))
+            start = index + 1
+        elif character in ".!?":
+            previous = text[index - 1] if index > 0 else ""
+            following = text[index + 1] if index + 1 < len(text) else ""
+            if (
+                previous.isascii()
+                and following.isascii()
+                and (
+                    (previous.isdigit() and following.isdigit())
+                    or (previous.isalpha() and following.isalpha())
+                )
+            ):
+                index += 1
+                continue
+            ranges.append((start, index + 1))
+            start = index + 1
+        index += 1
+    if start < len(text):
+        ranges.append((start, len(text)))
+    return ranges
 
 
 def _preserves_structure_with_allowed_insertions(

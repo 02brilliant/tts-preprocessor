@@ -159,6 +159,10 @@ DICTIONARY_READINGS: dict[str, str] = {
     "version": "버전",
 }
 
+PHRASE_DICTIONARY_READINGS: dict[str, str] = {
+    "KBS 뉴스": "KBS news",
+}
+
 LEXICAL_COMPOUND_READINGS: dict[str, str] = {
     "ISO·IEC": "아이에스오·아이이씨",
 }
@@ -218,6 +222,12 @@ def dictionary_reading(raw: str) -> str | None:
     if not isinstance(raw, str):
         raise TypeError("raw must be str")
     return DICTIONARY_READINGS.get(raw)
+
+
+def phrase_dictionary_reading(raw: str) -> str | None:
+    if not isinstance(raw, str):
+        raise TypeError("raw must be str")
+    return PHRASE_DICTIONARY_READINGS.get(raw)
 
 
 def contextual_acronym_reading(raw: str) -> str | None:
@@ -468,7 +478,11 @@ def scan_lexical_compound_candidates(raw_text: str) -> list[SurfaceCandidate]:
     return sorted(candidates, key=lambda candidate: candidate.core_span.start)
 
 
-def scan_acronym_hangul_hyphen_candidates(raw_text: str) -> list[SurfaceCandidate]:
+def scan_acronym_hangul_hyphen_candidates(
+    raw_text: str,
+    *,
+    allow_unregistered_fallback: bool = True,
+) -> list[SurfaceCandidate]:
     if not isinstance(raw_text, str):
         raise TypeError("raw_text must be str")
     candidates: list[SurfaceCandidate] = []
@@ -497,7 +511,10 @@ def scan_acronym_hangul_hyphen_candidates(raw_text: str) -> list[SurfaceCandidat
             or not _safe_acronym_hangul_right_boundary(raw_text, hangul_end)
         ):
             continue
-        reading = _acronym_hangul_left_reading(left)
+        reading = _acronym_hangul_left_reading(
+            left,
+            allow_unregistered_fallback=allow_unregistered_fallback,
+        )
         if reading is None:
             continue
         span = SourceSpan(left_start, hangul_end)
@@ -557,11 +574,19 @@ def acronym_hangul_hyphen_render_pieces(
     ]
 
 
-def _acronym_hangul_left_reading(left: str) -> str | None:
+def _acronym_hangul_left_reading(
+    left: str,
+    *,
+    allow_unregistered_fallback: bool = True,
+) -> str | None:
     fixed = dictionary_reading(left)
     if fixed is not None:
         return fixed
-    if len(left) >= 2 and all(_is_ascii_upper(char) for char in left):
+    if (
+        allow_unregistered_fallback
+        and len(left) >= 2
+        and all(_is_ascii_upper(char) for char in left)
+    ):
         return spell_uppercase_acronym(left)
     return None
 
@@ -768,11 +793,13 @@ __all__ = [
     "CASE_INSENSITIVE_NUMERIC_CODE_READINGS",
     "CONTEXTUAL_ACRONYM_READINGS",
     "DICTIONARY_READINGS",
+    "PHRASE_DICTIONARY_READINGS",
     "LETTER_READINGS",
     "LEXICAL_COMPOUND_READINGS",
     "acronym_hangul_hyphen_render_pieces",
     "contextual_acronym_reading",
     "dictionary_reading",
+    "phrase_dictionary_reading",
     "k_hangul_lexical_reading",
     "lexical_compound_reading",
     "parse_finance_index_numeric_suffix_candidate",

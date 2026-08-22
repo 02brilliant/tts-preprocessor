@@ -69,7 +69,6 @@ from engine.span_engine.multiplier import scan_multiplier_candidates
 from engine.span_engine.numeric_dae import (
     scan_ambiguous_numeric_dae_preserve_candidates,
 )
-from engine.span_engine.news import scan_standalone_news_candidates
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
 from engine.span_engine.ordinal import scan_ordinal_candidates
 from engine.span_engine.parenthesized_hangul_alias import (
@@ -86,6 +85,7 @@ from engine.span_engine.korean_numeric_chain import scan_korean_numeric_chain_ca
 from engine.span_engine.large_unit import scan_large_unit_candidates
 from engine.span_engine.lexicon import (
     DICTIONARY_READINGS,
+    PHRASE_DICTIONARY_READINGS,
     scan_ampersand_acronym_candidates,
     scan_acronym_hangul_hyphen_candidates,
     scan_contextual_acronym_candidates,
@@ -94,6 +94,7 @@ from engine.span_engine.lexicon import (
     scan_lexical_compound_candidates,
     scan_unsupported_ampersand_acronym_preserve_candidates,
 )
+from engine.span_engine.profile import uses_general_english_fallbacks
 from engine.span_engine.managed_numeric_code import (
     scan_managed_acronym_numeric_code_candidates,
 )
@@ -240,7 +241,7 @@ CLAIM_ORDER_DOC = (
     "protected_literal",
     "corporate_marker",
     "parenthesized_hangul_alias",
-    "standalone_news",
+    "phrase_dictionary",
     "dictionary",
     "finance_index",
     "contextual_acronym",
@@ -418,36 +419,44 @@ def claim_surfaces(
             excluded_ranges,
         )
     )
-    candidates.extend(
-        _claim_scanned_candidates(
-            scan_standalone_news_candidates(raw_text), registry, excluded_ranges
-        )
-    )
+    candidates.extend(_claim_phrase_dictionary(raw_text, registry, excluded_ranges))
     candidates.extend(_claim_dictionary(raw_text, tokens, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_finance_index_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_acronym_candidates(raw_text, contextual_acronym_unit_candidates), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_ampersand_acronym_candidates(raw_text), registry, excluded_ranges))
+    if uses_general_english_fallbacks():
+        candidates.extend(_claim_scanned_candidates(scan_ampersand_acronym_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_unsupported_ampersand_acronym_preserve_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
+    if uses_general_english_fallbacks():
+        candidates.extend(_claim_scanned_candidates(scan_k_hangul_lexical_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_lexical_compound_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_acronym_hangul_hyphen_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(
+        _claim_scanned_candidates(
+            scan_acronym_hangul_hyphen_candidates(
+                raw_text,
+                allow_unregistered_fallback=uses_general_english_fallbacks(),
+            ),
+            registry,
+            excluded_ranges,
+        )
+    )
     candidates.extend(_claim_scanned_candidates(scan_single_letter_alnum_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_managed_acronym_numeric_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_two_block_hyphen_code_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_mixed_alnum_code_separator_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(
-        _claim_uppercase_hangul_fallback(
-            raw_text, registry, excluded_ranges, unit_guard_candidates
+    if uses_general_english_fallbacks():
+        candidates.extend(
+            _claim_uppercase_hangul_fallback(
+                raw_text, registry, excluded_ranges, unit_guard_candidates
+            )
         )
-    )
-    candidates.extend(
-        _claim_acronym_fallback(
-            tokens,
-            registry,
-            excluded_ranges,
-            unit_guard_candidates,
+        candidates.extend(
+            _claim_acronym_fallback(
+                tokens,
+                registry,
+                excluded_ranges,
+                unit_guard_candidates,
+            )
         )
-    )
     candidates.extend(_claim_scanned_candidates(scan_compound_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_collision_candidates(raw_text), registry, excluded_ranges))
@@ -574,6 +583,35 @@ def _claim_dictionary(
                     _claim_candidate(candidate, registry)
                     candidates.append(candidate)
                 start = token.raw.find(surface, start + 1)
+    return candidates
+
+
+def _claim_phrase_dictionary(
+    raw_text: str,
+    registry: SurfaceClaimRegistry,
+    excluded_ranges: list[BracketRange],
+) -> list[SurfaceCandidate]:
+    candidates: list[SurfaceCandidate] = []
+    for surface in sorted(PHRASE_DICTIONARY_READINGS, key=len, reverse=True):
+        start = raw_text.find(surface)
+        while start != -1:
+            end = start + len(surface)
+            span = SourceSpan(start, end)
+            if (
+                _safe_fixed_dictionary_boundary(raw_text, start, end)
+                and not span_overlaps_excluded_ranges(span, excluded_ranges)
+                and registry.can_claim(span, "phrase_dictionary")
+            ):
+                candidate = SurfaceCandidate(
+                    core_span=span,
+                    full_span=span,
+                    owner="phrase_dictionary",
+                    surface_type="PHRASE_DICTIONARY_SURFACE",
+                    reason="dictionary_fixed_phrase_match",
+                )
+                _claim_candidate(candidate, registry)
+                candidates.append(candidate)
+            start = raw_text.find(surface, start + 1)
     return candidates
 
 

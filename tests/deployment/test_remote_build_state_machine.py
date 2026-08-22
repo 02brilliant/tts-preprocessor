@@ -42,15 +42,24 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (buildsrc / "bin/build_binary_entrypoint.py").write_text(
         "raise SystemExit('fixture only')\n", encoding="utf-8"
     )
-    (buildsrc / "bin/build_llm_stage_entrypoint.py").write_text(
+    (buildsrc / "bin/build_simplified_binary_entrypoint.py").write_text(
         "raise SystemExit('fixture only')\n", encoding="utf-8"
     )
+    (buildsrc / "bin/integrated_llm_cli.py").write_text(
+        "raise SystemExit('fixture only')\n", encoding="utf-8"
+    )
+    (buildsrc / "bin/build_llm_minimal_entrypoint.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "bin/build_llm_natural_entrypoint.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "tts_preprocessor.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
-    (buildsrc / "tts_llm_stage.spec").write_text(
+    (buildsrc / "tts_preprocessor_simplified.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
+    (buildsrc / "tts_preprocessor_llm_minimal.spec").write_text(
+        "# fixture spec\n", encoding="utf-8"
+    )
+    (buildsrc / "tts_preprocessor_llm_natural.spec").write_text("# fixture spec\n", encoding="utf-8")
     (buildsrc / "LLM/models.json").write_text("{}\n", encoding="utf-8")
     (buildsrc / "LLM/docs/LLM_prompt.txt").write_text(
         "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
@@ -65,9 +74,13 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     old_binary = package_dir / "tts-preprocessor"
     old_binary.write_bytes(b"old-package")
     old_binary.chmod(0o755)
-    old_llm_stage_binary = package_dir / "tts-llm-stage"
-    old_llm_stage_binary.write_bytes(b"old-llm-stage-package")
-    old_llm_stage_binary.chmod(0o755)
+    old_simplified_binary = package_dir / "tts-preprocessor-simplified"
+    old_simplified_binary.write_bytes(b"old-simplified-package")
+    old_simplified_binary.chmod(0o755)
+    for name in ("tts-preprocessor-llm-minimal", "tts-preprocessor-llm-natural"):
+        old_llm_binary = package_dir / name
+        old_llm_binary.write_bytes(b"old-integrated-package")
+        old_llm_binary.chmod(0o755)
     (package_dir / "README.txt").write_text("old readme\n", encoding="utf-8")
     (downloads_dir / "tts-preprocessor-linux.zip").write_bytes(b"old-linux-zip")
     (downloads_dir / "tts-preprocessor-macos.zip").write_bytes(b"old-macos")
@@ -123,9 +136,15 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
           exit 0
         fi
         mkdir -p dist
-        if [[ "$*" == *"tts_llm_stage.spec"* ]]; then
-          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-llm-stage
-          chmod +x dist/tts-llm-stage
+        if [[ "$*" == *"tts_preprocessor_llm_minimal.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-minimal
+          chmod +x dist/tts-preprocessor-llm-minimal
+        elif [[ "$*" == *"tts_preprocessor_llm_natural.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-natural
+          chmod +x dist/tts-preprocessor-llm-natural
+        elif [[ "$*" == *"tts_preprocessor_simplified.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "ABC와 삼 킬로그램"' > dist/tts-preprocessor-simplified
+          chmod +x dist/tts-preprocessor-simplified
         else
           printf '%s\n' "new-package" > dist/tts_preprocessor
           chmod +x dist/tts_preprocessor

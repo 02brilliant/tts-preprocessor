@@ -54,7 +54,7 @@ def test_server_health_uses_new_linux_download_url() -> None:
         in check_server
     )
     assert 'LLM_MODELS_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/models"' in check_server
-    assert 'LLM_TRANSFORM_URL="http://${SERVER_HOST}:${SERVER_PORT}/api/llm/transform"' in check_server
+    assert "/api/llm/transform" not in check_server
     assert 'check_llm_models "$LLM_MODELS_OUTPUT"' in check_server
     assert 'check_post_llm_transform "$LLM_TRANSFORM_OUTPUT"' in check_server
 
@@ -90,10 +90,8 @@ if [[ "$url" == *"/downloads/tts-preprocessor-windows.zip" ]]; then
 fi
 if [[ "$url" == *"/api/llm/models" ]]; then
   printf '%s\\n' '{"models":["gemma4:31b","gemma4:26b","gemma4:e4b","gemma4-31B-it (vLLM)","gemini-3.6-flash","gemini-3.5-flash","gemini-3.5-flash-lite"],"default_model":"gemma4-31B-it (vLLM)"}' > "$output_file"
-elif [[ "$url" == *"/api/llm/transform" ]]; then
-  printf '%s\\n' '{"speech_text":"LLM 배포 확인입니다.","model":"gemma4-31B-it (vLLM)","elapsed_ms":1}' > "$output_file"
 elif [[ "$url" == *"/api/transform" ]]; then
-  printf '%s\\n' '{"normalized_text":"케이-원, 케이푸드, 백십이 명, 유월"}' > "$output_file"
+  printf '%s\\n' '{"normalized_text":"케이-원, 케이푸드, 백십이 명, 유월","speech_text":"LLM 배포 확인입니다.","model":"gemma4-31B-it (vLLM)","elapsed_ms":1,"llm_called":true,"llm_skip_reason":null}' > "$output_file"
 else
   printf '%s\\n' "ok" > "$output_file"
 fi
@@ -128,7 +126,9 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert "from LLM" not in api_server
     assert 'app.mount("/downloads"' in api_server
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
-    assert 'TTS_LLM_STAGE_BINARY="$LATEST_LLM_STAGE"' in start_server
+    assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_server
+    assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_server
+    assert "LATEST_LLM_STAGE" not in start_server
     assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
     assert 'LOCAL_LLM_CONFIGURED=false' in start_server
     assert 'GEMINI_LLM_CONFIGURED=false' in start_server

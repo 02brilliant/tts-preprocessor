@@ -1,21 +1,24 @@
 # Local, Gemini, OpenAI, and vLLM API integration
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
-포트에서 `/api/llm/models`와 `/api/llm/transform`을 제공하며, 두 경로 모두
-패키징된 `tts-llm-stage` 실행모듈을 호출한다. 공급자 URL·토큰은 실행모듈에
-넣지 않고 `llm.env`에서 API 프로세스 환경으로 전달한다.
+포트에서 `/api/llm/models`와 통합 `/api/transform`을 제공한다. 공급자 URL·
+토큰은 실행모듈에 넣지 않고 `llm.env`에서 API 프로세스 환경으로 전달한다.
 
 규칙 기반 엔진과 LLM은 다음 순서로만 연결한다.
 
-1. `/api/transform`: 사용자 원고를 패키징된 규칙 엔진에 전달해
-   `normalized_text` 생성
-2. `/api/llm/transform`: `normalized_text`를 `docs/LLM_prompt.txt`에 넣어
-   읽기·발음·운율이 반영된 최종 `speech_text` 생성
+1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 호출 gate → `LLM_prompt.txt` → 검증
+2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 호출 gate → `LLM_prompt_lv2.txt` → 검증
 
-LLM은 선택 모델로 한 번만 호출한다. 규칙 기반 `normalized_text` 계약과
-source-free binary runtime은 이 통합으로 변경되지 않는다.
-운영 API는 1단계 `tts-preprocessor`와 2단계 `tts-llm-stage` 실행모듈만
-교체하면 된다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
+호출 gate가 후속 교정 가능성을 찾으면 LLM을 선택 모델로 한 번만 호출하고,
+명백히 불필요하면 `speech_text=normalized_text`로 반환한다. 규칙 기반
+`normalized_text` 계약과 source-free binary runtime은 이 통합으로 변경되지 않는다.
+3단계는 짧고 단순하며 처리할 잔여 표면이 없는 입력을 생략하고, 일반 한국어
+철자를 발음형으로 바꾸지 않는다. 긴 합성명사의 띄어읽기 경계 판단은 유지한다.
+4단계는 `ㄴ` 첨가·비예측적 합성어 된소리·자연발화 축약 가능성과 더 짧은
+길이 기준을 사용하여 매우 짧고 단순한 입력만 생략한다. 발음 후보 판단은
+등록어 목록 없이 음절 구조를 사용하며, 불확실하면 호출한다.
+운영 API는 선택 단계에 맞는 실행모듈 하나만 호출한다. 별도 `tts-llm-stage`는
+배포하지 않는다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
 읽기를 위한 일반 provenance 전달, 반복 안정성 측정, 자동 재시도는
 사용하지 않는다. 서버는 1단계의 `normalized_text`를 임시 토큰 치환 없이
 그대로 LLM에 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
@@ -39,16 +42,19 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 ## 파일 구성
 
 - `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
-  읽기·발음·운율 프롬프트
+  기본교정 프롬프트
+- `docs/LLM_prompt_lv2.txt`: 기본교정에 자연스러운 발화 명령을 추가한 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
 - `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
 - `vllm_client.py`: vLLM OpenAI-compatible Chat Completions 호출 및 응답/오류 처리
 - `response_validation.py`: 통합 LLM 출력 불변 조건 검증
+- `invocation_gate.py`: 3·4단계의 보수적인 LLM 호출 필요성 판정
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
 
-활성 프롬프트는 2단계 실행모듈에 패키징된다. 프롬프트나 모델 목록을 바꾸려면
-`tts-llm-stage`를 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
+기본 프롬프트는 3단계, 자연스러운 발화 프롬프트는 4단계 실행모듈에 각각만
+패키징된다. 프롬프트 1 변경은 3단계, 프롬프트 2 변경은 4단계만 다시 빌드한다.
+공통 규칙 변경은 1~4단계를 모두 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
 
 ## API 계약
 
@@ -58,11 +64,16 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 GET /api/llm/models
 ```
 
-통합 LLM 요청:
+통합 변환 요청:
+
+```http
+POST /api/transform
+```
 
 ```json
 {
-  "normalized_text": "국물은 좋습니다.",
+  "text": "국물은 좋습니다.",
+  "level": 3,
   "model": "gemma4:31b"
 }
 ```
@@ -71,15 +82,21 @@ GET /api/llm/models
 
 ```json
 {
-  "speech_text": "궁무른, 따뜨탐니다.",
+  "normalized_text": "국물은 좋습니다.",
+  "speech_text": "국물은, 좋습니다.",
   "model": "gemma4:31b",
-  "elapsed_ms": 123.456
+  "elapsed_ms": 123.456,
+  "llm_called": true,
+  "llm_skip_reason": null
 }
 ```
 
-요청은 `normalized_text`만 입력으로 받으며 이전 `stage`와 `prosody_text` 필드는
-거부한다. contextual decision metadata나 다른 규칙 엔진 내부 정보도
-요청에 허용하지 않는다. 응답은 기존 공백·줄바꿈·고정 문장부호를 보존하고,
+LLM을 생략하면 `elapsed_ms`는 `0.0`, `llm_called`는 `false`이며
+`llm_skip_reason`에 안정적인 생략 사유 코드가 들어간다. 선택 model ID는
+생략 시에도 검증한다. 공급자 URL·인증정보는 실제 호출할 때만 필요하다.
+
+요청은 원문 `text`와 `level`을 입력으로 받는다. contextual decision metadata나
+다른 규칙 엔진 내부 정보는 요청에 허용하지 않는다. 응답은 기존 공백·줄바꿈·고정 문장부호를 보존하고,
 운율용 쉼표와 ASCII 공백만 추가할 수 있다. 숫자 읽기에 포함된
 소수점·자릿수 쉼표·시각 쌍점은 숫자 읽기로 소비할 수 있으며 문장부호나
 파일 확장자의 마침표와 구분한다. 계약을 위반한 모델 응답은 조용히
@@ -153,9 +170,9 @@ Responses API 사양은 다음 공식 문서를 기준으로 한다.
 ### 기존 배포 명령을 사용하는 운영 서버
 
 `bash scripts/deploy_server.sh`는 서버의
-`~/tts-preprocessor/config/llm.env`를 읽을 수 있는지 먼저 확인하고, `LLM/` 런타임
-코드와 통합 활성 프롬프트만 `app/LLM/`으로 배포한다. 개발 참고용
-`LLM/docs/info_Local_LLM_server.txt`는 전송하지 않는다.
+`~/tts-preprocessor/config/llm.env`를 읽을 수 있는지 먼저 확인한다. `LLM/` 소스와
+프롬프트는 빌드 전용 `buildsrc`로만 전송되고 운영 `app`에는 남기지 않는다.
+개발 참고용 `LLM/docs/info_Local_LLM_server.txt`는 전송하지 않는다.
 
 배포 전에 운영 서버에서 한 번만 다음처럼 환경 파일을 만든다. 값은 운영 환경의
 실제 값으로 직접 입력하고, 파일 내용은 터미널 출력이나 Git에 넣지 않는다.

@@ -35,9 +35,9 @@ api.server -> api.binary_runtime -> TTS_PREPROCESSOR_BINARY
 -> packaged binary -> bin/build_binary_entrypoint.py
 -> engine.main.transform(text)
 
-api.server -> api.binary_runtime -> TTS_LLM_STAGE_BINARY
--> packaged tts-llm-stage -> bin/build_llm_stage_entrypoint.py
--> LLM.stage_engine.transform(normalized_text)
+api.server -> api.binary_runtime -> selected level-3/4 binary
+-> engine.main.transform(original_text) exactly once
+-> fixed prompt -> LLM.stage_engine.transform(normalized_text)
 ```
 
 ## 3. Common standalone numeric matrix

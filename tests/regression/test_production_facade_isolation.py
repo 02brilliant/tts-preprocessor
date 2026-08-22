@@ -38,8 +38,13 @@ def test_source_production_facade_is_mode_less() -> None:
     assert tuple(inspect.signature(engine_main.transform_debug).parameters) == ("text",)
 
 
-def test_engine_main_exports_only_mode_less_production_facades() -> None:
-    assert engine_main.__all__ == ["transform", "transform_debug"]
+def test_engine_main_exports_default_and_simplified_production_facades() -> None:
+    assert engine_main.__all__ == [
+        "transform",
+        "transform_debug",
+        "transform_simplified",
+        "transform_simplified_debug",
+    ]
     public_names = {name for name in vars(engine_main) if not name.startswith("_")}
     assert all("rollout" not in name for name in public_names)
     assert not hasattr(importlib.import_module("engine.api_interface"), "normalize_text_with_rollout")

@@ -186,13 +186,19 @@ JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
 This validation is a safety gate; it does not authorize rewriting protected
 surfaces or falling back to an unvalidated model response.
 
-`LLM/docs/LLM_prompt.txt` is packaged inside `tts-llm-stage`. Production API
-MUST invoke that executable for `/api/llm/models` and `/api/llm/transform`
-instead of importing `LLM.*` source. Prompt or model-registry updates therefore
-require rebuilding and replacing `tts-llm-stage`. Provider credentials remain
-in `config/llm.env` and MUST NOT be embedded in either executable. After
-deployment, the active server must be checked through `/api/llm/transform`
-when provider credentials and model access are available.
+`LLM/docs/LLM_prompt.txt` is packaged only in level 3 and
+`LLM/docs/LLM_prompt_lv2.txt` only in level 4. Each integrated executable takes
+original text, runs the full level-2 rule engine exactly once, then invokes and
+validates its fixed prompt. Production API MUST invoke exactly one selected
+executable through `/api/transform` instead of importing `engine.*` or `LLM.*`
+source. No standalone `tts-llm-stage` artifact is published. Provider credentials
+remain in `config/llm.env` and MUST NOT be embedded in an executable.
+
+Every OS package also includes `tts-preprocessor-simplified` beside the default
+`tts-preprocessor`. Both binaries use the same rule engine and managed dictionaries;
+the simplified executable disables only general English pronunciation fallbacks.
+The existing build and deployment commands build, validate, and publish both rule
+binaries together with the level-3 and level-4 integrated executables.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

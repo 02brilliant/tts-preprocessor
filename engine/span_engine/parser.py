@@ -44,6 +44,7 @@ from engine.span_engine.lexicon import (
     acronym_hangul_hyphen_render_pieces,
     contextual_acronym_reading,
     dictionary_reading,
+    phrase_dictionary_reading,
     k_hangul_lexical_reading,
     lexical_compound_reading,
     parse_ampersand_acronym_candidate,
@@ -65,7 +66,6 @@ from engine.span_engine.numeric_dae import (
     parse_ambiguous_numeric_dae_preserve_candidate,
 )
 from engine.span_engine.residual_spacing import needs_residual_hangul_space
-from engine.span_engine.news import parse_standalone_news_candidate
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ordinal import parse_ordinal_candidate
 from engine.span_engine.parenthesized_hangul_alias import (
@@ -127,8 +127,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_corporate_marker_candidate(raw_text, candidate)
     elif candidate.owner == "parenthesized_hangul_alias":
         return parse_parenthesized_hangul_alias_candidate(raw_text, candidate)
-    elif candidate.owner == "standalone_news":
-        reading = parse_standalone_news_candidate(raw_text, candidate)
+    elif candidate.owner == "phrase_dictionary":
+        reading = phrase_dictionary_reading(raw)
     elif candidate.owner == "dictionary":
         reading = dictionary_reading(raw)
     elif candidate.owner == "finance_index":

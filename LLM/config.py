@@ -13,6 +13,7 @@ _RUNTIME_ROOT = Path(
 )
 MODEL_CONFIG_PATH = _RUNTIME_ROOT / "LLM" / "models.json"
 LLM_PROMPT_PATH = _RUNTIME_ROOT / "LLM" / "docs" / "LLM_prompt.txt"
+LLM_PROMPT_LV2_PATH = _RUNTIME_ROOT / "LLM" / "docs" / "LLM_prompt_lv2.txt"
 REASONING_EFFORTS = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 
 

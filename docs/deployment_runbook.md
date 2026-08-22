@@ -206,11 +206,14 @@ bash scripts/build_remote_package.sh cleanup <deploy-id>
 5. staging Linux ZIP 생성 및 구조 검증
 6. ZIP SHA-256이 포함된 prepare marker 생성 및 재검증
 
-Linux ZIP 내부는 다음 두 파일뿐이다.
+Linux ZIP 내부는 다음 다섯 파일뿐이다.
 
 ```text
 tts-preprocessor/README.txt
 tts-preprocessor/tts-preprocessor
+tts-preprocessor/tts-preprocessor-llm-minimal
+tts-preprocessor/tts-preprocessor-llm-natural
+tts-preprocessor/tts-preprocessor-simplified
 ```
 
 `publish`는 서버가 중지된 후에만 실행한다. marker의 deploy ID, staging 경로,
@@ -271,9 +274,10 @@ bash scripts/build_macos_package.sh
 - Darwin arm64와 `.venv` Python arm64만 허용
 - 일반 GIL Python 3.13 계열만 허용
 - `.venv/bin/python`, `.venv/bin/pyinstaller`, 공용 spec/hook 사용
-- 실행 파일: `build/macos/dist/tts-preprocessor`
+- 실행 파일: `build/macos/dist/tts-preprocessor`, `tts-preprocessor-simplified`,
+  `tts-preprocessor-llm-minimal`, `tts-preprocessor-llm-natural`
 - ZIP: `downloads/tts-preprocessor-macos.zip`
-- ZIP 최상위: `tts-preprocessor`, `README.txt`
+- ZIP 최상위: 네 실행 파일과 `README.txt`
 - 원본과 압축 해제 실행 파일 smoke test
 - 임시 ZIP 검증 후 기존 ZIP 원자 교체
 
@@ -308,7 +312,9 @@ Gatekeeper 경고가 발생할 수 있다.
      --platform windows
    ```
 
-Windows ZIP은 최상위에 `tts-preprocessor.exe`, `README.txt`만 포함한다.
+Windows ZIP은 최상위에 `tts-preprocessor.exe`, `tts-preprocessor-simplified.exe`,
+`tts-preprocessor-llm-minimal.exe`, `tts-preprocessor-llm-natural.exe`,
+`README.txt`만 포함한다.
 업로드 스크립트는 Linux/macOS ZIP, 운영 package, 서버 프로세스를 변경하지
 않는다.
 

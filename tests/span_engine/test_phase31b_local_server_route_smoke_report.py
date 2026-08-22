@@ -33,8 +33,8 @@ def test_phase31b_api_server_route_contract_still_binary_backed() -> None:
     assert post_routes == ["/api/transform"]
     assert "run_transform_binary" in server_text
     assert "run_transform_binary_debug" in server_text
-    assert "run_llm_stage_binary" in server_text
-    assert "list_llm_stage_models" in server_text
+    assert "run_integrated_binary" in server_text
+    assert "list_llm_models" in server_text
     assert "run_transform_binary_with_rollout" not in server_text
 
 
@@ -43,5 +43,6 @@ def test_phase31b_start_server_uses_packaged_binary() -> None:
 
     assert "packages/tts-preprocessor/tts-preprocessor" in start_script
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_script
-    assert 'TTS_LLM_STAGE_BINARY="$LATEST_LLM_STAGE"' in start_script
+    assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_script
+    assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_script
     assert '"$PYTHON_BIN" -m api.server' in start_script

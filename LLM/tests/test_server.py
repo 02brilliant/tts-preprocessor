@@ -5,252 +5,61 @@ from pydantic import ValidationError
 import pytest
 
 from api import server as server_module
-from api.binary_runtime import BinaryRuntimeError, LLMStageRuntimeError
-from api.server import LLMTransformRequest, app
+from api.binary_runtime import LLMStageRuntimeError
+from api.server import TransformRequest, app
 
 
 def get_endpoint(path: str, method: str):
     for route in app.routes:
-        if getattr(route, "path", None) == path and method in getattr(
-            route,
-            "methods",
-            set(),
-        ):
+        if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
             return route.endpoint
     raise AssertionError(f"Missing route: {method} {path}")
 
 
-def test_existing_and_llm_api_routes_are_registered(monkeypatch) -> None:
-    monkeypatch.setattr(
-        server_module,
-        "list_llm_stage_models",
-        lambda: {
-            "models": [
-                "gemma4:31b",
-                "gemma4:26b",
-                "gemma4:e4b",
-                "gemma4-31B-it (vLLM)",
-                "gemini-3.6-flash",
-                "gemini-3.5-flash",
-                "gemini-3.5-flash-lite",
-                "gpt-5.6-luna (medium)",
-                "gpt-5.6-luna (low)",
-                "gpt-5.6-luna (none)",
-            ],
-            "default_model": "gemma4-31B-it (vLLM)",
-        },
-    )
+def test_public_routes_expose_one_transform_endpoint(monkeypatch) -> None:
+    monkeypatch.setattr(server_module, "list_llm_models", lambda: {"models": ["m"], "default_model": "m"})
     assert get_endpoint("/api/transform", "POST")
-    assert get_endpoint("/api/llm/models", "GET")() == {
-        "models": [
-            "gemma4:31b",
-            "gemma4:26b",
-            "gemma4:e4b",
-            "gemma4-31B-it (vLLM)",
-            "gemini-3.6-flash",
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gpt-5.6-luna (medium)",
-            "gpt-5.6-luna (low)",
-            "gpt-5.6-luna (none)",
-        ],
-        "default_model": "gemma4-31B-it (vLLM)",
-    }
-    assert get_endpoint("/api/llm/transform", "POST")
+    assert get_endpoint("/api/llm/models", "GET")() == {"models": ["m"], "default_model": "m"}
+    with pytest.raises(AssertionError):
+        get_endpoint("/api/llm/transform", "POST")
 
 
-@pytest.mark.parametrize(
-    "payload",
-    (
-        {"model": "gemma4:31b"},
-        {
-            "stage": "prosody",
-            "normalized_text": "원고",
-            "model": "gemma4:31b",
-        },
-        {
-            "normalized_text": "원고",
-            "prosody_text": "이전 단계",
-            "model": "gemma4:31b",
-        },
-        {
-            "normalized_text": "원고",
-            "contextual_decision_logs": [{"decision": "deferred"}],
-            "model": "gemma4:31b",
-        },
-    ),
-)
-def test_transform_request_requires_only_integrated_fields(payload: dict) -> None:
+@pytest.mark.parametrize("level", (False, "3", -1, 5))
+def test_request_rejects_invalid_levels(level) -> None:
     with pytest.raises(ValidationError):
-        LLMTransformRequest.model_validate(payload)
+        TransformRequest.model_validate({"text": "원고", "level": level})
 
 
-def test_transform_rejects_unsupported_model(monkeypatch) -> None:
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            LLMStageRuntimeError(
-                "Unsupported LLM model.",
-                status_code=400,
-                detail="Unsupported LLM model.",
-            )
-        ),
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
+def test_request_limits_model_to_llm_levels() -> None:
+    with pytest.raises(ValidationError):
+        TransformRequest(text="원고", level=2, model="m")
 
+
+@pytest.mark.parametrize("level", (3, 4))
+def test_transform_uses_one_integrated_binary(level, monkeypatch) -> None:
+    calls = []
+
+    def fake_run(text, *, level, model=None):
+        calls.append((text, level, model))
+        return {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": model or "m", "elapsed_ms": 1.25, "llm_called": True, "llm_skip_reason": None}
+
+    monkeypatch.setattr(server_module, "run_integrated_binary", fake_run)
+    result = get_endpoint("/api/transform", "POST")(TransformRequest(text="원문", level=level, model="m"))
+    assert result == {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": "m", "elapsed_ms": 1.25, "llm_called": True, "llm_skip_reason": None}
+    assert calls == [("원문", level, "m")]
+
+
+def test_integrated_error_status_and_normalized_output_are_preserved(monkeypatch) -> None:
+    monkeypatch.setattr(server_module, "run_integrated_binary", lambda *_args, **_kwargs: (_ for _ in ()).throw(LLMStageRuntimeError("invalid", status_code=502, detail={"message": "invalid", "normalized_text": "규칙 결과", "speech_text": "원출력"})))
     with pytest.raises(HTTPException) as exc_info:
-        endpoint(
-            LLMTransformRequest(
-                normalized_text="원고",
-                model="unknown",
-            )
-        )
-
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "Unsupported LLM model."
-
-
-def test_llm_transform_uses_stage_binary(monkeypatch) -> None:
-    captured = {}
-
-    def fake_run_llm_stage_binary(normalized_text, *, model=None):
-        captured["normalized_text"] = normalized_text
-        captured["model"] = model
-        return {
-            "speech_text": "궁무른, 조씀니다.",
-            "model": model or "gemma4:31b",
-            "elapsed_ms": 1234.5678,
-        }
-
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        fake_run_llm_stage_binary,
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-
-    result = endpoint(
-        LLMTransformRequest(
-            normalized_text="국물은 좋습니다.",
-            model="gemma4:e4b",
-        )
-    )
-
-    assert result == {
-        "speech_text": "궁무른, 조씀니다.",
-        "model": "gemma4:e4b",
-        "elapsed_ms": 1234.568,
-    }
-    assert captured == {
-        "normalized_text": "국물은 좋습니다.",
-        "model": "gemma4:e4b",
-    }
-
-
-def test_llm_transform_uses_default_model_when_omitted(monkeypatch) -> None:
-    captured = {}
-
-    def fake_run_llm_stage_binary(normalized_text, *, model=None):
-        captured["model"] = model
-        return {
-            "speech_text": "원고",
-            "model": "gemma4-31B-it (vLLM)",
-            "elapsed_ms": 1.0,
-        }
-
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        fake_run_llm_stage_binary,
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-
-    result = endpoint(LLMTransformRequest(normalized_text="원고"))
-
-    assert result["model"] == "gemma4-31B-it (vLLM)"
-    assert captured["model"] is None
-
-
-def test_contract_violation_maps_to_bad_gateway(monkeypatch) -> None:
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            LLMStageRuntimeError(
-                "LLM response deleted or reordered existing whitespace, "
-                "line breaks, or fixed punctuation.",
-                status_code=502,
-                detail={
-                    "message": (
-                        "LLM response deleted or reordered existing whitespace, "
-                        "line breaks, or fixed punctuation."
-                    ),
-                    "stage": "speech",
-                    "speech_text": "다른 원고",
-                },
-            )
-        ),
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-
-    with pytest.raises(HTTPException) as exc_info:
-        endpoint(
-            LLMTransformRequest(
-                normalized_text="원고.",
-                model="gemma4:e4b",
-            )
-        )
-
+        get_endpoint("/api/transform", "POST")(TransformRequest(text="원문", level=3))
     assert exc_info.value.status_code == 502
-    assert exc_info.value.detail == {
-        "message": (
-            "LLM response deleted or reordered existing whitespace, "
-            "line breaks, or fixed punctuation."
-        ),
-        "stage": "speech",
-        "speech_text": "다른 원고",
-    }
+    assert exc_info.value.detail["normalized_text"] == "규칙 결과"
 
 
-def test_missing_configuration_maps_to_service_unavailable(monkeypatch) -> None:
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            LLMStageRuntimeError(
-                "Required environment variable VLLM_BASE_URL is missing.",
-                status_code=503,
-                detail="Required environment variable VLLM_BASE_URL is missing.",
-            )
-        ),
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-
-    with pytest.raises(HTTPException) as exc_info:
-        endpoint(
-            LLMTransformRequest(
-                normalized_text="원고",
-                model="gemma4-31B-it (vLLM)",
-            )
-        )
-
-    assert exc_info.value.status_code == 503
-    assert "VLLM_BASE_URL" in exc_info.value.detail
-
-
-def test_binary_runtime_failure_maps_to_bad_gateway(monkeypatch) -> None:
-    monkeypatch.setattr(
-        server_module,
-        "run_llm_stage_binary",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            BinaryRuntimeError("LLM stage binary returned empty output")
-        ),
-    )
-    endpoint = get_endpoint("/api/llm/transform", "POST")
-
-    with pytest.raises(HTTPException) as exc_info:
-        endpoint(LLMTransformRequest(normalized_text="원고"))
-
-    assert exc_info.value.status_code == 502
-    assert exc_info.value.detail == "LLM stage binary returned empty output"
+def test_levels_zero_to_two_do_not_use_integrated_binary(monkeypatch) -> None:
+    monkeypatch.setattr(server_module, "run_integrated_binary", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not run")))
+    monkeypatch.setattr(server_module, "run_transform_binary", lambda text, **kwargs: f"{kwargs.get('profile', 'default')}:{text}")
+    assert server_module.transform_request_payload({"text": "원문", "level": 0}) == {"normalized_text": "원문"}
+    assert server_module.transform_request_payload({"text": "원문", "level": 1})["normalized_text"] == "simplified:원문"
+    assert server_module.transform_request_payload({"text": "원문", "level": 2})["normalized_text"] == "default:원문"

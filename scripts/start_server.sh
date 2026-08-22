@@ -43,13 +43,31 @@ else
     exit 1
   fi
 fi
-if [[ -n "${TTS_LLM_STAGE_BINARY:-}" ]]; then
-  LATEST_LLM_STAGE="$TTS_LLM_STAGE_BINARY"
+if [[ -n "${TTS_PREPROCESSOR_LLM_MINIMAL_BINARY:-}" ]]; then
+  LATEST_LLM_MINIMAL="$TTS_PREPROCESSOR_LLM_MINIMAL_BINARY"
 else
-  LATEST_LLM_STAGE="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-llm-stage"
+  LATEST_LLM_MINIMAL="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-llm-minimal"
 fi
-if [[ ! -f "$LATEST_LLM_STAGE" || ! -x "$LATEST_LLM_STAGE" ]]; then
-  echo "No packaged LLM stage binary found at $LATEST_LLM_STAGE" >&2
+if [[ -n "${TTS_PREPROCESSOR_LLM_NATURAL_BINARY:-}" ]]; then
+  LATEST_LLM_NATURAL="$TTS_PREPROCESSOR_LLM_NATURAL_BINARY"
+else
+  LATEST_LLM_NATURAL="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-llm-natural"
+fi
+if [[ -n "${TTS_PREPROCESSOR_SIMPLIFIED_BINARY:-}" ]]; then
+  LATEST_SIMPLIFIED_BINARY="$TTS_PREPROCESSOR_SIMPLIFIED_BINARY"
+else
+  LATEST_SIMPLIFIED_BINARY="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-simplified"
+fi
+if [[ ! -f "$LATEST_SIMPLIFIED_BINARY" || ! -x "$LATEST_SIMPLIFIED_BINARY" ]]; then
+  echo "No packaged simplified binary found at $LATEST_SIMPLIFIED_BINARY" >&2
+  exit 1
+fi
+if [[ ! -f "$LATEST_LLM_MINIMAL" || ! -x "$LATEST_LLM_MINIMAL" ]]; then
+  echo "No packaged level 3 binary found at $LATEST_LLM_MINIMAL" >&2
+  exit 1
+fi
+if [[ ! -f "$LATEST_LLM_NATURAL" || ! -x "$LATEST_LLM_NATURAL" ]]; then
+  echo "No packaged level 4 binary found at $LATEST_LLM_NATURAL" >&2
   exit 1
 fi
 
@@ -103,14 +121,16 @@ nohup env \
   TTS_PREPROCESSOR_HOST="$HOST" \
   TTS_PREPROCESSOR_PORT="$PORT" \
   TTS_PREPROCESSOR_BINARY="$LATEST_BINARY" \
-  TTS_LLM_STAGE_BINARY="$LATEST_LLM_STAGE" \
+  TTS_PREPROCESSOR_SIMPLIFIED_BINARY="$LATEST_SIMPLIFIED_BINARY" \
+  TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL" \
+  TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL" \
   "$PYTHON_BIN" -m api.server >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 
 for _ in $(seq 1 20); do
   if curl -fsS "http://127.0.0.1:${PORT}/web/" >/dev/null 2>&1; then
-    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY LLM_STAGE=$LATEST_LLM_STAGE"
+    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY SIMPLIFIED=$LATEST_SIMPLIFIED_BINARY LLM_MINIMAL=$LATEST_LLM_MINIMAL LLM_NATURAL=$LATEST_LLM_NATURAL"
     exit 0
   fi
   sleep 1

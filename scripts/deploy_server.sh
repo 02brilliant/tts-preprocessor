@@ -14,9 +14,14 @@ STOP_SERVER_SCRIPT="$ROOT_DIR/scripts/stop_server.sh"
 CHECK_SERVER_SCRIPT="$ROOT_DIR/scripts/check_server.sh"
 LOCAL_SEMANTIC_PROBES_DIR="$ROOT_DIR/scripts/probes"
 LOCAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor.spec"
-LOCAL_LLM_STAGE_SPEC_PATH="$ROOT_DIR/tts_llm_stage.spec"
+LOCAL_SIMPLIFIED_SPEC_PATH="$ROOT_DIR/tts_preprocessor_simplified.spec"
+LOCAL_LLM_MINIMAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
+LOCAL_LLM_NATURAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
 LOCAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_binary_entrypoint.py"
-LOCAL_LLM_STAGE_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_stage_entrypoint.py"
+LOCAL_SIMPLIFIED_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
+LOCAL_LLM_CLI_ENTRYPOINT_PATH="$ROOT_DIR/bin/integrated_llm_cli.py"
+LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
+LOCAL_LLM_NATURAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
 LOCAL_README_TEMPLATE_PATH="$ROOT_DIR/docs/Release_Package_README.txt"
 LOCAL_MACOS_ARCHIVE="$ROOT_DIR/downloads/tts-preprocessor-macos.zip"
 
@@ -27,7 +32,6 @@ SSH_TARGET="${REMOTE_USER}@${REMOTE_HOST}"
 # shellcheck disable=SC2088
 REMOTE_BASE_DIR="~/tts-preprocessor"
 REMOTE_APP_DIR="$REMOTE_BASE_DIR/app"
-REMOTE_LLM_DIR="$REMOTE_APP_DIR/LLM"
 REMOTE_DOWNLOADS_DIR="$REMOTE_APP_DIR/downloads"
 REMOTE_BUILD_SRC_DIR="$REMOTE_BASE_DIR/buildsrc"
 REMOTE_BUILD_SRC_DOCS_DIR="$REMOTE_BUILD_SRC_DIR/docs"
@@ -92,7 +96,7 @@ validate_local_macos_archive() (
   fi
   unzip -tq "$LOCAL_MACOS_ARCHIVE"
   contents="$(unzip -Z1 "$LOCAL_MACOS_ARCHIVE" | LC_ALL=C sort)"
-  expected=$'README.txt\ntts-llm-stage\ntts-preprocessor'
+  expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-simplified'
   if [[ "$contents" != "$expected" ]]; then
     echo "[deploy][ERROR] Unexpected macOS ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -104,10 +108,14 @@ validate_local_macos_archive() (
   unzip -q "$LOCAL_MACOS_ARCHIVE" -d "$extract_dir"
   if [[ ! -f "$extract_dir/README.txt" \
     || ! -x "$extract_dir/tts-preprocessor" \
-    || ! -x "$extract_dir/tts-llm-stage" \
+    || ! -x "$extract_dir/tts-preprocessor-simplified" \
+    || ! -x "$extract_dir/tts-preprocessor-llm-minimal" \
+    || ! -x "$extract_dir/tts-preprocessor-llm-natural" \
     || -L "$extract_dir/README.txt" \
     || -L "$extract_dir/tts-preprocessor" \
-    || -L "$extract_dir/tts-llm-stage" \
+    || -L "$extract_dir/tts-preprocessor-simplified" \
+    || -L "$extract_dir/tts-preprocessor-llm-minimal" \
+    || -L "$extract_dir/tts-preprocessor-llm-natural" \
     || -n "$(find "$extract_dir" -type l -print -quit)" ]]; then
     echo "[deploy][ERROR] macOS ZIP payload is missing, non-executable, or contains a symlink." >&2
     return 1
@@ -171,21 +179,16 @@ REMOTE
 }
 
 clear_remote_python_bytecode() {
-  ssh -- "$SSH_TARGET" bash -s -- \
-    "$REMOTE_APP_DIR/api" \
-    "$REMOTE_LLM_DIR" <<'REMOTE'
+  ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_APP_DIR/api" <<'REMOTE'
 set -euo pipefail
 api_dir="$1"
-llm_dir="$2"
 
-for app_dir in "$api_dir" "$llm_dir"; do
-  [[ -d "$app_dir" ]] || {
-    echo "[deploy][ERROR] Missing expected application directory: $app_dir" >&2
-    exit 1
-  }
-done
+[[ -d "$api_dir" ]] || {
+  echo "[deploy][ERROR] Missing expected application directory: $api_dir" >&2
+  exit 1
+}
 
-find "$api_dir" "$llm_dir" \
+find "$api_dir" \
   -type d \
   -name __pycache__ \
   -prune \
@@ -274,9 +277,14 @@ for required_local_file in \
   "$PROJECT_PYTHON" \
   "$PROJECT_PYINSTALLER" \
   "$LOCAL_SPEC_PATH" \
-  "$LOCAL_LLM_STAGE_SPEC_PATH" \
+  "$LOCAL_SIMPLIFIED_SPEC_PATH" \
+  "$LOCAL_LLM_MINIMAL_SPEC_PATH" \
+  "$LOCAL_LLM_NATURAL_SPEC_PATH" \
   "$LOCAL_ENTRYPOINT_PATH" \
-  "$LOCAL_LLM_STAGE_ENTRYPOINT_PATH" \
+  "$LOCAL_SIMPLIFIED_ENTRYPOINT_PATH" \
+  "$LOCAL_LLM_CLI_ENTRYPOINT_PATH" \
+  "$LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH" \
+  "$LOCAL_LLM_NATURAL_ENTRYPOINT_PATH" \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$REMOTE_BUILD_SCRIPT" \
   "$MACOS_BUILD_SCRIPT" \
@@ -302,7 +310,8 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/models.json" \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/response_validation.py" \
-  "$ROOT_DIR/LLM/docs/LLM_prompt.txt"; do
+  "$ROOT_DIR/LLM/docs/LLM_prompt.txt" \
+  "$ROOT_DIR/LLM/docs/LLM_prompt_lv2.txt"; do
   if [[ ! -f "$required_llm_file" || ! -r "$required_llm_file" ]]; then
     echo "[deploy][ERROR] Missing local LLM runtime prerequisite: $required_llm_file" >&2
     exit 1
@@ -332,7 +341,8 @@ fi
 SOURCE_REVISION="$(git -C "$ROOT_DIR" rev-parse --short=7 HEAD)"
 PACKAGED_TREE_STATUS="$(
   git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- \
-    engine bin LLM tts_preprocessor.spec tts_llm_stage.spec scripts/probes
+    engine bin LLM tts_preprocessor.spec tts_preprocessor_simplified.spec \
+    tts_preprocessor_llm_minimal.spec tts_preprocessor_llm_natural.spec scripts/probes
 )"
 if [[ -n "$PACKAGED_TREE_STATUS" ]]; then
   SOURCE_REVISION="${SOURCE_REVISION}-dirty"
@@ -416,7 +426,6 @@ esac
 rm -rf -- "$remote_base_dir/buildsrc"
 mkdir -p \
   "$remote_base_dir/app/api" \
-  "$remote_base_dir/app/LLM/docs" \
   "$remote_base_dir/app/web" \
   "$remote_base_dir/app/packages" \
   "$remote_base_dir/app/downloads" \
@@ -436,16 +445,17 @@ rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/web/" "$SSH_TARGET:$REMOTE_APP_DIR/we
 rsync "${RSYNC_COMMON_ARGS[@]}" \
   --exclude="tests/" \
   --exclude="docs/info_Local_LLM_server.txt" \
-  "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_LLM_DIR/"
-rsync "${RSYNC_COMMON_ARGS[@]}" \
-  --exclude="tests/" \
-  --exclude="docs/info_Local_LLM_server.txt" \
   "$ROOT_DIR/LLM/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/LLM/"
 rsync "${RSYNC_COMMON_ARGS[@]}" "$ROOT_DIR/engine/" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/engine/"
 rsync -avz "$LOCAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_binary_entrypoint.py"
-rsync -avz "$LOCAL_LLM_STAGE_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_stage_entrypoint.py"
+rsync -avz "$LOCAL_SIMPLIFIED_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_simplified_binary_entrypoint.py"
+rsync -avz "$LOCAL_LLM_CLI_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/integrated_llm_cli.py"
+rsync -avz "$LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_minimal_entrypoint.py"
+rsync -avz "$LOCAL_LLM_NATURAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_natural_entrypoint.py"
 rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
-rsync -avz "$LOCAL_LLM_STAGE_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_llm_stage.spec"
+rsync -avz "$LOCAL_SIMPLIFIED_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_simplified.spec"
+rsync -avz "$LOCAL_LLM_MINIMAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_llm_minimal.spec"
+rsync -avz "$LOCAL_LLM_NATURAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_llm_natural.spec"
 rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_BUILD_SRC_DOCS_DIR/Release_Package_README.txt"
@@ -576,7 +586,7 @@ trap cleanup_temp EXIT
 [[ "$(stat -c '%s' "$temp_path")" == "$expected_size" ]]
 unzip -tq "$temp_path"
 contents="$(unzip -Z1 "$temp_path" | LC_ALL=C sort)"
-expected=$'README.txt\ntts-llm-stage\ntts-preprocessor'
+expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-simplified'
 [[ "$contents" == "$expected" ]] || {
   echo "[deploy][ERROR] Unexpected uploaded macOS ZIP contents." >&2
   exit 1
@@ -598,7 +608,7 @@ remote_base_dir="$1"
 case "$remote_base_dir" in
   "~/"*) remote_base_dir="$HOME/${remote_base_dir#\~/}" ;;
 esac
-rm -rf -- "$remote_base_dir/app/engine" "$remote_base_dir/app/docs"
+rm -rf -- "$remote_base_dir/app/engine" "$remote_base_dir/app/LLM" "$remote_base_dir/app/docs"
 REMOTE
 then
   echo "[deploy][ERROR] Artifact publish succeeded, but source-free runtime cleanup failed." >&2

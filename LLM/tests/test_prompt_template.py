@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from LLM.config import LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_PATH
 from LLM.prompt_template import PromptTemplateError, build_prompt
 
 
@@ -80,6 +80,32 @@ def test_prompt_reloads_file_for_each_request(tmp_path: Path) -> None:
     assert build_prompt("원고", path) == "둘째 원고"
 
 
+def test_prompt_level_selects_basic_and_natural_speech_templates() -> None:
+    basic = build_prompt("현장 원고", prompt_level=1)
+    natural = build_prompt("현장 원고", prompt_level=2)
+
+    assert basic != natural
+    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" not in basic
+    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" in natural
+    assert "색연필 -> 색년필" not in basic
+    assert "색연필 -> 색년필" in natural
+    assert "문고리 -> 문꼬리" not in basic
+    assert "문고리 -> 문꼬리" in natural
+    assert "<PRONUNCIATION_LEXICON>" not in basic
+    assert "3단계에서는\n한국어 철자를 발음형으로 바꾸지 않는다" in basic
+    assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in basic
+    assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in natural
+    assert LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8").count(
+        "{{NORMALIZED_TEXT}}"
+    ) == 1
+
+
+@pytest.mark.parametrize("prompt_level", (0, 3, True))
+def test_prompt_rejects_unknown_level(prompt_level) -> None:
+    with pytest.raises(PromptTemplateError, match="prompt_level must be 1 or 2"):
+        build_prompt("원고", prompt_level=prompt_level)
+
+
 def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
 
@@ -127,12 +153,35 @@ def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
         assert superseded_reading not in prompt
 
 
-def test_active_prompt_preserves_confirmed_space_delimited_news_without_tokens() -> None:
+def test_active_prompt_preserves_confirmed_kbs_news_phrase_without_tokens() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "`news`도\n   확정된 읽기다" in prompt
+    assert "`KBS news`로 만든 경우" in prompt
+    assert "`KBS news`를 다른 표기로 바꾸지 말고" in prompt
     assert "그대로 복사한다. 출력에는 Markdown 굵게" in prompt
     assert "<LOCK_0001>" not in prompt
+
+
+def test_active_prompt_locks_stage1_time_frame_comma_decisions() -> None:
+    prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "문장 시작의 시간구 뒤 쉼표 유무는 1단계" in prompt
+    assert "오늘 아침 우리는 출발했습니다." in prompt
+    assert "올해 상반기 매출이 늘었습니다." in prompt
+    assert "내년 일분기 사업을 시작합니다." in prompt
+    assert "내년 이월 서비스를 출시합니다." in prompt
+    assert "올해 상반기, 국내 주요 시장을 중심으로" in prompt
+    assert "내년 이월 삼일, 국내 주요 지역에서" in prompt
+    assert "내년 이월부터 사월까지, 주요 지역에서" in prompt
+    assert "올해, 상반기 매출이 늘었습니다." in prompt
+
+
+def test_active_prompt_distinguishes_input_quotes_from_output_wrappers() -> None:
+    prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "입력에 없던 결과 감싸기용 따옴표" in prompt
+    assert "원래 존재하는 인용부호와 보호 JSON은" in prompt
+    assert "두 칸 이상의 연속 공백이나 특수 공백은 사용하지 않는다." in prompt
 
 
 def test_active_prompt_injects_only_plain_normalized_text() -> None:

@@ -57,9 +57,14 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/json_like_protected_spans.py",
         "scripts/probes/contextual_number_units.py",
         "tts_preprocessor.spec",
-        "tts_llm_stage.spec",
+        "tts_preprocessor_simplified.spec",
+        "tts_preprocessor_llm_minimal.spec",
+        "tts_preprocessor_llm_natural.spec",
         "bin/build_binary_entrypoint.py",
-        "bin/build_llm_stage_entrypoint.py",
+        "bin/build_simplified_binary_entrypoint.py",
+        "bin/integrated_llm_cli.py",
+        "bin/build_llm_minimal_entrypoint.py",
+        "bin/build_llm_natural_entrypoint.py",
         "docs/Release_Package_README.txt",
         "LLM/__init__.py",
         "LLM/client.py",
@@ -74,6 +79,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/response_validation.py",
         "LLM/stage_engine.py",
         "LLM/docs/LLM_prompt.txt",
+        "LLM/docs/LLM_prompt_lv2.txt",
     ):
         target = tmp_path / relative
         if not target.exists():
@@ -111,10 +117,15 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         executable.create_system = 3
         executable.external_attr = (stat.S_IFREG | 0o755) << 16
         archive.writestr(executable, b"mac-binary")
-        stage2_executable = zipfile.ZipInfo("tts-llm-stage")
-        stage2_executable.create_system = 3
-        stage2_executable.external_attr = (stat.S_IFREG | 0o755) << 16
-        archive.writestr(stage2_executable, b"mac-stage2-binary")
+        simplified_executable = zipfile.ZipInfo("tts-preprocessor-simplified")
+        simplified_executable.create_system = 3
+        simplified_executable.external_attr = (stat.S_IFREG | 0o755) << 16
+        archive.writestr(simplified_executable, b"mac-simplified-binary")
+        for name in ("tts-preprocessor-llm-minimal", "tts-preprocessor-llm-natural"):
+            llm_executable = zipfile.ZipInfo(name)
+            llm_executable.create_system = 3
+            llm_executable.external_attr = (stat.S_IFREG | 0o755) << 16
+            archive.writestr(llm_executable, b"mac-integrated-binary")
         archive.writestr("README.txt", b"readme")
 
     fake_bin = tmp_path / "fake-bin"
@@ -281,10 +292,11 @@ def _assert_not_run(events: list[str], *forbidden: str) -> None:
         assert event not in events
 
 
-def test_deploy_includes_integrated_prompt_only() -> None:
+def test_deploy_includes_both_selectable_prompts() -> None:
     source = SOURCE_DEPLOY.read_text(encoding="utf-8")
 
     assert "LLM/docs/LLM_prompt.txt" in source
+    assert "LLM/docs/LLM_prompt_lv2.txt" in source
     assert "LLM/docs/LLM_prompt_prosody.txt" not in source
     assert "LLM/docs/LLM_prompt_speech.txt" not in source
     assert '--exclude="docs/LLM_prompt.txt"' not in source
@@ -336,8 +348,10 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert '"$action" "$deploy_id"' in deploy
     assert "--platform windows" not in deploy
     assert '"$REMOTE_APP_DIR/api"' in deploy
-    assert '"$REMOTE_LLM_DIR"' in deploy
-    assert 'find "$api_dir" "$llm_dir"' in deploy
+    assert '"$remote_base_dir/app/LLM"' in deploy
+    assert "REMOTE_LLM_DIR" not in deploy
+    assert 'find "$api_dir"' in deploy
+    assert 'llm_dir="$2"' not in deploy
     assert "-name __pycache__" in deploy
     assert "--delete-excluded" not in deploy
     assert '"$LOCAL_SEMANTIC_PROBES_DIR/"' in deploy

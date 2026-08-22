@@ -4,9 +4,12 @@
 
 - `engine/` 소스는 개발과 테스트용이다.
 - 제품 변환은 PyInstaller 실행 파일을 통해 수행한다.
-- 1단계 공식 entrypoint는 `bin/build_binary_entrypoint.py`다.
-- 2단계 LLM 공식 entrypoint는 `bin/build_llm_stage_entrypoint.py`이며,
-  1단계 엔진에 의존하지 않고 `normalized_text`만 입력으로 받는다.
+- 1단계 간소화 entrypoint는 `bin/build_simplified_binary_entrypoint.py`다.
+- 2단계 전체 규칙 entrypoint는 `bin/build_binary_entrypoint.py`다.
+- 3·4단계 entrypoint는 각각 `bin/build_llm_minimal_entrypoint.py`,
+  `bin/build_llm_natural_entrypoint.py`이며 원문에 2단계 전체 규칙을 한 번 적용한
+  뒤 호출 gate가 필요성을 확인하고 단계별 고정 프롬프트로 LLM을 호출한다.
+  gate가 명백히 불필요하다고 판단하면 규칙 결과를 최종 출력으로 사용한다.
 - 웹서버/API는 `TTS_PREPROCESSOR_BINARY`로 지정한
   `packages/tts-preprocessor/tts-preprocessor`를 호출한다.
 - `check_server.sh`는 health/sanity check이며 semantic regression 대체물이 아니다.
@@ -67,10 +70,12 @@ bash scripts/build_macos_package.sh
 산출물:
 
 - `build/macos/dist/tts-preprocessor`
-- `build/macos/dist/tts-llm-stage`
+- `build/macos/dist/tts-preprocessor-simplified`
+- `build/macos/dist/tts-preprocessor-llm-minimal`
+- `build/macos/dist/tts-preprocessor-llm-natural`
 - `downloads/tts-preprocessor-macos.zip`
 
-ZIP 루트에는 `tts-preprocessor`, `tts-llm-stage`, `README.txt`만 포함된다. 현재 빌드는
+ZIP 루트에는 네 단계 실행 파일과 `README.txt`만 포함된다. 현재 빌드는
 Apple Silicon arm64 전용이며 Intel x86_64 및 Universal Binary는 지원
 범위가 아니다. 코드 서명·공증이 없으므로 Gatekeeper 경고가 발생할 수 있다.
 통합 배포에서는 이 스크립트를 직접 실행할 필요 없이 `deploy_server.sh`가

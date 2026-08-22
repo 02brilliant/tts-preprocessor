@@ -61,9 +61,13 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
         seen.append("resolved")
         return PROJECT_ROOT / "dist" / "tts_preprocessor"
 
-    def fake_resolve_llm_stage_binary_path() -> Path:
-        seen.append("resolved-llm")
-        return PROJECT_ROOT / "dist" / "tts-llm-stage"
+    def fake_resolve_integrated_binary_path(level: int) -> Path:
+        seen.append(f"resolved-{level}")
+        return PROJECT_ROOT / "dist" / f"tts-preprocessor-level-{level}"
+
+    def fake_resolve_simplified_binary_path() -> Path:
+        seen.append("resolved-simplified")
+        return PROJECT_ROOT / "dist" / "tts-preprocessor-simplified"
 
     def fake_uvicorn_run(*args, **kwargs) -> None:
         seen.append("uvicorn")
@@ -71,14 +75,19 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
     monkeypatch.setattr(api_server, "resolve_binary_path", fake_resolve_binary_path)
     monkeypatch.setattr(
         api_server,
-        "resolve_llm_stage_binary_path",
-        fake_resolve_llm_stage_binary_path,
+        "resolve_simplified_binary_path",
+        fake_resolve_simplified_binary_path,
+    )
+    monkeypatch.setattr(
+        api_server,
+        "resolve_integrated_binary_path",
+        fake_resolve_integrated_binary_path,
     )
     monkeypatch.setattr(api_server.uvicorn, "run", fake_uvicorn_run)
 
     api_server.main()
 
-    assert seen == ["resolved", "resolved-llm", "uvicorn"]
+    assert seen == ["resolved", "resolved-simplified", "resolved-3", "resolved-4", "uvicorn"]
 
 
 def test_cli_wrapper_delegates_to_binary_runtime(monkeypatch, capsys):

@@ -15,7 +15,9 @@ DOWNLOADS_DIR = ROOT_DIR / "downloads"
 PACKAGE_NAME = "tts-preprocessor"
 ARCHIVE_NAME = "tts-preprocessor-linux.zip"
 DEFAULT_BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
-DEFAULT_LLM_STAGE_BINARY_PATH = ROOT_DIR / "dist" / "tts-llm-stage"
+DEFAULT_SIMPLIFIED_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-simplified"
+DEFAULT_LLM_MINIMAL_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-llm-minimal"
+DEFAULT_LLM_NATURAL_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-llm-natural"
 README_TEMPLATE_PATH = ROOT_DIR / "docs" / "Release_Package_README.txt"
 
 
@@ -28,20 +30,28 @@ def build_readme() -> str:
 
 def build_package(
     binary_path: Path = DEFAULT_BINARY_PATH,
-    llm_stage_binary_path: Path = DEFAULT_LLM_STAGE_BINARY_PATH,
+    simplified_binary_path: Path = DEFAULT_SIMPLIFIED_BINARY_PATH,
+    llm_minimal_binary_path: Path = DEFAULT_LLM_MINIMAL_BINARY_PATH,
+    llm_natural_binary_path: Path = DEFAULT_LLM_NATURAL_BINARY_PATH,
 ) -> Path:
     package_dir = PACKAGES_DIR / PACKAGE_NAME
     archive_path = DOWNLOADS_DIR / ARCHIVE_NAME
 
     prepared_binary = resolve_binary_path(binary_path)
-    prepared_llm_stage_binary = resolve_binary_path(llm_stage_binary_path)
+    prepared_simplified_binary = resolve_binary_path(simplified_binary_path)
+    prepared_llm_minimal_binary = resolve_binary_path(llm_minimal_binary_path)
+    prepared_llm_natural_binary = resolve_binary_path(llm_natural_binary_path)
     require_prepared_binary(prepared_binary)
-    require_prepared_binary(prepared_llm_stage_binary)
+    require_prepared_binary(prepared_simplified_binary)
+    require_prepared_binary(prepared_llm_minimal_binary)
+    require_prepared_binary(prepared_llm_natural_binary)
     remove_previous_artifacts(package_dir)
     create_package_structure(
         package_dir,
         prepared_binary,
-        prepared_llm_stage_binary,
+        prepared_simplified_binary,
+        prepared_llm_minimal_binary,
+        prepared_llm_natural_binary,
     )
     validate_package_structure(package_dir)
     create_archive_atomically(package_dir, archive_path)
@@ -82,7 +92,9 @@ def remove_previous_artifacts(current_package_dir: Path) -> None:
 def create_package_structure(
     package_dir: Path,
     binary_path: Path,
-    llm_stage_binary_path: Path,
+    simplified_binary_path: Path,
+    llm_minimal_binary_path: Path,
+    llm_natural_binary_path: Path,
 ) -> None:
     if package_dir.exists():
         shutil.rmtree(package_dir)
@@ -93,9 +105,15 @@ def create_package_structure(
     binary_target = package_dir / "tts-preprocessor"
     shutil.copy2(binary_path, binary_target)
     binary_target.chmod(0o755)
-    llm_stage_target = package_dir / "tts-llm-stage"
-    shutil.copy2(llm_stage_binary_path, llm_stage_target)
-    llm_stage_target.chmod(0o755)
+    simplified_target = package_dir / "tts-preprocessor-simplified"
+    shutil.copy2(simplified_binary_path, simplified_target)
+    simplified_target.chmod(0o755)
+    llm_minimal_target = package_dir / "tts-preprocessor-llm-minimal"
+    shutil.copy2(llm_minimal_binary_path, llm_minimal_target)
+    llm_minimal_target.chmod(0o755)
+    llm_natural_target = package_dir / "tts-preprocessor-llm-natural"
+    shutil.copy2(llm_natural_binary_path, llm_natural_target)
+    llm_natural_target.chmod(0o755)
 
 
 def validate_package_structure(package_dir: Path) -> None:
@@ -144,8 +162,10 @@ def create_archive_atomically(package_dir: Path, archive_path: Path) -> None:
 def validate_archive(archive_path: Path) -> None:
     expected_names = {
         "tts-preprocessor/README.txt",
-        "tts-preprocessor/tts-llm-stage",
+        "tts-preprocessor/tts-preprocessor-llm-minimal",
+        "tts-preprocessor/tts-preprocessor-llm-natural",
         "tts-preprocessor/tts-preprocessor",
+        "tts-preprocessor/tts-preprocessor-simplified",
     }
     with ZipFile(archive_path) as zip_file:
         corrupt_member = zip_file.testzip()
@@ -165,16 +185,28 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         description="Package an already-built TTS preprocessor binary."
     )
     parser.add_argument(
+        "--simplified-binary",
+        type=Path,
+        default=DEFAULT_SIMPLIFIED_BINARY_PATH,
+        help="Prepared simplified binary. Defaults to dist/tts-preprocessor-simplified.",
+    )
+    parser.add_argument(
         "--binary",
         type=Path,
         default=DEFAULT_BINARY_PATH,
         help="Prepared binary to package. Defaults to dist/tts_preprocessor.",
     )
     parser.add_argument(
-        "--llm-stage-binary",
+        "--llm-minimal-binary",
         type=Path,
-        default=DEFAULT_LLM_STAGE_BINARY_PATH,
-        help="Prepared stage-2 binary. Defaults to dist/tts-llm-stage.",
+        default=DEFAULT_LLM_MINIMAL_BINARY_PATH,
+        help="Prepared level-3 binary.",
+    )
+    parser.add_argument(
+        "--llm-natural-binary",
+        type=Path,
+        default=DEFAULT_LLM_NATURAL_BINARY_PATH,
+        help="Prepared level-4 binary.",
     )
     return parser.parse_args(argv[1:])
 
@@ -182,7 +214,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     try:
-        archive_path = build_package(args.binary, args.llm_stage_binary)
+        archive_path = build_package(
+            args.binary,
+            args.simplified_binary,
+            args.llm_minimal_binary,
+            args.llm_natural_binary,
+        )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
