@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 
@@ -68,6 +69,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
 
     args = parse_args(stage_level=stage_level)
     normalized_text: str | None = None
+    rule_elapsed_ms = 0.0
+    llm_elapsed_ms = 0.0
+    upstream_elapsed_ms = 0.0
     try:
         if args.list_models:
             model_config = load_model_config()
@@ -90,27 +94,30 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             return 0
 
         original_text = _read_input_text(args)
+        rule_started_at = time.perf_counter()
         normalized_text = transform_rules(original_text)
+        rule_elapsed_ms = (time.perf_counter() - rule_started_at) * 1000
         decision = decide_llm_invocation(
             normalized_text,
             stage_level=stage_level,
         )
         if decision.call_llm:
+            llm_started_at = time.perf_counter()
             result = transform_llm(
                 normalized_text,
                 model=args.model,
                 prompt_level=prompt_level,
             )
+            llm_elapsed_ms = (time.perf_counter() - llm_started_at) * 1000
             speech_text = result.speech_text
             selected_model = result.model
-            elapsed_ms = result.elapsed_ms
+            upstream_elapsed_ms = result.elapsed_ms
         else:
             model_config = load_model_config()
             selected_model = args.model or model_config.default_model
             if model_config.get(selected_model) is None:
                 raise UnsupportedLLMModelError("Unsupported LLM model.")
             speech_text = normalized_text
-            elapsed_ms = 0.0
     except Exception as exc:
         status, detail = classify_llm_stage_error(exc)
         if args.json or args.list_models:
@@ -133,7 +140,12 @@ def run(*, stage_level: int, prompt_level: int) -> int:
                 "normalized_text": normalized_text,
                 "speech_text": speech_text,
                 "model": selected_model,
-                "elapsed_ms": round(elapsed_ms, 3),
+                # elapsed_ms is retained for clients that already use the
+                # provider request duration. The two explicit fields are the
+                # integrated runtime timings shown by the web UI.
+                "elapsed_ms": round(upstream_elapsed_ms, 3),
+                "rule_elapsed_ms": round(rule_elapsed_ms, 3),
+                "llm_elapsed_ms": round(llm_elapsed_ms, 3),
                 "llm_called": decision.call_llm,
                 "llm_skip_reason": None if decision.call_llm else decision.reason,
             }

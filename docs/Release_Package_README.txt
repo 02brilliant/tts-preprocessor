@@ -44,9 +44,11 @@ Windows PowerShell 예시:
 LLM 실행 파일은 --text, --input, 표준입력, --output, --json, --model,
 --list-models, --check를 지원합니다. 공급자별 환경변수는 운영 환경에서
 설정하며 인증정보를 실행 파일이나 명령행에 포함하지 마십시오.
---json 응답의 llm_called가 false이면 LLM을 생략한 것이며, speech_text는
-normalized_text와 같고 elapsed_ms는 0.0입니다. llm_skip_reason에는 생략 사유
-코드가 들어갑니다.
+--json 응답의 rule_elapsed_ms는 규칙기반 처리시간, llm_elapsed_ms는 프롬프트
+구성·LLM 호출·응답 검증을 포함한 LLM 처리시간입니다. elapsed_ms는 LLM 서버
+요청시간 호환 필드입니다. llm_called가 false이면 LLM을 생략한 것이며,
+speech_text는 normalized_text와 같고 elapsed_ms·llm_elapsed_ms는 0.0입니다.
+llm_skip_reason에는 생략 사유 코드가 들어갑니다.
 
 - 로컬 모델: LOCAL_LLM_BASE_URL, LOCAL_LLM_TOKEN
 - Gemini: GEMINI_API_KEY

@@ -41,11 +41,11 @@ def test_transform_uses_one_integrated_binary(level, monkeypatch) -> None:
 
     def fake_run(text, *, level, model=None):
         calls.append((text, level, model))
-        return {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": model or "m", "elapsed_ms": 1.25, "llm_called": True, "llm_skip_reason": None}
+        return {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": model or "m", "elapsed_ms": 1.25, "rule_elapsed_ms": 2.5, "llm_elapsed_ms": 3.75, "llm_called": True, "llm_skip_reason": None}
 
     monkeypatch.setattr(server_module, "run_integrated_binary", fake_run)
     result = get_endpoint("/api/transform", "POST")(TransformRequest(text="원문", level=level, model="m"))
-    assert result == {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": "m", "elapsed_ms": 1.25, "llm_called": True, "llm_skip_reason": None}
+    assert result == {"normalized_text": "규칙 결과", "speech_text": "발화 결과", "model": "m", "elapsed_ms": 1.25, "rule_elapsed_ms": 2.5, "llm_elapsed_ms": 3.75, "llm_called": True, "llm_skip_reason": None}
     assert calls == [("원문", level, "m")]
 
 

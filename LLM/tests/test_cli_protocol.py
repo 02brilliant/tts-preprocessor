@@ -56,6 +56,8 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
     monkeypatch.setattr(entrypoint, "parse_args", lambda *, stage_level: _args(text="원문", model="gemma4:e4b", json=True))
     monkeypatch.setattr("engine.main.transform", fake_rules)
     monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
+    timings = iter((1.0, 1.004, 2.0, 2.015))
+    monkeypatch.setattr(entrypoint.time, "perf_counter", lambda: next(timings))
 
     assert entrypoint.run(stage_level=4, prompt_level=2) == 0
     assert calls == [("rules", "원문"), ("llm", "국물은 매우 좋습니다.", "gemma4:e4b", 2)]
@@ -66,6 +68,8 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
         "speech_text": "궁무른, 조씀니다.",
         "model": "gemma4:e4b",
         "elapsed_ms": 12.346,
+        "rule_elapsed_ms": 4.0,
+        "llm_elapsed_ms": 15.0,
         "llm_called": True,
         "llm_skip_reason": None,
     }
@@ -90,6 +94,8 @@ def test_integrated_entrypoint_skips_llm_after_rules_once(monkeypatch, capsys) -
             AssertionError("LLM must not run")
         ),
     )
+    timings = iter((1.0, 1.002))
+    monkeypatch.setattr(entrypoint.time, "perf_counter", lambda: next(timings))
 
     assert entrypoint.run(stage_level=3, prompt_level=1) == 0
     assert calls == [("rules", "3kg")]
@@ -100,6 +106,8 @@ def test_integrated_entrypoint_skips_llm_after_rules_once(monkeypatch, capsys) -
         "speech_text": "삼 킬로그램",
         "model": "gemma4:e4b",
         "elapsed_ms": 0.0,
+        "rule_elapsed_ms": 2.0,
+        "llm_elapsed_ms": 0.0,
         "llm_called": False,
         "llm_skip_reason": "short_simple_rule_complete",
     }

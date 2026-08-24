@@ -77,6 +77,8 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
                     "speech_text": "궁무른, 조씀니다.",
                     "model": "gemma4:e4b",
                     "elapsed_ms": 12.5,
+                    "rule_elapsed_ms": 4.0,
+                    "llm_elapsed_ms": 13.0,
                     "llm_called": True,
                     "llm_skip_reason": None,
                 }
@@ -102,6 +104,8 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
         "speech_text": "궁무른, 조씀니다.",
         "model": "gemma4:e4b",
         "elapsed_ms": 12.5,
+        "rule_elapsed_ms": 4.0,
+        "llm_elapsed_ms": 13.0,
         "llm_called": True,
         "llm_skip_reason": None,
     }

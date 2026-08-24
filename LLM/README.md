@@ -86,12 +86,17 @@ POST /api/transform
   "speech_text": "국물은, 좋습니다.",
   "model": "gemma4:31b",
   "elapsed_ms": 123.456,
+  "rule_elapsed_ms": 4.321,
+  "llm_elapsed_ms": 124.789,
   "llm_called": true,
   "llm_skip_reason": null
 }
 ```
 
-LLM을 생략하면 `elapsed_ms`는 `0.0`, `llm_called`는 `false`이며
+`rule_elapsed_ms`는 통합 실행모듈에서 전체 규칙기반 교정을 수행한 시간이고,
+`llm_elapsed_ms`는 프롬프트 구성·LLM 호출·응답 검증을 포함한 LLM 처리 시간이다.
+`elapsed_ms`는 기존 호환성을 위해 유지한 LLM 서버 요청 시간이다. LLM을 생략하면
+`elapsed_ms`와 `llm_elapsed_ms`는 `0.0`, `llm_called`는 `false`이며
 `llm_skip_reason`에 안정적인 생략 사유 코드가 들어간다. 선택 model ID는
 생략 시에도 검증한다. 공급자 URL·인증정보는 실제 호출할 때만 필요하다.
 

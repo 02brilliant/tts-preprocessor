@@ -580,7 +580,7 @@
           <div class="stage-heading">
             <h2 id="stage-1-title">규칙 처리 결과</h2>
             <div class="stage-heading-actions">
-              <div id="stage-1-timing" class="timing">전체 응답시간: -</div>
+              <div id="stage-1-timing" class="timing">규칙기반 처리시간: -</div>
               <button
                 id="stage-1-copy"
                 class="copy-output-button"
@@ -611,7 +611,7 @@
           <div class="stage-heading">
             <h2 id="stage-2-title">LLM 처리 결과</h2>
             <div class="stage-heading-actions">
-              <div id="stage-2-timing" class="timing">전체 응답시간: -</div>
+              <div id="stage-2-timing" class="timing">LLM 처리시간: -</div>
               <button
                 id="stage-2-copy"
                 class="copy-output-button"
@@ -766,7 +766,9 @@
       stage.diffs.forEach((element) => { element.textContent = ""; });
       stage.status.textContent = message;
       stage.status.className = "status";
-      stage.timing.textContent = "전체 응답시간: -";
+      stage.timing.textContent = stageNumber === 1
+        ? "규칙기반 처리시간: -"
+        : "LLM 처리시간: -";
     }
 
     function showStageError(stageNumber, error, fallbackMessage) {
@@ -861,7 +863,6 @@
       );
       setBusy(true);
       const startedAt = performance.now();
-
       try {
         stageElements[1].status.textContent = "선택한 실행모듈 처리 중...";
         stageElements[1].status.className = "status loading";
@@ -895,8 +896,9 @@
           ? "교정 없이 원문을 출력했습니다."
           : "완료";
         stageElements[1].status.className = "status";
-        stageElements[1].timing.textContent =
-          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}`;
+        stageElements[1].timing.textContent = Number.isFinite(data.rule_elapsed_ms)
+          ? `규칙기반 처리시간: ${formatDuration(data.rule_elapsed_ms)}`
+          : `API 응답시간: ${formatDuration(performance.now() - startedAt)}`;
 
         if (!usesLLM) {
           pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리가 완료되었습니다.`;
@@ -929,11 +931,15 @@
           ? "LLM 호출 생략 · 규칙 결과 사용"
           : "완료";
         stageElements[2].status.className = "status";
+        const llmTiming = Number.isFinite(data.llm_elapsed_ms)
+          ? formatDuration(data.llm_elapsed_ms)
+          : "측정값 없음";
         const upstreamTiming = data.llm_called !== false && Number.isFinite(data.elapsed_ms)
-          ? ` · LLM 서버 처리시간: ${formatDuration(data.elapsed_ms)}`
+          ? ` · LLM 서버 요청시간: ${formatDuration(data.elapsed_ms)}`
           : "";
-        stageElements[2].timing.textContent =
-          `전체 응답시간: ${formatDuration(performance.now() - startedAt)}${upstreamTiming}`;
+        stageElements[2].timing.textContent = data.llm_called === false
+          ? "LLM 처리시간: 호출 생략 (0.0 ms)"
+          : `LLM 처리시간: ${llmTiming}${upstreamTiming}`;
         pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리가 완료되었습니다.`;
         pipelineStatusEl.className = "status";
       } catch (error) {
@@ -979,9 +985,9 @@
         pipelineStatusEl.textContent = `${selectedCorrectionLevel}단계 처리에 실패했습니다.`;
         pipelineStatusEl.className = "status error";
       } finally {
-        const elapsed = formatDuration(performance.now() - startedAt);
         if (stageElements[1].timing.textContent.endsWith("-")) {
-          stageElements[1].timing.textContent = `전체 응답시간: ${elapsed}`;
+          stageElements[1].timing.textContent =
+            `API 응답시간: ${formatDuration(performance.now() - startedAt)}`;
         }
         setBusy(false);
       }

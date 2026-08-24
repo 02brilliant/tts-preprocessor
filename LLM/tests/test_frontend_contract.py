@@ -60,6 +60,10 @@ def test_frontend_calls_one_transform_endpoint_for_every_level() -> None:
     assert "setCorrectionLevel(button.dataset.correctionLevel)" in web
     assert 'data.llm_called === false' in web
     assert "LLM 호출 생략 · 규칙 결과 사용" in web
+    assert "data.rule_elapsed_ms" in web
+    assert "data.llm_elapsed_ms" in web
+    assert "규칙기반 처리시간" in web
+    assert "LLM 처리시간" in web
 
 
 def test_frontend_has_stage_colors_legend_and_provenance_rendering() -> None:

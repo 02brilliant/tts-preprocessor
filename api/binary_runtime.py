@@ -266,6 +266,8 @@ def run_integrated_binary(
     normalized_text = payload.get("normalized_text")
     selected_model = payload.get("model")
     elapsed_ms = payload.get("elapsed_ms")
+    rule_elapsed_ms = payload.get("rule_elapsed_ms")
+    llm_elapsed_ms = payload.get("llm_elapsed_ms")
     llm_called = payload.get("llm_called")
     llm_skip_reason = payload.get("llm_skip_reason")
     if (
@@ -276,7 +278,12 @@ def run_integrated_binary(
         or not isinstance(selected_model, str)
         or not selected_model
         or not isinstance(elapsed_ms, (int, float))
+        or not isinstance(rule_elapsed_ms, (int, float))
+        or not isinstance(llm_elapsed_ms, (int, float))
+        or rule_elapsed_ms < 0
+        or llm_elapsed_ms < 0
         or not isinstance(llm_called, bool)
+        or (not llm_called and (elapsed_ms != 0 or llm_elapsed_ms != 0))
         or (not llm_called and not isinstance(llm_skip_reason, str))
         or (llm_called and llm_skip_reason is not None)
     ):
@@ -286,6 +293,8 @@ def run_integrated_binary(
         "speech_text": speech_text,
         "model": selected_model,
         "elapsed_ms": float(elapsed_ms),
+        "rule_elapsed_ms": float(rule_elapsed_ms),
+        "llm_elapsed_ms": float(llm_elapsed_ms),
         "llm_called": llm_called,
         "llm_skip_reason": llm_skip_reason,
     }
