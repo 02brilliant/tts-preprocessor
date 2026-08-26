@@ -390,7 +390,7 @@ decimal과 comma-decimal을 공통 Sino decimal renderer로 읽는다. `kHz`와
 plain/comma 표기 여부와 무관하게 동일하게 허용하므로
 `10000.5kg -> 만쩜오 킬로그램`이다.
 
-exact compound unit `Kbps`, `kbps`, `Mbps`, `mbps`, `Gbps`, `gbps`,
+exact compound unit `bps`, `Kbps`, `kbps`, `Mbps`, `mbps`, `Gbps`, `gbps`,
 `Tbps`, `tbps`, `rpm`, `fps`, `ppm`, `ppb`, `dBi`도
 정상 decimal/comma-decimal을 full-claim한다. compound slash unit의 기존
 unsigned/sign 정책과 URL/path/unsafe-tail 보호는 바꾸지 않는다.
@@ -4856,10 +4856,12 @@ Simple Unit Inventory:
 | `MHz`, `Mhz`, `mhz` | `메가헤르츠` | numeric prefix 필요, uppercase `M` |
 | `GHz`, `Ghz`, `ghz` | `기가헤르츠` | numeric prefix 필요 |
 | `THz`, `Thz`, `thz` | `테라헤르츠` | numeric prefix 필요 |
-| `Gbps`, `gbps` | `기가비피에스` | numeric prefix 필요 |
-| `Kbps`, `kbps` | `킬로비피에스` | numeric prefix 필요 |
-| `Mbps`, `mbps` | `메가비피에스` | numeric prefix 필요 |
-| `Tbps`, `tbps` | `테라비피에스` | numeric prefix 필요 |
+| `Gbps`, `gbps` | `기가비피에스` | numeric prefix 필요. 붙임 또는 ASCII 공백 한 칸 |
+| `Kbps`, `kbps` | `킬로비피에스` | numeric prefix 필요. 붙임 또는 ASCII 공백 한 칸 |
+| `Mbps`, `mbps` | `메가비피에스` | numeric prefix 필요. 붙임 또는 ASCII 공백 한 칸 |
+| `Tbps`, `tbps` | `테라비피에스` | numeric prefix 필요. 붙임 또는 ASCII 공백 한 칸 |
+| `bps` | `비피에스` | numeric prefix 필요. lexicalized compound. 붙임 또는 ASCII 공백 한 칸. `bp`/`BP` 베이시스 포인트와 구분 |
+| `bp`, `BP` | `베이시스 포인트` | numeric prefix 필요. 숫자와 단위 사이 ASCII 공백, 소수, 부호, 한국어 큰수 핵, 구간은 기존 simple unit과 같다. `bps`는 전송률 표면이므로 이 단위로 읽지 않는다. 한글 문맥 제외 |
 | `도` | `도` | numeric prefix 필요 |
 
 Special Unit Inventory:
@@ -5030,13 +5032,13 @@ Slash Compound Unit Reading Inventory:
 | `kg/m3` | `세제곱미터당 {number} 킬로그램` | density family |
 | `MB/s` | `초당 {number} 메가바이트` | data throughput family |
 | `GB/s` | `초당 {number} 기가바이트` | data throughput family |
-| `Mbps` | `{number} 메가비피에스` | lexicalized compound, slash 없음 |
-| `Gbps` | `{number} 기가비피에스` | lexicalized compound, slash 없음 |
-| `bps` | `{number} 비피에스` | lexicalized compound, slash 없음 |
-| `rpm`, `㏘` | `{number} 알피엠` | lexicalized compound |
-| `fps` | `{number} 에프피에스` | lexicalized compound |
-| `ppm` | `{number} 피피엠` | lexicalized compound |
-| `dBi` | `{number} 디비아이` | lexicalized compound |
+| `Mbps` | `{number} 메가비피에스` | lexicalized compound, slash 없음, 붙임 또는 ASCII 공백 한 칸 |
+| `Gbps` | `{number} 기가비피에스` | lexicalized compound, slash 없음, 붙임 또는 ASCII 공백 한 칸 |
+| `bps` | `{number} 비피에스` | lexicalized compound, slash 없음, 붙임 또는 ASCII 공백 한 칸 |
+| `rpm`, `㏘` | `{number} 알피엠` | lexicalized compound, 붙임 또는 ASCII 공백 한 칸 |
+| `fps` | `{number} 에프피에스` | lexicalized compound, 붙임 또는 ASCII 공백 한 칸 |
+| `ppm` | `{number} 피피엠` | lexicalized compound, 붙임 또는 ASCII 공백 한 칸 |
+| `dBi` | `{number} 디비아이` | lexicalized compound, 붙임 또는 ASCII 공백 한 칸 |
 
 원칙:
 
@@ -5127,7 +5129,11 @@ generic Hangul suffix fallback.
   `제3항 -> 제 삼항`.
 - `분기`처럼 기존 붙임형 서수는 붙여 쓴다. `제1분기 -> 제 일분기`.
 - `제N+단위`와 `제 N+단위` 모두 같은 canonical로 처리한다.
-- ASCII/code-like prefix나 영숫자 꼬리는 이 collapse 대상이 아니다.
+- 붙여 쓴 ASCII prefix `A제5차`와 하이픈/미등록 코드 꼬리 `제5G`는 이 collapse 대상이 아니다. 한글 단위 뒤 ASCII는 단위를 읽고 꼬리를 남긴다.
+- `제` 앞에 한글/영문/기호가 붙어 있으면 이 서수 규칙이 아니다. `A제 5차`는 `A제`와 `5차`를 나눠 뒤 숫자만 일반 정책을 따른다. 붙여 쓴 `A제5차`는 한 토큰으로 보존한다.
+- 등록 Latin 단위가 숫자 뒤에 오면 `제`는 원문 위치에 남기고 숫자+단위는 기존 단위 규칙을 따른다. `제10kg -> 제십 킬로그램`.
+- 소수 `제2.5문항`과 한글 단위 뒤 ASCII 꼬리 `제2문항abc`는 숫자만 한자어로 읽고 꼬리는 남긴다.
+- 단위 없는 `제2`, `제2.5`도 한자어로 읽는다.
 - unsupported suffix는 즉시 Absolute Preserve하지 않고 generic numeric+suffix owner 후보로 평가할 수 있다.
 - unsafe tail, ASCII identifier-left context, invalid comma는 Absolute Preserve 또는 Terminal Fallback Preserve로 처리한다.
 
@@ -5204,9 +5210,18 @@ canonical output:
 2대 -> 두 대
 제2대 -> 제 이대
 A제5차 -> A제5차
-A제 5차 -> A제 5차
-제2문항abc -> 제2문항abc
-제2문항A -> 제2문항A
+A제 5차 -> A제 오차
+A제 2문항 -> A제 두 문항
+제2문항abc -> 제 이문항abc
+제2문항A -> 제 이문항A
+제2.5문항 -> 제 이쩜오문항
+제 2.5문항 -> 제 이쩜오문항
+제2 -> 제 이
+제10kg -> 제십 킬로그램
+제10bp -> 제십 베이시스 포인트
+제10bps -> 제십 비피에스
+제 10kg -> 제 십 킬로그램
+제 10bps -> 제 십 비피에스
 제2-문항 -> 제2-문항
 제5G -> 제5G
 제5abc -> 제5abc
@@ -10873,8 +10888,8 @@ class LexiconEntry:
 | `mHz`, `kHz`, `KHz`, `khz`, `㎑`, `MHz`, `Mhz`, `mhz`, `㎒`, `GHz`, `Ghz`, `ghz`, `㎓`, `THz`, `Thz`, `thz`, `㎔` | 밀리헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 킬로헤르츠 / 메가헤르츠 / 메가헤르츠 / 메가헤르츠 / 메가헤르츠 / 기가헤르츠 / 기가헤르츠 / 기가헤르츠 / 기가헤르츠 / 테라헤르츠 / 테라헤르츠 / 테라헤르츠 / 테라헤르츠 | numeric prefix required; prefix case-sensitive |
 | `dB`, `㏈` | 데시벨 | numeric prefix required |
 | `dBm` | 디비엠 | numeric prefix required |
-| `dBi` | 디비아이 | numeric prefix required |
-| `ppm` | 피피엠 | numeric prefix required |
+| `dBi` | 디비아이 | numeric prefix required; attached or one ASCII space |
+| `ppm` | 피피엠 | numeric prefix required; attached or one ASCII space |
 | `ppb` | 피피비 | numeric prefix required |
 | `ppt` | 피피티 | numeric prefix required, file format collision guard |
 
@@ -10887,6 +10902,7 @@ class LexiconEntry:
 | `K` | 켈빈 | numeric prefix required, single-letter strict |
 | `°` | 도 | signed degree / numeric prefix required |
 | `%`, `％` | 퍼센트 | numeric prefix required |
+| `bp`, `BP` | 베이시스 포인트 | numeric prefix required; Hangul-context excluded; `bps` is not this unit |
 | `‰` | 퍼밀 | numeric prefix required |
 | `‱` | 만분율 | profile required |
 
@@ -11253,11 +11269,11 @@ full consume 실패 후 raw residue 유지
 
 | 입력 | reading template | 조건 |
 |---|---|---|
-| `bps` | {n} 비피에스 | numeric prefix required, lexicalized |
-| `Kbps`, `kbps` | {n} 킬로비피에스 | numeric prefix required, lexicalized |
-| `Mbps`, `mbps` | {n} 메가비피에스 | numeric prefix required, lexicalized |
-| `Gbps`, `gbps` | {n} 기가비피에스 | numeric prefix required, lexicalized |
-| `Tbps`, `tbps` | {n} 테라비피에스 | numeric prefix required, lexicalized |
+| `bps` | {n} 비피에스 | numeric prefix required, lexicalized; attached or one ASCII space |
+| `Kbps`, `kbps` | {n} 킬로비피에스 | numeric prefix required, lexicalized; attached or one ASCII space |
+| `Mbps`, `mbps` | {n} 메가비피에스 | numeric prefix required, lexicalized; attached or one ASCII space |
+| `Gbps`, `gbps` | {n} 기가비피에스 | numeric prefix required, lexicalized; attached or one ASCII space |
+| `Tbps`, `tbps` | {n} 테라비피에스 | numeric prefix required, lexicalized; attached or one ASCII space |
 | `B/s` | 초당 {n} 바이트 | numeric prefix required, slash throughput |
 | `KB/s`, `Kb/s`, `kb/s` | 초당 {n} 킬로바이트 | numeric prefix required, slash throughput project reading |
 | `MB/s`, `Mb/s`, `mb/s` | 초당 {n} 메가바이트 | numeric prefix required, slash throughput project reading |
@@ -11978,7 +11994,7 @@ EURA 300 -> EURA 300
 `MB`, `GB`, `PB`, 전력 계열 `W`, `µW`, `mW`, `kW`, `MW`, `GW`, `TW`,
 `Wh`, `mWh`, `kWh`, `MWh`, `GWh`, `TWh`, 전압 계열 `µV`, `mV`, `kV`,
 `nV`, `MV`, 압력 계열 `Pa`, `hPa`, `kPa`, `mPa`, `MPa`, `GPa`, 주파수
-계열 `Hz`, `hz`, `mHz`, `kHz`, `MHz`, `GHz`, `THz`, 그리고 `Kbps`,
+계열 `Hz`, `hz`, `mHz`, `kHz`, `MHz`, `GHz`, `THz`, 그리고 `bps`, `Kbps`,
 `Mbps`, `Gbps`, `Tbps`는 numeric prefix가
 있을 때만 변환한다. 정수, valid comma, 소수를 허용한다. 전력
 simple-unit의 숫자와 단위 사이는 붙이거나 ASCII space 한 칸을 둘 수
@@ -12010,6 +12026,19 @@ token preserve다.
 2.5Pa -> 이쩜오 파스칼
 10Kbps -> 십 킬로비피에스
 2Tbps -> 이 테라비피에스
+10bps -> 십 비피에스
+10 bps -> 십 비피에스
+10Mbps -> 십 메가비피에스
+10 Mbps -> 십 메가비피에스
++10 Mbps -> 플러스 십 메가비피에스
+10~20 Mbps -> 십에서 이십 메가비피에스
+60 fps -> 육십 에프피에스
+10 rpm -> 십 알피엠
+제10bps -> 제십 비피에스
+10 in -> 10 in
+10 km / h -> 10 km / h
+10bp -> 십 베이시스 포인트
+25 BP -> 이십오 베이시스 포인트
 5Hzabc -> 5Hzabc
 3MWtest -> 3MWtest
 등록된 ASCII-letter 단위 바로 뒤에 `^2` 또는 `^3`이 붙으면 같은 단위
@@ -12386,9 +12415,16 @@ independent supported owners continue.
 
 Prefixed ordinal surfaces are full-claimed by `numeric_suffix` and render a
 generated space after the original `제`: `제5차 -> 제 오차`,
-`제62회 -> 제 육십이회`, and `제 15권 -> 제 십오권`. Invalid or unsafe
-ordinal-like tokens preserve atomically rather than leaking an internal number
-rewrite.
+`제62회 -> 제 육십이회`, and `제 15권 -> 제 십오권`. The prefix must be a
+free-standing `제`; a Hangul word that merely ends in `제` is not an ordinal
+prefix, so `이제 10년` and `어제 10개` follow ordinary counter/number reading.
+Latin or digit glue such as `A제5차` is not this ordinal rule and stays
+atomic. A spaced follower such as `A제 5차` leaves `A제` and reads `5차`
+by the ordinary number/counter policy, `A제 오차`. Decimal ordinals and
+safe Hangul-unit ASCII tails are read, e.g. `제2.5문항 -> 제 이쩜오문항`,
+`제2문항abc -> 제 이문항abc`. Attached registered Latin units keep `제` and
+follow the unit owner: `제10kg -> 제십 킬로그램`. Hyphenated or
+unregistered code-like tails such as `제2-문항` and `제5G` still preserve.
 
 An attached approximate marker remains attached to its numeric reading. The
 large-unit owner consumes the compact mixed core, so

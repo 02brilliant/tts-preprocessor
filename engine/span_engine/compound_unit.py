@@ -8,6 +8,13 @@ from engine.span_engine.amount_reading import (
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.numeric_reading import read_number_text
+from engine.span_engine.sign_aliases import is_signed_numeric_sign
+from engine.span_engine.signed_numeric import (
+    SIGNED_OWNER_POLICIES,
+    apply_sign_profile,
+    parse_signed_numeric_core,
+)
+from engine.span_engine.units import is_free_standing_je_before
 
 COMPOUND_SLASH_UNIT_READINGS: dict[str, str] = {
     "km/h": "시속 {number} 킬로미터",
@@ -54,6 +61,7 @@ for _unit, _reading in list(COMPOUND_SLASH_UNIT_READINGS.items()):
     if "/" in _unit:
         COMPOUND_SLASH_UNIT_READINGS.setdefault(_unit.replace("/", "／"), _reading)
 COMPOUND_EXACT_UNIT_READINGS: dict[str, str] = {
+    "bps": "{number} 비피에스",
     "Kbps": "{number} 킬로비피에스",
     "kbps": "{number} 킬로비피에스",
     "Mbps": "{number} 메가비피에스",
@@ -67,6 +75,10 @@ COMPOUND_EXACT_UNIT_READINGS: dict[str, str] = {
     "ppm": "{number} 피피엠",
     "ppb": "{number} 피피비",
     "dBi": "{number} 디비아이",
+}
+COMPOUND_EXACT_UNIT_NAMES: dict[str, str] = {
+    unit: template.replace("{number} ", "").strip()
+    for unit, template in COMPOUND_EXACT_UNIT_READINGS.items()
 }
 
 _ORDERED_COMPOUND_UNITS = sorted(
@@ -153,10 +165,27 @@ def compound_exact_unit_reading(unit: str, numeric: str) -> str | None:
     template = COMPOUND_EXACT_UNIT_READINGS.get(unit)
     if template is None:
         return None
-    number_reading = read_number_text(numeric)
+    policy = SIGNED_OWNER_POLICIES["simple_unit"]
+    core = parse_signed_numeric_core(
+        numeric,
+        allow_plus=policy.accepts_plus,
+        allow_minus=policy.accepts_minus,
+        minus_aliases=policy.minus_aliases,
+        numeric_forms=policy.numeric_forms,
+    )
+    if core is None:
+        return None
+    number_reading = read_number_text(core.number.raw)
     if number_reading is None:
         return None
-    return template.format(number=number_reading)
+    signed_reading = apply_sign_profile(
+        number_reading,
+        core.sign_kind,
+        sign_profile=policy.sign_profile,
+    )
+    if signed_reading is None:
+        return None
+    return template.format(number=signed_reading)
 
 
 def scan_compound_slash_unit_candidates(
@@ -196,7 +225,10 @@ def scan_compound_exact_unit_candidates(
     candidates: list[SurfaceCandidate] = []
     index = 0
     while index < len(raw_text):
-        if not _is_ascii_digit(raw_text[index]):
+        if not (
+            _is_ascii_digit(raw_text[index])
+            or is_signed_numeric_sign(raw_text[index])
+        ):
             index += 1
             continue
         if is_url_or_path_context(raw_text, index):
@@ -319,7 +351,9 @@ def _match_compound_exact_candidate(
             continue
         if _span_overlaps_excluded_range(span, excluded_ranges):
             continue
-        numeric = raw_text[start : span.end - len(unit)]
+        numeric = raw_text[start : span.end - len(unit)].rstrip(" ")
+        if not numeric:
+            continue
         reading = compound_exact_unit_reading(unit, numeric)
         if reading is None:
             continue
@@ -356,6 +390,10 @@ def _scan_compound_span(raw_text: str, start: int, unit: str) -> SourceSpan | No
 
 def _consume_numeric(raw_text: str, start: int, unit: str) -> int | None:
     index = start
+    if index < len(raw_text) and is_signed_numeric_sign(raw_text[index]):
+        if index + 1 < len(raw_text) and is_signed_numeric_sign(raw_text[index + 1]):
+            return None
+        index += 1
     integer_end = _consume_integer(raw_text, index)
     if integer_end is None:
         return None
@@ -429,7 +467,8 @@ def _valid_boundaries(raw_text: str, span: SourceSpan) -> bool:
         if prev_char.isascii() and prev_char.isalnum():
             return False
         if "\uac00" <= prev_char <= "\ud7a3":
-            return False
+            if not is_free_standing_je_before(raw_text, span.start):
+                return False
         if prev_char in _BLOCKING_PREV_CHARS:
             return False
     return True
@@ -445,6 +484,7 @@ def _span_overlaps_excluded_range(
 
 
 __all__ = [
+    "COMPOUND_EXACT_UNIT_NAMES",
     "COMPOUND_EXACT_UNIT_READINGS",
     "COMPOUND_SLASH_UNIT_READINGS",
     "compound_exact_unit_reading",

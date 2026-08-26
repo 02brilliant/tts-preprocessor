@@ -246,7 +246,7 @@ def test_hyphen_code_and_single_letter_alnum_interactions(
         ("제2줄", "제 이줄"),
         ("제2칸", "제 이칸"),
         ("A제5차", "A제5차"),
-        ("A제 5차", "A제 5차"),
+        ("A제 5차", "A제 오차"),
         ("제5G", "제5G"),
         ("제5abc", "제5abc"),
         ("제5-차", "제5-차"),

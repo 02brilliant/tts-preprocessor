@@ -360,9 +360,6 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             index += 1
             continue
         raw_number = raw_text[number_start:number_end]
-        if _has_invalid_spaced_ordinal_prefix(raw_text, number_start):
-            index = number_end
-            continue
         counter_start = _consume_optional_ascii_space(raw_text, number_end)
         has_space_before_counter = counter_start != number_end
         for counter in COUNTERS_BY_LENGTH:
@@ -913,17 +910,6 @@ def _consume_optional_ascii_space(raw_text: str, start: int) -> int:
     if start < len(raw_text) and raw_text[start] == " ":
         return start + 1
     return start
-
-
-def _has_invalid_spaced_ordinal_prefix(raw_text: str, number_start: int) -> bool:
-    if not (
-        number_start > 1
-        and raw_text[number_start - 1] == " "
-        and raw_text[number_start - 2] == "제"
-    ):
-        return False
-    prefix_start = number_start - 2
-    return prefix_start > 0 and not raw_text[prefix_start - 1].isspace()
 
 
 def _is_ascii_digit(char: str) -> bool:

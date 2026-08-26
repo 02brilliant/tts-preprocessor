@@ -910,9 +910,6 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
     if _starts_compact_mixed_korean_arabic_numeric(raw_text, span.end):
         return False
 
-    if _has_invalid_spaced_ordinal_prefix(raw_text, span.start):
-        return False
-
     if raw_text.startswith("대", span.end) and _consume_ascii_digits(raw_text, span.end + 1) > span.end + 1:
         return _is_first_number_in_compact_dae_relation(raw_text, span)
     if _is_hangul_embedded_number_context(raw_text, span):
@@ -1078,17 +1075,6 @@ def _consume_ascii_digits(raw_text: str, start: int) -> int:
     while index < len(raw_text) and raw_text[index].isdigit():
         index += 1
     return index
-
-
-def _has_invalid_spaced_ordinal_prefix(raw_text: str, number_start: int) -> bool:
-    if not (
-        number_start > 1
-        and raw_text[number_start - 1] == " "
-        and raw_text[number_start - 2] == "제"
-    ):
-        return False
-    prefix_start = number_start - 2
-    return prefix_start > 0 and not raw_text[prefix_start - 1].isspace()
 
 
 def _is_complete_hangul(char: str | None) -> bool:

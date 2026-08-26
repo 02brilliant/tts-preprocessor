@@ -32,16 +32,16 @@ def test_inline_json_shell_does_not_preserve_whole_korean_paragraph() -> None:
 def test_prefixed_ordinal_invalid_candidates_do_not_preserve_whole_paragraph() -> None:
     text = (
         "법제처 검토 자료에는 제2문항과 제 15권이 들어 있습니다. "
-        "하지만 제2.5문항, 제2-문항, 제2문항abc, A제 2문항은 preserve되어야 합니다."
+        "하지만 제2.5문항, 제2-문항, 제2문항abc, A제 2문항도 함께 확인합니다."
     )
     out = transform(text)
     assert out != text
     assert "제 이문항" in out
     assert "제 십오권" in out
-    assert "제2.5문항" in out
+    assert "제 이쩜오문항" in out
     assert "제2-문항" in out
-    assert "제2문항abc" in out
-    assert "A제 2문항" in out
+    assert "제 이문항abc" in out
+    assert "A제 두 문항" in out
 
 
 def test_currency_invalid_candidates_do_not_preserve_whole_paragraph() -> None:
@@ -158,7 +158,7 @@ PROBLEM_PARAGRAPH_4 = (
     ("paragraph", "expected_substrings"),
     [
         (PROBLEM_PARAGRAPH_1, ["이십오도", "피에이치 칠쩜사", '{"text":"25℃"}']),
-        (PROBLEM_PARAGRAPH_2, ["제 이차", "제 십오권", "제2.5문항"]),
+        (PROBLEM_PARAGRAPH_2, ["제 이차", "제 십오권", "제 이쩜오문항"]),
         (PROBLEM_PARAGRAPH_3, ["만 이천삼백 원", "이십오쩜구구 달러", "300EURabc"]),
         (PROBLEM_PARAGRAPH_4, ["삼분의 일", "시속 구십 킬로미터", "피에이치 칠쩜사"]),
     ],

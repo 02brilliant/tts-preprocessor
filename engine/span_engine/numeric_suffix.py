@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from engine.span_engine.compound_unit import starts_with_supported_compound_exact_unit
 from engine.span_engine.counter import SUPPORTED_COUNTERS
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.numeric_reading import (
     read_number_text,
     read_sino_time_suffix_number_text,
 )
+from engine.span_engine.units import starts_with_supported_unit
 
 ORDINAL_ONLY_SUFFIXES = frozenset({"차", "과"})
 PREFIXED_ONLY_EXTRA_SUFFIXES = frozenset(
@@ -54,8 +56,6 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 continue
             suffix_end = suffix_start + len(suffix)
             number = raw_text[number_start:number_end]
-            if ordinal_prefix_span is not None and "." in number:
-                continue
             boundary_start = (
                 ordinal_prefix_span.start
                 if ordinal_prefix_span is not None
@@ -80,7 +80,13 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                         )
                     )
                     break
-                continue
+                next_char = raw_text[suffix_end] if suffix_end < len(raw_text) else None
+                if not (
+                    next_char is not None
+                    and next_char.isascii()
+                    and next_char.isalnum()
+                ):
+                    continue
             reading = (
                 read_sino_time_suffix_number_text(number)
                 if ordinal_prefix_span is None and suffix in {"분", "초"}
@@ -155,11 +161,9 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
         ):
             number = raw_text[number_start:number_end]
             next_char = raw_text[number_end] if number_end < len(raw_text) else None
-            code_like_tail = next_char is not None and (
-                (next_char.isascii() and next_char.isalnum())
-                or next_char in {",", ".", "-", "_", "/"}
-            )
-            if matched_suffix or "." in number or code_like_tail:
+            if _followed_by_registered_latin_unit(raw_text, number_end):
+                pass
+            elif _should_preserve_unclaimed_prefixed_ordinal(matched_suffix, next_char):
                 preserve_end = _prefixed_ordinal_like_token_end(raw_text, number_start)
                 if preserve_end is not None:
                     candidates.append(
@@ -302,6 +306,26 @@ def _consume_optional_ascii_space(raw_text: str, start: int) -> int:
     if start < len(raw_text) and raw_text[start] == " ":
         return start + 1
     return start
+
+
+def _followed_by_registered_latin_unit(raw_text: str, number_end: int) -> bool:
+    unit_start = _consume_optional_ascii_space(raw_text, number_end)
+    rest = raw_text[unit_start:]
+    return starts_with_supported_unit(rest) or starts_with_supported_compound_exact_unit(
+        rest
+    )
+
+
+def _should_preserve_unclaimed_prefixed_ordinal(
+    matched_suffix: bool, next_char: str | None
+) -> bool:
+    if matched_suffix:
+        return True
+    if next_char is None:
+        return False
+    if next_char.isascii() and next_char.isalnum():
+        return True
+    return next_char in {",", "-", "_", "/"}
 
 
 def _ordinal_prefix_span(raw_text: str, number_start: int) -> SourceSpan | None:

@@ -606,6 +606,6 @@ def test_prefixed_numeric_suffix_ordinals_follow_attached_policy(
     assert transform(text) == expected
 
 
-@pytest.mark.parametrize("text", ["A제5차", "A제 5차", "제5G", "제5abc", "제5-차"])
+@pytest.mark.parametrize("text", ["A제5차", "제5G", "제5abc", "제5-차"])
 def test_prefixed_numeric_suffix_unsafe_forms_preserve(text: str) -> None:
     assert transform(text) == text

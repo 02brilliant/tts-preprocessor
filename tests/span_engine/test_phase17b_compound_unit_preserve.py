@@ -10,9 +10,7 @@ from engine.span_engine import transform
     [
         "90㎞ / h",
         "3m / sec",
-        "60 fps",
-        "10 Mbps",
-        "9 dBi",
+        "10bpsabc",
         "-10MB/s",
         "+10MB/s",
         "010MB/s",

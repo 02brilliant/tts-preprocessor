@@ -52,7 +52,7 @@ _SIMPLE_UNIT = (
     r"mL|ml|ML|kL|kl|dL|dl|GPa|kPa|hPa|mPa|MPa|Pa|"
     r"GWh|TWh|mWh|MWh|kWh|Wh|mW|MW|kW|kw|GW|TW|W|"
     r"kV|kv|nV|mV|MV|"
-    r"bits|bit|msec|nsec|usec|secs|sec|Sec|ms|us|ns|ps|min|um|nm|mm|cm|km|"
+    r"bits|bit|msec|nsec|usec|secs|sec|Sec|ms|us|ns|ps|BP|bp|min|um|nm|mm|cm|km|"
     r"ng|pg|mg|kg|Hz|hz|dB|KB|MB|GB|TB|PB|ft|in|m|g|L|%)"
 )
 _COMPOUND_UNIT = (
@@ -61,7 +61,7 @@ _COMPOUND_UNIT = (
     r"(?:h|hr|min|s|sec|L|l|ℓ|dL)|㎧)"
 )
 _EXACT_COMPOUND = (
-    r"(?:Kbps|kbps|Mbps|mbps|Gbps|gbps|Tbps|tbps|rpm|fps|ppm|ppb|dBi)"
+    r"(?:Kbps|kbps|Mbps|mbps|Gbps|gbps|Tbps|tbps|bps|rpm|fps|ppm|ppb|dBi)"
 )
 _CURRENCY_PREFIX = r"[$＄﹩€₩￦¥￥£]"
 _CURRENCY_SUFFIX = r"(?:USD|EUR|KRW|JPY|GBP|원|[$＄﹩€₩￦¥￥£])"
@@ -78,13 +78,14 @@ _QUANTIFIED_KOREAN_UNIT = rf"(?:수십|수백|수천){_NUMBER_UNIT_GAP}(?:{_SIMP
 _TWO_BLOCK_HYPHEN_CODE = rf"[A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ]+-{_DECIMAL}"
 _SPACED_FREQUENCY = rf"{_DECIMAL}\s+(?:Hz|hz)"
 _PH_SUFFIX_POSITION = rf"{_DECIMAL}\s+pH"
-_RANGE = rf"{_DECIMAL}[~∼～〜]{_DECIMAL}(?:{_SIMPLE_UNIT}|[월일년층호동원도])?"
+_RANGE = rf"{_SIGN}{_DECIMAL}[~∼～〜]{_DECIMAL}(?:[ ]?(?:{_EXACT_COMPOUND}|{_SIMPLE_UNIT}|[월일년층호동원도]))?"
+_HYPHEN_RANGE_UNIT = rf"{_SIGN}{_DECIMAL}[-]{_DECIMAL}[ ]?(?:{_EXACT_COMPOUND}|{_SIMPLE_UNIT})"
 _DURATION = rf"(?:{_INTEGER}(?:\.\d+)?(?:{_SLASH}{_INTEGER})?시간(?:\s*{_INTEGER}(?:\.\d+)?(?:{_SLASH}{_INTEGER})?분)?|{_INTEGER}(?:\.\d+)?(?:{_SLASH}{_INTEGER})?분)"
 _PH = rf"pH\s*{_DECIMAL}"
 _FRACTION = rf"{_SIGN}{_INTEGER}{_SLASH}{_INTEGER}"
 _PERCENT_POINT = rf"{_SIGN}(?:{_INTEGER}{_SLASH}{_INTEGER}|{_DECIMAL}){_PERCENT}p"
 _PERCENT_TOKEN = rf"{_DECIMAL}{_PERCENT}"
-_UNIT_TOKEN = rf"{_DECIMAL}{_NUMBER_UNIT_GAP}(?:{_TEMP_UNIT}|{_SIMPLE_UNIT}|{_EXACT_COMPOUND})"
+_UNIT_TOKEN = rf"{_SIGN}{_DECIMAL}{_NUMBER_UNIT_GAP}(?:{_TEMP_UNIT}|{_EXACT_COMPOUND}|{_SIMPLE_UNIT})"
 _COMPOUND_TOKEN = rf"{_DECIMAL}{_NUMBER_UNIT_GAP}{_COMPOUND_UNIT}"
 _CURRENCY_TOKEN = rf"(?:{_CURRENCY_PREFIX}{_NUMBER_UNIT_GAP}{_DECIMAL}|{_DECIMAL}{_NUMBER_UNIT_GAP}{_CURRENCY_SUFFIX}|{_CURRENCY_CODE}{_NUMBER_UNIT_GAP}{_DECIMAL})"
 _SIGNED_DECIMAL_BLOCK = rf"[+\-]?{_DECIMAL}"
@@ -105,6 +106,7 @@ _STANDALONE_PATTERNS = tuple(
         _UNIT_TOKEN,
         _COMPOUND_TOKEN,
         rf"{_RANGE}(?:만원|억원|조원|경원|만|억|조|경)?",
+        _HYPHEN_RANGE_UNIT,
         _DURATION,
         _TIME,
         _DATE,

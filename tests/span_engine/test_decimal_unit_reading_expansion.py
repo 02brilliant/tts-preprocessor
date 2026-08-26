@@ -75,7 +75,6 @@ def test_signed_decimal_counters_are_claimed_atomically(
         "1..5명",
         "1e-3kg",
         "1.5/2.5",
-        "제1.5가지",
         "4A가지",
     ],
 )

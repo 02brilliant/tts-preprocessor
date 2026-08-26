@@ -147,7 +147,7 @@ def test_prefixed_ordinal_wins_over_counter_but_plain_counter_remains_counter():
     text = (
         "ordinal 검증입니다. 제2문항과 제 15권은 prefixed ordinal로 처리합니다. "
         "2문항, 40문항, 101문항은 plain counter로 처리합니다. "
-        "제2문항abc와 제2.5문항은 preserve되어야 합니다. "
+        "제2문항abc와 제2.5문항도 한자어로 읽습니다. "
         "주변 pH 7.4도 처리해야 합니다."
     )
     assert_precedence_case(
@@ -159,6 +159,8 @@ def test_prefixed_ordinal_wins_over_counter_but_plain_counter_remains_counter():
             "사십 문항",
             "백일 문항",
             "피에이치 칠쩜사",
+            "제 이문항abc",
+            "제 이쩜오문항",
         ],
-        expected_preserved=["제2문항abc", "제2.5문항"],
+        expected_preserved=[],
     )

@@ -28,6 +28,7 @@ from engine.span_engine.signed_numeric import (
     render_signed_numeric,
 )
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.compound_unit import COMPOUND_EXACT_UNIT_NAMES
 from engine.span_engine.units import (
     SIMPLE_UNIT_READINGS,
     SPECIAL_UNIT_READINGS,
@@ -72,9 +73,15 @@ HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS = {
 }
 _SPACED_KOREAN_SUFFIXES = KOREAN_RANGE_SUFFIXES - SPACELESS_COUNTERS
 _UNITS_BY_LENGTH = sorted(
-    {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}, key=len, reverse=True
+    {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS, **COMPOUND_EXACT_UNIT_NAMES},
+    key=len,
+    reverse=True,
 )
-_UNIT_READINGS = {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}
+_UNIT_READINGS = {
+    **SIMPLE_UNIT_READINGS,
+    **SPECIAL_UNIT_READINGS,
+    **COMPOUND_EXACT_UNIT_NAMES,
+}
 _HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIXES_BY_LENGTH = sorted(
     HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS, key=len, reverse=True
 )
@@ -709,10 +716,16 @@ def hyphen_range_compatible_korean_suffixes_by_length() -> list[str]:
 def _unit_candidate(
     raw_text: str, left_start: int, right_end: int, left: str, right: str
 ) -> SurfaceCandidate | None:
+    suffix_start = right_end
+    had_space = suffix_start < len(raw_text) and raw_text[suffix_start] in {" ", "\t"}
+    if had_space:
+        suffix_start += 1
     for unit in _UNITS_BY_LENGTH:
-        if not raw_text.startswith(unit, right_end):
+        if had_space and not unit_allows_space_before(unit):
             continue
-        full_end = right_end + len(unit)
+        if not raw_text.startswith(unit, suffix_start):
+            continue
+        full_end = suffix_start + len(unit)
         full_span = SourceSpan(left_start, full_end)
         if not _valid_after_surface(raw_text, full_span):
             return _preserve_candidate(

@@ -206,6 +206,8 @@ def test_character_ja_spacing_invalid_and_protected_boundaries(source: str) -> N
         assert result == "제 삼 자"
     elif source == "제 3 자":
         assert result == "제 삼 자"
+    elif source == "제3자abc":
+        assert result == "제 삼자abc"
     else:
         assert result == source
 

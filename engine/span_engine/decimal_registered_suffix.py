@@ -21,7 +21,7 @@ from engine.span_engine.signed_numeric import (
     parse_signed_numeric_core,
     render_signed_numeric,
 )
-from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES
+from engine.span_engine.numeric_suffix import NUMERIC_SUFFIXES, has_ordinal_je_prefix
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
 from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
@@ -235,6 +235,8 @@ def _valid_left_boundary(raw_text: str, start: int) -> bool:
     prev_char = raw_text[start - 1] if start > 0 else None
     if prev_char is None:
         return True
+    if has_ordinal_je_prefix(raw_text, start):
+        return False
     if prev_char.isascii() and prev_char.isalnum():
         return False
     if "\uac00" <= prev_char <= "\ud7a3":

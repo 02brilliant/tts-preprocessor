@@ -119,6 +119,8 @@ SIMPLE_UNIT_READINGS: dict[str, str] = {
     "%": "퍼센트",
     "％": "퍼센트",
     "﹪": "퍼센트",
+    "bp": "베이시스 포인트",
+    "BP": "베이시스 포인트",
 }
 
 _NATURAL_CARET_POWER_BASE_READINGS = {
@@ -273,6 +275,8 @@ HANGUL_CONTEXT_UNIT_EXCLUSIONS: frozenset[str] = frozenset(
         "Sec",
         "mm2",
         "mm3",
+        "bp",
+        "BP",
     }
 )
 # English preposition `in` is only safe when the number is attached.
@@ -387,6 +391,7 @@ _DATA_RATE_NUMERATOR_PREFIXES = frozenset(
 )
 _COMPOUND_EXACT_UNIT_SURFACES = frozenset(
     {
+        "bps",
         "Kbps",
         "kbps",
         "Mbps",
@@ -655,7 +660,13 @@ def scan_korean_numeric_unit_candidates(raw_text: str) -> list[SurfaceCandidate]
         parse_mixed_integer_core_at,
     )
 
-    inventory = {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS}
+    from engine.span_engine.compound_unit import COMPOUND_EXACT_UNIT_NAMES
+
+    inventory = {
+        **SIMPLE_UNIT_READINGS,
+        **SPECIAL_UNIT_READINGS,
+        **COMPOUND_EXACT_UNIT_NAMES,
+    }
     ordered_units = sorted(inventory, key=len, reverse=True)
     candidates: list[SurfaceCandidate] = []
     index = 0
@@ -1115,10 +1126,28 @@ def parse_unit_candidate(raw_text: str, candidate: SurfaceCandidate) -> str | No
     return parsed[2] if parsed is not None else None
 
 
+def is_free_standing_je_before(raw_text: str, start: int) -> bool:
+    """True when a lone ``제`` sits immediately before ``start``.
+
+    ``제10kg`` may then leave ``제`` in place and let the unit owner read the
+    number. Glued forms such as ``A제10kg`` stay blocked.
+    """
+    if not isinstance(raw_text, str):
+        raise TypeError("raw_text must be str")
+    if start < 1 or raw_text[start - 1] != "제":
+        return False
+    je_index = start - 1
+    return je_index == 0 or raw_text[je_index - 1].isspace()
+
+
 def starts_with_supported_unit(text: str) -> bool:
     if not isinstance(text, str):
         raise TypeError("text must be str")
-    return any(text.startswith(unit) for unit in _SIMPLE_UNITS_BY_LENGTH + _SPECIAL_UNITS_BY_LENGTH)
+    if any(text.startswith(unit) for unit in _SIMPLE_UNITS_BY_LENGTH + _SPECIAL_UNITS_BY_LENGTH):
+        return True
+    from engine.span_engine.compound_unit import starts_with_supported_compound_exact_unit
+
+    return starts_with_supported_compound_exact_unit(text)
 
 
 def supported_unit_prefix_length(text: str) -> int | None:
@@ -1130,14 +1159,20 @@ def supported_unit_prefix_length(text: str) -> int | None:
     return None
 
 
+def _range_compatible_readings() -> dict[str, str]:
+    from engine.span_engine.compound_unit import COMPOUND_EXACT_UNIT_NAMES
+
+    return {**RANGE_COMPATIBLE_UNIT_READINGS, **COMPOUND_EXACT_UNIT_NAMES}
+
+
 def range_compatible_unit_reading(unit: str) -> str | None:
     if not isinstance(unit, str):
         raise TypeError("unit must be str")
-    return RANGE_COMPATIBLE_UNIT_READINGS.get(unit)
+    return _range_compatible_readings().get(unit)
 
 
 def range_compatible_units_by_length() -> list[str]:
-    return list(_RANGE_COMPATIBLE_UNITS_BY_LENGTH)
+    return sorted(_range_compatible_readings(), key=len, reverse=True)
 
 
 def _scan_unit_candidates(
@@ -1365,7 +1400,7 @@ def _has_blocking_previous_context(raw_text: str, start: int) -> bool:
     if prev_char.isascii() and prev_char.isalnum():
         return True
     if "\uac00" <= prev_char <= "\ud7a3":
-        return True
+        return not is_free_standing_je_before(raw_text, start)
     return prev_char in _PREV_BLOCKERS or prev_char in _PREV_SYMBOL_BLOCKERS
 
 
@@ -1480,7 +1515,13 @@ def _consume_numeric_like_surface(raw_text: str, start: int) -> int | None:
 
 
 def _supported_unit_at(raw_text: str, start: int) -> str | None:
-    for unit in _SIMPLE_UNITS_BY_LENGTH + _SPECIAL_UNITS_BY_LENGTH:
+    from engine.span_engine.compound_unit import COMPOUND_EXACT_UNIT_NAMES
+
+    for unit in (
+        _SIMPLE_UNITS_BY_LENGTH
+        + _SPECIAL_UNITS_BY_LENGTH
+        + sorted(COMPOUND_EXACT_UNIT_NAMES, key=len, reverse=True)
+    ):
         if raw_text.startswith(unit, start):
             return unit
     return None
@@ -1600,7 +1641,8 @@ def _valid_amount_and_boundary(raw_text: str, span: SourceSpan, amount: str) -> 
         if prev_char.isascii() and prev_char.isalnum():
             return False
         if "\uac00" <= prev_char <= "\ud7a3":
-            return False
+            if not is_free_standing_je_before(raw_text, span.start):
+                return False
         if prev_char in _PREV_BLOCKERS:
             return False
         if prev_char in _PREV_SYMBOL_BLOCKERS:
@@ -1764,6 +1806,7 @@ __all__ = [
     "scan_korean_numeric_unit_candidates",
     "scan_unit_contamination_preserve_candidates",
     "supported_unit_prefix_length",
+    "is_free_standing_je_before",
     "starts_with_supported_unit",
     "unit_allows_space_before",
 ]

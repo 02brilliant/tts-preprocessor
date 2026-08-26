@@ -71,6 +71,7 @@ from engine.span_engine.units import (
         ("2.5µm", "이쩜오 마이크로미터"),
         ("1,013hPa", "천십삼 헥토파스칼"),
         ("3만nm", "삼만 나노미터"),
+        ("5bps", "오 비피에스"),
         ("5Kbps", "오 킬로비피에스"),
         ("5kbps", "오 킬로비피에스"),
         ("5mbps", "오 메가비피에스"),
@@ -188,6 +189,7 @@ def test_si_prefix_registry_and_compound_aliases_are_policy_aligned() -> None:
         "㎣": "세제곱밀리미터",
     }.items() <= SPECIAL_UNIT_READINGS.items()
     assert {
+        "bps": "{number} 비피에스",
         "Kbps": "{number} 킬로비피에스",
         "Tbps": "{number} 테라비피에스",
         "mbps": "{number} 메가비피에스",

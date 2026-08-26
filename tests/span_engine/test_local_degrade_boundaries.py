@@ -21,13 +21,13 @@ def assert_local_degrade(
 def test_invalid_prefixed_ordinal_does_not_block_neighbors() -> None:
     text = (
         "검증 문장입니다. 제2문항은 처리하고, 제 15권도 처리해야 합니다. "
-        "하지만 제2.5문항, 제2-문항, 제2문항abc, A제 2문항은 preserve되어야 합니다. "
+        "하지만 제2-문항은 preserve되어야 합니다. "
         "동시에 pH 7.4와 25℃도 정상 처리해야 합니다."
     )
     assert_local_degrade(
         text,
         expected_transformed=["제 이문항", "제 십오권", "피에이치 칠쩜사", "이십오도"],
-        expected_preserved=["제2.5문항", "제2-문항", "제2문항abc", "A제 2문항"],
+        expected_preserved=["제2-문항"],
     )
 
 

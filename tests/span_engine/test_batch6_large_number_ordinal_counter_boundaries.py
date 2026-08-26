@@ -75,11 +75,19 @@ def test_batch6_prefixed_ordinal_spacing_is_owner_generated(
     ]
 
 
-@pytest.mark.parametrize("text", ["제2.5차", "제2-차", "A제5차", "제5차abc"])
-def test_batch6_invalid_prefixed_ordinal_blocks_partial_number_fallback(
-    text: str,
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("제2.5차", "제 이쩜오차"),
+        ("제2-차", "제2-차"),
+        ("A제5차", "A제5차"),
+        ("제5차abc", "제 오차abc"),
+    ],
+)
+def test_batch6_prefixed_ordinal_split_or_preserve_forms(
+    text: str, expected: str
 ) -> None:
-    assert transform(text) == text
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(
