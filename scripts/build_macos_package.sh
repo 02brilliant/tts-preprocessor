@@ -11,11 +11,13 @@ STAGE1_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SIMPLIFIED_SPEC_FILE="$ROOT_DIR/tts_preprocessor_simplified.spec"
 LLM_MINIMAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
 LLM_NATURAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
+LLM_PRONUNCIATION_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_pronunciation.spec"
 STAGE1_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 SIMPLIFIED_ENTRYPOINT="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
 LLM_CLI_ENTRYPOINT="$ROOT_DIR/bin/integrated_llm_cli.py"
 LLM_MINIMAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
 LLM_NATURAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
+LLM_PRONUNCIATION_ENTRYPOINT="$ROOT_DIR/bin/build_llm_pronunciation_entrypoint.py"
 README_TEMPLATE="$ROOT_DIR/docs/Release_Package_README.txt"
 MACOS_BUILD_DIR="$ROOT_DIR/build/macos"
 MACOS_DIST_DIR="$MACOS_BUILD_DIR/dist"
@@ -24,6 +26,7 @@ MACOS_STAGE1_BINARY="$MACOS_DIST_DIR/tts-preprocessor"
 MACOS_SIMPLIFIED_BINARY="$MACOS_DIST_DIR/tts-preprocessor-simplified"
 MACOS_LLM_MINIMAL_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-minimal"
 MACOS_LLM_NATURAL_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-natural"
+MACOS_LLM_PRONUNCIATION_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-pronunciation"
 DOWNLOADS_DIR="$ROOT_DIR/downloads"
 ARCHIVE_NAME="tts-preprocessor-macos.zip"
 ARCHIVE_PATH="$DOWNLOADS_DIR/$ARCHIVE_NAME"
@@ -52,11 +55,13 @@ for required_file in \
   "$SIMPLIFIED_SPEC_FILE" \
   "$LLM_MINIMAL_SPEC_FILE" \
   "$LLM_NATURAL_SPEC_FILE" \
+  "$LLM_PRONUNCIATION_SPEC_FILE" \
   "$STAGE1_ENTRYPOINT" \
   "$SIMPLIFIED_ENTRYPOINT" \
   "$LLM_CLI_ENTRYPOINT" \
   "$LLM_MINIMAL_ENTRYPOINT" \
   "$LLM_NATURAL_ENTRYPOINT" \
+  "$LLM_PRONUNCIATION_ENTRYPOINT" \
   "$README_TEMPLATE"; do
   if [[ ! -e "$required_file" ]]; then
     echo "[macos-build][ERROR] Missing required file: $required_file" >&2
@@ -128,9 +133,17 @@ mkdir -p "$MACOS_DIST_DIR" "$MACOS_WORK_DIR" "$DOWNLOADS_DIR"
       --distpath "$MACOS_DIST_DIR" \
       --workpath "$MACOS_WORK_DIR" \
       "$LLM_NATURAL_SPEC_FILE"
+  PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
+    TTS_PREPROCESSOR_LLM_PRONUNCIATION_EXECUTABLE_NAME="tts-preprocessor-llm-pronunciation" \
+    "$PYINSTALLER_BIN" \
+      --clean \
+      --noconfirm \
+      --distpath "$MACOS_DIST_DIR" \
+      --workpath "$MACOS_WORK_DIR" \
+      "$LLM_PRONUNCIATION_SPEC_FILE"
 )
 
-for binary_path in "$MACOS_STAGE1_BINARY" "$MACOS_SIMPLIFIED_BINARY" "$MACOS_LLM_MINIMAL_BINARY" "$MACOS_LLM_NATURAL_BINARY"; do
+for binary_path in "$MACOS_STAGE1_BINARY" "$MACOS_SIMPLIFIED_BINARY" "$MACOS_LLM_MINIMAL_BINARY" "$MACOS_LLM_NATURAL_BINARY" "$MACOS_LLM_PRONUNCIATION_BINARY"; do
   if [[ ! -f "$binary_path" || ! -x "$binary_path" ]]; then
     echo "[macos-build][ERROR] Missing or non-executable built file: $binary_path" >&2
     exit 1
@@ -153,6 +166,7 @@ fi
 
 "$MACOS_LLM_MINIMAL_BINARY" --check >/dev/null
 "$MACOS_LLM_NATURAL_BINARY" --check >/dev/null
+"$MACOS_LLM_PRONUNCIATION_BINARY" --check >/dev/null
 SIMPLIFIED_SMOKE_ACTUAL="$("$MACOS_SIMPLIFIED_BINARY" --text "ABC와 3kg")"
 if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼 킬로그램" ]]; then
   echo "[macos-build][ERROR] Simplified executable smoke test failed: $SIMPLIFIED_SMOKE_ACTUAL" >&2
@@ -170,20 +184,22 @@ cp "$MACOS_STAGE1_BINARY" "$PACKAGE_DIR/tts-preprocessor"
 cp "$MACOS_SIMPLIFIED_BINARY" "$PACKAGE_DIR/tts-preprocessor-simplified"
 cp "$MACOS_LLM_MINIMAL_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-minimal"
 cp "$MACOS_LLM_NATURAL_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-natural"
+cp "$MACOS_LLM_PRONUNCIATION_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-pronunciation"
 cp "$README_TEMPLATE" "$PACKAGE_DIR/README.txt"
 chmod +x "$PACKAGE_DIR/tts-preprocessor"
 chmod +x "$PACKAGE_DIR/tts-preprocessor-simplified"
 chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-minimal"
 chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-natural"
+chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-pronunciation"
 
 (
   cd "$PACKAGE_DIR"
-  zip -q "$TEMP_ARCHIVE" "tts-preprocessor" "tts-preprocessor-simplified" "tts-preprocessor-llm-minimal" "tts-preprocessor-llm-natural" "README.txt"
+  zip -q "$TEMP_ARCHIVE" "tts-preprocessor" "tts-preprocessor-simplified" "tts-preprocessor-llm-minimal" "tts-preprocessor-llm-natural" "tts-preprocessor-llm-pronunciation" "README.txt"
 )
 
 unzip -tq "$TEMP_ARCHIVE"
 ARCHIVE_CONTENTS="$(unzip -Z1 "$TEMP_ARCHIVE" | LC_ALL=C sort)"
-EXPECTED_CONTENTS=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-simplified'
+EXPECTED_CONTENTS=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-llm-pronunciation\ntts-preprocessor-simplified'
 if [[ "$ARCHIVE_CONTENTS" != "$EXPECTED_CONTENTS" ]]; then
   echo "[macos-build][ERROR] Unexpected macOS ZIP contents:" >&2
   printf '%s\n' "$ARCHIVE_CONTENTS" >&2
@@ -200,7 +216,7 @@ if find "$EXTRACT_DIR" -type l -print -quit | grep -q .; then
   echo "[macos-build][ERROR] Symbolic links are not allowed in the macOS ZIP." >&2
   exit 1
 fi
-if [[ ! -x "$EXTRACT_DIR/tts-preprocessor" || ! -x "$EXTRACT_DIR/tts-preprocessor-simplified" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-minimal" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-natural" ]]; then
+if [[ ! -x "$EXTRACT_DIR/tts-preprocessor" || ! -x "$EXTRACT_DIR/tts-preprocessor-simplified" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-minimal" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-natural" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-pronunciation" ]]; then
   echo "[macos-build][ERROR] Extracted stage executable is not executable." >&2
   exit 1
 fi
@@ -212,6 +228,7 @@ if [[ "$EXTRACTED_SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
 fi
 "$EXTRACT_DIR/tts-preprocessor-llm-minimal" --check >/dev/null
 "$EXTRACT_DIR/tts-preprocessor-llm-natural" --check >/dev/null
+"$EXTRACT_DIR/tts-preprocessor-llm-pronunciation" --check >/dev/null
 if [[ "$("$EXTRACT_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
   echo "[macos-build][ERROR] Extracted simplified executable smoke test failed." >&2
   exit 1
@@ -222,4 +239,5 @@ echo "[macos-build][OK] Stage 1 executable: $MACOS_STAGE1_BINARY"
 echo "[macos-build][OK] Simplified executable: $MACOS_SIMPLIFIED_BINARY"
 echo "[macos-build][OK] Level 3 executable: $MACOS_LLM_MINIMAL_BINARY"
 echo "[macos-build][OK] Level 4 executable: $MACOS_LLM_NATURAL_BINARY"
+echo "[macos-build][OK] Experimental level 5 executable: $MACOS_LLM_PRONUNCIATION_BINARY"
 echo "[macos-build][OK] Package: $ARCHIVE_PATH"

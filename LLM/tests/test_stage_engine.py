@@ -50,7 +50,29 @@ def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> N
     )
 
     assert result.speech_text == "현장에 있는 기잡니다."
-    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" in captured["prompt"]
+    assert "<NATURAL_SPEECH_CONTRACTION>" in captured["prompt"]
+
+
+def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    calls = 0
+
+    def fake_generate(*, model, prompt, settings):
+        nonlocal calls
+        calls += 1
+        return GenerationResult(text="궁무른 가치 읻씀니다.", elapsed_ms=2.0)
+
+    monkeypatch.setattr(stage_engine, "generate", fake_generate)
+    result = stage_engine.transform(
+        "국물은 같이 있습니다.",
+        model="gemma4:e4b",
+        prompt_level=3,
+    )
+    assert result.speech_text == "국물은 같이 있습니다."
+    assert result.validation_fallback is True
+    assert result.validation_issues[0].code == "UNEXPECTED_KOREAN_REWRITE"
+    assert calls == 1
 
 
 def test_stage_engine_rejects_changed_confirmed_kbs_news_without_stage1_dependency(

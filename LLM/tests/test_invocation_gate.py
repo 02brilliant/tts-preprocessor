@@ -82,7 +82,14 @@ def test_long_compound_boundary_candidate_remains_in_both_levels(stage_level: in
     assert decision.reason == "compound_boundary_candidate"
 
 
-@pytest.mark.parametrize("stage_level", (False, 0, 2, 5))
+def test_level5_calls_for_additional_pronunciation_candidate() -> None:
+    assert decide_llm_invocation("생산량은 늘었습니다.", stage_level=4).reason != "pronunciation_lexicon_candidate"
+    decision = decide_llm_invocation("생산량은 늘었습니다.", stage_level=5)
+    assert decision.call_llm is True
+    assert decision.reason == "pronunciation_lexicon_candidate"
+
+
+@pytest.mark.parametrize("stage_level", (False, 0, 2, 6))
 def test_gate_rejects_invalid_stage_level(stage_level) -> None:
     with pytest.raises(ValueError):
         decide_llm_invocation("원고", stage_level=stage_level)

@@ -59,11 +59,13 @@ def test_macos_script_rejects_non_python313_project_environment(
             "tts_preprocessor_simplified.spec",
             "tts_preprocessor_llm_minimal.spec",
             "tts_preprocessor_llm_natural.spec",
+            "tts_preprocessor_llm_pronunciation.spec",
             "bin/build_binary_entrypoint.py",
             "bin/build_simplified_binary_entrypoint.py",
             "bin/integrated_llm_cli.py",
             "bin/build_llm_minimal_entrypoint.py",
             "bin/build_llm_natural_entrypoint.py",
+            "bin/build_llm_pronunciation_entrypoint.py",
         "docs/Release_Package_README.txt",
     ):
         target = project_root / relative
@@ -133,12 +135,14 @@ def test_macos_script_uses_project_tools_and_flat_archive_contract() -> None:
     assert "tts_preprocessor_simplified.spec" in script
     assert "tts_preprocessor_llm_minimal.spec" in script
     assert "tts_preprocessor_llm_natural.spec" in script
+    assert "tts_preprocessor_llm_pronunciation.spec" in script
     assert "bin/build_binary_entrypoint.py" in script
     assert "bin/build_simplified_binary_entrypoint.py" in script
     assert "bin/integrated_llm_cli.py" in script
     assert "bin/build_llm_minimal_entrypoint.py" in script
     assert "bin/build_llm_natural_entrypoint.py" in script
+    assert "bin/build_llm_pronunciation_entrypoint.py" in script
     assert "pyinstaller_runtime_hooks" not in script
-    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor\\ntts-preprocessor-llm-minimal\\ntts-preprocessor-llm-natural\\ntts-preprocessor-simplified'" in script
+    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor\\ntts-preprocessor-llm-minimal\\ntts-preprocessor-llm-natural\\ntts-preprocessor-llm-pronunciation\\ntts-preprocessor-simplified'" in script
     assert 'find "$EXTRACT_DIR" -type l' in script
     assert 'mv -f -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"' in script

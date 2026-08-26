@@ -87,7 +87,14 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
 
     api_server.main()
 
-    assert seen == ["resolved", "resolved-simplified", "resolved-3", "resolved-4", "uvicorn"]
+    assert seen == [
+        "resolved",
+        "resolved-simplified",
+        "resolved-3",
+        "resolved-4",
+        "resolved-5",
+        "uvicorn",
+    ]
 
 
 def test_cli_wrapper_delegates_to_binary_runtime(monkeypatch, capsys):

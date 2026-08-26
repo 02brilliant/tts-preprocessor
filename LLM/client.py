@@ -35,6 +35,8 @@ class LLMResponseError(LLMClientError):
 class GenerationResult:
     text: str
     elapsed_ms: float
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
 
 
 def extract_response(payload: Any) -> str:

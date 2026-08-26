@@ -128,6 +128,10 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
     assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_server
     assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_server
+    assert (
+        'TTS_PREPROCESSOR_LLM_PRONUNCIATION_BINARY="$LATEST_LLM_PRONUNCIATION"'
+        in start_server
+    )
     assert "LATEST_LLM_STAGE" not in start_server
     assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
     assert 'LOCAL_LLM_CONFIGURED=false' in start_server

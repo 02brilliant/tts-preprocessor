@@ -1,5 +1,7 @@
 # TTS Preprocessor Policy
 
+> 실행 단계의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 이 문서는 규칙 엔진 세부 정책을 설명하며 단계 정의가 충돌할 경우 단계 정책 문서를 따른다.
+
 이 문서는 현재 TTS Preprocessor 구현과 테스트 판단의 단일 canonical policy이다. 버전별 보존 문서와 과거 변경 기록은 참고 자료이며, 정책 해석과 구현 판단은 이 문서를 우선한다.
 
 이 문서는 owner/claim/gate, full consume, unsafe preserve, bracket protection, no-crash fallback, Korean eligibility, symbol alias, preserve taxonomy, numeric/unit/currency/date/range/code-separator 정책을 하나의 본문으로 통합한다.
@@ -16,19 +18,19 @@
 대문자-한글 fallback, ampersand 약어, 미등록 약어-한글 하이픈 및 일반
 K-한글 fallback만 제외한다. 간소화 전용 사전이나 별도 교정 규칙은 두지 않는다.
 
-3단계와 4단계는 원문에 2단계 전체 규칙을 정확히 한 번 적용한 뒤 각 실행모듈에
-고정된 기본교정·자연스러운발화 프롬프트를 사용한다. 규칙 결과에 후속 교정
+3·4·5단계는 원문에 2단계 전체 규칙을 정확히 한 번 적용한 뒤 각 실행모듈에
+고정된 단계별 프롬프트를 사용한다. 규칙 결과에 후속 교정
 가능성이 없다고 호출 gate가 확정한 경우에는 LLM을 호출하지 않고 규칙 결과를
 최종 `speech_text`로 사용한다. 공개 단계 선택은 프롬프트 번호를 받지 않으며
 선택된 실행모듈 하나만 실행한다.
 
 3단계 gate는 보호되지 않은 잔여 숫자·영문·발화 기호, 복문·장문·열거 및
-긴 한국어 복합어의 띄어읽기 경계 가능성을 호출 근거로 사용한다. 3단계 LLM은
+문맥 판단이 필요한 보류 표면과 제한적인 운율 가능성을 호출 근거로 사용한다. 3단계 LLM은
 일반 한국어 철자를 발음형으로 바꾸지 않으며, 응답 검증도 기존 한국어 음절의
-삭제·교체를 허용하지 않는다. 4단계 gate만 음절 구조상 `ㄴ` 첨가 또는
-비예측적 합성어 된소리 가능성과 자연발화 축약 가능성을 추가로 평가한다.
-4단계는 매우 짧고 단순한 입력만 생략하여 3단계보다 LLM 생략 범위가 좁다.
-발음 등록어 목록은 두지 않고 음절 구조를 사용하며 불확실하면 LLM을 호출한다.
+삭제·교체를 허용하지 않는다. 4단계 gate는 등록된 폐쇄형 `ㄴ` 첨가·합성어
+된소리, 승인된 축약·복합명사 후보를 추가로 평가한다. 5단계는 4단계 후보에
+exact pronunciation lexicon과 문맥 동형어 후보를 추가한다. 발음 gate는
+일반 음절쌍으로 발음을 결정하거나 whitelist를 확대하지 않는다.
 URL·이메일·파일명·경로·JSON·코드·식별자, 전체 외국어 문장과 확정 구문
 `KBS news`는 잔여 영문·숫자 근거에서 제외한다.
 
@@ -37,8 +39,8 @@ URL·이메일·파일명·경로·JSON·코드·식별자, 전체 외국어 문
 일반 `뉴스`, 조사·어미 결합, 한글 복합어와 고유명사 내부에는 적용하지 않는다.
 이 구문 사전은 기본 엔진과 간소화 엔진이 동일하게 사용한다.
 
-3·4단계에서 gate가 호출을 결정하면 규칙 엔진의 `normalized_text`를 임시 토큰이나
-provenance 없이 그대로 전달한다. `KBS news`는 규칙 엔진이 확정한 읽기이므로
+3·4·5단계에서 gate가 호출을 결정하면 규칙 엔진의 `normalized_text`를 임시 토큰 없이
+그대로 전달한다. 내부 provenance snapshot은 LLM 입력이 아니라 validator에만 전달한다. `KBS news`는 규칙 엔진이 확정한 읽기이므로
 활성 프롬프트가 문자와 공백을 정확히 보존하도록 지시한다.
 
 ---
@@ -453,7 +455,7 @@ canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자
 규칙 기반 `normalized_text`는 후단 LLM의 존재와 무관하게 그대로 TTS에
 전달할 수 있는 독립적인 최종 출력이다. LLM 연결을 위해 marker, decision,
 candidate, `contextual_decision_logs` 또는 다른 hidden metadata를 서비스
-문자열에 추가하지 않는다. 3·4단계 `/api/transform`은 원문과 선택 model만
+문자열에 추가하지 않는다. 3·4·5단계 `/api/transform`은 원문과 선택 model만
 입력받고, 선택된 단일 실행모듈 안에서 전체 규칙 교정을 한 번 수행한다.
 기본 model은 `gemma4-31B-it (vLLM)`이다. 호출자가 model을 명시하면 등록된 다른
 model을 계속 선택할 수 있다.

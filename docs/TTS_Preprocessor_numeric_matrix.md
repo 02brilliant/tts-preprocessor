@@ -35,7 +35,7 @@ api.server -> api.binary_runtime -> TTS_PREPROCESSOR_BINARY
 -> packaged binary -> bin/build_binary_entrypoint.py
 -> engine.main.transform(text)
 
-api.server -> api.binary_runtime -> selected level-3/4 binary
+api.server -> api.binary_runtime -> selected level-3/4/5 binary
 -> engine.main.transform(original_text) exactly once
 -> fixed prompt -> LLM.stage_engine.transform(normalized_text)
 ```

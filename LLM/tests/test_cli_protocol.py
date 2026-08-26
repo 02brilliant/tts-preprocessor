@@ -9,6 +9,7 @@ from LLM.response_validation import LLMStageContractError
 from LLM.stage_engine import UnsupportedLLMModelError
 from LLM.vllm_client import VllmTimeoutError
 from bin import integrated_llm_cli as entrypoint
+from engine.span_engine.models import TransformOutput
 
 
 def test_classify_supported_failures() -> None:
@@ -47,14 +48,14 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
 
     def fake_rules(text):
         calls.append(("rules", text))
-        return "국물은 매우 좋습니다."
+        return TransformOutput("국물은 매우 좋습니다.", [], None)
 
-    def fake_llm(text, *, model=None, prompt_level=1):
+    def fake_llm(text, *, model=None, prompt_level=1, snapshot=None):
         calls.append(("llm", text, model, prompt_level))
         return FakeResult()
 
     monkeypatch.setattr(entrypoint, "parse_args", lambda *, stage_level: _args(text="원문", model="gemma4:e4b", json=True))
-    monkeypatch.setattr("engine.main.transform", fake_rules)
+    monkeypatch.setattr("engine.main.transform_output", fake_rules)
     monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
     timings = iter((1.0, 1.004, 2.0, 2.015))
     monkeypatch.setattr(entrypoint.time, "perf_counter", lambda: next(timings))
@@ -80,14 +81,14 @@ def test_integrated_entrypoint_skips_llm_after_rules_once(monkeypatch, capsys) -
 
     def fake_rules(text):
         calls.append(("rules", text))
-        return "삼 킬로그램"
+        return TransformOutput("삼 킬로그램", [], None)
 
     monkeypatch.setattr(
         entrypoint,
         "parse_args",
         lambda *, stage_level: _args(text="3kg", model="gemma4:e4b", json=True),
     )
-    monkeypatch.setattr("engine.main.transform", fake_rules)
+    monkeypatch.setattr("engine.main.transform_output", fake_rules)
     monkeypatch.setattr(
         "LLM.stage_engine.transform",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
@@ -115,8 +116,38 @@ def test_integrated_entrypoint_skips_llm_after_rules_once(monkeypatch, capsys) -
 
 def test_integrated_entrypoint_error_includes_rule_output(monkeypatch, capsys) -> None:
     monkeypatch.setattr(entrypoint, "parse_args", lambda *, stage_level: _args(text="원문", model="unknown", json=True))
-    monkeypatch.setattr("engine.main.transform", lambda text: "규칙 결과")
+    monkeypatch.setattr("engine.main.transform_output", lambda text: TransformOutput("규칙 결과", [], None))
     monkeypatch.setattr("LLM.stage_engine.transform", lambda *_args, **_kwargs: (_ for _ in ()).throw(UnsupportedLLMModelError("Unsupported LLM model.")))
     assert entrypoint.run(stage_level=3, prompt_level=1) == 1
     payload = json.loads(capsys.readouterr().err)
     assert payload == {"ok": False, "status": 400, "detail": "Unsupported LLM model.", "normalized_text": "규칙 결과"}
+
+
+def test_level5_entrypoint_uses_prompt_level_three(monkeypatch, capsys) -> None:
+    calls = []
+
+    class FakeResult:
+        speech_text = "생산냥은 늘었습니다."
+        model = "gemma4:e4b"
+        elapsed_ms = 3.0
+
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(text="생산량은 늘었습니다.", model="gemma4:e4b", json=True),
+    )
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput(text, [], None),
+    )
+
+    def fake_llm(text, *, model=None, prompt_level=1, snapshot=None):
+        calls.append((text, prompt_level, snapshot.normalized_text))
+        return FakeResult()
+
+    monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
+    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["level"] == 5
+    assert payload["speech_text"] == "생산냥은 늘었습니다."
+    assert calls == [("생산량은 늘었습니다.", 3, "생산량은 늘었습니다.")]

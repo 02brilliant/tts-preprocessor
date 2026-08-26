@@ -56,8 +56,8 @@ def _print_json(payload: dict, *, stream=None) -> None:
 
 
 def run(*, stage_level: int, prompt_level: int) -> int:
-    if stage_level not in {3, 4} or prompt_level not in {1, 2}:
-        raise ValueError("integrated stage mapping must be 3/1 or 4/2")
+    if (stage_level, prompt_level) not in {(3, 1), (4, 2), (5, 3)}:
+        raise ValueError("integrated stage mapping must be 3/1, 4/2, or 5/3")
 
     from LLM.cli_protocol import classify_llm_stage_error
     from LLM.config import load_model_config
@@ -65,7 +65,8 @@ def run(*, stage_level: int, prompt_level: int) -> int:
     from LLM.stage_engine import transform as transform_llm
     from LLM.stage_engine import UnsupportedLLMModelError
     from LLM.stage_engine import validate_runtime_assets
-    from engine.main import transform as transform_rules
+    from engine.main import transform_output
+    from LLM.provenance import build_normalization_snapshot
 
     args = parse_args(stage_level=stage_level)
     normalized_text: str | None = None
@@ -84,7 +85,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             return 0
         if args.check:
             validate_runtime_assets(prompt_levels=(prompt_level,))
-            rule_probe = transform_rules("ABC와 3kg")
+            rule_probe = transform_output("ABC와 3kg").normalized_text
             if rule_probe != "에이비씨와 삼 킬로그램":
                 raise RuntimeError("bundled rule engine self-check failed")
             if args.json:
@@ -95,7 +96,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
 
         original_text = _read_input_text(args)
         rule_started_at = time.perf_counter()
-        normalized_text = transform_rules(original_text)
+        rule_output = transform_output(original_text)
+        normalized_text = rule_output.normalized_text
+        snapshot = build_normalization_snapshot(rule_output)
         rule_elapsed_ms = (time.perf_counter() - rule_started_at) * 1000
         decision = decide_llm_invocation(
             normalized_text,
@@ -107,6 +110,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
                 normalized_text,
                 model=args.model,
                 prompt_level=prompt_level,
+                snapshot=snapshot,
             )
             llm_elapsed_ms = (time.perf_counter() - llm_started_at) * 1000
             speech_text = result.speech_text

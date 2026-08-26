@@ -8,6 +8,7 @@ import pytest
 from LLM.config import (
     ConfigurationError,
     LLM_PROMPT_LV2_PATH,
+    LLM_PROMPT_LV3_PATH,
     LLM_PROMPT_PATH,
     load_gemini_settings,
     load_model_config,
@@ -47,7 +48,8 @@ def test_model_config_has_fixed_models_and_default() -> None:
 def test_prompt_paths_are_distinct_runtime_assets() -> None:
     assert LLM_PROMPT_PATH.name == "LLM_prompt.txt"
     assert LLM_PROMPT_LV2_PATH.name == "LLM_prompt_lv2.txt"
-    assert LLM_PROMPT_PATH != LLM_PROMPT_LV2_PATH
+    assert LLM_PROMPT_LV3_PATH.name == "llm_prompt_lv3.txt"
+    assert len({LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH}) == 3
 
 
 def test_invalid_default_model_is_rejected(tmp_path: Path) -> None:

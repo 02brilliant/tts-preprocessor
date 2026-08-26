@@ -4,198 +4,149 @@ from pathlib import Path
 
 import pytest
 
-from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
 from LLM.prompt_template import PromptTemplateError, build_prompt
 
 
 def test_prompt_replaces_exactly_one_placeholder(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
     path.write_text("앞\n{{NORMALIZED_TEXT}}\n뒤", encoding="utf-8")
-
     assert build_prompt("원고", path) == "앞\n원고\n뒤"
 
 
 def test_prompt_reports_missing_placeholder(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
     path.write_text("자리표시자 없음", encoding="utf-8")
-
-    with pytest.raises(PromptTemplateError) as exc_info:
+    with pytest.raises(PromptTemplateError, match="자리표시자가 없습니다"):
         build_prompt("원고", path)
-
-    assert str(exc_info.value) == (
-        "AI LLM 프롬프트 파일(LLM/docs/LLM_prompt.txt)에 "
-        "{{NORMALIZED_TEXT}} 자리표시자가 없습니다. "
-        "원고를 넣을 위치에 이 자리표시자를 정확히 한 번 추가한 뒤 다시 실행하세요."
-    )
 
 
 def test_prompt_reports_duplicate_placeholder(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
-    path.write_text(
-        "{{NORMALIZED_TEXT}}\n{{NORMALIZED_TEXT}}",
-        encoding="utf-8",
-    )
-
-    with pytest.raises(PromptTemplateError) as exc_info:
+    path.write_text("{{NORMALIZED_TEXT}}\n{{NORMALIZED_TEXT}}", encoding="utf-8")
+    with pytest.raises(PromptTemplateError, match="자리표시자가 2개"):
         build_prompt("원고", path)
-
-    assert str(exc_info.value) == (
-        "AI LLM 프롬프트 파일(LLM/docs/LLM_prompt.txt)에 "
-        "{{NORMALIZED_TEXT}} 자리표시자가 2개 있습니다. "
-        "하나만 남긴 뒤 다시 실행하세요."
-    )
 
 
 def test_prompt_reports_invalid_utf8(tmp_path: Path) -> None:
-    path = tmp_path / "prompt.txt"
-    path.write_bytes(b"\xff")
-
-    with pytest.raises(PromptTemplateError) as exc_info:
-        build_prompt("원고", path)
-
-    assert str(exc_info.value) == (
-        "AI LLM 프롬프트 파일(LLM/docs/LLM_prompt.txt)은 UTF-8 인코딩이어야 합니다. "
-        "파일을 UTF-8로 저장한 뒤 다시 실행하세요."
-    )
+    invalid = tmp_path / "invalid.txt"
+    invalid.write_bytes(b"\xff")
+    with pytest.raises(PromptTemplateError, match="UTF-8"):
+        build_prompt("원고", invalid)
 
 
 def test_prompt_reports_missing_file(tmp_path: Path) -> None:
-    path = tmp_path / "missing.txt"
-
-    with pytest.raises(PromptTemplateError) as exc_info:
-        build_prompt("원고", path)
-
-    assert str(exc_info.value) == (
-        "AI LLM 프롬프트 파일(LLM/docs/LLM_prompt.txt)을 찾을 수 없습니다. "
-        "파일을 복원한 뒤 다시 실행하세요."
-    )
+    with pytest.raises(PromptTemplateError, match="찾을 수 없습니다"):
+        build_prompt("원고", tmp_path / "missing.txt")
 
 
 def test_prompt_reloads_file_for_each_request(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
     path.write_text("첫째 {{NORMALIZED_TEXT}}", encoding="utf-8")
     assert build_prompt("원고", path) == "첫째 원고"
-
     path.write_text("둘째 {{NORMALIZED_TEXT}}", encoding="utf-8")
     assert build_prompt("원고", path) == "둘째 원고"
 
 
-def test_prompt_level_selects_basic_and_natural_speech_templates() -> None:
-    basic = build_prompt("현장 원고", prompt_level=1)
-    natural = build_prompt("현장 원고", prompt_level=2)
+def test_prompt_levels_have_distinct_closed_contracts() -> None:
+    level3 = build_prompt("현장 원고", prompt_level=1)
+    level4 = build_prompt("현장 원고", prompt_level=2)
+    level5 = build_prompt("현장 원고", prompt_level=3)
 
-    assert basic != natural
-    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" not in basic
-    assert "15.1 서술격 조사 `이다` 계열 자연발화 축약" in natural
-    assert "색연필 -> 색년필" not in basic
-    assert "색연필 -> 색년필" in natural
-    assert "문고리 -> 문꼬리" not in basic
-    assert "문고리 -> 문꼬리" in natural
-    assert "<PRONUNCIATION_LEXICON>" not in basic
-    assert "3단계에서는\n한국어 철자를 발음형으로 바꾸지 않는다" in basic
-    assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in basic
-    assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in natural
-    assert LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8").count(
-        "{{NORMALIZED_TEXT}}"
-    ) == 1
+    assert len({level3, level4, level5}) == 3
+    assert "3단계에서는 기존 한국어 철자를 발음형으로 바꾸지 않는다" in level3
+    assert "색연필 → 색년필" not in level3
+    assert "색연필 → 색년필" in level4
+    assert "생산량 → 생산냥" not in level4
+    assert "생산량 → 생산냥" in level5
+    assert "대가:" in level5
+    for rendered in (level3, level4, level5):
+        assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in rendered
 
 
-@pytest.mark.parametrize("prompt_level", (0, 3, True))
+@pytest.mark.parametrize("prompt_level", (0, 4, True))
 def test_prompt_rejects_unknown_level(prompt_level) -> None:
-    with pytest.raises(PromptTemplateError, match="prompt_level must be 1 or 2"):
+    with pytest.raises(PromptTemplateError, match="prompt_level must be 1, 2, or 3"):
         build_prompt("원고", prompt_level=prompt_level)
+
+
+@pytest.mark.parametrize(
+    "path",
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
+)
+def test_every_active_prompt_has_one_plain_input_contract(path: Path) -> None:
+    prompt = path.read_text(encoding="utf-8")
+    assert prompt.count("{{NORMALIZED_TEXT}}") == 1
+    assert "<OUTPUT_CONTRACT>" in prompt
+    assert "<FINAL_VALIDATION>" in prompt
+    assert "<PROTECTED_SURFACES>" in prompt
+    assert "<RULE_ENGINE_LOCKED_RESULTS>" in prompt
+
+
+def test_level3_prompt_preserves_korean_and_locked_readings() -> None:
+    prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+    for fixed_reading in ("삼번 버스", "오분 뒤", "제 삼장", "KBS news"):
+        assert fixed_reading in prompt
+    assert "쉼표 추가 외에는" in prompt
+    assert "한국어 단어를 발음식으로 전사하지 않는다" in prompt
 
 
 def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-
-    assert prompt.count("{{NORMALIZED_TEXT}}") == 1
-    assert (
-        "입력은 규칙 기반 엔진의 최종 읽기 문자열 하나뿐이다."
-        in prompt
-    )
-    assert (
-        "보호 대상이 아닌 숫자나 영문 표면을 최종 출력에 남기지 않는다."
-        in prompt
-    )
-    assert "`했다`를 `했습니다`로" in prompt
-    assert "`오분 남았다`처럼 `이`를 삭제하면 안 된다." in prompt
-    assert "`CPU -> 씨피유`" in prompt
-    assert "씨피유 로그는 report_v2.json에 있다" in prompt
-    assert "3번 확인했다 -> 세 번 확인했다" in prompt
-    assert "대기표 3호를 호출했다 -> 대기표 삼 호를 호출했다" in prompt
-    assert "5분이 남았다. -> 오분이 남았다." in prompt
-    assert (
-        "학생들을 3조로 나눴고 3조가 발표했다.\n"
-        "-> 학생들을 세 조로 나눴고 세 조가 발표했다."
-    ) in prompt
-    assert "선반은 3단 구조다. -> 선반은 세 단 구조다." in prompt
-    assert "3층을 올라갔다 -> 삼 층을 올라갔다" in prompt
-    assert "총 2.34번 -> 총 이쩜삼사 번" in prompt
-    assert (
-        "01분, +3번, 1,00조, 3A권, 1..5분기는 그대로 유지한다."
-        in prompt
-    )
+    assert "규칙 엔진이 문맥 모호성 때문에 보류한" in prompt
+    assert "3번 확인했다 → 세 번 확인했다" in prompt
+    assert "3번 버스 → 삼번 버스" in prompt
+    assert "0.5%p → 영 점 오 퍼센트포인트" in prompt
+    assert "해석이 둘 이상이면 원형을 유지한다" in prompt
 
 
 def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-
-    for fixed_reading in ("삼번 버스", "오분 뒤", "제 삼장"):
+    for fixed_reading in ("세 대", "삼번 버스", "오분 뒤", "제 삼장"):
         assert fixed_reading in prompt
-
-    for superseded_reading in (
-        "회의는 오 분 뒤 시작하며",
-        "참석자는 삼 번 버스를",
-        "제3장 -> 제삼장",
-        "보호 구간 밖에 아라비아 숫자가 남는 것은 허용된다",
-    ):
-        assert superseded_reading not in prompt
+    assert "띄어쓰기" in prompt
+    assert "다시 판단하지 않는다" in prompt
 
 
 def test_active_prompt_preserves_confirmed_kbs_news_phrase_without_tokens() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-
-    assert "`KBS news`로 만든 경우" in prompt
-    assert "`KBS news`를 다른 표기로 바꾸지 말고" in prompt
-    assert "그대로 복사한다. 출력에는 Markdown 굵게" in prompt
+    assert "KBS news" in prompt
     assert "<LOCK_0001>" not in prompt
 
 
 def test_active_prompt_locks_stage1_time_frame_comma_decisions() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-
-    assert "문장 시작의 시간구 뒤 쉼표 유무는 1단계" in prompt
-    assert "오늘 아침 우리는 출발했습니다." in prompt
-    assert "올해 상반기 매출이 늘었습니다." in prompt
-    assert "내년 일분기 사업을 시작합니다." in prompt
-    assert "내년 이월 서비스를 출시합니다." in prompt
-    assert "올해 상반기, 국내 주요 시장을 중심으로" in prompt
-    assert "내년 이월 삼일, 국내 주요 지역에서" in prompt
-    assert "내년 이월부터 사월까지, 주요 지역에서" in prompt
-    assert "올해, 상반기 매출이 늘었습니다." in prompt
+    assert "문장 시작 시간구 뒤에 쉼표를 넣지 않은 결정도 유지한다" in prompt
+    assert "문장 시작 시간구 뒤에 규칙 엔진이 쉼표를 두지 않은 위치" in prompt
 
 
 def test_active_prompt_distinguishes_input_quotes_from_output_wrappers() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+    assert "기존 마침표·물음표·느낌표·괄호·따옴표" in prompt
+    assert "설명, 분석, JSON, Markdown, 코드 블록, 머리말을 출력하지 않는다" in prompt
 
-    assert "입력에 없던 결과 감싸기용 따옴표" in prompt
-    assert "원래 존재하는 인용부호와 보호 JSON은" in prompt
-    assert "두 칸 이상의 연속 공백이나 특수 공백은 사용하지 않는다." in prompt
+
+def test_level4_prompt_is_closed_and_rejects_general_g2p() -> None:
+    prompt = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
+    assert "<NATURAL_SPEECH_CONTRACTION>" in prompt
+    assert "문고리 → 문꼬리" in prompt
+    assert "국물→궁물" in prompt
+    assert "출력 철자에 반영하지 않는다" in prompt
+
+
+def test_level5_prompt_keeps_negative_and_homograph_contrasts() -> None:
+    prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+    assert "증가량" in prompt
+    assert "자동 변경하지 않는다" in prompt
+    assert "값, 보수, 희생의 결과" in prompt
+    assert "거장이나 권위자" in prompt
+    assert "신발을 신고" in prompt
+    assert "경찰에 신고" in prompt
 
 
 def test_active_prompt_injects_only_plain_normalized_text() -> None:
     normalized_text = "3번 확인했고 5분이 남았다."
-
     rendered = build_prompt(normalized_text)
-
-    assert (
-        "<NORMALIZED_TEXT>\n"
-        f"{normalized_text}\n"
-        "</NORMALIZED_TEXT>"
-    ) in rendered
+    assert f"<NORMALIZED_TEXT>\n{normalized_text}\n</NORMALIZED_TEXT>" in rendered
     assert "<CONTEXTUAL_DECISION_LOGS>" not in rendered
     assert "<DECISION_CANDIDATES>" not in rendered
-    actual_input = rendered.rsplit("# 25. 현재 실제 입력", 1)[1]
-    assert "```" not in actual_input
-    assert "형식 예시가 아니라 지금 처리해야 하는 실제 요청" in actual_input

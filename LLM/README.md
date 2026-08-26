@@ -1,5 +1,7 @@
 # Local, Gemini, OpenAI, and vLLM API integration
 
+> 실행 3~5단계와 prompt level의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 5단계는 `llm_prompt_lv3.txt`, 폐쇄형 pronunciation lexicon, provenance-aware validator를 사용하는 시험 옵션이다.
+
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
 포트에서 `/api/llm/models`와 통합 `/api/transform`을 제공한다. 공급자 URL·
 토큰은 실행모듈에 넣지 않고 `llm.env`에서 API 프로세스 환경으로 전달한다.
@@ -8,19 +10,20 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 호출 gate → `LLM_prompt.txt` → 검증
 2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 호출 gate → `LLM_prompt_lv2.txt` → 검증
+3. 5단계 시험 실행모듈: 원문 → 전체 규칙 엔진 1회 → 폐쇄형 후보 gate → `llm_prompt_lv3.txt` → provenance 기반 검증
 
 호출 gate가 후속 교정 가능성을 찾으면 LLM을 선택 모델로 한 번만 호출하고,
 명백히 불필요하면 `speech_text=normalized_text`로 반환한다. 규칙 기반
 `normalized_text` 계약과 source-free binary runtime은 이 통합으로 변경되지 않는다.
-3단계는 짧고 단순하며 처리할 잔여 표면이 없는 입력을 생략하고, 일반 한국어
-철자를 발음형으로 바꾸지 않는다. 긴 합성명사의 띄어읽기 경계 판단은 유지한다.
-4단계는 `ㄴ` 첨가·비예측적 합성어 된소리·자연발화 축약 가능성과 더 짧은
-길이 기준을 사용하여 매우 짧고 단순한 입력만 생략한다. 발음 후보 판단은
-등록어 목록 없이 음절 구조를 사용하며, 불확실하면 호출한다.
+3단계는 잔여 읽기·문맥 판별과 제한적 쉼표만 허용하며 기존 한국어 표면은
+바꾸지 않는다. 4단계는 코드에 등록된 `ㄴ` 첨가·비예측적 합성어 된소리,
+제한적 `이다` 축약·복합명사 경계·운율만 추가한다. 5단계는 4단계에 exact
+pronunciation lexicon과 `대가` 문맥 후보를 추가한다. 어느 단계도 일반 G2P를
+발음식 철자로 전면 전사하지 않는다.
 운영 API는 선택 단계에 맞는 실행모듈 하나만 호출한다. 별도 `tts-llm-stage`는
 배포하지 않는다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
-읽기를 위한 일반 provenance 전달, 반복 안정성 측정, 자동 재시도는
-사용하지 않는다. 서버는 1단계의 `normalized_text`를 임시 토큰 치환 없이
+읽기를 위한 provenance snapshot은 외부 계약에 노출하지 않고 validator에만 전달한다.
+반복 안정성 측정과 자동 재시도는 사용하지 않는다. 서버는 2단계의 `normalized_text`를 임시 토큰 치환 없이
 그대로 LLM에 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
 정확히 보존하도록 지시하는 1단계 확정 읽기이며, 응답 검증도 이 표면의 변경을
 성공 결과로 반환하지 않는다.
@@ -43,18 +46,20 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 
 - `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
   기본교정 프롬프트
-- `docs/LLM_prompt_lv2.txt`: 기본교정에 자연스러운 발화 명령을 추가한 프롬프트
+- `docs/LLM_prompt_lv2.txt`: 폐쇄형 자연발화 예외를 추가한 4단계 프롬프트
+- `docs/llm_prompt_lv3.txt`: 폐쇄형 발음 사전을 추가한 시험용 5단계 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
 - `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
 - `vllm_client.py`: vLLM OpenAI-compatible Chat Completions 호출 및 응답/오류 처리
-- `response_validation.py`: 통합 LLM 출력 불변 조건 검증
-- `invocation_gate.py`: 3·4단계의 보수적인 LLM 호출 필요성 판정
+- `pronunciation_lexicon.py`: 단계별 exact 발음 후보와 finite 허용 출력
+- `provenance.py`: 규칙 출력의 내부 normalized-coordinate snapshot 생성
+- `response_validation.py`: 단계별 통합 LLM 출력 불변 조건 검증
+- `invocation_gate.py`: 3·4·5단계의 보수적인 LLM 호출 필요성 판정
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
 
-기본 프롬프트는 3단계, 자연스러운 발화 프롬프트는 4단계 실행모듈에 각각만
-패키징된다. 프롬프트 1 변경은 3단계, 프롬프트 2 변경은 4단계만 다시 빌드한다.
-공통 규칙 변경은 1~4단계를 모두 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
+세 프롬프트는 3·4·5단계 실행모듈에 각각 하나씩 패키징된다. 공통 규칙 변경은
+영향받는 실행모듈을 모두 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
 
 ## API 계약
 

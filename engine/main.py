@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.span_engine.models import TransformOutput
+
 
 def transform(text: str) -> str:
     """Normalize text through the canonical production span engine."""
@@ -44,6 +46,16 @@ def transform_simplified_debug(text: str) -> dict[str, Any]:
         result = transform_for_production(text, debug=True)
     if not isinstance(result, dict):
         raise RuntimeError("simplified production debug transform returned a non-object result")
+    return result
+
+
+def transform_output(text: str) -> TransformOutput:
+    """Return the canonical default-profile output with internal provenance."""
+    from engine.span_engine.transform import transform_with_trace
+
+    result = transform_with_trace(text)
+    if not isinstance(result, TransformOutput):
+        raise RuntimeError("production transform returned an invalid output object")
     return result
 
 

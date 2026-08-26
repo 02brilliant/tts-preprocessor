@@ -31,7 +31,7 @@ from api.binary_runtime import (
 
 app = FastAPI()
 
-# Production transform requests call exactly one packaged binary for levels 1-4.
+# Production transform requests call exactly one packaged binary for levels 1-5.
 # LLM provider credentials stay in process environment from llm.env.
 
 # ✅ web과 downloads를 함께 공개
@@ -43,7 +43,7 @@ class TransformRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str
-    level: Literal[0, 1, 2, 3, 4] = 2
+    level: Literal[0, 1, 2, 3, 4, 5] = 2
     model: str | None = None
     include_debug: bool = False
 
@@ -61,15 +61,15 @@ class TransformRequest(BaseModel):
     @classmethod
     def reject_non_integer_level(cls, value):
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ValueError("level must be an integer from 0 to 4")
+            raise ValueError("level must be an integer from 0 to 5")
         return value
 
     @model_validator(mode="after")
     def validate_level_options(self):
         if self.include_debug and self.level not in {1, 2}:
             raise ValueError("include_debug is supported only for levels 1 and 2")
-        if self.model is not None and self.level not in {3, 4}:
-            raise ValueError("model is supported only for levels 3 and 4")
+        if self.model is not None and self.level not in {3, 4, 5}:
+            raise ValueError("model is supported only for levels 3, 4, and 5")
         return self
 
 
@@ -150,8 +150,8 @@ def transform_request_payload(payload: dict) -> dict:
         raise TypeError("include_debug must be bool")
 
     level = payload.get("level", 2)
-    if isinstance(level, bool) or level not in {0, 1, 2, 3, 4}:
-        raise ValueError("level must be an integer from 0 to 4")
+    if isinstance(level, bool) or level not in {0, 1, 2, 3, 4, 5}:
+        raise ValueError("level must be an integer from 0 to 5")
     model = payload.get("model")
     if model is not None and not isinstance(model, str):
         raise TypeError("model must be str or None")
@@ -159,14 +159,14 @@ def transform_request_payload(payload: dict) -> dict:
     if level == 0:
         return {"normalized_text": text}
 
-    if level in {3, 4}:
+    if level in {3, 4, 5}:
         if include_debug:
             raise ValueError("include_debug is supported only for levels 1 and 2")
         result = run_integrated_binary(text, level=level, model=model)
         return result
 
     if model is not None:
-        raise ValueError("model is supported only for levels 3 and 4")
+        raise ValueError("model is supported only for levels 3, 4, and 5")
 
     if include_debug:
         result = (
@@ -192,10 +192,12 @@ def main() -> None:
     simplified_binary_path = resolve_simplified_binary_path()
     llm_minimal_binary_path = resolve_integrated_binary_path(3)
     llm_natural_binary_path = resolve_integrated_binary_path(4)
+    llm_pronunciation_binary_path = resolve_integrated_binary_path(5)
     print(f"Using runtime binary: {binary_path}")
     print(f"Using simplified runtime binary: {simplified_binary_path}")
     print(f"Using level-3 integrated binary: {llm_minimal_binary_path}")
     print(f"Using level-4 integrated binary: {llm_natural_binary_path}")
+    print(f"Using experimental level-5 integrated binary: {llm_pronunciation_binary_path}")
     uvicorn.run(app, host=host, port=port)
 
 

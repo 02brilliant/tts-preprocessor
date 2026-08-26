@@ -127,6 +127,7 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     assert "TTS_PREPROCESSOR_BINARY" in binary_runtime
     assert "TTS_PREPROCESSOR_LLM_MINIMAL_BINARY" in binary_runtime
     assert "TTS_PREPROCESSOR_LLM_NATURAL_BINARY" in binary_runtime
+    assert "TTS_PREPROCESSOR_LLM_PRONUNCIATION_BINARY" in binary_runtime
 
 
 def test_phase31a_build_package_is_packaging_only() -> None:

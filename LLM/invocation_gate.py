@@ -5,6 +5,7 @@ import re
 
 from engine.span_engine.language_gate import is_non_korean_prose_line
 from engine.span_engine.protected import protected_literal_spans
+from LLM.pronunciation_lexicon import build_allowed_mutations
 
 
 _HANGUL_TOKEN_RE = re.compile(r"[가-힣]+")
@@ -15,9 +16,6 @@ _ACTIONABLE_RESIDUE_RE = re.compile(
 )
 _CLAUSE_BOUNDARY_RE = re.compile(
     r"(?:지만|는데|으며|면서|거나|아서|어서|므로|니까|더라도|는데도|고)\s"
-)
-_NATURAL_CONTRACTION_RE = re.compile(
-    r"[가-힣](?:입니다|이었다|이었(?:다|지만|는데|어요)|이에요|이어서|이시(?:다|고|며|면|지만|는데|어요|죠)|이셨(?:다|고|으며|지만))"
 )
 _KBS_NEWS_RE = re.compile(r"(?<![A-Za-z])KBS news(?![A-Za-z])")
 
@@ -36,10 +34,6 @@ _GRAMMATICAL_TAIL_RE = re.compile(
     r")+$"
 )
 
-_N_INSERTION_VOWELS = frozenset({2, 6, 12, 17, 20})  # ㅑ, ㅕ, ㅛ, ㅠ, ㅣ
-_TENSIFIABLE_ONSETS = frozenset({0, 3, 7, 9, 12})  # ㄱ, ㄷ, ㅂ, ㅅ, ㅈ
-
-
 @dataclass(frozen=True)
 class LLMInvocationDecision:
     call_llm: bool
@@ -51,17 +45,17 @@ def decide_llm_invocation(
     *,
     stage_level: int,
 ) -> LLMInvocationDecision:
-    """Decide whether an integrated level-3/4 runtime needs its LLM pass.
+    """Decide whether an integrated level-3/4/5 runtime needs its LLM pass.
 
-    The gate is deliberately fail-open: anything complex or uncertain calls
-    the LLM. It uses structural and phonological signals only and does not
-    maintain a word-level pronunciation registry.
+    The gate does not decide pronunciation. It uses residual/structure signals
+    plus the closed stage-specific mutation registry to decide whether one LLM
+    call can add value.
     """
 
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
-    if isinstance(stage_level, bool) or stage_level not in {3, 4}:
-        raise ValueError("stage_level must be 3 or 4")
+    if isinstance(stage_level, bool) or stage_level not in {3, 4, 5}:
+        raise ValueError("stage_level must be 3, 4, or 5")
 
     visible = normalized_text.strip()
     if not visible:
@@ -74,11 +68,21 @@ def decide_llm_invocation(
     if _has_long_compound_candidate(actionable_text):
         return LLMInvocationDecision(True, "compound_boundary_candidate")
 
-    if stage_level == 4 and _has_korean_pronunciation_candidate(actionable_text):
-        return LLMInvocationDecision(True, "korean_pronunciation_candidate")
-
-    if stage_level == 4 and _NATURAL_CONTRACTION_RE.search(actionable_text):
+    pronunciation_mutations = (
+        build_allowed_mutations(actionable_text, stage=stage_level)
+        if stage_level >= 4
+        else ()
+    )
+    if any(item.kind == "natural_speech_contraction" for item in pronunciation_mutations):
         return LLMInvocationDecision(True, "natural_speech_contraction_candidate")
+
+    if pronunciation_mutations:
+        reason = (
+            "pronunciation_lexicon_candidate"
+            if stage_level == 5
+            else "korean_pronunciation_candidate"
+        )
+        return LLMInvocationDecision(True, reason)
 
     structural_text = actionable_text.strip()
     word_count = len(_WORD_RE.findall(structural_text))
@@ -103,8 +107,8 @@ def decide_llm_invocation(
             return LLMInvocationDecision(True, "prosody_or_structure_candidate")
         return LLMInvocationDecision(False, "short_simple_rule_complete")
 
-    # Natural-speech level 4 skips only extremely short, structurally simple
-    # text. This intentionally calls the LLM in more cases than level 3.
+    # Natural-speech levels 4 and 5 skip only extremely short, structurally
+    # simple text. Level 5 adds closed pronunciation candidates above.
     if (
         has_internal_newline
         or sentence_count > 1
@@ -133,23 +137,6 @@ def _mask_intentional_preserves(text: str) -> str:
                 chars[index] = " "
         offset += len(line)
     return "".join(chars)
-
-
-def _has_korean_pronunciation_candidate(text: str) -> bool:
-    for match in _HANGUL_TOKEN_RE.finditer(text):
-        stem = _GRAMMATICAL_TAIL_RE.sub("", match.group())
-        for previous, current in zip(stem, stem[1:]):
-            previous_code = ord(previous) - 0xAC00
-            current_code = ord(current) - 0xAC00
-            previous_final = previous_code % 28
-            current_onset = current_code // 588
-            current_vowel = (current_code % 588) // 28
-            if previous_final and (
-                (current_onset == 11 and current_vowel in _N_INSERTION_VOWELS)
-                or current_onset in _TENSIFIABLE_ONSETS
-            ):
-                return True
-    return False
 
 
 def _has_long_compound_candidate(text: str) -> bool:

@@ -18,6 +18,7 @@ from LLM.vllm_client import (
     VllmUpstreamHTTPError,
     chat_completions_url,
     extract_vllm_response,
+    extract_vllm_usage,
     generate_vllm,
 )
 
@@ -73,6 +74,13 @@ def test_extracts_completions_style_text_fallback() -> None:
     payload = {"choices": [{"text": "확인"}]}
 
     assert extract_vllm_response(payload) == "확인"
+
+
+def test_extracts_optional_vllm_usage_without_estimating_missing_values() -> None:
+    assert extract_vllm_usage(
+        {"usage": {"prompt_tokens": 12, "completion_tokens": 3}}
+    ) == (12, 3)
+    assert extract_vllm_usage({}) == (None, None)
 
 
 @pytest.mark.parametrize(

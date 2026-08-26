@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
-from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
 
 
 INPUT_PLACEHOLDER = "{{NORMALIZED_TEXT}}"
 PROMPT_FILE_LABEL = "LLM/docs/LLM_prompt.txt"
 PROMPT_LV2_FILE_LABEL = "LLM/docs/LLM_prompt_lv2.txt"
+PROMPT_LV3_FILE_LABEL = "LLM/docs/llm_prompt_lv3.txt"
 PROMPT_PATHS = {
     1: (LLM_PROMPT_PATH, PROMPT_FILE_LABEL),
     2: (LLM_PROMPT_LV2_PATH, PROMPT_LV2_FILE_LABEL),
+    3: (LLM_PROMPT_LV3_PATH, PROMPT_LV3_FILE_LABEL),
 }
 
 
@@ -28,14 +31,18 @@ def build_prompt(
         raise TypeError("normalized_text must be a string")
 
     if isinstance(prompt_level, bool) or prompt_level not in PROMPT_PATHS:
-        raise PromptTemplateError("LLM prompt_level must be 1 or 2.")
+        raise PromptTemplateError("LLM prompt_level must be 1, 2, or 3.")
 
     configured_path, configured_label = PROMPT_PATHS[prompt_level]
     selected_path = path if path is not None else configured_path
     file_label = PROMPT_FILE_LABEL if path is not None else configured_label
 
     try:
-        template = selected_path.read_text(encoding="utf-8")
+        template = (
+            _read_packaged_template(selected_path)
+            if path is None
+            else selected_path.read_text(encoding="utf-8")
+        )
     except FileNotFoundError as exc:
         raise PromptTemplateError(
             f"AI LLM 프롬프트 파일({file_label})을 찾을 수 없습니다. "
@@ -61,3 +68,8 @@ def build_prompt(
             "하나만 남긴 뒤 다시 실행하세요."
         )
     return template.replace(INPUT_PLACEHOLDER, normalized_text, 1)
+
+
+@lru_cache(maxsize=3)
+def _read_packaged_template(path: Path) -> str:
+    return path.read_text(encoding="utf-8")

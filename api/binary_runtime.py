@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -11,6 +13,12 @@ DEFAULT_BINARY_NAME = "tts_preprocessor"
 DEFAULT_SIMPLIFIED_BINARY_NAME = "tts-preprocessor-simplified"
 DEFAULT_LLM_MINIMAL_BINARY_NAME = "tts-preprocessor-llm-minimal"
 DEFAULT_LLM_NATURAL_BINARY_NAME = "tts-preprocessor-llm-natural"
+DEFAULT_LLM_PRONUNCIATION_BINARY_NAME = "tts-preprocessor-llm-pronunciation"
+_LOGGER = logging.getLogger(__name__)
+_FALLBACK_LOG_RE = re.compile(
+    r"level5_validation_fallback code=(?P<code>[A-Z0-9_]+) "
+    r"severity=(?P<severity>Critical|High)"
+)
 # API production runtime resolves and executes packaged binaries instead of
 # importing engine.* or LLM.* source modules from the deployed server filesystem.
 
@@ -86,16 +94,20 @@ def _integrated_binary_name(level: int) -> str:
         return DEFAULT_LLM_MINIMAL_BINARY_NAME
     if level == 4:
         return DEFAULT_LLM_NATURAL_BINARY_NAME
-    raise ValueError("integrated LLM level must be 3 or 4")
+    if level == 5:
+        return DEFAULT_LLM_PRONUNCIATION_BINARY_NAME
+    raise ValueError("integrated LLM level must be 3, 4, or 5")
 
 
 def _iter_integrated_binary_candidates(level: int) -> list[Path]:
     candidates: list[Path] = []
-    env_name = (
-        "TTS_PREPROCESSOR_LLM_MINIMAL_BINARY"
-        if level == 3
-        else "TTS_PREPROCESSOR_LLM_NATURAL_BINARY"
-    )
+    env_name = {
+        3: "TTS_PREPROCESSOR_LLM_MINIMAL_BINARY",
+        4: "TTS_PREPROCESSOR_LLM_NATURAL_BINARY",
+        5: "TTS_PREPROCESSOR_LLM_PRONUNCIATION_BINARY",
+    }.get(level)
+    if env_name is None:
+        raise ValueError("integrated LLM level must be 3, 4, or 5")
     env_path = os.getenv(env_name)
     if env_path:
         candidates.append(Path(env_path).expanduser())
@@ -226,14 +238,14 @@ def run_integrated_binary(
     model: str | None = None,
     binary_path: Path | None = None,
 ) -> dict:
-    """Run one packaged level-3/4 binary from original text to final speech."""
+    """Run one packaged level-3/4/5 binary from original text to final speech."""
 
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     if model is not None and not isinstance(model, str):
         raise TypeError("model must be str or None")
-    if isinstance(level, bool) or level not in {3, 4}:
-        raise ValueError("level must be 3 or 4")
+    if isinstance(level, bool) or level not in {3, 4, 5}:
+        raise ValueError("level must be 3, 4, or 5")
 
     runtime_binary = binary_path or resolve_integrated_binary_path(level)
     command = [str(runtime_binary), "--json"]
@@ -248,6 +260,8 @@ def run_integrated_binary(
         check=False,
     )
     raw_output = result.stdout.strip() or result.stderr.strip()
+    if level == 5:
+        _log_level5_fallback(result.stderr)
     payload = _parse_llm_stage_payload(raw_output)
     if result.returncode != 0 or payload.get("ok") is False:
         status_code = payload.get("status")
@@ -298,6 +312,15 @@ def run_integrated_binary(
         "llm_called": llm_called,
         "llm_skip_reason": llm_skip_reason,
     }
+
+
+def _log_level5_fallback(stderr: str) -> None:
+    for match in _FALLBACK_LOG_RE.finditer(stderr):
+        _LOGGER.warning(
+            "level5_validation_fallback code=%s severity=%s",
+            match.group("code"),
+            match.group("severity"),
+        )
 
 
 def _parse_llm_stage_payload(raw_output: str) -> dict:

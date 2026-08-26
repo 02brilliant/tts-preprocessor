@@ -118,6 +118,50 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
     assert seen["input"] == "원문"
 
 
+def test_phase20f_level5_forwards_only_structured_fallback_log(
+    monkeypatch,
+    caplog,
+) -> None:
+    import api.binary_runtime as binary_runtime
+    import json
+
+    def fake_run(cmd, *, input, capture_output, text, check):
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "normalized_text": "보호된 원고",
+                    "speech_text": "보호된 원고",
+                    "model": "gemma4-31B-it (vLLM)",
+                    "elapsed_ms": 1.0,
+                    "rule_elapsed_ms": 1.0,
+                    "llm_elapsed_ms": 2.0,
+                    "llm_called": True,
+                    "llm_skip_reason": None,
+                }
+            ),
+            stderr=(
+                "level5_validation_fallback code=PROTECTED_SPAN_MUTATION "
+                "severity=Critical\n원문은 기록하지 않는다"
+            ),
+        )
+
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    caplog.set_level("WARNING")
+
+    result = binary_runtime.run_integrated_binary(
+        "비공개 원문",
+        level=5,
+        binary_path=Path("/tmp/fake-level-5"),
+    )
+
+    assert result["speech_text"] == "보호된 원고"
+    assert "PROTECTED_SPAN_MUTATION" in caplog.text
+    assert "비공개 원문" not in caplog.text
+    assert "원문은 기록하지 않는다" not in caplog.text
+
+
 def test_phase20f_binary_runtime_maps_integrated_json_error(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json

@@ -83,6 +83,22 @@ def extract_vllm_response(payload: Any) -> str:
     raise VllmResponseError("vLLM server returned an empty text response.")
 
 
+def extract_vllm_usage(payload: Any) -> tuple[int | None, int | None]:
+    if not isinstance(payload, dict):
+        return None, None
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return None, None
+    prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = usage.get("completion_tokens")
+    return (
+        prompt_tokens if isinstance(prompt_tokens, int) and prompt_tokens >= 0 else None,
+        completion_tokens
+        if isinstance(completion_tokens, int) and completion_tokens >= 0
+        else None,
+    )
+
+
 def generate_vllm(
     *,
     model: str,
@@ -144,5 +160,11 @@ def generate_vllm(
         raise VllmResponseError("vLLM server returned invalid JSON.") from exc
 
     text = extract_vllm_response(payload)
+    prompt_tokens, completion_tokens = extract_vllm_usage(payload)
     elapsed_ms = (clock() - started_at) * 1000
-    return GenerationResult(text=text, elapsed_ms=elapsed_ms)
+    return GenerationResult(
+        text=text,
+        elapsed_ms=elapsed_ms,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )

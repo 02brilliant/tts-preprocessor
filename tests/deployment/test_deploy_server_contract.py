@@ -60,11 +60,13 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "tts_preprocessor_simplified.spec",
         "tts_preprocessor_llm_minimal.spec",
         "tts_preprocessor_llm_natural.spec",
+        "tts_preprocessor_llm_pronunciation.spec",
         "bin/build_binary_entrypoint.py",
         "bin/build_simplified_binary_entrypoint.py",
         "bin/integrated_llm_cli.py",
         "bin/build_llm_minimal_entrypoint.py",
         "bin/build_llm_natural_entrypoint.py",
+        "bin/build_llm_pronunciation_entrypoint.py",
         "docs/Release_Package_README.txt",
         "LLM/__init__.py",
         "LLM/client.py",
@@ -76,10 +78,14 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/cli_protocol.py",
         "LLM/models.json",
         "LLM/prompt_template.py",
+        "LLM/pronunciation_lexicon.py",
+        "LLM/provenance.py",
         "LLM/response_validation.py",
         "LLM/stage_engine.py",
+        "LLM/validation_models.py",
         "LLM/docs/LLM_prompt.txt",
         "LLM/docs/LLM_prompt_lv2.txt",
+        "LLM/docs/llm_prompt_lv3.txt",
     ):
         target = tmp_path / relative
         if not target.exists():
@@ -121,7 +127,11 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         simplified_executable.create_system = 3
         simplified_executable.external_attr = (stat.S_IFREG | 0o755) << 16
         archive.writestr(simplified_executable, b"mac-simplified-binary")
-        for name in ("tts-preprocessor-llm-minimal", "tts-preprocessor-llm-natural"):
+        for name in (
+            "tts-preprocessor-llm-minimal",
+            "tts-preprocessor-llm-natural",
+            "tts-preprocessor-llm-pronunciation",
+        ):
             llm_executable = zipfile.ZipInfo(name)
             llm_executable.create_system = 3
             llm_executable.external_attr = (stat.S_IFREG | 0o755) << 16
@@ -292,11 +302,12 @@ def _assert_not_run(events: list[str], *forbidden: str) -> None:
         assert event not in events
 
 
-def test_deploy_includes_both_selectable_prompts() -> None:
+def test_deploy_includes_all_selectable_prompts() -> None:
     source = SOURCE_DEPLOY.read_text(encoding="utf-8")
 
     assert "LLM/docs/LLM_prompt.txt" in source
     assert "LLM/docs/LLM_prompt_lv2.txt" in source
+    assert "LLM/docs/llm_prompt_lv3.txt" in source
     assert "LLM/docs/LLM_prompt_prosody.txt" not in source
     assert "LLM/docs/LLM_prompt_speech.txt" not in source
     assert '--exclude="docs/LLM_prompt.txt"' not in source
