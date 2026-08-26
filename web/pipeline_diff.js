@@ -2,6 +2,8 @@
   "use strict";
 
   const MAX_LCS_CELLS = 4_000_000;
+  const MAX_MYERS_EDIT_DISTANCE = 4_000;
+  const MAX_MYERS_TRACE_CELLS = 12_000_000;
   const SPACE_SYMBOL = "\u2423";
   const SPEECH_STRUCTURE_CHARACTER_RE =
     /^[\s,，.。!?！？:：;；()（）[\]{}"'“”‘’…—–]$/u;
@@ -23,7 +25,7 @@
     const n = b.length;
 
     if ((m + 1) * (n + 1) > MAX_LCS_CELLS) {
-      return boundedFallbackOps(a, b);
+      return largeSequenceOps(a, b);
     }
 
     const dp = new Uint32Array((m + 1) * (n + 1));
@@ -75,6 +77,177 @@
         });
         i -= 1;
       }
+    }
+    return ops.reverse();
+  }
+
+  function largeSequenceOps(a, b) {
+    let prefix = 0;
+    while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) {
+      prefix += 1;
+    }
+
+    let suffix = 0;
+    while (
+      suffix < a.length - prefix
+      && suffix < b.length - prefix
+      && a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+    ) {
+      suffix += 1;
+    }
+
+    const middleOps = myersOps(
+      a.slice(prefix, a.length - suffix),
+      b.slice(prefix, b.length - suffix),
+    );
+    if (middleOps === null) {
+      return boundedFallbackOps(a, b);
+    }
+
+    const ops = [];
+    for (let index = 0; index < prefix; index += 1) {
+      ops.push({
+        op: "eq",
+        value: a[index],
+        sourceIndex: index,
+        targetIndex: index,
+      });
+    }
+    for (const op of middleOps) {
+      ops.push({
+        ...op,
+        ...(op.sourceIndex === undefined
+          ? {}
+          : { sourceIndex: op.sourceIndex + prefix }),
+        ...(op.targetIndex === undefined
+          ? {}
+          : { targetIndex: op.targetIndex + prefix }),
+      });
+    }
+    for (let offset = suffix; offset > 0; offset -= 1) {
+      const sourceIndex = a.length - offset;
+      const targetIndex = b.length - offset;
+      ops.push({
+        op: "eq",
+        value: a[sourceIndex],
+        sourceIndex,
+        targetIndex,
+      });
+    }
+    return ops;
+  }
+
+  // Myers' O((N + M)D) algorithm keeps long documents with a few localized
+  // changes precise without allocating the quadratic LCS table.
+  function myersOps(a, b) {
+    const maxDistance = Math.min(
+      a.length + b.length,
+      MAX_MYERS_EDIT_DISTANCE,
+    );
+    const trace = [];
+    let previous = null;
+
+    function valueAt(row, distance, diagonal) {
+      const index = diagonal + distance;
+      return index < 0 || index >= row.length ? -1 : row[index];
+    }
+
+    for (let distance = 0; distance <= maxDistance; distance += 1) {
+      if ((distance + 1) * (distance + 1) > MAX_MYERS_TRACE_CELLS) {
+        return null;
+      }
+      const row = new Int32Array((2 * distance) + 1);
+      row.fill(-1);
+
+      for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
+        const movedDown = distance === 0
+          || diagonal === -distance
+          || (
+            diagonal !== distance
+            && valueAt(previous, distance - 1, diagonal - 1)
+              < valueAt(previous, distance - 1, diagonal + 1)
+          );
+        const previousDiagonal = movedDown ? diagonal + 1 : diagonal - 1;
+        let x = distance === 0
+          ? 0
+          : valueAt(previous, distance - 1, previousDiagonal) + (movedDown ? 0 : 1);
+        let y = x - diagonal;
+        while (x < a.length && y < b.length && a[x] === b[y]) {
+          x += 1;
+          y += 1;
+        }
+        row[diagonal + distance] = x;
+
+        if (x === a.length && y === b.length) {
+          trace.push(row);
+          return backtrackMyersOps(a, b, trace);
+        }
+      }
+      trace.push(row);
+      previous = row;
+    }
+    return null;
+  }
+
+  function backtrackMyersOps(a, b, trace) {
+    const ops = [];
+    let x = a.length;
+    let y = b.length;
+
+    function valueAt(row, distance, diagonal) {
+      const index = diagonal + distance;
+      return index < 0 || index >= row.length ? -1 : row[index];
+    }
+
+    for (let distance = trace.length - 1; distance > 0; distance -= 1) {
+      const previous = trace[distance - 1];
+      const diagonal = x - y;
+      const movedDown = diagonal === -distance
+        || (
+          diagonal !== distance
+          && valueAt(previous, distance - 1, diagonal - 1)
+            < valueAt(previous, distance - 1, diagonal + 1)
+        );
+      const previousDiagonal = movedDown ? diagonal + 1 : diagonal - 1;
+      const previousX = valueAt(previous, distance - 1, previousDiagonal);
+      const previousY = previousX - previousDiagonal;
+
+      while (x > previousX && y > previousY) {
+        ops.push({
+          op: "eq",
+          value: a[x - 1],
+          sourceIndex: x - 1,
+          targetIndex: y - 1,
+        });
+        x -= 1;
+        y -= 1;
+      }
+      if (movedDown) {
+        ops.push({ op: "ins", value: b[previousY], targetIndex: previousY });
+        y = previousY;
+      } else {
+        ops.push({ op: "del", value: a[previousX], sourceIndex: previousX });
+        x = previousX;
+      }
+    }
+
+    while (x > 0 && y > 0) {
+      ops.push({
+        op: "eq",
+        value: a[x - 1],
+        sourceIndex: x - 1,
+        targetIndex: y - 1,
+      });
+      x -= 1;
+      y -= 1;
+    }
+    while (x > 0) {
+      ops.push({ op: "del", value: a[x - 1], sourceIndex: x - 1 });
+      x -= 1;
+    }
+    while (y > 0) {
+      ops.push({ op: "ins", value: b[y - 1], targetIndex: y - 1 });
+      y -= 1;
     }
     return ops.reverse();
   }

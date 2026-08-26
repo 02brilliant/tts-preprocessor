@@ -6,9 +6,22 @@ from engine.main import transform
 from engine.prosody.paragraph import normalize_user_newline_semantics
 
 
-@pytest.mark.parametrize("newlines", ["\n", "\n\n", "\n\n\n"])
-def test_non_terminal_newline_runs_join_as_one_sentence(newlines: str) -> None:
+def test_single_non_terminal_newline_joins_as_one_sentence() -> None:
+    newlines = "\n"
     assert transform(f"지역에 대해{newlines}미국의 새 전략") == "지역에 대해 미국의 새 전략"
+
+
+@pytest.mark.parametrize("newlines", ["\n\n", "\n\n\n", "\r\n\r\n"])
+def test_blank_line_adds_comma_before_joining_non_terminal_lines(newlines: str) -> None:
+    assert transform(f"국내 증시 반등 시도  {newlines}  -키움증권은 전망했다.") == (
+        "국내 증시 반등 시도, -키움증권은 전망했다."
+    )
+
+
+def test_blank_line_does_not_duplicate_existing_comma() -> None:
+    assert transform("국내 증시 반등 시도,\n\n-키움증권은 전망했다.") == (
+        "국내 증시 반등 시도, -키움증권은 전망했다."
+    )
 
 
 def test_comma_is_preserved_while_visual_newline_joins() -> None:

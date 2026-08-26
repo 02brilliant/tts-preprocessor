@@ -17,7 +17,7 @@ def test_web_uses_three_exact_independent_download_targets() -> None:
         "tts-preprocessor-windows.zip",
     ):
         assert archive_name in web
-    assert "macOS Apple Silicon (arm64)" in web
+    assert "macOS (Arm64, Apple Silicon)" in web
     assert "DOWNLOAD_TARGETS.map(async (target)" in web
     assert "Promise.all(" in web
     assert "available: await checkDownloadAvailable(target.file)" in web

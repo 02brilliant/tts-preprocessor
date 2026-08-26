@@ -107,6 +107,11 @@ def normalize_user_newline_semantics(
                 joiner, next_cursor = _newline_joiner(text, start, end)
                 if joiner:
                     parts[-1] = parts[-1].rstrip(_HORIZONTAL_WHITESPACE)
+                    if (
+                        _is_explicit_blank_line(match.group(0))
+                        and not _ends_with_punctuation(text, last_non_space)
+                    ):
+                        parts[-1] += ","
                 parts.append(joiner)
         cursor = next_cursor
     parts.append(text[cursor:])
@@ -115,6 +120,14 @@ def normalize_user_newline_semantics(
 
 def _normalize_user_newlines(text: str) -> str:
     return normalize_user_newline_semantics(text, paragraphize_boundaries=True)
+
+
+def _is_explicit_blank_line(newline_run: str) -> bool:
+    return len(re.findall(r"\r\n|\r|\n", newline_run)) >= 2
+
+
+def _ends_with_punctuation(text: str, index: int | None) -> bool:
+    return index is not None and text[index] in ".,!?…:;，。！？：；"
 
 
 def _newline_joiner(text: str, start: int, end: int) -> tuple[str, int]:
