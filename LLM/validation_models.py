@@ -50,6 +50,8 @@ class ValidationIssue:
     code: str
     severity: str
     message: str
+    output_start: int | None = None
+    output_end: int | None = None
 
 
 @dataclass(frozen=True)

@@ -68,10 +68,9 @@ def decide_llm_invocation(
     if _has_long_compound_candidate(actionable_text):
         return LLMInvocationDecision(True, "compound_boundary_candidate")
 
-    pronunciation_mutations = (
-        build_allowed_mutations(actionable_text, stage=stage_level)
-        if stage_level >= 4
-        else ()
+    pronunciation_mutations = build_allowed_mutations(
+        actionable_text,
+        stage=stage_level,
     )
     if any(item.kind == "natural_speech_contraction" for item in pronunciation_mutations):
         return LLMInvocationDecision(True, "natural_speech_contraction_candidate")

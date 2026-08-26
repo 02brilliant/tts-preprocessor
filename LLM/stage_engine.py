@@ -87,7 +87,13 @@ def transform(
     except LLMStageContractError as exc:
         if prompt_level != 3 or exc.severity not in {"Critical", "High"}:
             raise
-        issue = ValidationIssue(exc.code, exc.severity, str(exc))
+        issue = ValidationIssue(
+            exc.code,
+            exc.severity,
+            str(exc),
+            output_start=exc.output_start,
+            output_end=exc.output_end,
+        )
         _LOGGER.warning(
             "level5_validation_fallback code=%s severity=%s",
             exc.code,

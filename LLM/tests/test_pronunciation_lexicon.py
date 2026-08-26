@@ -54,6 +54,23 @@ def test_stage_five_is_a_controlled_superset() -> None:
     }
 
 
+def test_allowed_mutations_are_monotonic_across_llm_stages() -> None:
+    text = "색연필과 문고리를 확인한 기자입니다. 생산량과 노동의 대가를 발표했습니다."
+    stage3 = set(build_allowed_mutations(text, stage=3))
+    stage4 = set(build_allowed_mutations(text, stage=4))
+    stage5 = set(build_allowed_mutations(text, stage=5))
+
+    assert stage3 == set()
+    assert stage4 < stage5
+    assert {item for item in stage4 if item.kind != "compound_boundary"} <= stage5
+    assert {"n_insertion", "lexical_tensification", "natural_speech_contraction"} <= {
+        item.kind for item in stage4
+    }
+    assert {"lexical_n_l", "contextual_homograph"} <= {
+        item.kind for item in stage5
+    }
+
+
 def test_exact_entry_allows_particle_but_not_longer_lexical_word() -> None:
     candidates = build_allowed_mutations("생산량은 늘고 증가량은 줄었다.", stage=5)
     assert [(item.source_text, item.allowed_outputs) for item in candidates] == [
@@ -101,6 +118,46 @@ def test_general_g2p_surface_is_not_a_candidate() -> None:
     assert build_allowed_mutations("국물은 같이 읽고 있습니다.", stage=5) == ()
 
 
+@pytest.mark.parametrize("stage", (3, 4, 5))
+@pytest.mark.parametrize(
+    "text",
+    ("확인했습니다.", "발표했습니다.", "처리되었습니다.", "검토하였습니다."),
+)
+def test_compound_boundary_does_not_split_predicate_or_ending(
+    stage: int,
+    text: str,
+) -> None:
+    assert all(
+        item.kind != "compound_boundary"
+        for item in build_allowed_mutations(text, stage=stage)
+    )
+
+
+@pytest.mark.parametrize("stage", (3, 4, 5))
+def test_compound_boundary_stays_inside_long_nominal_stem(stage: int) -> None:
+    candidates = build_allowed_mutations("산업용지역전기요금제입니다.", stage=stage)
+    expected = "산업용지역-전기요금제입니다"
+    candidate = next(item for item in candidates if expected in item.allowed_outputs)
+
+    assert candidate.source_text == "산업용지역전기요금제입니다"
+    assert candidate.allowed_outputs
+    hyphen_outputs = tuple(
+        output for output in candidate.allowed_outputs if "-" in output
+    )
+    assert hyphen_outputs
+    assert all("-입니다" not in output for output in hyphen_outputs)
+    assert all(output.endswith("입니다") for output in hyphen_outputs)
+
+
+def test_stage_three_exposes_only_compound_boundary_korean_mutations() -> None:
+    candidates = build_allowed_mutations(
+        "산업용지역전기요금제의 색연필 담당 기자입니다.",
+        stage=3,
+    )
+    assert candidates
+    assert {item.kind for item in candidates} == {"compound_boundary"}
+
+
 @pytest.mark.parametrize(
     ("surface", "pronunciation", "contrast"),
     STAGE5_EXACT_CONTRASTS,
@@ -125,10 +182,13 @@ def test_every_stage5_exact_entry_has_positive_negative_and_contrast_coverage(
     assert all(item.kind != "lexical_n_l" for item in contrast_candidates)
 
 
-def test_pronunciation_surface_inside_protected_url_is_not_a_candidate() -> None:
-    text = "자료는 https://example.com/생산량에 있습니다."
+@pytest.mark.parametrize("stage", (3, 4, 5))
+def test_pronunciation_surface_inside_protected_url_is_not_a_candidate(
+    stage: int,
+) -> None:
+    text = "자료는 https://example.com/생산량/산업용지역전기요금제에 있습니다."
     snapshot = minimal_snapshot(text)
     assert all(
-        item.source_text != "생산량"
-        for item in build_allowed_mutations(text, stage=5, snapshot=snapshot)
+        item.source_text not in {"생산량", "산업용지역전기요금제에"}
+        for item in build_allowed_mutations(text, stage=stage, snapshot=snapshot)
     )

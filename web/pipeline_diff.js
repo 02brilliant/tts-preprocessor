@@ -426,6 +426,38 @@
     return parts;
   }
 
+  function rejectedSpeechParts(sourceText, targetText, includeDeletions, failure) {
+    const outputStart = failure && Number.isInteger(failure.output_start)
+      ? failure.output_start
+      : null;
+    const outputEnd = failure && Number.isInteger(failure.output_end)
+      ? failure.output_end
+      : null;
+    if (
+      sourceText === targetText
+      && outputStart !== null
+      && outputEnd !== null
+      && outputStart >= 0
+      && outputEnd > outputStart
+      && outputEnd <= targetText.length
+    ) {
+      const parts = [];
+      if (outputStart > 0) {
+        appendPart(parts, { value: targetText.slice(0, outputStart), type: "unchanged", stage: 0 });
+      }
+      appendPart(parts, {
+        value: targetText.slice(outputStart, outputEnd),
+        type: "contract_violation",
+        stage: 2,
+      });
+      if (outputEnd < targetText.length) {
+        appendPart(parts, { value: targetText.slice(outputEnd), type: "unchanged", stage: 0 });
+      }
+      return parts;
+    }
+    return speechContractParts(sourceText, targetText, includeDeletions);
+  }
+
   function cumulativeParts(originalText, finalLedger) {
     const sourceCharacters = Array.from(originalText);
     const parts = [];
@@ -573,12 +605,13 @@
     outputText,
     outputElement,
     diffElement,
+    validationFailure = null,
   ) {
     outputElement.innerHTML = renderParts(
-      speechContractParts(sourceText, outputText, false),
+      rejectedSpeechParts(sourceText, outputText, false, validationFailure),
     );
     diffElement.innerHTML = renderParts(
-      speechContractParts(sourceText, outputText, true),
+      rejectedSpeechParts(sourceText, outputText, true, validationFailure),
     );
   }
 
@@ -592,6 +625,7 @@
     renderOutputWithStageChanges,
     renderParts,
     renderSpeechContractViolation,
+    rejectedSpeechParts,
     renderStage1Input,
     stage1InputParts,
     sequenceOps,

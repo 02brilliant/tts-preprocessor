@@ -62,6 +62,40 @@ def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
     assert validate_response(source, output, prompt_level=1) == output
 
 
+@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+def test_every_llm_stage_accepts_closed_compound_boundary(
+    prompt_level: int,
+) -> None:
+    source = "산업용지역전기요금제입니다."
+    output = "산업용지역-전기요금제입니다."
+    assert validate_response(source, output, prompt_level=prompt_level) == output
+
+
+def test_level3_rejects_korean_rewrite_disguised_as_compound_boundary() -> None:
+    with pytest.raises(LLMStageContractError, match="finite pronunciation entry"):
+        validate_response(
+            "산업용지역전기요금제입니다.",
+            "산업용지역-전기요금재입니다.",
+            prompt_level=1,
+        )
+
+
+def test_stage_outputs_form_a_controlled_processing_superset() -> None:
+    source = "3.05와 색연필, 생산량을 확인했습니다."
+    level3 = "삼쩜영오와 색연필, 생산량을 확인했습니다."
+    level4 = "삼쩜영오와 색년필, 생산량을 확인했습니다."
+    level5 = "삼쩜영오와 색년필, 생산냥을 확인했습니다."
+
+    assert validate_response(source, level3, prompt_level=1) == level3
+    assert validate_response(source, level4, prompt_level=2) == level4
+    assert validate_response(source, level5, prompt_level=3) == level5
+
+    with pytest.raises(LLMStageContractError):
+        validate_response(source, level4, prompt_level=1)
+    with pytest.raises(LLMStageContractError):
+        validate_response(source, level5, prompt_level=2)
+
+
 @pytest.mark.parametrize(
     "output",
     (

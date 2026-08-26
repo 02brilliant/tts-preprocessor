@@ -323,12 +323,30 @@ def run_integrated_binary(
         message = validation_failure.get("message")
         if not all(isinstance(value, str) and value for value in (code, severity, message)):
             raise BinaryRuntimeError("Integrated LLM binary returned an invalid validation failure payload.")
+        output_start = validation_failure.get("output_start")
+        output_end = validation_failure.get("output_end")
+        if (output_start is None) != (output_end is None) or (
+            output_start is not None
+            and (
+                isinstance(output_start, bool)
+                or isinstance(output_end, bool)
+                or not isinstance(output_start, int)
+                or not isinstance(output_end, int)
+                or output_start < 0
+                or output_end <= output_start
+                or output_end > len(rejected_speech_text)
+            )
+        ):
+            raise BinaryRuntimeError("Integrated LLM binary returned invalid validation failure offsets.")
         response["rejected_speech_text"] = rejected_speech_text
         response["validation_failure"] = {
             "code": code,
             "severity": severity,
             "message": message,
         }
+        if output_start is not None:
+            response["validation_failure"]["output_start"] = output_start
+            response["validation_failure"]["output_end"] = output_end
     return response
 
 

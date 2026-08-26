@@ -924,6 +924,7 @@
             rejectedSpeechText,
             stageElements[2].output,
             stageElements[2].diffs[0],
+            validationFailure,
           );
         } else {
           PipelineDiff.renderOutputWithStageChanges(normalizedText, speechText, 2, stageElements[2].output);
@@ -976,6 +977,9 @@
         const contractOutput = detail && detail.stage === "speech" && typeof detail.speech_text === "string"
           ? detail.speech_text
           : null;
+        const validationFailure = detail && detail.validation_failure && typeof detail.validation_failure === "object"
+          ? detail.validation_failure
+          : null;
         if (failedNormalizedText !== null) {
           PipelineDiff.renderStage1Input(originalText, failedNormalizedText, stageElements[1].input);
           PipelineDiff.renderOutputWithStageChanges(originalText, failedNormalizedText, 1, stageElements[1].output);
@@ -990,6 +994,7 @@
             contractOutput,
             stageElements[2].output,
             stageElements[2].diffs[0],
+            validationFailure,
           );
           setCopyableText(2, contractOutput);
           const invalidStage2Ledgers = PipelineDiff.buildPipelineLedgers(
@@ -1004,7 +1009,7 @@
           );
           showStageError(2, error, "통합 LLM 처리 중 오류가 발생했습니다.");
           stageElements[2].error.textContent +=
-            "\nLLM 원출력을 표시했습니다. 공백·줄바꿈·고정 문장부호 변경 등 계약 위반은 주황색 테두리로 표시하며, 규칙 처리 결과는 유지됩니다.";
+            "\nLLM 원출력을 표시했습니다. 검증에 실패한 변경 또는 미처리 발화 표면은 주황색으로 표시하며, 규칙 처리 결과는 유지됩니다.";
         } else {
           showStageError(1, error, "선택한 단계 처리 중 오류가 발생했습니다.");
         }

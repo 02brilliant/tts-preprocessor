@@ -65,6 +65,17 @@ _GRAMMATICAL_TAIL_RE = re.compile(
     r"이시다|이세요|이셨다"
     r")$"
 )
+_COMPOUND_GRAMMATICAL_TAIL_RE = re.compile(
+    r"(?:"
+    r"했습니다|하였습니다|합니다|됩니다|되었습니다|입니다|"
+    r"이었다|이었어요|이었는데|이었지만|이에요|이어서|이세요|이셨다|"
+    r"습니다|습니까|어요|아요|였다|였어요|였는데|였지만|"
+    r"이라고|이라면|이라서|이며|이고|"
+    r"으로는|에서는|에게는|까지는|부터는|"
+    r"으로|에서|에게|까지|부터|처럼|보다|"
+    r"은|는|이|가|을|를|의|에|와|과|도|만|로"
+    r")+$"
+)
 _HANGUL_WORD_RE = re.compile(r"[가-힣]+")
 _CONTRACTION_TAILS = {
     "이었다": "였다",
@@ -103,8 +114,6 @@ def build_allowed_mutations(
 ) -> tuple[AllowedMutation, ...]:
     if stage not in {3, 4, 5}:
         raise ValueError("stage must be 3, 4, or 5")
-    if stage == 3:
-        return ()
 
     candidates: list[AllowedMutation] = []
     entries = entries_for_stage(stage)
@@ -165,16 +174,21 @@ def build_allowed_mutations(
             )
             break
 
-        contraction = _contraction_mutation(
-            normalized_text,
-            word,
-            word_match.start(),
-            entry_by_surface,
-        )
-        if contraction is not None:
-            candidates.append(contraction)
+        if stage >= 4:
+            contraction = _contraction_mutation(
+                normalized_text,
+                word,
+                word_match.start(),
+                entry_by_surface,
+            )
+            if contraction is not None:
+                candidates.append(contraction)
 
-        if len(word) >= 6:
+        compound_tail = _COMPOUND_GRAMMATICAL_TAIL_RE.search(word)
+        stem_end = len(word) if compound_tail is None else compound_tail.start()
+        compound_stem = word[:stem_end]
+        compound_tail_text = word[stem_end:]
+        if len(compound_stem) >= 6:
             candidates.append(
                 AllowedMutation(
                     start=word_match.start(),
@@ -182,8 +196,11 @@ def build_allowed_mutations(
                     kind="compound_boundary",
                     source_text=word,
                     allowed_outputs=tuple(
-                        word[:index] + "-" + word[index:]
-                        for index in range(2, len(word) - 1)
+                        compound_stem[:index]
+                        + "-"
+                        + compound_stem[index:]
+                        + compound_tail_text
+                        for index in range(2, len(compound_stem) - 1)
                     ),
                 )
             )
@@ -295,9 +312,35 @@ def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutatio
         "lexical_tensification": 1,
         "compound_boundary": 2,
     }
+    # Different stage policies can legitimately target the same complete span
+    # (for example, a long compound ending in ``입니다`` may allow either one
+    # compound-boundary hyphen or the closed ``이다`` contraction).  Preserve
+    # those as mutually exclusive whole-span alternatives.  This does not
+    # authorize chaining the two rewrites.
+    coalesced: dict[tuple[int, int, str], AllowedMutation] = {}
+    for candidate in candidates:
+        key = (candidate.start, candidate.end, candidate.source_text)
+        existing = coalesced.get(key)
+        if existing is None:
+            coalesced[key] = candidate
+            continue
+        preferred = min(
+            (existing, candidate),
+            key=lambda item: priority.get(item.kind, 9),
+        )
+        coalesced[key] = AllowedMutation(
+            start=preferred.start,
+            end=preferred.end,
+            kind=preferred.kind,
+            source_text=preferred.source_text,
+            allowed_outputs=tuple(
+                dict.fromkeys(existing.allowed_outputs + candidate.allowed_outputs)
+            ),
+        )
+
     selected: list[AllowedMutation] = []
     for candidate in sorted(
-        candidates,
+        coalesced.values(),
         key=lambda item: (item.start, priority.get(item.kind, 9), -(item.end - item.start)),
     ):
         if any(candidate.start < item.end and item.start < candidate.end for item in selected):

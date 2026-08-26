@@ -78,12 +78,16 @@ class LLMStageContractError(LLMResponseError):
         output_text: str,
         code: str = "LLM_STAGE_CONTRACT",
         severity: str = "High",
+        output_start: int | None = None,
+        output_end: int | None = None,
     ) -> None:
         super().__init__(message)
         self.stage = stage
         self.output_text = output_text
         self.code = code
         self.severity = severity
+        self.output_start = output_start
+        self.output_end = output_end
 
 
 def validate_response(
@@ -113,6 +117,8 @@ def validate_response(
             output_text=speech_text,
             code=issue.code,
             severity=issue.severity,
+            output_start=issue.output_start,
+            output_end=issue.output_end,
         )
     return speech_text
 
@@ -195,6 +201,19 @@ def validate_speech_text(
         active_candidates,
     )
     if policy_pattern.fullmatch(speech_text) is None:
+        if speech_text == normalized_text:
+            residual_span = _find_unprotected_residual_surface(
+                speech_text,
+                active_snapshot,
+            )
+            if residual_span is not None:
+                return _failure(
+                    "RESIDUAL_SPEECH_SURFACE",
+                    "Medium",
+                    "LLM response left a speech-target digit, English letter, or unit symbol.",
+                    output_start=residual_span[0],
+                    output_end=residual_span[1],
+                )
         if not _preserves_residual_numeric_meaning(
             normalized_text,
             speech_text,
@@ -254,19 +273,22 @@ def validate_speech_text(
                 "High",
                 "LLM response added an output wrapper or input tag.",
             )
-    if _has_unprotected_residual_surface(speech_text, active_snapshot):
+    residual_span = _find_unprotected_residual_surface(speech_text, active_snapshot)
+    if residual_span is not None:
         return _failure(
             "RESIDUAL_SPEECH_SURFACE",
             "Medium",
             "LLM response left a speech-target digit, English letter, or unit symbol.",
+            output_start=residual_span[0],
+            output_end=residual_span[1],
         )
     return ValidationResult(ok=True)
 
 
-def _has_unprotected_residual_surface(
+def _find_unprotected_residual_surface(
     output: str,
     snapshot: NormalizationSnapshot,
-) -> bool:
+) -> tuple[int, int] | None:
     masked = output
     protected_values = {
         span.text
@@ -284,7 +306,10 @@ def _has_unprotected_residual_surface(
             lines.append(" " * len(content) + line[len(content) :])
         else:
             lines.append(line)
-    return _SPEECH_TARGET_RESIDUAL_RE.search("".join(lines)) is not None
+    match = _SPEECH_TARGET_RESIDUAL_RE.search("".join(lines))
+    if match is None:
+        return None
+    return match.start(), match.end()
 
 
 def _compile_allowed_output_pattern(
@@ -326,7 +351,7 @@ def _compile_allowed_output_pattern(
             cursor = residual.end()
             continue
         character = source[cursor]
-        if character in " \t":
+        if character in " \t" or _SPECIAL_SPACE_RE.fullmatch(character):
             parts.append(r"[ \t,]*")
         else:
             parts.append(re.escape(character))
@@ -460,10 +485,25 @@ def _validate_new_characters(source: str, output: str) -> ValidationIssue | None
     return None
 
 
-def _failure(code: str, severity: str, message: str) -> ValidationResult:
+def _failure(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    output_start: int | None = None,
+    output_end: int | None = None,
+) -> ValidationResult:
     return ValidationResult(
         ok=False,
-        issues=(ValidationIssue(code=code, severity=severity, message=message),),
+        issues=(
+            ValidationIssue(
+                code=code,
+                severity=severity,
+                message=message,
+                output_start=output_start,
+                output_end=output_end,
+            ),
+        ),
     )
 
 
@@ -571,5 +611,5 @@ def _required_structure(text: str) -> list[str]:
             and text[index + 1].isdigit()
         ):
             continue
-        structure.append(character)
+        structure.append(" " if _SPECIAL_SPACE_RE.fullmatch(character) else character)
     return structure

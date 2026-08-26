@@ -104,7 +104,7 @@ def test_frontend_preserves_contract_violating_llm_output() -> None:
     assert "error.contractDetail = detail" in web
     assert "typeof detail.speech_text" in web
     assert "LLM 원출력을 표시했습니다." in web
-    assert "공백·줄바꿈·고정 문장부호 변경" in web
+    assert "검증에 실패한 변경 또는 미처리 발화 표면" in web
     assert "PipelineDiff.renderSpeechContractViolation" in web
     assert "invalidStage2Ledgers" in web
     assert "규칙 처리 결과는 유지됩니다." in web

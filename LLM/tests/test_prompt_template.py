@@ -65,6 +65,32 @@ def test_prompt_levels_have_distinct_closed_contracts() -> None:
         assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in rendered
 
 
+def test_prompt_stage_inheritance_is_explicit_and_monotonic() -> None:
+    level3 = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+    level4 = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
+    level5 = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+
+    for prompt in (level3, level4, level5):
+        assert "<STAGE_INHERITANCE>" in prompt
+        assert "<RESIDUAL_COMPLETION_REQUIREMENT>" in prompt
+        assert "잔여 읽기 작업을 생략" in prompt or "잔여 표면은" in prompt
+
+    assert "3단계에는 4·5단계의 한국어 발음 예외" in level3
+    assert "4단계는 3단계의 통제된 상위 집합" in level4
+    assert "5단계 전용 발음 사전과 문맥 동형어는 적용하지 않는다" in level4
+    assert "5단계는 4단계의 통제된 상위 집합" in level5
+    assert "1. 3단계 전체" in level5
+    assert "2. 4단계 전체" in level5
+    assert "3. 5단계 추가" in level5
+
+
+def test_every_llm_prompt_requires_clear_residual_work_to_complete() -> None:
+    for path in (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH):
+        prompt = path.read_text(encoding="utf-8")
+        assert "2조 8천억 원 → 이조 팔천억 원" in prompt
+        assert "반드시 한글 읽기로 완성한다" in prompt
+
+
 @pytest.mark.parametrize("prompt_level", (0, 4, True))
 def test_prompt_rejects_unknown_level(prompt_level) -> None:
     with pytest.raises(PromptTemplateError, match="prompt_level must be 1, 2, or 3"):
@@ -88,8 +114,20 @@ def test_level3_prompt_preserves_korean_and_locked_readings() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
     for fixed_reading in ("삼번 버스", "오분 뒤", "제 삼장", "KBS news"):
         assert fixed_reading in prompt
-    assert "쉼표 추가 외에는" in prompt
+    assert "승인된 복합명사 ASCII 하이픈과 쉼표 외" in prompt
     assert "한국어 단어를 발음식으로 전사하지 않는다" in prompt
+
+
+def test_compound_boundary_policy_is_inherited_from_level3() -> None:
+    level3 = LLM_PROMPT_PATH.read_text(encoding="utf-8")
+    level4 = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
+    level5 = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+
+    assert "<COMPOUND_SPEECH_BOUNDARY>" in level3
+    assert "한글 글자와 순서는 그대로 유지한다" in level3
+    assert "3단계에서 상속한 운율 정책" in level4
+    assert "1. 3단계 전체" in level5
+    assert "복합명사 발화 경계, 제한적 쉼표" in level5
 
 
 def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
@@ -192,3 +230,11 @@ def test_decimal_examples_match_the_rule_engine_locked_jjeom_surface(path: Path)
     assert "영쩜오 퍼센트포인트" in prompt
     assert "삼 점 영오" not in prompt
     assert "영 점 오 퍼센트포인트" not in prompt
+
+
+@pytest.mark.parametrize(
+    "path",
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
+)
+def test_large_residual_currency_reading_example_is_in_every_prompt(path: Path) -> None:
+    assert "2조 8천억 원 → 이조 팔천억 원" in path.read_text(encoding="utf-8")

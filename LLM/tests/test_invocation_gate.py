@@ -72,14 +72,12 @@ def test_korean_pronunciation_candidates_are_level4_only(text: str) -> None:
     assert decision.reason == "korean_pronunciation_candidate"
 
 
-@pytest.mark.parametrize("stage_level", (3, 4))
-def test_long_compound_boundary_candidate_remains_in_both_levels(stage_level: int) -> None:
-    decision = decide_llm_invocation(
-        "남해지방해양경찰청입니다.",
-        stage_level=stage_level,
-    )
-    assert decision.call_llm is True
-    assert decision.reason == "compound_boundary_candidate"
+def test_long_compound_boundary_candidate_starts_at_level3() -> None:
+    text = "산업용지역전기요금제입니다."
+    for stage_level in (3, 4, 5):
+        decision = decide_llm_invocation(text, stage_level=stage_level)
+        assert decision.call_llm is True
+        assert decision.reason == "compound_boundary_candidate"
 
 
 def test_level5_calls_for_additional_pronunciation_candidate() -> None:

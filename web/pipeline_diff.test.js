@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { sequenceOps, speechContractParts } = require("./pipeline_diff.js");
+const { sequenceOps, rejectedSpeechParts, speechContractParts } = require("./pipeline_diff.js");
 
 function renderTarget(ops) {
   return ops
@@ -36,3 +36,17 @@ function testRejectedSpeechMarksEveryChangedOutputSpan() {
 }
 
 testRejectedSpeechMarksEveryChangedOutputSpan();
+
+function testUnchangedResidualMarksTheValidatorReportedOutputRange() {
+  const parts = rejectedSpeechParts("약 2조 원", "약 2조 원", false, {
+    output_start: 2,
+    output_end: 3,
+  });
+  assert.deepEqual(parts.map((part) => [part.value, part.type]), [
+    ["약 ", "unchanged"],
+    ["2", "contract_violation"],
+    ["조 원", "unchanged"],
+  ]);
+}
+
+testUnchangedResidualMarksTheValidatorReportedOutputRange();

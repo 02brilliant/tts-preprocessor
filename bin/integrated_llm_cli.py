@@ -164,6 +164,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
                 "severity": validation_issue.severity,
                 "message": validation_issue.message,
             }
+            if validation_issue.output_start is not None and validation_issue.output_end is not None:
+                response_payload["validation_failure"]["output_start"] = validation_issue.output_start
+                response_payload["validation_failure"]["output_end"] = validation_issue.output_end
         _print_json(response_payload)
         return 0
 

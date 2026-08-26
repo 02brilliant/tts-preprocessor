@@ -26,6 +26,23 @@ def test_classify_contract_violation_preserves_output() -> None:
     assert detail == {"message": "invalid", "stage": "speech", "speech_text": "원출력"}
 
 
+def test_classify_residual_contract_violation_includes_output_range() -> None:
+    status, detail = classify_llm_stage_error(
+        LLMStageContractError(
+            "residual",
+            stage="speech",
+            output_text="약 2조 원",
+            code="RESIDUAL_SPEECH_SURFACE",
+            severity="Medium",
+            output_start=2,
+            output_end=3,
+        )
+    )
+    assert status == 502
+    assert detail["validation_failure"]["output_start"] == 2
+    assert detail["validation_failure"]["output_end"] == 3
+
+
 def _args(**overrides) -> Namespace:
     values = dict(input=None, output=None, text=None, model=None, json=False, list_models=False, check=False)
     values.update(overrides)
