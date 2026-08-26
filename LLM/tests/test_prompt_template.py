@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
+from LLM.pronunciation_lexicon import entries_for_stage
 from LLM.prompt_template import PromptTemplateError, build_prompt
 
 
@@ -132,16 +133,45 @@ def test_level4_prompt_is_closed_and_rejects_general_g2p() -> None:
     assert "문고리 → 문꼬리" in prompt
     assert "국물→궁물" in prompt
     assert "출력 철자에 반영하지 않는다" in prompt
+    assert "해당 사전값을 반드시 적용한다" in prompt
+    assert "복합 조사, 연속 어미" in prompt
 
 
 def test_level5_prompt_keeps_negative_and_homograph_contrasts() -> None:
     prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
     assert "증가량" in prompt
     assert "자동 변경하지 않는다" in prompt
-    assert "값, 보수, 희생의 결과" in prompt
-    assert "거장이나 권위자" in prompt
+    assert "노동, 노력, 희생, 잘못, 범죄, 보수, 값, 지불, 지급, 치르다" in prompt
+    assert "거장, 전문가, 장인, 명인" in prompt
+    assert "명시적 단서가 없거나 어느 뜻인지 확실하지" in prompt
     assert "신발을 신고" in prompt
     assert "경찰에 신고" in prompt
+
+
+@pytest.mark.parametrize(
+    ("stage", "path"),
+    ((4, LLM_PROMPT_LV2_PATH), (5, LLM_PROMPT_LV3_PATH)),
+)
+def test_every_noncontextual_registry_entry_is_in_its_prompt(
+    stage: int,
+    path: Path,
+) -> None:
+    prompt = path.read_text(encoding="utf-8")
+    for entry in entries_for_stage(stage):
+        if entry.contextual:
+            continue
+        assert f"{entry.surface} → {entry.pronunciation}" in prompt
+
+
+def test_level5_prompt_matches_structure_and_wrapper_contracts() -> None:
+    prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+    assert "입력에 없던\n결과 포장용 따옴표" in prompt
+    assert "입력에 원래 있던 따옴표는 그대로 보존한다" in prompt
+    assert "KBS news" in prompt
+    assert "쉼표 또는 공백 조정" not in prompt
+    assert "명백한 중복 공백 정리" not in prompt
+    assert "기존 공백의 위치와 개수 보존" in prompt
+    assert "IMMUTABLE_PRIORITY 하나만 기준" in prompt
 
 
 def test_active_prompt_injects_only_plain_normalized_text() -> None:

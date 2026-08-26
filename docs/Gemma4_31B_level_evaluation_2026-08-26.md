@@ -2,6 +2,12 @@
 
 단계 정책은 `docs/TTS_Preprocessor_level_policy.md`를 따른다. 이 문서는 구현 완료 시점의 제한된 실제 모델 점검 기록이며 대규모 음성 청취 평가를 대신하지 않는다.
 
+> 후속 prompt-only 정합성 보강에서 4·5단계의 exact 적용 의무, 안전한 형태
+> 경계, `대가` 문맥, 따옴표·공백·우선순위 문구를 validator 계약과 맞췄다.
+> 아래 실제 모델 품질·token·latency 수치는 보강 직전 프롬프트 측정값이다.
+> 보강 후 동일 13건 재실행을 시도했으나 저장된 평가 자격증명이 선택 모델에
+> HTTP 403을 반환해 재측정하지 못했다. 서버 설정이나 자격증명은 변경하지 않았다.
+
 ## 환경과 방법
 
 - 모델 ID: `gemma4-31B-it (vLLM)`
@@ -9,7 +15,7 @@
 - provider: OpenAI-compatible vLLM Chat Completions
 - 표본: 13개. 숫자·단위, protected URL/SKU, 일반 G2P negative, 4단계 ㄴ 첨가·된소리·축약, 5단계 ㄴ/ㄹ·백분율·대가 3문맥, 신고 contrast, 2문단 병렬 요청
 - A/C: 평가 당시 배포돼 있던 기존 3·4단계 API
-- B/D/E: 현재 작업 트리의 개선 3·4단계와 신규 5단계를 같은 vLLM endpoint에서 직접 실행
+- B/D/E: 평가 당시 작업 트리의 개선 3·4단계와 신규 5단계를 같은 vLLM endpoint에서 직접 실행
 - 모든 품질 결과는 현재의 엄격한 단계별 validator로 다시 판정했다.
 - 서버가 반환한 `usage.prompt_tokens`와 `usage.completion_tokens`만 기록했다. 기존 배포 API가 usage를 외부에 노출하지 않으므로 A/C의 합계는 미측정이다.
 - 요청 body는 기존 계약대로 `model`, `messages`, `stream=false`만 보낸다. temperature, top-p, top-k, repetition penalty, seed는 명시하지 않아 서버 기본값을 사용했다.
@@ -36,7 +42,7 @@
 
 ## 동일 입력의 prompt token 측정
 
-짧은 동일 입력 `국물은 같이 읽고 있습니다.`를 각 Git 기준 prompt와 개선 prompt에 넣어 서버 usage를 측정했다.
+짧은 동일 입력 `국물은 같이 읽고 있습니다.`를 각 Git 기준 prompt와 후속 정합성 보강 직전의 개선 prompt에 넣어 서버 usage를 측정했다.
 
 | prompt | Git 기준 | 개선 | 변화 |
 |---|---:|---:|---:|
@@ -49,8 +55,8 @@
 | 파일 | lines | words | bytes |
 |---|---:|---:|---:|
 | `LLM_prompt.txt` | 169 | 704 | 6,092 |
-| `LLM_prompt_lv2.txt` | 170 | 800 | 7,321 |
-| `llm_prompt_lv3.txt` | 385 | 1,769 | 14,449 |
+| `LLM_prompt_lv2.txt` | 181 | 889 | 8,090 |
+| `llm_prompt_lv3.txt` | 397 | 1,894 | 15,639 |
 
 ## Validator CPU 비용
 
