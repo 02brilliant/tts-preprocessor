@@ -228,6 +228,24 @@ def test_rule_generated_reading_mutation_is_critical_with_snapshot() -> None:
     assert exc_info.value.severity == "Critical"
 
 
+@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+def test_every_llm_stage_rejects_decimal_jjeom_rewrite(prompt_level: int) -> None:
+    output = transform_with_trace("가격은 3.05달러입니다.")
+    snapshot = build_normalization_snapshot(output)
+    assert output.normalized_text == "가격은 삼쩜영오 달러입니다."
+
+    with pytest.raises(LLMStageContractError) as exc_info:
+        validate_response(
+            output.normalized_text,
+            "가격은 삼점영오 달러입니다.",
+            prompt_level=prompt_level,
+            snapshot=snapshot,
+        )
+
+    assert exc_info.value.code == "LOCKED_READING_MUTATION"
+    assert exc_info.value.severity == "Critical"
+
+
 def test_unprocessed_speech_surface_is_medium() -> None:
     with pytest.raises(LLMStageContractError) as exc_info:
         validate_response("AI는 좋습니다.", "AI는 좋습니다.", prompt_level=1)

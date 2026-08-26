@@ -39,7 +39,7 @@ def test_frontend_has_six_level_control_model_control_and_outputs() -> None:
     assert "규칙 처리 텍스트 복사" in web
     assert "LLM 처리 텍스트 복사" in web
     assert "setCopyableText(1, normalizedText)" in web
-    assert "setCopyableText(2, speechText)" in web
+    assert "setCopyableText(2, displayedSpeechText)" in web
     assert "navigator.clipboard.writeText" in web
     assert 'id="stage-3-output"' not in web
 
@@ -108,6 +108,17 @@ def test_frontend_preserves_contract_violating_llm_output() -> None:
     assert "PipelineDiff.renderSpeechContractViolation" in web
     assert "invalidStage2Ledgers" in web
     assert "규칙 처리 결과는 유지됩니다." in web
+
+
+def test_frontend_displays_level5_rejected_llm_output_with_failure_marking() -> None:
+    web = Path("web/index.html").read_text(encoding="utf-8")
+    diff_source = Path("web/pipeline_diff.js").read_text(encoding="utf-8")
+
+    assert "rejected_speech_text" in web
+    assert "LLM 검증 실패 · 규칙 결과를 최종 출력으로 사용" in web
+    assert "거절된 변경을 주황색으로 표시했습니다." in web
+    assert 'type: "contract_violation"' in diff_source
+    assert 'type: "contract_violation_deleted"' in diff_source
 
 
 def test_existing_download_contract_remains() -> None:

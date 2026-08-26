@@ -911,28 +911,52 @@
           throw new Error("통합 LLM 실행모듈 응답 형식이 올바르지 않습니다.");
         }
         const speechText = data.speech_text;
-        PipelineDiff.renderOutputWithStageChanges(normalizedText, speechText, 2, stageElements[2].output);
-        setCopyableText(2, speechText);
+        const rejectedSpeechText = typeof data.rejected_speech_text === "string"
+          ? data.rejected_speech_text
+          : null;
+        const validationFailure = data.validation_failure && typeof data.validation_failure === "object"
+          ? data.validation_failure
+          : null;
+        const displayedSpeechText = rejectedSpeechText ?? speechText;
+        if (rejectedSpeechText !== null) {
+          PipelineDiff.renderSpeechContractViolation(
+            normalizedText,
+            rejectedSpeechText,
+            stageElements[2].output,
+            stageElements[2].diffs[0],
+          );
+        } else {
+          PipelineDiff.renderOutputWithStageChanges(normalizedText, speechText, 2, stageElements[2].output);
+          PipelineDiff.renderAdjacentDiff(
+            normalizedText,
+            speechText,
+            2,
+            stageElements[2].diffs[0],
+          );
+        }
+        setCopyableText(2, displayedSpeechText);
         const ledgers = PipelineDiff.buildPipelineLedgers(
           originalText,
           normalizedText,
-          speechText,
-        );
-        PipelineDiff.renderAdjacentDiff(
-          normalizedText,
-          speechText,
-          2,
-          stageElements[2].diffs[0],
+          displayedSpeechText,
         );
         PipelineDiff.renderCumulativeDiff(
           originalText,
           ledgers.stage2,
           stageElements[2].diffs[1],
         );
-        stageElements[2].status.textContent = data.llm_called === false
+        stageElements[2].status.textContent = rejectedSpeechText !== null
+          ? "LLM 검증 실패 · 규칙 결과를 최종 출력으로 사용"
+          : data.llm_called === false
           ? "LLM 호출 생략 · 규칙 결과 사용"
           : "완료";
-        stageElements[2].status.className = "status";
+        stageElements[2].status.className = rejectedSpeechText !== null ? "status error" : "status";
+        if (rejectedSpeechText !== null) {
+          const code = typeof validationFailure?.code === "string" ? validationFailure.code : "VALIDATION_FAILURE";
+          const severity = typeof validationFailure?.severity === "string" ? validationFailure.severity : "High";
+          stageElements[2].error.style.display = "block";
+          stageElements[2].error.textContent = `LLM 검증 실패 (${code} / ${severity}). 출력 원문에는 거절된 변경을 주황색으로 표시했습니다. TTS 최종 출력은 규칙 처리 결과를 사용합니다.`;
+        }
         const llmTiming = Number.isFinite(data.llm_elapsed_ms)
           ? formatDuration(data.llm_elapsed_ms)
           : "측정값 없음";

@@ -284,6 +284,8 @@ def run_integrated_binary(
     llm_elapsed_ms = payload.get("llm_elapsed_ms")
     llm_called = payload.get("llm_called")
     llm_skip_reason = payload.get("llm_skip_reason")
+    rejected_speech_text = payload.get("rejected_speech_text")
+    validation_failure = payload.get("validation_failure")
     if (
         not isinstance(normalized_text, str)
         or not normalized_text
@@ -300,9 +302,12 @@ def run_integrated_binary(
         or (not llm_called and (elapsed_ms != 0 or llm_elapsed_ms != 0))
         or (not llm_called and not isinstance(llm_skip_reason, str))
         or (llm_called and llm_skip_reason is not None)
+        or (rejected_speech_text is not None and not isinstance(rejected_speech_text, str))
+        or (validation_failure is not None and not isinstance(validation_failure, dict))
+        or ((rejected_speech_text is None) != (validation_failure is None))
     ):
         raise BinaryRuntimeError("Integrated LLM binary returned an invalid transform payload.")
-    return {
+    response = {
         "normalized_text": normalized_text,
         "speech_text": speech_text,
         "model": selected_model,
@@ -312,6 +317,19 @@ def run_integrated_binary(
         "llm_called": llm_called,
         "llm_skip_reason": llm_skip_reason,
     }
+    if rejected_speech_text is not None:
+        code = validation_failure.get("code")
+        severity = validation_failure.get("severity")
+        message = validation_failure.get("message")
+        if not all(isinstance(value, str) and value for value in (code, severity, message)):
+            raise BinaryRuntimeError("Integrated LLM binary returned an invalid validation failure payload.")
+        response["rejected_speech_text"] = rejected_speech_text
+        response["validation_failure"] = {
+            "code": code,
+            "severity": severity,
+            "message": message,
+        }
+    return response
 
 
 def _log_level5_fallback(stderr: str) -> None:

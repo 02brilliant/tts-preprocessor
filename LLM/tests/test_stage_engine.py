@@ -72,6 +72,7 @@ def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None
     assert result.speech_text == "국물은 같이 있습니다."
     assert result.validation_fallback is True
     assert result.validation_issues[0].code == "UNEXPECTED_KOREAN_REWRITE"
+    assert result.rejected_speech_text == "궁무른 가치 읻씀니다."
     assert calls == 1
 
 

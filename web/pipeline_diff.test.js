@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { sequenceOps } = require("./pipeline_diff.js");
+const { sequenceOps, speechContractParts } = require("./pipeline_diff.js");
 
 function renderTarget(ops) {
   return ops
@@ -28,3 +28,11 @@ function testLongTextWithLocalizedChangesKeepsContext() {
 }
 
 testLongTextWithLocalizedChangesKeepsContext();
+
+function testRejectedSpeechMarksEveryChangedOutputSpan() {
+  const parts = speechContractParts("삼쩜일사", "삼점일사", true);
+  assert.equal(parts.filter((part) => part.type === "contract_violation").map((part) => part.value).join(""), "점");
+  assert.equal(parts.filter((part) => part.type === "contract_violation_deleted").map((part) => part.value).join(""), "쩜");
+}
+
+testRejectedSpeechMarksEveryChangedOutputSpan();

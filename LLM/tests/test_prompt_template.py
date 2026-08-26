@@ -97,7 +97,7 @@ def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     assert "규칙 엔진이 문맥 모호성 때문에 보류한" in prompt
     assert "3번 확인했다 → 세 번 확인했다" in prompt
     assert "3번 버스 → 삼번 버스" in prompt
-    assert "0.5%p → 영 점 오 퍼센트포인트" in prompt
+    assert "0.5%p → 영쩜오 퍼센트포인트" in prompt
     assert "해석이 둘 이상이면 원형을 유지한다" in prompt
 
 
@@ -180,3 +180,15 @@ def test_active_prompt_injects_only_plain_normalized_text() -> None:
     assert f"<NORMALIZED_TEXT>\n{normalized_text}\n</NORMALIZED_TEXT>" in rendered
     assert "<CONTEXTUAL_DECISION_LOGS>" not in rendered
     assert "<DECISION_CANDIDATES>" not in rendered
+
+
+@pytest.mark.parametrize(
+    "path",
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
+)
+def test_decimal_examples_match_the_rule_engine_locked_jjeom_surface(path: Path) -> None:
+    prompt = path.read_text(encoding="utf-8")
+    assert "삼쩜영오" in prompt
+    assert "영쩜오 퍼센트포인트" in prompt
+    assert "삼 점 영오" not in prompt
+    assert "영 점 오 퍼센트포인트" not in prompt

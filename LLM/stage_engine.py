@@ -36,6 +36,7 @@ class LLMStageResult:
     elapsed_ms: float
     validation_fallback: bool = False
     validation_issues: tuple[ValidationIssue, ...] = ()
+    rejected_speech_text: str | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
 
@@ -98,6 +99,7 @@ def transform(
             elapsed_ms=result.elapsed_ms,
             validation_fallback=True,
             validation_issues=(issue,),
+            rejected_speech_text=result.text,
             prompt_tokens=result.prompt_tokens,
             completion_tokens=result.completion_tokens,
         )

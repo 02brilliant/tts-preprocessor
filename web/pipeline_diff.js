@@ -411,24 +411,16 @@
         if (includeDeletions) {
           appendPart(parts, {
             value: op.value,
-            type: SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)
-              ? "contract_violation_deleted"
-              : "deleted",
+            type: "contract_violation_deleted",
             stage: 0,
           });
         }
-      } else if (
-        SPEECH_STRUCTURE_CHARACTER_RE.test(op.value)
-        && op.value !== ","
-        && op.value !== " "
-      ) {
+      } else {
         appendPart(parts, {
           value: op.value,
           type: "contract_violation",
           stage: 2,
         });
-      } else {
-        appendPart(parts, insertedPart(op.value, 2));
       }
     }
     return parts;

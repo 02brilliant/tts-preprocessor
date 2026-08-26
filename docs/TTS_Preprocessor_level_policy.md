@@ -81,11 +81,11 @@ LLM용 발음 사전은 2단계 규칙 사전과 분리한다. exact whole-word 
 
 Critical은 의미·숫자·보호 표면·locked reading·문장 구조 훼손이다. High는 예상 밖 한국어 rewrite, lexicon 위반, 미승인 발음 전사다. Medium은 잔여 발화 표면과 운율·형식 문제다.
 
-5단계의 Critical/High 검증 실패는 retry 없이 전체 `normalized_text`로 fallback한다. 3·4단계의 기존 provider/validation 오류 계약은 유지한다.
+5단계의 Critical/High 검증 실패는 retry 없이 전체 `normalized_text`로 fallback한다. 안전한 최종 `speech_text`는 fallback 값을 유지하되, 웹 UI는 선택적 `rejected_speech_text`와 `validation_failure`를 사용해 거절된 LLM 원출력과 변경 구간을 표시한다. 3·4단계의 기존 provider/validation 오류 계약은 유지한다.
 
 ## 외부 인터페이스
 
-API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 5단계 실행 파일명은 `tts-preprocessor-llm-pronunciation`이며 Windows에서는 `.exe`가 붙는다.
+API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 5단계 fallback 응답에만 UI 표시용 선택 필드 `rejected_speech_text`와 `validation_failure`를 추가할 수 있으며, 이때도 `speech_text`는 안전한 fallback 값이다. 5단계 실행 파일명은 `tts-preprocessor-llm-pronunciation`이며 Windows에서는 `.exe`가 붙는다.
 
 ## 품질 승인 기준
 

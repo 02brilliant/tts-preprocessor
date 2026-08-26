@@ -73,6 +73,8 @@ def run(*, stage_level: int, prompt_level: int) -> int:
     rule_elapsed_ms = 0.0
     llm_elapsed_ms = 0.0
     upstream_elapsed_ms = 0.0
+    rejected_speech_text: str | None = None
+    validation_issue = None
     try:
         if args.list_models:
             model_config = load_model_config()
@@ -116,6 +118,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             speech_text = result.speech_text
             selected_model = result.model
             upstream_elapsed_ms = result.elapsed_ms
+            if result.validation_fallback:
+                rejected_speech_text = result.rejected_speech_text
+                validation_issue = result.validation_issues[0]
         else:
             model_config = load_model_config()
             selected_model = args.model or model_config.default_model
@@ -137,8 +142,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         return 1
 
     if args.json:
-        _print_json(
-            {
+        response_payload = {
                 "ok": True,
                 "level": stage_level,
                 "normalized_text": normalized_text,
@@ -152,8 +156,15 @@ def run(*, stage_level: int, prompt_level: int) -> int:
                 "llm_elapsed_ms": round(llm_elapsed_ms, 3),
                 "llm_called": decision.call_llm,
                 "llm_skip_reason": None if decision.call_llm else decision.reason,
+        }
+        if rejected_speech_text is not None and validation_issue is not None:
+            response_payload["rejected_speech_text"] = rejected_speech_text
+            response_payload["validation_failure"] = {
+                "code": validation_issue.code,
+                "severity": validation_issue.severity,
+                "message": validation_issue.message,
             }
-        )
+        _print_json(response_payload)
         return 0
 
     _write_output(speech_text, output_path=args.output)

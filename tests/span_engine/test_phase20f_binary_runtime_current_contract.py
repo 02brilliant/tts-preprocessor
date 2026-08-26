@@ -162,6 +162,48 @@ def test_phase20f_level5_forwards_only_structured_fallback_log(
     assert "원문은 기록하지 않는다" not in caplog.text
 
 
+def test_phase20f_level5_returns_rejected_output_for_web_display(monkeypatch) -> None:
+    import api.binary_runtime as binary_runtime
+    import json
+
+    def fake_run(cmd, *, input, capture_output, text, check):
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "normalized_text": "가격은 삼쩜영오 달러입니다.",
+                    "speech_text": "가격은 삼쩜영오 달러입니다.",
+                    "model": "gemma4-31B-it (vLLM)",
+                    "elapsed_ms": 1.0,
+                    "rule_elapsed_ms": 1.0,
+                    "llm_elapsed_ms": 2.0,
+                    "llm_called": True,
+                    "llm_skip_reason": None,
+                    "rejected_speech_text": "가격은 삼점영오 달러입니다.",
+                    "validation_failure": {
+                        "code": "LOCKED_READING_MUTATION",
+                        "severity": "Critical",
+                        "message": "LLM response changed a rule-engine locked reading.",
+                    },
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+
+    result = binary_runtime.run_integrated_binary(
+        "가격은 3.05달러입니다.",
+        level=5,
+        binary_path=Path("/tmp/fake-level-5"),
+    )
+
+    assert result["speech_text"] == "가격은 삼쩜영오 달러입니다."
+    assert result["rejected_speech_text"] == "가격은 삼점영오 달러입니다."
+    assert result["validation_failure"]["code"] == "LOCKED_READING_MUTATION"
+
+
 def test_phase20f_binary_runtime_maps_integrated_json_error(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json

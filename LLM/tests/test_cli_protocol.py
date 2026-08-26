@@ -6,6 +6,7 @@ import json
 from LLM.cli_protocol import classify_llm_stage_error
 from LLM.config import ConfigurationError
 from LLM.response_validation import LLMStageContractError
+from LLM.validation_models import ValidationIssue
 from LLM.stage_engine import UnsupportedLLMModelError
 from LLM.vllm_client import VllmTimeoutError
 from bin import integrated_llm_cli as entrypoint
@@ -45,6 +46,7 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
         speech_text = "궁무른, 조씀니다."
         model = "gemma4:e4b"
         elapsed_ms = 12.3456
+        validation_fallback = False
 
     def fake_rules(text):
         calls.append(("rules", text))
@@ -130,6 +132,7 @@ def test_level5_entrypoint_uses_prompt_level_three(monkeypatch, capsys) -> None:
         speech_text = "생산냥은 늘었습니다."
         model = "gemma4:e4b"
         elapsed_ms = 3.0
+        validation_fallback = False
 
     monkeypatch.setattr(
         entrypoint,
@@ -151,3 +154,46 @@ def test_level5_entrypoint_uses_prompt_level_three(monkeypatch, capsys) -> None:
     assert payload["level"] == 5
     assert payload["speech_text"] == "생산냥은 늘었습니다."
     assert calls == [("생산량은 늘었습니다.", 3, "생산량은 늘었습니다.")]
+
+
+def test_level5_entrypoint_exposes_rejected_llm_output_with_safe_fallback(
+    monkeypatch,
+    capsys,
+) -> None:
+    class FakeResult:
+        speech_text = "가격은 삼쩜영오 달러입니다."
+        model = "gemma4:e4b"
+        elapsed_ms = 3.0
+        validation_fallback = True
+        rejected_speech_text = "가격은 삼점영오 달러입니다."
+
+        validation_issues = (
+            ValidationIssue(
+                "LOCKED_READING_MUTATION",
+                "Critical",
+                "LLM response changed a rule-engine locked reading.",
+            ),
+        )
+
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(
+            text="가격은 3.05달러입니다.", model="gemma4:e4b", json=True
+        ),
+    )
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput("가격은 삼쩜영오 달러입니다.", [], None),
+    )
+    monkeypatch.setattr("LLM.stage_engine.transform", lambda *_args, **_kwargs: FakeResult())
+
+    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["speech_text"] == "가격은 삼쩜영오 달러입니다."
+    assert payload["rejected_speech_text"] == "가격은 삼점영오 달러입니다."
+    assert payload["validation_failure"] == {
+        "code": "LOCKED_READING_MUTATION",
+        "severity": "Critical",
+        "message": "LLM response changed a rule-engine locked reading.",
+    }
