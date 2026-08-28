@@ -27,8 +27,8 @@
 있던 공백, 줄바꿈, 고정 문장부호를 삭제하거나 바꿀 수 없다.
 
 계약 위반 응답은 자동 보정하지 않는다. 서버 오류의 `speech_text` 원출력 또는
-5단계 fallback의 `rejected_speech_text`를 2단계 결과 상자에 표시한다. 최종 TTS
-출력은 5단계 fallback의 `normalized_text`를 유지한다. 검증에 실패한 응답에서는
+4단계 fallback의 `rejected_speech_text`를 2단계 결과 상자에 표시한다. 최종 TTS
+출력은 4단계 fallback의 안전한 `speech_text`를 유지한다. 검증에 실패한 응답에서는
 모든 변경 구간을 거절된 변경으로 취급해 다음과 같이 강조한다.
 
 - 원출력에서 새로 추가·교체된 표면: 주황색 굵은 테두리

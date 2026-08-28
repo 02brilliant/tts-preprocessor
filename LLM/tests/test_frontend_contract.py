@@ -1,20 +1,20 @@
 from pathlib import Path
 
 
-def test_frontend_has_six_level_control_model_control_and_outputs() -> None:
+def test_frontend_has_five_level_control_model_control_and_outputs() -> None:
     web = Path("web/index.html").read_text(encoding="utf-8")
 
     assert 'id="llm-model"' in web
     assert 'id="correction-level"' in web
-    for level in range(6):
+    for level in range(5):
         assert f'data-correction-level="{level}"' in web
     assert "0단계<br>교정안함" in web
     assert "1단계<br>규칙간소화" in web
     assert "2단계<br>규칙기반교정" in web
     assert "3단계<br>LLM최소" in web
     assert "4단계<br>LLM자연스러운발화" in web
-    assert "5단계<br>LLM발음강화(시험)" in web
-    assert 'max="5"' in web
+    assert 'data-correction-level="5"' not in web
+    assert 'max="4"' in web
     assert 'aria-pressed="true"' in web
     assert 'class="pipeline-controls"' in web
     for model in (
@@ -110,7 +110,7 @@ def test_frontend_preserves_contract_violating_llm_output() -> None:
     assert "규칙 처리 결과는 유지됩니다." in web
 
 
-def test_frontend_displays_level5_rejected_llm_output_with_failure_marking() -> None:
+def test_frontend_displays_level4_rejected_llm_output_with_failure_marking() -> None:
     web = Path("web/index.html").read_text(encoding="utf-8")
     diff_source = Path("web/pipeline_diff.js").read_text(encoding="utf-8")
 

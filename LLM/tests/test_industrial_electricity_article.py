@@ -19,14 +19,14 @@ def normalized_article():
     return output.normalized_text, build_normalization_snapshot(output)
 
 
-@pytest.mark.parametrize("stage_level", (3, 4, 5))
+@pytest.mark.parametrize("stage_level", (3, 4))
 def test_industrial_electricity_article_invokes_llm(stage_level: int, normalized_article) -> None:
     normalized_text, _snapshot = normalized_article
 
     assert decide_llm_invocation(normalized_text, stage_level=stage_level).call_llm is True
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+@pytest.mark.parametrize("prompt_level", (1, 2))
 def test_industrial_electricity_article_accepts_safe_llm_output_with_ascii_space(
     prompt_level: int,
     normalized_article,
@@ -45,7 +45,7 @@ def test_industrial_electricity_article_accepts_safe_llm_output_with_ascii_space
     ) == speech_text
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+@pytest.mark.parametrize("prompt_level", (1, 2))
 def test_industrial_electricity_article_marks_unchanged_residual_for_ui(
     prompt_level: int,
     normalized_article,

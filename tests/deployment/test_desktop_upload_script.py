@@ -61,7 +61,6 @@ def _valid_windows_zip(downloads_dir: Path) -> Path:
             "tts-preprocessor-simplified.exe": b"windows-simplified-binary",
             "tts-preprocessor-llm-minimal.exe": b"windows-llm-minimal-binary",
             "tts-preprocessor-llm-natural.exe": b"windows-llm-natural-binary",
-            "tts-preprocessor-llm-pronunciation.exe": b"windows-llm-pronunciation-binary",
             "README.txt": b"readme",
         },
     )
@@ -112,7 +111,6 @@ def test_windows_validation_rejects_extra_source_and_symlink(
             "tts-preprocessor-simplified.exe": b"binary",
             "tts-preprocessor-llm-minimal.exe": b"binary",
             "tts-preprocessor-llm-natural.exe": b"binary",
-            "tts-preprocessor-llm-pronunciation.exe": b"binary",
             "README.txt": b"readme",
             "engine/main.py": b"source",
         },
@@ -133,7 +131,6 @@ def test_windows_validation_rejects_extra_source_and_symlink(
         archive.writestr("tts-preprocessor-simplified.exe", "simplified")
         archive.writestr("tts-preprocessor-llm-minimal.exe", "level3")
         archive.writestr("tts-preprocessor-llm-natural.exe", "level4")
-        archive.writestr("tts-preprocessor-llm-pronunciation.exe", "level5")
         archive.writestr("README.txt", "readme")
     symlink_result = _run(
         symlink_script, "--platform", "windows", "--validate-only"

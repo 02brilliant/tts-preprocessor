@@ -10,6 +10,7 @@ import urllib.request
 
 from LLM.invocation_gate import decide_llm_invocation
 from LLM.paragraph_parallel import split_paragraph_units
+from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.provenance import build_normalization_snapshot
 from LLM.response_validation import LLMStageContractError, validate_speech_text
 from LLM.stage_engine import transform as transform_llm
@@ -21,7 +22,6 @@ class EvaluationCase:
     case_id: str
     text: str
     expected_stage4: tuple[str, ...] = ()
-    expected_stage5: tuple[str, ...] = ()
     forbidden: tuple[str, ...] = ()
 
 
@@ -36,20 +36,17 @@ CASES = (
         "국물은 같이 읽고 있습니다.",
         forbidden=("궁물", "궁무른", "가치", "읻씀니다"),
     ),
-    EvaluationCase("stage4_n", "색연필입니다.", expected_stage4=("색년필",), expected_stage5=("색년필",)),
-    EvaluationCase("stage4_tense", "문고리를 잡았습니다.", expected_stage4=("문꼬리",), expected_stage5=("문꼬리",)),
-    EvaluationCase("stage4_contraction", "기자입니다.", expected_stage4=("기잡니다",), expected_stage5=("기잡니다",)),
-    EvaluationCase("stage5_nl", "생산량은 증가량과 다릅니다.", expected_stage5=("생산냥",), forbidden=("증가냥",)),
-    EvaluationCase("stage5_rate", "백분율을 공개했습니다.", expected_stage5=("백뿐뉼",)),
-    EvaluationCase("daega_reward", "노동의 대가를 지급했습니다.", expected_stage5=("대까",)),
-    EvaluationCase("daega_master", "예술계의 대가를 만났습니다.", forbidden=("대까",)),
-    EvaluationCase("daega_uncertain", "그는 대가에 관해 말했습니다.", forbidden=("대까",)),
+    EvaluationCase("stage4_n", "색연필입니다.", expected_stage4=("색년필",)),
+    EvaluationCase("stage4_tense", "문고리를 잡았습니다.", expected_stage4=("문꼬리",)),
+    EvaluationCase("stage4_contraction", "기자입니다.", expected_stage4=("기잡니다",)),
+    EvaluationCase("stage4_nl", "생산량은 증가량과 다릅니다.", expected_stage4=("생산냥",), forbidden=("증가냥",)),
+    EvaluationCase("stage4_rate", "백분율을 공개했습니다.", expected_stage4=("백뿐뉼",)),
     EvaluationCase("singo_contrast", "신발을 신고 경찰에 신고했습니다.", forbidden=("신꼬", "신고를")),
     EvaluationCase(
         "multi_paragraph",
         "생산량은 늘었습니다. 증가량은 별도 집계했습니다.\n\n"
         "예술계의 대가가 의견란을 검토했습니다.",
-        expected_stage5=("생산냥", "의견난"),
+        expected_stage4=("생산냥", "의견난"),
         forbidden=("증가냥", "대까"),
     ),
 )
@@ -67,7 +64,6 @@ def _parser() -> argparse.ArgumentParser:
             "B_improved_level3",
             "C_baseline_level4",
             "D_improved_level4",
-            "E_new_level5",
         ),
     )
     return parser
@@ -118,12 +114,20 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
     rule_output = transform_output(case.text)
     normalized_text = rule_output.normalized_text
     snapshot = build_normalization_snapshot(rule_output)
-    decision = decide_llm_invocation(normalized_text, stage_level=stage)
+    overlay = apply_pronunciation_overlay(
+        normalized_text,
+        stage=stage,
+        snapshot=snapshot,
+    )
+    llm_input_text = overlay.text
+    llm_snapshot = overlay.snapshot
+    decision = decide_llm_invocation(llm_input_text, stage_level=stage)
     if not decision.call_llm:
         return {
             "status": 200,
-            "speech_text": normalized_text,
+            "speech_text": llm_input_text,
             "normalized_text": normalized_text,
+            "validation_text": llm_input_text,
             "elapsed_ms": 0.0,
             "provider_elapsed_ms": 0.0,
             "llm_called": False,
@@ -133,21 +137,22 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
             "fallback": False,
             "error": None,
         }
-    chunks, _ = split_paragraph_units(normalized_text)
+    chunks, _ = split_paragraph_units(llm_input_text)
     upstream_calls = sum(bool(chunk.strip()) for chunk in chunks)
     started = time.perf_counter()
     try:
         result = transform_llm(
-            normalized_text,
+            llm_input_text,
             model=model,
             prompt_level=prompt_level,
-            snapshot=snapshot,
+            snapshot=llm_snapshot,
         )
         elapsed_ms = (time.perf_counter() - started) * 1000
         return {
             "status": 200,
             "speech_text": result.speech_text,
             "normalized_text": normalized_text,
+            "validation_text": llm_input_text,
             "elapsed_ms": elapsed_ms,
             "provider_elapsed_ms": result.elapsed_ms,
             "llm_called": True,
@@ -163,6 +168,7 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
             "status": 502,
             "speech_text": exc.output_text,
             "normalized_text": normalized_text,
+            "validation_text": llm_input_text,
             "elapsed_ms": elapsed_ms,
             "provider_elapsed_ms": None,
             "llm_called": True,
@@ -176,7 +182,7 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
 
 def _score(case: EvaluationCase, result: dict, stage: int) -> dict:
     speech_text = result.get("speech_text")
-    normalized_text = result.get("normalized_text")
+    normalized_text = result.get("validation_text", result.get("normalized_text"))
     if not isinstance(speech_text, str) or not isinstance(normalized_text, str):
         return {"validator_ok": False, "pronunciation_fn": 0, "pronunciation_fp": 0}
     validation = validate_speech_text(
@@ -184,7 +190,7 @@ def _score(case: EvaluationCase, result: dict, stage: int) -> dict:
         speech_text,
         stage=stage,
     )
-    expected = case.expected_stage5 if stage == 5 else case.expected_stage4 if stage == 4 else ()
+    expected = case.expected_stage4 if stage == 4 else ()
     return {
         "validator_ok": validation.ok,
         "validation_codes": [issue.code for issue in validation.issues],
@@ -247,7 +253,6 @@ def main() -> int:
         ("B_improved_level3", 3, "current"),
         ("C_baseline_level4", 4, "baseline"),
         ("D_improved_level4", 4, "current"),
-        ("E_new_level5", 5, "current"),
     )
     output: dict[str, dict] = {}
     for name, stage, mode in configurations:

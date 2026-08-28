@@ -100,8 +100,8 @@ def validate_response(
     """Validate an LLM response and raise for a Critical/High violation."""
     if not isinstance(speech_text, str) or not speech_text:
         raise LLMResponseError("LLM response is empty.")
-    if isinstance(prompt_level, bool) or prompt_level not in {1, 2, 3}:
-        raise ValueError("prompt_level must be 1, 2, or 3")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 2}:
+        raise ValueError("prompt_level must be 1 or 2")
 
     result = validate_speech_text(
         normalized_text,
@@ -133,8 +133,8 @@ def validate_speech_text(
 ) -> ValidationResult:
     if not isinstance(normalized_text, str) or not isinstance(speech_text, str):
         raise TypeError("normalized_text and speech_text must be str")
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
     if not speech_text:
         return _failure("EMPTY_RESPONSE", "Critical", "LLM response is empty.")
 

@@ -18,7 +18,7 @@
 대문자-한글 fallback, ampersand 약어, 미등록 약어-한글 하이픈 및 일반
 K-한글 fallback만 제외한다. 간소화 전용 사전이나 별도 교정 규칙은 두지 않는다.
 
-3·4·5단계는 원문에 2단계 전체 규칙을 정확히 한 번 적용한 뒤 각 실행모듈에
+3·4단계는 원문에 2단계 전체 규칙을 정확히 한 번 적용한 뒤 각 실행모듈에
 고정된 단계별 프롬프트를 사용한다. 규칙 결과에 후속 교정
 가능성이 없다고 호출 gate가 확정한 경우에는 LLM을 호출하지 않고 규칙 결과를
 최종 `speech_text`로 사용한다. 공개 단계 선택은 프롬프트 번호를 받지 않으며
@@ -29,10 +29,10 @@ K-한글 fallback만 제외한다. 간소화 전용 사전이나 별도 교정 �
 호출 근거로 사용한다. 3단계 LLM은
 일반 한국어 철자를 발음형으로 바꾸지 않으며, 응답 검증도 기존 한국어 음절의
 삭제·교체를 허용하지 않는다. 단, 한글 글자와 순서를 보존하는 폐쇄형 복합명사
-ASCII 하이픈 후보는 쉼표와 같은 발화 경계 운율 처리로 허용한다. 4단계 gate는
-등록된 폐쇄형 `ㄴ` 첨가·합성어 된소리와 승인된 축약 후보를 추가로 평가한다.
-5단계는 4단계 후보에
-exact pronunciation lexicon과 문맥 동형어 후보를 추가한다. 발음 gate는
+ASCII 하이픈 후보는 쉼표와 같은 발화 경계 운율 처리로 허용한다. 4단계는
+LLM gate 전에 별도 deterministic pronunciation overlay를 적용한다. overlay는
+등록된 exact whole-word `ㄴ` 첨가·합성어 된소리·어휘 의존 `ㄴ/ㄹ` 항목만 처리하고
+생성 표면을 locked 처리한다. 4단계 gate는 overlay 이후 승인된 축약 후보를 평가한다. 발음 gate는
 일반 음절쌍으로 발음을 결정하거나 whitelist를 확대하지 않는다.
 복합명사 후보는 조사·어미·서술어 활용부를 제거한 긴 명사 stem에만 만들며,
 `확인했습니다` 같은 일반 활용형 내부에는 하이픈 후보를 만들지 않는다.
@@ -44,8 +44,9 @@ URL·이메일·파일명·경로·JSON·코드·식별자, 전체 외국어 문
 일반 `뉴스`, 조사·어미 결합, 한글 복합어와 고유명사 내부에는 적용하지 않는다.
 이 구문 사전은 기본 엔진과 간소화 엔진이 동일하게 사용한다.
 
-3·4·5단계에서 gate가 호출을 결정하면 규칙 엔진의 `normalized_text`를 임시 토큰 없이
-그대로 전달한다. 내부 provenance snapshot은 LLM 입력이 아니라 validator에만 전달한다. `KBS news`는 규칙 엔진이 확정한 읽기이므로
+3단계에서 gate가 호출을 결정하면 규칙 엔진의 `normalized_text`를 임시 토큰 없이
+그대로 전달한다. 4단계는 외부 `normalized_text`를 바꾸지 않고 내부 overlay 결과인
+`stage4_base_text`를 LLM에 전달한다. 내부 provenance snapshot은 LLM 입력이 아니라 validator에만 전달하며 overlay 결과도 locked span으로 추가한다. `KBS news`는 규칙 엔진이 확정한 읽기이므로
 활성 프롬프트가 문자와 공백을 정확히 보존하도록 지시한다.
 
 ---
@@ -460,7 +461,7 @@ canonical registry에 넣지 않는다. 미등록 명사를 같은 범주로 자
 규칙 기반 `normalized_text`는 후단 LLM의 존재와 무관하게 그대로 TTS에
 전달할 수 있는 독립적인 최종 출력이다. LLM 연결을 위해 marker, decision,
 candidate, `contextual_decision_logs` 또는 다른 hidden metadata를 서비스
-문자열에 추가하지 않는다. 3·4·5단계 `/api/transform`은 원문과 선택 model만
+문자열에 추가하지 않는다. 3·4단계 `/api/transform`은 원문과 선택 model만
 입력받고, 선택된 단일 실행모듈 안에서 전체 규칙 교정을 한 번 수행한다.
 기본 model은 `gemma4-31B-it (vLLM)`이다. 호출자가 model을 명시하면 등록된 다른
 model을 계속 선택할 수 있다.

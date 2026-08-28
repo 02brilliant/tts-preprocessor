@@ -35,7 +35,7 @@ def test_request_limits_model_to_llm_levels() -> None:
         TransformRequest(text="원고", level=2, model="m")
 
 
-@pytest.mark.parametrize("level", (3, 4, 5))
+@pytest.mark.parametrize("level", (3, 4))
 def test_transform_uses_one_integrated_binary(level, monkeypatch) -> None:
     calls = []
 

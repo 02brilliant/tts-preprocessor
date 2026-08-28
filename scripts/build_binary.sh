@@ -13,13 +13,11 @@ STAGE1_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SIMPLIFIED_SPEC_FILE="$ROOT_DIR/tts_preprocessor_simplified.spec"
 LLM_MINIMAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
 LLM_NATURAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
-LLM_PRONUNCIATION_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_pronunciation.spec"
 STAGE1_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 SIMPLIFIED_ENTRYPOINT="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
 LLM_CLI_ENTRYPOINT="$ROOT_DIR/bin/integrated_llm_cli.py"
 LLM_MINIMAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
 LLM_NATURAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
-LLM_PRONUNCIATION_ENTRYPOINT="$ROOT_DIR/bin/build_llm_pronunciation_entrypoint.py"
 SMOKE_TEXT="2천8백28억, 2천8백28억테스트"
 SMOKE_EXPECTED="이천팔백이십팔억, 이천팔백이십팔억 테스트"
 
@@ -45,7 +43,7 @@ if [[ "$PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
   exit 1
 fi
 
-for required_file in "$STAGE1_SPEC_FILE" "$SIMPLIFIED_SPEC_FILE" "$LLM_MINIMAL_SPEC_FILE" "$LLM_NATURAL_SPEC_FILE" "$LLM_PRONUNCIATION_SPEC_FILE" "$STAGE1_ENTRYPOINT" "$SIMPLIFIED_ENTRYPOINT" "$LLM_CLI_ENTRYPOINT" "$LLM_MINIMAL_ENTRYPOINT" "$LLM_NATURAL_ENTRYPOINT" "$LLM_PRONUNCIATION_ENTRYPOINT"; do
+for required_file in "$STAGE1_SPEC_FILE" "$SIMPLIFIED_SPEC_FILE" "$LLM_MINIMAL_SPEC_FILE" "$LLM_NATURAL_SPEC_FILE" "$STAGE1_ENTRYPOINT" "$SIMPLIFIED_ENTRYPOINT" "$LLM_CLI_ENTRYPOINT" "$LLM_MINIMAL_ENTRYPOINT" "$LLM_NATURAL_ENTRYPOINT"; do
   if [[ ! -f "$required_file" ]]; then
     echo "Missing build file: $required_file" >&2
     exit 1
@@ -108,22 +106,11 @@ if [[ ! -f "$DIST_DIR/tts-preprocessor-llm-natural" || ! -x "$DIST_DIR/tts-prepr
   echo "Level 4 binary build failed" >&2
   exit 1
 fi
-TTS_PREPROCESSOR_LLM_PRONUNCIATION_EXECUTABLE_NAME="tts-preprocessor-llm-pronunciation" \
-  "$PYINSTALLER_BIN" \
-    --clean \
-    --noconfirm \
-    "$LLM_PRONUNCIATION_SPEC_FILE"
-if [[ ! -f "$DIST_DIR/tts-preprocessor-llm-pronunciation" || ! -x "$DIST_DIR/tts-preprocessor-llm-pronunciation" ]]; then
-  echo "Level 5 binary build failed" >&2
-  exit 1
-fi
 "$DIST_DIR/tts-preprocessor-llm-minimal" --check >/dev/null
 "$DIST_DIR/tts-preprocessor-llm-natural" --check >/dev/null
-"$DIST_DIR/tts-preprocessor-llm-pronunciation" --check >/dev/null
 echo "[OK] Integrated LLM runtime asset checks"
 
 echo "Built stage 1 binary: $DIST_DIR/tts_preprocessor"
 echo "Built simplified binary: $DIST_DIR/tts-preprocessor-simplified"
 echo "Built level 3 binary: $DIST_DIR/tts-preprocessor-llm-minimal"
 echo "Built level 4 binary: $DIST_DIR/tts-preprocessor-llm-natural"
-echo "Built experimental level 5 binary: $DIST_DIR/tts-preprocessor-llm-pronunciation"

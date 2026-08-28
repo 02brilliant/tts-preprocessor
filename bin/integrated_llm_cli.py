@@ -56,12 +56,13 @@ def _print_json(payload: dict, *, stream=None) -> None:
 
 
 def run(*, stage_level: int, prompt_level: int) -> int:
-    if (stage_level, prompt_level) not in {(3, 1), (4, 2), (5, 3)}:
-        raise ValueError("integrated stage mapping must be 3/1, 4/2, or 5/3")
+    if (stage_level, prompt_level) not in {(3, 1), (4, 2)}:
+        raise ValueError("integrated stage mapping must be 3/1 or 4/2")
 
     from LLM.cli_protocol import classify_llm_stage_error
     from LLM.config import load_model_config
     from LLM.invocation_gate import decide_llm_invocation
+    from LLM.pronunciation_overlay import apply_pronunciation_overlay
     from LLM.stage_engine import transform as transform_llm
     from LLM.stage_engine import UnsupportedLLMModelError
     from LLM.stage_engine import validate_runtime_assets
@@ -101,18 +102,25 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         rule_output = transform_output(original_text)
         normalized_text = rule_output.normalized_text
         snapshot = build_normalization_snapshot(rule_output)
+        overlay = apply_pronunciation_overlay(
+            normalized_text,
+            stage=stage_level,
+            snapshot=snapshot,
+        )
+        llm_input_text = overlay.text
+        llm_snapshot = overlay.snapshot
         rule_elapsed_ms = (time.perf_counter() - rule_started_at) * 1000
         decision = decide_llm_invocation(
-            normalized_text,
+            llm_input_text,
             stage_level=stage_level,
         )
         if decision.call_llm:
             llm_started_at = time.perf_counter()
             result = transform_llm(
-                normalized_text,
+                llm_input_text,
                 model=args.model,
                 prompt_level=prompt_level,
-                snapshot=snapshot,
+                snapshot=llm_snapshot,
             )
             llm_elapsed_ms = (time.perf_counter() - llm_started_at) * 1000
             speech_text = result.speech_text
@@ -126,7 +134,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             selected_model = args.model or model_config.default_model
             if model_config.get(selected_model) is None:
                 raise UnsupportedLLMModelError("Unsupported LLM model.")
-            speech_text = normalized_text
+            speech_text = llm_input_text
     except Exception as exc:
         status, detail = classify_llm_stage_error(exc)
         if args.json or args.list_models:

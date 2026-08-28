@@ -3,6 +3,8 @@ from __future__ import annotations
 from argparse import Namespace
 import json
 
+import pytest
+
 from LLM.cli_protocol import classify_llm_stage_error
 from LLM.config import ConfigurationError
 from LLM.response_validation import LLMStageContractError
@@ -142,11 +144,14 @@ def test_integrated_entrypoint_error_includes_rule_output(monkeypatch, capsys) -
     assert payload == {"ok": False, "status": 400, "detail": "Unsupported LLM model.", "normalized_text": "규칙 결과"}
 
 
-def test_level5_entrypoint_uses_prompt_level_three(monkeypatch, capsys) -> None:
+def test_level4_fixed_overlay_runs_without_llm_and_preserves_normalized_text(
+    monkeypatch,
+    capsys,
+) -> None:
     calls = []
 
     class FakeResult:
-        speech_text = "생산냥은 늘었습니다."
+        speech_text = "unexpected"
         model = "gemma4:e4b"
         elapsed_ms = 3.0
         validation_fallback = False
@@ -166,14 +171,16 @@ def test_level5_entrypoint_uses_prompt_level_three(monkeypatch, capsys) -> None:
         return FakeResult()
 
     monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
-    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=2) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["level"] == 5
+    assert payload["level"] == 4
+    assert payload["normalized_text"] == "생산량은 늘었습니다."
     assert payload["speech_text"] == "생산냥은 늘었습니다."
-    assert calls == [("생산량은 늘었습니다.", 3, "생산량은 늘었습니다.")]
+    assert payload["llm_called"] is False
+    assert calls == []
 
 
-def test_level5_entrypoint_exposes_rejected_llm_output_with_safe_fallback(
+def test_level4_exposes_rejected_llm_output_with_safe_fallback(
     monkeypatch,
     capsys,
 ) -> None:
@@ -205,7 +212,7 @@ def test_level5_entrypoint_exposes_rejected_llm_output_with_safe_fallback(
     )
     monkeypatch.setattr("LLM.stage_engine.transform", lambda *_args, **_kwargs: FakeResult())
 
-    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=2) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["speech_text"] == "가격은 삼쩜영오 달러입니다."
     assert payload["rejected_speech_text"] == "가격은 삼점영오 달러입니다."

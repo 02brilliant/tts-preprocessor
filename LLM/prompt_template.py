@@ -3,17 +3,15 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_PATH
 
 
 INPUT_PLACEHOLDER = "{{NORMALIZED_TEXT}}"
 PROMPT_FILE_LABEL = "LLM/docs/LLM_prompt.txt"
 PROMPT_LV2_FILE_LABEL = "LLM/docs/LLM_prompt_lv2.txt"
-PROMPT_LV3_FILE_LABEL = "LLM/docs/llm_prompt_lv3.txt"
 PROMPT_PATHS = {
     1: (LLM_PROMPT_PATH, PROMPT_FILE_LABEL),
     2: (LLM_PROMPT_LV2_PATH, PROMPT_LV2_FILE_LABEL),
-    3: (LLM_PROMPT_LV3_PATH, PROMPT_LV3_FILE_LABEL),
 }
 
 
@@ -31,7 +29,7 @@ def build_prompt(
         raise TypeError("normalized_text must be a string")
 
     if isinstance(prompt_level, bool) or prompt_level not in PROMPT_PATHS:
-        raise PromptTemplateError("LLM prompt_level must be 1, 2, or 3.")
+        raise PromptTemplateError("LLM prompt_level must be 1 or 2.")
 
     configured_path, configured_label = PROMPT_PATHS[prompt_level]
     selected_path = path if path is not None else configured_path
@@ -70,6 +68,6 @@ def build_prompt(
     return template.replace(INPUT_PLACEHOLDER, normalized_text, 1)
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=2)
 def _read_packaged_template(path: Path) -> str:
     return path.read_text(encoding="utf-8")

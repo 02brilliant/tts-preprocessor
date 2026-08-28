@@ -4,16 +4,9 @@ import pytest
 
 from LLM.provenance import build_normalization_snapshot
 from LLM.client import LLMResponseError
-from LLM.pronunciation_lexicon import PRONUNCIATION_ENTRIES
+from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.response_validation import LLMStageContractError, validate_response
 from engine.span_engine.transform import transform_with_trace
-
-
-STAGE5_EXACT_ENTRIES = tuple(
-    (entry.surface, entry.pronunciation)
-    for entry in PRONUNCIATION_ENTRIES
-    if entry.stage == 5 and not entry.contextual
-)
 
 
 def test_level4_rejects_general_phonetic_rewrite() -> None:
@@ -49,11 +42,12 @@ def test_level3_rejects_korean_pronunciation_spelling_changes(
         ("손등이 부었다.", "손뜽이 부었다."),
     ),
 )
-def test_level4_accepts_limited_korean_pronunciation_changes(
+def test_level4_rejects_fixed_pronunciation_when_overlay_was_not_applied(
     source: str,
     output: str,
 ) -> None:
-    assert validate_response(source, output, prompt_level=2) == output
+    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
+        validate_response(source, output, prompt_level=2)
 
 
 def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
@@ -62,7 +56,7 @@ def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
     assert validate_response(source, output, prompt_level=1) == output
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+@pytest.mark.parametrize("prompt_level", (1, 2))
 def test_every_llm_stage_accepts_closed_compound_boundary(
     prompt_level: int,
 ) -> None:
@@ -83,17 +77,15 @@ def test_level3_rejects_korean_rewrite_disguised_as_compound_boundary() -> None:
 def test_stage_outputs_form_a_controlled_processing_superset() -> None:
     source = "3.05와 색연필, 생산량을 확인했습니다."
     level3 = "삼쩜영오와 색연필, 생산량을 확인했습니다."
-    level4 = "삼쩜영오와 색년필, 생산량을 확인했습니다."
-    level5 = "삼쩜영오와 색년필, 생산냥을 확인했습니다."
+    level4_base = apply_pronunciation_overlay(level3, stage=4)
+    level4 = level4_base.text
 
     assert validate_response(source, level3, prompt_level=1) == level3
-    assert validate_response(source, level4, prompt_level=2) == level4
-    assert validate_response(source, level5, prompt_level=3) == level5
+    assert level4 == "삼쩜영오와 색년필, 생산냥을 확인했습니다."
+    assert validate_response(level4, level4, prompt_level=2, snapshot=level4_base.snapshot) == level4
 
     with pytest.raises(LLMStageContractError):
         validate_response(source, level4, prompt_level=1)
-    with pytest.raises(LLMStageContractError):
-        validate_response(source, level5, prompt_level=2)
 
 
 @pytest.mark.parametrize(
@@ -185,54 +177,6 @@ def test_integrated_response_preserves_existing_stage1_time_frame_comma() -> Non
     assert validate_response(source, output) == output
 
 
-@pytest.mark.parametrize(
-    ("source", "output"),
-    (
-        ("생산량은 늘었습니다.", "생산냥은 늘었습니다."),
-        ("입원료를 냈습니다.", "이붠뇨를 냈습니다."),
-        ("노동의 대가를 받았습니다.", "노동의 대까를 받았습니다."),
-    ),
-)
-def test_level5_accepts_only_its_additional_pronunciation_candidates(
-    source: str,
-    output: str,
-) -> None:
-    assert validate_response(source, output, prompt_level=3) == output
-
-
-@pytest.mark.parametrize(
-    ("surface", "pronunciation"),
-    STAGE5_EXACT_ENTRIES,
-)
-def test_level5_validator_accepts_every_exact_entry_with_particle(
-    surface: str,
-    pronunciation: str,
-) -> None:
-    source = f"{surface}은 확인했습니다."
-    output = f"{pronunciation}은 확인했습니다."
-    assert validate_response(source, output, prompt_level=3) == output
-
-
-def test_level5_preserves_negative_contrast_surface() -> None:
-    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
-        validate_response("증가량은 줄었습니다.", "증가냥은 줄었습니다.", prompt_level=3)
-
-
-@pytest.mark.parametrize(
-    ("source", "rewritten"),
-    [
-        ("예술계의 대가를 만났습니다.", "예술계의 대까를 만났습니다."),
-        ("그는 대가에 관해 말했습니다.", "그는 대까에 관해 말했습니다."),
-    ],
-)
-def test_level5_rejects_expert_and_uncertain_daega_rewrite(
-    source: str,
-    rewritten: str,
-) -> None:
-    with pytest.raises(LLMStageContractError):
-        validate_response(source, rewritten, prompt_level=3)
-
-
 def test_integrated_response_rejects_new_time_frame_comma_after_other_sentence() -> None:
     source = "첫 문장입니다. 내년 이월 서비스를 출시합니다."
     output = "첟 문장입니다. 내년 이월, 서비스를 출시합니다."
@@ -262,7 +206,7 @@ def test_rule_generated_reading_mutation_is_critical_with_snapshot() -> None:
     assert exc_info.value.severity == "Critical"
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+@pytest.mark.parametrize("prompt_level", (1, 2))
 def test_every_llm_stage_rejects_decimal_jjeom_rewrite(prompt_level: int) -> None:
     output = transform_with_trace("가격은 3.05달러입니다.")
     snapshot = build_normalization_snapshot(output)

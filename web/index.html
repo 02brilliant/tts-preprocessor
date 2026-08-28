@@ -550,14 +550,13 @@
       <div class="pipeline-controls" aria-label="교정 단계 설정">
         <div class="correction-level-control">
           <label for="correction-level">교정 단계 · <span id="correction-level-current">2단계(규칙기반교정)</span></label>
-          <input id="correction-level" type="range" min="0" max="5" step="1" value="2" aria-label="교정 단계 선택">
+          <input id="correction-level" type="range" min="0" max="4" step="1" value="2" aria-label="교정 단계 선택">
           <div class="correction-level-labels" aria-label="교정 단계 바로 선택">
             <button type="button" data-correction-level="0" aria-pressed="false">0단계<br>교정안함</button>
             <button type="button" data-correction-level="1" aria-pressed="false">1단계<br>규칙간소화</button>
             <button type="button" data-correction-level="2" aria-pressed="true">2단계<br>규칙기반교정</button>
             <button type="button" data-correction-level="3" aria-pressed="false">3단계<br>LLM최소</button>
             <button type="button" data-correction-level="4" aria-pressed="false">4단계<br>LLM자연스러운발화</button>
-            <button type="button" data-correction-level="5" aria-pressed="false">5단계<br>LLM발음강화(시험)</button>
           </div>
         </div>
         <label class="sr-only" for="llm-model">LLM 모델 선택</label>
@@ -806,11 +805,10 @@
       2: "2단계(규칙기반교정)",
       3: "3단계(LLM최소)",
       4: "4단계(LLM자연스러운발화)",
-      5: "5단계(LLM발음강화·시험)",
     };
 
     function setCorrectionLevel(level) {
-      const normalizedLevel = Math.max(0, Math.min(5, Number(level)));
+      const normalizedLevel = Math.max(0, Math.min(4, Number(level)));
       selectedCorrectionLevel = normalizedLevel;
       correctionLevelEl.value = String(normalizedLevel);
       correctionLevelCurrentEl.textContent = CORRECTION_LEVEL_LABELS[normalizedLevel];

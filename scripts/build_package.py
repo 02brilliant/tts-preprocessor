@@ -18,7 +18,6 @@ DEFAULT_BINARY_PATH = ROOT_DIR / "dist" / "tts_preprocessor"
 DEFAULT_SIMPLIFIED_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-simplified"
 DEFAULT_LLM_MINIMAL_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-llm-minimal"
 DEFAULT_LLM_NATURAL_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-llm-natural"
-DEFAULT_LLM_PRONUNCIATION_BINARY_PATH = ROOT_DIR / "dist" / "tts-preprocessor-llm-pronunciation"
 README_TEMPLATE_PATH = ROOT_DIR / "docs" / "Release_Package_README.txt"
 
 
@@ -34,7 +33,6 @@ def build_package(
     simplified_binary_path: Path = DEFAULT_SIMPLIFIED_BINARY_PATH,
     llm_minimal_binary_path: Path = DEFAULT_LLM_MINIMAL_BINARY_PATH,
     llm_natural_binary_path: Path = DEFAULT_LLM_NATURAL_BINARY_PATH,
-    llm_pronunciation_binary_path: Path = DEFAULT_LLM_PRONUNCIATION_BINARY_PATH,
 ) -> Path:
     package_dir = PACKAGES_DIR / PACKAGE_NAME
     archive_path = DOWNLOADS_DIR / ARCHIVE_NAME
@@ -43,12 +41,10 @@ def build_package(
     prepared_simplified_binary = resolve_binary_path(simplified_binary_path)
     prepared_llm_minimal_binary = resolve_binary_path(llm_minimal_binary_path)
     prepared_llm_natural_binary = resolve_binary_path(llm_natural_binary_path)
-    prepared_llm_pronunciation_binary = resolve_binary_path(llm_pronunciation_binary_path)
     require_prepared_binary(prepared_binary)
     require_prepared_binary(prepared_simplified_binary)
     require_prepared_binary(prepared_llm_minimal_binary)
     require_prepared_binary(prepared_llm_natural_binary)
-    require_prepared_binary(prepared_llm_pronunciation_binary)
     remove_previous_artifacts(package_dir)
     create_package_structure(
         package_dir,
@@ -56,7 +52,6 @@ def build_package(
         prepared_simplified_binary,
         prepared_llm_minimal_binary,
         prepared_llm_natural_binary,
-        prepared_llm_pronunciation_binary,
     )
     validate_package_structure(package_dir)
     create_archive_atomically(package_dir, archive_path)
@@ -100,7 +95,6 @@ def create_package_structure(
     simplified_binary_path: Path,
     llm_minimal_binary_path: Path,
     llm_natural_binary_path: Path,
-    llm_pronunciation_binary_path: Path,
 ) -> None:
     if package_dir.exists():
         shutil.rmtree(package_dir)
@@ -120,9 +114,6 @@ def create_package_structure(
     llm_natural_target = package_dir / "tts-preprocessor-llm-natural"
     shutil.copy2(llm_natural_binary_path, llm_natural_target)
     llm_natural_target.chmod(0o755)
-    llm_pronunciation_target = package_dir / "tts-preprocessor-llm-pronunciation"
-    shutil.copy2(llm_pronunciation_binary_path, llm_pronunciation_target)
-    llm_pronunciation_target.chmod(0o755)
 
 
 def validate_package_structure(package_dir: Path) -> None:
@@ -173,7 +164,6 @@ def validate_archive(archive_path: Path) -> None:
         "tts-preprocessor/README.txt",
         "tts-preprocessor/tts-preprocessor-llm-minimal",
         "tts-preprocessor/tts-preprocessor-llm-natural",
-        "tts-preprocessor/tts-preprocessor-llm-pronunciation",
         "tts-preprocessor/tts-preprocessor",
         "tts-preprocessor/tts-preprocessor-simplified",
     }
@@ -218,12 +208,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=DEFAULT_LLM_NATURAL_BINARY_PATH,
         help="Prepared level-4 binary.",
     )
-    parser.add_argument(
-        "--llm-pronunciation-binary",
-        type=Path,
-        default=DEFAULT_LLM_PRONUNCIATION_BINARY_PATH,
-        help="Prepared experimental level-5 binary.",
-    )
     return parser.parse_args(argv[1:])
 
 
@@ -235,7 +219,6 @@ def main(argv: list[str]) -> int:
             args.simplified_binary,
             args.llm_minimal_binary,
             args.llm_natural_binary,
-            args.llm_pronunciation_binary,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)

@@ -65,29 +65,22 @@ def test_level4_calls_for_natural_speech_contraction_candidate() -> None:
 
 
 @pytest.mark.parametrize("text", ("색연필입니다.", "문고리를 잡았다.", "손등이 부었다."))
-def test_korean_pronunciation_candidates_are_level4_only(text: str) -> None:
+def test_fixed_pronunciation_is_not_an_llm_gate_reason(text: str) -> None:
     assert decide_llm_invocation(text, stage_level=3).call_llm is False
     decision = decide_llm_invocation(text, stage_level=4)
-    assert decision.call_llm is True
-    assert decision.reason == "korean_pronunciation_candidate"
+    assert decision.call_llm is False
+    assert decision.reason == "very_short_simple_rule_complete"
 
 
 def test_long_compound_boundary_candidate_starts_at_level3() -> None:
     text = "산업용지역전기요금제입니다."
-    for stage_level in (3, 4, 5):
+    for stage_level in (3, 4):
         decision = decide_llm_invocation(text, stage_level=stage_level)
         assert decision.call_llm is True
         assert decision.reason == "compound_boundary_candidate"
 
 
-def test_level5_calls_for_additional_pronunciation_candidate() -> None:
-    assert decide_llm_invocation("생산량은 늘었습니다.", stage_level=4).reason != "pronunciation_lexicon_candidate"
-    decision = decide_llm_invocation("생산량은 늘었습니다.", stage_level=5)
-    assert decision.call_llm is True
-    assert decision.reason == "pronunciation_lexicon_candidate"
-
-
-@pytest.mark.parametrize("stage_level", (False, 0, 2, 6))
+@pytest.mark.parametrize("stage_level", (False, 0, 2, 5, 6))
 def test_gate_rejects_invalid_stage_level(stage_level) -> None:
     with pytest.raises(ValueError):
         decide_llm_invocation("원고", stage_level=stage_level)

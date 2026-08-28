@@ -62,8 +62,8 @@ def transform(
         raise TypeError("normalized_text must be str")
     if model is not None and not isinstance(model, str):
         raise TypeError("model must be str or None")
-    if isinstance(prompt_level, bool) or prompt_level not in {1, 2, 3}:
-        raise ValueError("prompt_level must be 1, 2, or 3")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 2}:
+        raise ValueError("prompt_level must be 1 or 2")
 
     model_config = load_model_config()
     selected_model = model or model_config.default_model
@@ -85,7 +85,7 @@ def transform(
             snapshot=snapshot,
         )
     except LLMStageContractError as exc:
-        if prompt_level != 3 or exc.severity not in {"Critical", "High"}:
+        if prompt_level != 2 or exc.severity not in {"Critical", "High"}:
             raise
         issue = ValidationIssue(
             exc.code,
@@ -95,7 +95,8 @@ def transform(
             output_end=exc.output_end,
         )
         _LOGGER.warning(
-            "level5_validation_fallback code=%s severity=%s",
+            "level%d_validation_fallback code=%s severity=%s",
+            prompt_level + 2,
             exc.code,
             exc.severity,
         )
@@ -118,12 +119,12 @@ def transform(
     )
 
 
-def validate_runtime_assets(*, prompt_levels: tuple[int, ...] = (1, 2, 3)) -> None:
+def validate_runtime_assets(*, prompt_levels: tuple[int, ...] = (1, 2)) -> None:
     """Verify the requested bundled prompt and model assets without an LLM call."""
 
     load_model_config()
-    if not prompt_levels or any(level not in {1, 2, 3} for level in prompt_levels):
-        raise ValueError("prompt_levels must contain only 1, 2, or 3")
+    if not prompt_levels or any(level not in {1, 2} for level in prompt_levels):
+        raise ValueError("prompt_levels must contain only 1 or 2")
     for prompt_level in prompt_levels:
         build_prompt("", prompt_level=prompt_level)
 

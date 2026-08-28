@@ -1,6 +1,6 @@
 # TTS Preprocessor 단계 정책
 
-이 문서는 TTS Preprocessor의 0~5단계 책임과 단계 간 계약의 단일 기준점이다. 구현·프롬프트·테스트·배포 문서는 이 정의와 다르게 단계를 설명해서는 안 된다.
+이 문서는 TTS Preprocessor의 0~4단계 책임과 단계 간 계약의 단일 기준점이다. 구현·프롬프트·테스트·배포 문서는 이 정의와 다르게 단계를 설명해서는 안 된다.
 
 ## 프로젝트 목적
 
@@ -14,12 +14,11 @@
 | 1 | `simplified` | 없음 | TTS 필수 최소 규칙. 일반 영문 fallback 제외 |
 | 2 | `default` | 없음 | 전체 deterministic normalization |
 | 3 | `default` | level 1, `LLM_prompt.txt` | 잔여 숫자·영문·단위 문맥 처리, 제한적 복합명사 경계·쉼표. 기존 한글 보존 |
-| 4 | `default` | level 2, `LLM_prompt_lv2.txt` | 3단계 + 폐쇄형 발음 예외·이다 축약 |
-| 5 | `default` | level 3, `llm_prompt_lv3.txt` | 4단계 + 폐쇄형 발음 사전·문맥 동형어·ㄴ/ㄹ 예외. 시험 옵션 |
+| 4 | `default` | level 2, `LLM_prompt_lv2.txt` | 3단계 + deterministic 발음 overlay + 폐쇄형 `이다` 축약 |
 
-3~5단계는 각각 원문을 입력받아 내부에서 2단계 규칙 엔진을 한 번 실행한다. 다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다.
+3~4단계는 각각 원문을 입력받아 내부에서 2단계 규칙 엔진을 한 번 실행한다. 다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다.
 
-단계의 포함 관계는 문자열을 순차 전달한다는 뜻이 아니라 처리 책임을 상속한다는 뜻이다. 4단계는 3단계의 명확한 잔여 읽기를 모두 수행한 뒤 4단계 폐쇄형 변경을 추가하고, 5단계는 3·4단계의 확정 작업을 모두 수행한 뒤 5단계 exact·문맥 후보를 추가한다. 상위 단계의 추가 후보가 없거나 불확실해도 하위 단계의 확정 작업을 생략하지 않는다.
+단계의 포함 관계는 문자열을 순차 전달한다는 뜻이 아니라 처리 책임을 상속한다는 뜻이다. 4단계는 2단계 결과에 4단계 전용 deterministic 발음 overlay를 적용한 뒤 3단계의 명확한 잔여 읽기와 4단계 폐쇄형 변경을 수행한다. 추가 후보가 없더라도 하위 단계의 확정 작업을 생략하지 않는다.
 
 ## 1단계와 2단계
 
@@ -35,61 +34,61 @@
 
 ## 4단계
 
-3단계의 통제된 상위 집합이다. 3단계의 복합명사 발화 경계와 제한적 운율을 그대로 상속하고, 코드에 등록된 폐쇄형 ㄴ 첨가와 어휘화된 합성어 된소리, 받침 없는 일반 체언의 승인된 `이다` 계열 축약만 추가한다.
+3단계의 통제된 상위 집합이다. 내부 호출 흐름은 다음과 같다.
+
+```text
+2단계 normalized_text + snapshot
+        ↓
+4단계 전용 deterministic pronunciation overlay
+        ↓
+stage4_base_text + overlay 결과가 locked된 snapshot
+        ↓
+cheap gate → 필요할 때만 Gemma 통합 1-pass
+        ↓
+provenance-aware validator
+        ↓
+speech_text 또는 stage4_base_text fallback
+```
+
+overlay는 코드에 등록된 exact whole-word 또는 승인된 조사·어미 경계만 바꾼다. 기존 폐쇄형 ㄴ 첨가·어휘화된 합성어 된소리와, 공식 근거가 확인된 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류, 백분율`을 포함한다. 더 긴 고유명사·제품명 내부, protected/locked span, 미승인 유사어에는 적용하지 않는다. 이 처리는 LLM 추론이 아니며 2단계 `normalized_text` 출력에는 영향을 주지 않는다. 외부 응답의 `normalized_text`는 계속 2단계 결과이고 `speech_text`에만 overlay 이후 결과가 반영된다.
+
+LLM은 overlay 결과를 locked input으로 받아 다시 원형으로 되돌리거나 다른 발음형으로 바꿀 수 없다. LLM이 추가로 허용받는 한국어 변경은 받침 없는 일반 체언의 승인된 `이다` 계열 축약뿐이며, 3단계의 복합명사 발화 경계와 제한적 운율을 그대로 상속한다.
 
 일반 연음·비음화·유음화·구개음화·된소리되기·ㅎ 축약·겹받침·활용형 음운 변화는 출력 철자에 반영하지 않는다.
 
-## 5단계
+### 향후 4단계 강화 참고 메모
 
-사용자가 명시적으로 선택하는 시험 옵션이며 기본값이 아니다.
-
-```text
-2단계 normalized_text + internal provenance
-        ↓
-cheap candidate detector
-        ↓
-Gemma4-31B 통합 1-pass
-        ↓
-provenance-aware deterministic validator
-        ↓
-speech_text 또는 normalized_text fallback
-```
-
-5단계는 4단계 목록에 exact whole-word ㄴ/ㄹ 예외와 `대가` 문맥 동형어를 추가한다. `-률/-율`, `-량`, `-력`, `-란`, `-령`, `-료`, `-류`를 suffix 규칙으로 일반화하지 않는다. 일반 사이시옷, 조사 `의` 발화 스타일, 복수 허용 발음, 일반 G2P는 자동 처리하지 않는다.
-
-항상 2-pass를 사용하지 않는다. 향후 contrast corpus에서 1-pass 문맥 동형어 정확도가 승인 기준을 만족하지 못하고 conditional decision pass가 유의미한 품질 향상을 보일 때만 다시 검토한다. decision pass가 도입되더라도 전체 문장을 rewrite하지 않고 span별 결정만 생성하며 다음 pass는 원본 `normalized_text`를 사용한다.
+별도 시험 단계와 문맥 동형어 `대가` 처리를 검토했으나 문맥 오판 위험에 비해 추가 품질 범위가 한 단어로 작아 제거했다. `대가`는 4단계에서도 원형을 유지한다. exact 발음 목록을 2단계로 승격하는 방안은 운영 중인 2단계 출력 변경과 TTS 자체 G2P 중복 위험 때문에 적용하지 않았다. 모든 `-량/-력/-률` 계열, 일반 사이시옷·일반 G2P, 조사 `의`, `효과` 같은 복수 표준발음도 false positive를 안전하게 제한할 근거가 없어 제외했다. 항상 2-pass는 latency와 오류 연쇄 대비 입증된 이득이 없어 채택하지 않았다. 향후 강화는 exact 항목의 공식 근거·positive/negative/contrast test가 확보된 경우 overlay 목록을 보수적으로 확장하는 순서로 검토한다.
 
 ## Pronunciation lexicon
 
-LLM용 발음 사전은 2단계 규칙 사전과 분리한다. exact whole-word 또는 승인된 단일 조사·어미 경계, longest match, 더 긴 고유명사 내부 오적용 방지를 기본으로 한다. 복합 조사·연속 어미처럼 현재 detector가 안전한 경계로 승인하지 않은 결합은 원형을 보존한다. protected/locked span이 아니고 exact 표면과 경계가 확인되면 단일 발음 사전값은 반드시 적용하며, 불확실 fallback은 경계나 문맥이 불확실한 경우에만 사용한다. 단일 발음 항목과 문맥 동형어를 구분하며 각 항목은 stage, category, 공식 source를 가진다. 사전 변경은 positive, negative, contrast test와 함께 이루어져야 한다.
+4단계 전용 발음 사전은 2단계 규칙 사전과 분리한다. exact whole-word 또는 승인된 단일 조사·어미 경계, longest match, 더 긴 고유명사 내부 오적용 방지를 기본으로 한다. 복합 조사·연속 어미처럼 detector가 안전한 경계로 승인하지 않은 결합은 원형을 보존한다. protected/locked span이 아니고 exact 표면과 경계가 확인된 항목은 LLM 호출 전에 deterministic overlay로 적용하고 결과를 locked 처리한다. 각 항목은 stage, category, 공식 source를 가지며 사전 변경은 positive, negative, contrast test와 함께 이루어져야 한다.
 
-초기 5단계 `ㄴ/ㄹ` exact 목록은 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류`이며 국립국어원 표준 발음법 제20항의 예시를 따른다. `백분율[백뿐뉼]`은 제29항 근거로 별도 등록한다. `대가(代價)[대까]`는 노동·노력·희생·보수·값·지불·지급·치르다 등 detector가 승인한 명시적 보상 문맥에서만 변경 후보가 되며, 분야의 거장·전문가 문맥과 명시적 단서가 없는 불확실한 문맥은 원형을 강제한다.
+4단계 overlay의 `ㄴ/ㄹ` exact 목록은 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류`이며 국립국어원 표준 발음법 제20항의 예시를 따른다. `백분율[백뿐뉼]`은 제29항 근거로 별도 등록한다.
 
 공식 근거:
 
 - [국립국어원 표준 발음법 제20항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=&pageIndex=1&qna_seq=313452)
 - [국립국어원 `백분율` 발음 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=313432)
-- [한국어기초사전 `대가(代價)`](https://krdict.korean.go.kr/m/eng/searchResultView?ParaSenseSeq=&ParaWordNo=14261&fileNo=&imgCount=&multiMediaSeq=&nation=eng&searchKind=&searchKindValue=&shortenUrl=&studySeq=)
 
 ## Provenance와 locked span
 
-규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~5단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 protected surface는 locked다. metadata는 외부 API나 LLM 본문에 노출하지 않는다.
+규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~4단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 protected surface는 locked다. 4단계에서는 overlay가 좌표를 다시 투영하고 생성 발음 span을 `GENERATED_STAGE4_PRONUNCIATION`으로 locked 처리한다. metadata는 외부 API나 LLM 본문에 노출하지 않는다.
 
 ## Validator와 fallback
 
 공통 검증 대상은 protected/locked span, 문장·문단 순서, 줄바꿈, 고정 구두점, Unicode, 공백, dash, 잔여 발화 표면이다.
 
 - 3단계: 기존 한국어 변경 금지
-- 4단계: 3단계 + 코드에 등록된 4단계 mutation만 허용
-- 5단계: 4단계 + 코드에 등록된 5단계 mutation만 허용
+- 4단계: overlay 결과를 locked하고 3단계 + 승인된 `이다` 축약만 LLM 변경으로 허용
 
 Critical은 의미·숫자·보호 표면·locked reading·문장 구조 훼손이다. High는 예상 밖 한국어 rewrite, lexicon 위반, 미승인 발음 전사다. Medium은 잔여 발화 표면과 운율·형식 문제다.
 
-5단계의 Critical/High 검증 실패는 retry 없이 전체 `normalized_text`로 fallback한다. 안전한 최종 `speech_text`는 fallback 값을 유지하되, 웹 UI는 선택적 `rejected_speech_text`와 `validation_failure`를 사용해 거절된 LLM 원출력과 변경 구간을 표시한다. 잔여 발화 표면처럼 원출력이 규칙 결과와 같은 경우에도 validator가 제공한 output 좌표를 사용해 해당 표면을 표시한다. 3·4단계의 기존 provider/validation 오류 계약은 유지한다.
+4단계의 Critical/High 검증 실패는 retry 없이 LLM 입력인 `stage4_base_text`로 fallback한다. 따라서 확정 overlay 발음은 보존된다. 안전한 최종 `speech_text`는 fallback 값을 유지하되, 웹 UI는 선택적 `rejected_speech_text`와 `validation_failure`를 사용해 거절된 LLM 원출력과 변경 구간을 표시한다. 3단계의 기존 provider/validation 오류 계약은 유지한다.
 
 ## 외부 인터페이스
 
-API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 5단계 fallback 응답에만 UI 표시용 선택 필드 `rejected_speech_text`와 `validation_failure`를 추가할 수 있으며, 이때도 `speech_text`는 안전한 fallback 값이다. 5단계 실행 파일명은 `tts-preprocessor-llm-pronunciation`이며 Windows에서는 `.exe`가 붙는다.
+API는 level 0~4를 받는다. model 선택은 3~4단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 4단계 fallback 응답에는 UI 표시용 선택 필드 `rejected_speech_text`와 `validation_failure`를 추가할 수 있으며, 이때도 `speech_text`는 안전한 fallback 값이다.
 
 ## 품질 승인 기준
 
@@ -98,13 +97,11 @@ API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 
 - Protected Span Mutation 0
 - Numeric Reading Error 0
 - 3단계 Unexpected Korean Rewrite 0
-- 4·5단계 whitelist 밖 Korean Rewrite 0
+- 4단계 whitelist 밖 Korean Rewrite 0
 - prompt placeholder 정확히 한 개
 - 전체 비바이너리 테스트와 인터페이스 계약 테스트 통과
 
 새 발음 규칙에서 false positive가 발생하면 범위를 확대하지 않고 해당 항목을 비활성화한다.
-
-실제 Gemma4-31B 제한 표본 결과와 측정 한계는 `docs/Gemma4_31B_level_evaluation_2026-08-26.md`에 기록한다.
 
 ## 새 normalization 승인 절차
 
@@ -114,7 +111,7 @@ API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 
 
 | 후보 규칙 | 적용 단계 | 현재 문제 | 예상 개선 | false positive 위험 | 1단계 적용 여부 | 2단계 영향 | 권장 테스트 |
 |---|---|---|---|---|---|---|---|
-| 5단계 exact ㄴ/ㄹ 사전의 규칙 엔진 승격 | 향후 2단계 | 실제 TTS 오독률·음성 청취 근거 미수집 | LLM 없이 결정적 발음 | 출력 철자 변경 및 TTS 자체 G2P와 중복 | 아니요 | 있음 | 현 TTS A/B 음성, 조사 결합, 고유명사 내부 negative |
+| 4단계 overlay exact 발음의 규칙 엔진 승격 | 향후 2단계 | 실제 TTS 오독률·음성 청취 근거 미수집 | 모든 단계에서 결정적 발음 | 출력 철자 변경 및 TTS 자체 G2P와 중복 | 아니요 | 있음 | 현 TTS A/B 음성, 조사 결합, 고유명사 내부 negative |
 | 모든 `-률/-율`, `-량`, `-력`, `-란`, `-령`, `-료`, `-류` suffix 일반화 | 미정 | 어휘별 발음 차이 | 사전 누락 감소 가능 | 매우 높음 | 아니요 | 적용 시 있음 | 어휘별 공식 발음 corpus와 대규모 contrast |
 | 일반 사이시옷·일반 ㄴ 첨가·일반 된소리 전사 | 미정 | TTS 오독 실측 없음 | 일부 발음 개선 가능 | 일반 G2P 과교정이 큼 | 아니요 | 적용 시 있음 | 실제 음성 오독 cluster와 negative corpus |
 | 조사 `의` 뉴스 발화 스타일 | 미정 | 청취 평가 없음 | 낭독 자연성 가능 | 스타일 강제·의미 경계 훼손 | 아니요 | 적용 시 있음 | 뉴스 성우 블라인드 청취 평가 |

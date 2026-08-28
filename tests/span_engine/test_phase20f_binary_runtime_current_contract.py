@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 
 def test_phase20f_binary_runtime_run_transform_binary_exists() -> None:
     import api.binary_runtime as binary_runtime
@@ -118,9 +120,11 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
     assert seen["input"] == "원문"
 
 
-def test_phase20f_level5_forwards_only_structured_fallback_log(
+@pytest.mark.parametrize("level", (4, 5))
+def test_phase20f_natural_levels_forward_only_structured_fallback_log(
     monkeypatch,
     caplog,
+    level: int,
 ) -> None:
     import api.binary_runtime as binary_runtime
     import json
@@ -142,7 +146,7 @@ def test_phase20f_level5_forwards_only_structured_fallback_log(
                 }
             ),
             stderr=(
-                "level5_validation_fallback code=PROTECTED_SPAN_MUTATION "
+                f"level{level}_validation_fallback code=PROTECTED_SPAN_MUTATION "
                 "severity=Critical\n원문은 기록하지 않는다"
             ),
         )
@@ -152,8 +156,8 @@ def test_phase20f_level5_forwards_only_structured_fallback_log(
 
     result = binary_runtime.run_integrated_binary(
         "비공개 원문",
-        level=5,
-        binary_path=Path("/tmp/fake-level-5"),
+        level=level,
+        binary_path=Path(f"/tmp/fake-level-{level}"),
     )
 
     assert result["speech_text"] == "보호된 원고"
@@ -162,7 +166,7 @@ def test_phase20f_level5_forwards_only_structured_fallback_log(
     assert "원문은 기록하지 않는다" not in caplog.text
 
 
-def test_phase20f_level5_returns_rejected_output_for_web_display(monkeypatch) -> None:
+def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json
 
@@ -195,8 +199,8 @@ def test_phase20f_level5_returns_rejected_output_for_web_display(monkeypatch) ->
 
     result = binary_runtime.run_integrated_binary(
         "가격은 3.05달러입니다.",
-        level=5,
-        binary_path=Path("/tmp/fake-level-5"),
+        level=4,
+        binary_path=Path("/tmp/fake-level-4"),
     )
 
     assert result["speech_text"] == "가격은 삼쩜영오 달러입니다."

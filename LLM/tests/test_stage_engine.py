@@ -53,7 +53,7 @@ def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> N
     assert "<NATURAL_SPEECH_CONTRACTION>" in captured["prompt"]
 
 
-def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None:
+def test_level4_validation_failure_falls_back_without_retry(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     calls = 0
@@ -67,7 +67,7 @@ def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None
     result = stage_engine.transform(
         "국물은 같이 있습니다.",
         model="gemma4:e4b",
-        prompt_level=3,
+        prompt_level=2,
     )
     assert result.speech_text == "국물은 같이 있습니다."
     assert result.validation_fallback is True

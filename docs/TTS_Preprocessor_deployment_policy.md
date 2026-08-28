@@ -179,9 +179,9 @@ for deterministic response validation. The rule
 endpoint remains independently usable as a final TTS input path.
 The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not expose rule-reading lock
-metadata, use repeated stability sampling, or automatically retry. Level 5 alone
-falls back to its original `normalized_text` after a Critical/High validation
-failure; levels 3 and 4 retain their existing error contract.
+metadata, use repeated stability sampling, or automatically retry. Level 4
+falls back to its locked `stage4_base_text` after a Critical/High validation
+failure; level 3 retains its existing error contract.
 
 The active prompt MUST present that `normalized_text` as the current execution
 payload, outside documentation/example code fences. Response validation MUST
@@ -190,8 +190,8 @@ JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
 This validation is a safety gate; it does not authorize rewriting protected
 surfaces or falling back to an unvalidated model response.
 
-`LLM/docs/LLM_prompt.txt`, `LLM/docs/LLM_prompt_lv2.txt`, and
-`LLM/docs/llm_prompt_lv3.txt` are packaged only in levels 3, 4, and 5 respectively. Each integrated executable takes
+`LLM/docs/LLM_prompt.txt` and `LLM/docs/LLM_prompt_lv2.txt` are packaged only in
+levels 3 and 4 respectively. Each integrated executable takes
 original text, runs the full level-2 rule engine exactly once, then invokes and
 validates its fixed prompt. Production API MUST invoke exactly one selected
 executable through `/api/transform` instead of importing `engine.*` or `LLM.*`
@@ -202,7 +202,7 @@ Every OS package also includes `tts-preprocessor-simplified` beside the default
 `tts-preprocessor`. Both binaries use the same rule engine and managed dictionaries;
 the simplified executable disables only general English pronunciation fallbacks.
 The existing build and deployment commands build, validate, and publish both rule
-binaries together with the level-3, level-4, and experimental level-5 integrated executables.
+binaries together with the level-3 and level-4 integrated executables.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

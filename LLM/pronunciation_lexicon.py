@@ -13,8 +13,6 @@ class PronunciationEntry:
     category: str
     stage: int
     source: str
-    contextual: bool = False
-    contexts: tuple[str, ...] = ()
 
 
 _STAGE4_ENTRIES = (
@@ -30,33 +28,21 @@ _STAGE4_ENTRIES = (
     PronunciationEntry("발바닥", "발빠닥", "lexical_tensification", 4, "existing-level-4-policy"),
     PronunciationEntry("길가", "길까", "lexical_tensification", 4, "existing-level-4-policy"),
     PronunciationEntry("초승달", "초승딸", "lexical_tensification", 4, "existing-level-4-policy"),
+    PronunciationEntry("의견란", "의견난", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("임진란", "임진난", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("생산량", "생산냥", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("결단력", "결딴녁", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("공권력", "공꿘녁", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("동원령", "동원녕", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("상견례", "상견녜", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("횡단로", "횡단노", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("이원론", "이원논", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("입원료", "이붠뇨", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("구근류", "구근뉴", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("백분율", "백뿐뉼", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 29"),
 )
 
-_STAGE5_ENTRIES = (
-    PronunciationEntry("의견란", "의견난", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("임진란", "임진난", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("생산량", "생산냥", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("결단력", "결딴녁", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("공권력", "공꿘녁", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("동원령", "동원녕", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("상견례", "상견녜", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("횡단로", "횡단노", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("이원론", "이원논", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("입원료", "이붠뇨", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("구근류", "구근뉴", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("백분율", "백뿐뉼", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 29"),
-    PronunciationEntry(
-        "대가",
-        "대까",
-        "contextual_homograph",
-        5,
-        "NIKL Standard Korean Dictionary: 대가(代價)",
-        True,
-        ("compensation_or_result", "master_or_expert", "uncertain"),
-    ),
-)
-
-PRONUNCIATION_ENTRIES = _STAGE4_ENTRIES + _STAGE5_ENTRIES
+PRONUNCIATION_ENTRIES = _STAGE4_ENTRIES
 
 _GRAMMATICAL_TAIL_RE = re.compile(
     r"(?:"
@@ -89,20 +75,9 @@ _CONTRACTION_TAILS = {
     "이세요": "세요",
     "이셨다": "셨다",
 }
-_DAEGA_EXPERT_RE = re.compile(
-    r"(?:예술|학문|기술|문학|미술|음악|건축|바둑|과학|연극|영화|회화|서예)(?:계)?의?\s*대가"
-    r"|(?:거장|전문가|장인|명인)"
-)
-_DAEGA_COMPENSATION_RE = re.compile(
-    r"노동|노력|희생|잘못|범죄|보수|값|지불|지급|치르|대가를\s+받|"
-    r"대가를\s+요구|정당한\s+대가|합당한\s+대가|혹독한\s+대가|"
-    r"무거운\s+대가|값비싼\s+대가"
-)
-
-
 def entries_for_stage(stage: int) -> tuple[PronunciationEntry, ...]:
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
     return tuple(entry for entry in PRONUNCIATION_ENTRIES if entry.stage <= stage)
 
 
@@ -112,12 +87,67 @@ def build_allowed_mutations(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> tuple[AllowedMutation, ...]:
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
 
     candidates: list[AllowedMutation] = []
-    entries = entries_for_stage(stage)
-    entry_by_surface = {entry.surface: entry for entry in entries}
+    for word_match in _HANGUL_WORD_RE.finditer(normalized_text):
+        word = word_match.group(0)
+
+        if stage >= 4:
+            contraction = _contraction_mutation(
+                word,
+                word_match.start(),
+            )
+            if contraction is not None:
+                candidates.append(contraction)
+
+        compound_tail = _COMPOUND_GRAMMATICAL_TAIL_RE.search(word)
+        stem_end = len(word) if compound_tail is None else compound_tail.start()
+        compound_stem = word[:stem_end]
+        compound_tail_text = word[stem_end:]
+        if len(compound_stem) >= 6:
+            candidates.append(
+                AllowedMutation(
+                    start=word_match.start(),
+                    end=word_match.end(),
+                    kind="compound_boundary",
+                    source_text=word,
+                    allowed_outputs=tuple(
+                        compound_stem[:index]
+                        + "-"
+                        + compound_stem[index:]
+                        + compound_tail_text
+                        for index in range(2, len(compound_stem) - 1)
+                    ),
+                )
+            )
+
+    return _filter_and_resolve(candidates, snapshot)
+
+
+def build_deterministic_pronunciation_mutations(
+    normalized_text: str,
+    *,
+    stage: int,
+    snapshot: NormalizationSnapshot | None = None,
+) -> tuple[AllowedMutation, ...]:
+    """Return fixed whole-word pronunciation rewrites for the stage overlay."""
+
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
+    if stage == 3:
+        return ()
+    return _filter_and_resolve(
+        _entry_mutations(normalized_text, entries_for_stage(stage)), snapshot
+    )
+
+
+def _entry_mutations(
+    normalized_text: str,
+    entries: tuple[PronunciationEntry, ...],
+) -> list[AllowedMutation]:
+    candidates: list[AllowedMutation] = []
 
     for entry in (item for item in entries if " " in item.surface):
         search_from = 0
@@ -156,55 +186,23 @@ def build_allowed_mutations(
                 continue
             start = word_match.start()
             end = start + len(entry.surface)
-            allowed_outputs = (entry.pronunciation,)
-            if entry.contextual:
-                allowed_outputs = _contextual_outputs(
-                    normalized_text,
-                    entry,
-                    word_match.start(),
-                )
             candidates.append(
                 AllowedMutation(
                     start=start,
                     end=end,
                     kind=entry.category,
                     source_text=entry.surface,
-                    allowed_outputs=allowed_outputs,
+                    allowed_outputs=(entry.pronunciation,),
                 )
             )
             break
+    return candidates
 
-        if stage >= 4:
-            contraction = _contraction_mutation(
-                normalized_text,
-                word,
-                word_match.start(),
-                entry_by_surface,
-            )
-            if contraction is not None:
-                candidates.append(contraction)
 
-        compound_tail = _COMPOUND_GRAMMATICAL_TAIL_RE.search(word)
-        stem_end = len(word) if compound_tail is None else compound_tail.start()
-        compound_stem = word[:stem_end]
-        compound_tail_text = word[stem_end:]
-        if len(compound_stem) >= 6:
-            candidates.append(
-                AllowedMutation(
-                    start=word_match.start(),
-                    end=word_match.end(),
-                    kind="compound_boundary",
-                    source_text=word,
-                    allowed_outputs=tuple(
-                        compound_stem[:index]
-                        + "-"
-                        + compound_stem[index:]
-                        + compound_tail_text
-                        for index in range(2, len(compound_stem) - 1)
-                    ),
-                )
-            )
-
+def _filter_and_resolve(
+    candidates: list[AllowedMutation],
+    snapshot: NormalizationSnapshot | None,
+) -> tuple[AllowedMutation, ...]:
     blocked = () if snapshot is None else tuple(
         span for span in snapshot.spans if span.locked or span.protected
     )
@@ -220,26 +218,9 @@ def build_allowed_mutations(
     return _resolve_overlaps(filtered)
 
 
-def _contextual_outputs(
-    text: str,
-    entry: PronunciationEntry,
-    start: int,
-) -> tuple[str, ...]:
-    if entry.surface != "대가":
-        return (entry.surface,)
-    window = text[max(0, start - 24) : min(len(text), start + len(entry.surface) + 24)]
-    if _DAEGA_EXPERT_RE.search(window):
-        return (entry.surface,)
-    if _DAEGA_COMPENSATION_RE.search(window):
-        return (entry.pronunciation,)
-    return (entry.surface,)
-
-
 def _contraction_mutation(
-    text: str,
     word: str,
     offset: int,
-    entry_by_surface: dict[str, PronunciationEntry],
 ) -> AllowedMutation | None:
     stem = ""
     outputs: set[str] = set()
@@ -260,26 +241,6 @@ def _contraction_mutation(
     if not outputs:
         return None
 
-    entry = entry_by_surface.get(stem)
-    entry_pronunciation_allowed = (
-        entry is not None
-        and (
-            not entry.contextual
-            or entry.pronunciation in _contextual_outputs(text, entry, offset)
-        )
-    )
-    if entry is not None and entry_pronunciation_allowed:
-        if word.endswith("입니다"):
-            pronounced_contraction = _contract_imnida(entry.pronunciation)
-            if pronounced_contraction is not None:
-                outputs.add(pronounced_contraction)
-            outputs.add(entry.pronunciation + "입니다")
-        else:
-            for source_tail, output_tail in _CONTRACTION_TAILS.items():
-                if word.endswith(source_tail):
-                    outputs.add(entry.pronunciation + output_tail)
-                    outputs.add(entry.pronunciation + source_tail)
-                    break
     return AllowedMutation(
         start=offset,
         end=offset + len(word),
@@ -306,7 +267,6 @@ def _has_final_consonant(character: str) -> bool:
 def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutation, ...]:
     priority = {
         "natural_speech_contraction": 0,
-        "contextual_homograph": 1,
         "lexical_n_l": 1,
         "n_insertion": 1,
         "lexical_tensification": 1,
@@ -353,5 +313,6 @@ __all__ = [
     "PRONUNCIATION_ENTRIES",
     "PronunciationEntry",
     "build_allowed_mutations",
+    "build_deterministic_pronunciation_mutations",
     "entries_for_stage",
 ]

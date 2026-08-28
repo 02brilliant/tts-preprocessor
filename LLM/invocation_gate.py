@@ -45,7 +45,7 @@ def decide_llm_invocation(
     *,
     stage_level: int,
 ) -> LLMInvocationDecision:
-    """Decide whether an integrated level-3/4/5 runtime needs its LLM pass.
+    """Decide whether an integrated level-3/4 runtime needs its LLM pass.
 
     The gate does not decide pronunciation. It uses residual/structure signals
     plus the closed stage-specific mutation registry to decide whether one LLM
@@ -54,8 +54,8 @@ def decide_llm_invocation(
 
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
-    if isinstance(stage_level, bool) or stage_level not in {3, 4, 5}:
-        raise ValueError("stage_level must be 3, 4, or 5")
+    if isinstance(stage_level, bool) or stage_level not in {3, 4}:
+        raise ValueError("stage_level must be 3 or 4")
 
     visible = normalized_text.strip()
     if not visible:
@@ -76,12 +76,7 @@ def decide_llm_invocation(
         return LLMInvocationDecision(True, "natural_speech_contraction_candidate")
 
     if pronunciation_mutations:
-        reason = (
-            "pronunciation_lexicon_candidate"
-            if stage_level == 5
-            else "korean_pronunciation_candidate"
-        )
-        return LLMInvocationDecision(True, reason)
+        return LLMInvocationDecision(True, "korean_pronunciation_candidate")
 
     structural_text = actionable_text.strip()
     word_count = len(_WORD_RE.findall(structural_text))
@@ -106,8 +101,8 @@ def decide_llm_invocation(
             return LLMInvocationDecision(True, "prosody_or_structure_candidate")
         return LLMInvocationDecision(False, "short_simple_rule_complete")
 
-    # Natural-speech levels 4 and 5 skip only extremely short, structurally
-    # simple text. Level 5 adds closed pronunciation candidates above.
+    # Natural-speech level 4 skips only extremely short, structurally simple
+    # text. Closed pronunciation candidates are handled above.
     if (
         has_internal_newline
         or sentence_count > 1
