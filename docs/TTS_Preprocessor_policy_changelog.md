@@ -2,6 +2,16 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Ordinal `N번째` reads the suffix only; tails stay untouched
+
+- `(숫자)[ ]번째`는 `ordinal` owner가 `번째`까지 claim하고 뒤 문자는 건드리지
+  않는다. `7번째만 -> 일곱 번째만`, `7번째abc -> 일곱 번째abc`,
+  `1번째부터 10번째까지 -> 첫 번째부터 열 번째까지`.
+- `번`의 bare deferral은 적용하지 않는다. 1–4는 `첫·두·세·네`, 5–39는 native,
+  40+는 Sino, 소수는 Sino decimal이다. `7 번째`도 붙임과 같다.
+- free-standing `제`는 `제 일곱 번째`처럼 canonical space를 생성한다.
+  `A제7번째`는 보존한다. `0번째`, `01번째`는 invalid ordinal로 보존한다.
+
 ## Exact compound units share one ASCII space
 
 - `Mbps`/`Kbps`/`Gbps`/`Tbps`/`rpm`/`fps`/`ppm`/`ppb`/`dBi`도

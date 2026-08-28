@@ -5,10 +5,62 @@ from engine.span_engine.source_map import build_source_map
 
 BOUNDARY_CHARS = frozenset("[](){}【】:|")
 PUNCT_LOCK_CHARS = frozenset(".,!?")
+_ORDINAL_SUFFIX = "번째"
 
 
 def _is_modern_hangul_syllable(char: str) -> bool:
     return "\uac00" <= char <= "\ud7a3"
+
+
+def _is_ascii_digit(char: str) -> bool:
+    return char.isascii() and char.isdigit()
+
+
+def _ordinal_suffix_token_end(raw_text: str, hangul_start: int) -> int | None:
+    if not raw_text.startswith(_ORDINAL_SUFFIX, hangul_start):
+        return None
+    if _ordinal_numeric_prefix_start(raw_text, hangul_start) is None:
+        return None
+    return hangul_start + len(_ORDINAL_SUFFIX)
+
+
+def _ordinal_numeric_prefix_start(raw_text: str, hangul_start: int) -> int | None:
+    end = hangul_start
+    if end > 0 and raw_text[end - 1] == " ":
+        end -= 1
+    if end == 0:
+        return None
+    index = end
+    while index > 0 and _is_ascii_digit(raw_text[index - 1]):
+        index -= 1
+    if index == end:
+        return None
+    if index > 0 and raw_text[index - 1] == ".":
+        index -= 1
+        integer_end = index
+        while index > 0 and _is_ascii_digit(raw_text[index - 1]):
+            index -= 1
+        if index == integer_end:
+            return None
+    start = index
+    number = raw_text[start:end]
+    if "." in number:
+        integer_part, _, fractional_part = number.partition(".")
+        if not integer_part.isdigit() or not fractional_part.isdigit():
+            return None
+        if len(integer_part) > 1 and integer_part.startswith("0"):
+            return None
+    elif len(number) > 1 and number.startswith("0"):
+        return None
+    if start > 0:
+        previous = raw_text[start - 1]
+        if previous.isascii() and previous.isalnum():
+            return None
+        if "\uac00" <= previous <= "\ud7a3" and previous != "제":
+            return None
+        if previous == "제" and start > 1 and not raw_text[start - 2].isspace():
+            return None
+    return start
 
 
 def _is_punct_lock_position(raw_text: str, index: int) -> bool:
@@ -48,6 +100,18 @@ def tokenize_immutable_spans(
 
         if _is_modern_hangul_syllable(char):
             start = i
+            ordinal_end = _ordinal_suffix_token_end(raw_text, start)
+            if ordinal_end is not None:
+                tokens.append(
+                    SpanToken(
+                        kind="KOREAN_LITERAL",
+                        raw=raw_text[start:ordinal_end],
+                        span=SourceSpan(start, ordinal_end),
+                        immutable=True,
+                    )
+                )
+                i = ordinal_end
+                continue
             while i < len(raw_text) and _is_modern_hangul_syllable(raw_text[i]):
                 i += 1
             tokens.append(

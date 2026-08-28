@@ -517,8 +517,8 @@ def claim_surfaces(
     # `3kg` and attached `GB그룹` keep their existing claims.
     candidates.extend(_claim_scanned_candidates(hangul_context_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_number_unit_candidates(raw_text), registry, excluded_ranges))
-    candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ordinal_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ambiguous_numeric_dae_preserve_candidates(raw_text), registry, excluded_ranges))

@@ -25,6 +25,11 @@ def test_korean_literals_split_from_plain_ascii_and_digits() -> None:
         ("PLAIN", "3", False),
         ("KOREAN_LITERAL", "가", True),
     ]
+    assert _token_summary("7번째만") == [
+        ("PLAIN", "7", False),
+        ("KOREAN_LITERAL", "번째", True),
+        ("KOREAN_LITERAL", "만", True),
+    ]
 
 
 def test_compatibility_jamo_is_not_korean_literal_in_phase3() -> None:
