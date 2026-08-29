@@ -8,8 +8,8 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 def test_large_unit_atomic_precedence_regression_smoke() -> None:
     assert transform("3만") == "삼만"
     assert transform("123") == "백이십삼"
-    assert transform("21명") == "스물한 명"
-    assert transform("3~8cm") == "삼에서 팔 센티미터"
+    assert transform("21명") == "스물한-명"
+    assert transform("3~8cm") == "삼에서 팔-센티미터"
     assert transform("2025-01-03") == "이천이십오년 일월 삼일"
     assert transform("123-456-7890") == "일이삼 사오육 칠팔구공"
 

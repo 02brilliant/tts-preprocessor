@@ -43,7 +43,7 @@ PARTIAL_MATCH_GUARD_CASES = [
     TextCase(
         case_id="typed-surface-partial-tilde-unit",
         text="3~8cm",
-        expected="삼에서 팔 센티미터",
+        expected="삼에서 팔-센티미터",
         rule="typed surface / partial match guard",
         reason="Range plus unit must normalize as a whole surface instead of partially reading only the left side.",
         classification="regression",
@@ -95,7 +95,7 @@ LONG_SENTENCE_E2E_CASES = [
     TextCase(
         case_id="typed-surface-e2e-range-and-degree",
         text="기온은 -1.3도까지 떨어졌지만 3~8cm 적설은 유지됐다",
-        expected="기온은 마이너스 일쩜삼도까지 떨어졌지만, 삼에서 팔 센티미터 적설은 유지됐다",
+        expected="기온은 마이너스 일쩜삼도까지 떨어졌지만, 삼에서 팔-센티미터 적설은 유지됐다",
         rule="typed surface / canonical owners plus subordinate prosody",
         reason="Signed degree and range claims remain independent before prosody_extra inserts the registered -지만 clause comma.",
         classification="canonical",

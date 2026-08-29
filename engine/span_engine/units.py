@@ -14,6 +14,7 @@ from engine.span_engine.signed_numeric import (
     parse_signed_numeric_core,
     render_signed_numeric,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 SIMPLE_UNIT_READINGS: dict[str, str] = {
     "THz": "테라헤르츠",
@@ -790,8 +791,8 @@ def parse_korean_numeric_unit_candidate(
         if has_decimal:
             pieces.append(
                 RenderPiece(
-                    text=" ",
-                    provenance="GENERATED_READING",
+                    text=SPOKEN_NUMERIC_BOUNDARY,
+                    provenance="GENERATED_PUNCT",
                     source_span=suffix_span,
                     owner=candidate.owner,
                     metadata={"surface_type": candidate.surface_type},
@@ -808,7 +809,7 @@ def parse_korean_numeric_unit_candidate(
         )
         pieces.append(
             RenderPiece(
-                text=" " + candidate.metadata["unit_reading"],
+                text=SPOKEN_NUMERIC_BOUNDARY + candidate.metadata["unit_reading"],
                 provenance="GENERATED_READING",
                 source_span=SourceSpan(unit_start, candidate.core_span.end),
                 owner=candidate.owner,
@@ -860,7 +861,7 @@ def parse_korean_numeric_unit_candidate(
         cursor = korean_end
     pieces.append(
         RenderPiece(
-            text=" " + candidate.metadata["unit_reading"],
+            text=SPOKEN_NUMERIC_BOUNDARY + candidate.metadata["unit_reading"],
             provenance="GENERATED_READING",
             source_span=SourceSpan(unit_start, candidate.core_span.end),
             owner=candidate.owner,
@@ -901,7 +902,7 @@ def _korean_numeric_unit_candidate(
         if not _valid_korean_numeric_unit_boundary(raw_text, full_span):
             return None
         metadata: dict[str, object] = {
-            "reading": f"{number_reading} {inventory[unit]}",
+            "reading": f"{number_reading}{SPOKEN_NUMERIC_BOUNDARY}{inventory[unit]}",
             "core_reading": number_reading,
             "render_core_reading": render_core_reading,
             "unit": unit,
@@ -1257,7 +1258,7 @@ def _reading(amount: str, unit_name: str) -> str:
     amount_reading = _amount_reading(amount)
     if unit_name == "화씨":
         return f"화씨 {amount_reading}도"
-    separator = "" if unit_name == "도" else " "
+    separator = "" if unit_name == "도" else SPOKEN_NUMERIC_BOUNDARY
     return f"{amount_reading}{separator}{unit_name}"
 
 

@@ -88,14 +88,14 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="adversarial-emergency-disallowed-suffix-ho",
         text="119호",
-        expected="백십구 호",
+        expected="백십구-호",
         rule="contextual number-unit / residual",
         reason="호 is not an allowed emergency tail, so residual numeric policy reads the number as Sino 호.",
     ),
     TextCase(
         case_id="adversarial-emergency-disallowed-suffix-beon",
         text="112번",
-        expected="백십이 번",
+        expected="백십이-번",
         rule="contextual number-unit / residual",
         reason="번 is not an allowed emergency tail, so residual numeric policy reads the number as Sino 번.",
     ),
@@ -109,7 +109,7 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="adversarial-protected-two-block-hyphen",
         text="12-15장",
-        expected="십이에서 십오 장",
+        expected="십이에서 십오-장",
         rule="hyphen range / canonical registered 장 suffix",
         reason="The registered 장 suffix licenses the restricted hyphen range owner; generic two-block hyphens remain protected.",
         classification="canonical",

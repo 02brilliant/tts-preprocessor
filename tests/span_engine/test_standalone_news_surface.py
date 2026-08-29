@@ -56,5 +56,5 @@ def test_kbs_news_is_a_shared_phrase_dictionary_entry() -> None:
 def test_simplified_disables_only_general_english_fallbacks() -> None:
     source = "ABC와 M&A, KOSPI, KBS-1, API2, 3kg"
     assert transform_simplified(source) == (
-        "ABC와 M&A, 코스피, 케이비에스-원, 에이피아이 투, 삼 킬로그램"
+        "ABC와 M&A, 코스피, 케이비에스-원, 에이피아이 투, 삼-킬로그램"
     )

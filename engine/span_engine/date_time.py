@@ -23,6 +23,7 @@ from engine.span_engine.numeric_suffix import (
 )
 from engine.span_engine.residual_spacing import CLOCK_HOUR_LEXICAL_WORDS
 from engine.span_engine.sentence_final_slash import is_sentence_final_slash_boundary
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 _DATE_SEP_RE = re.compile(r"(?<![A-Za-z0-9])(\d{4})([-/.／])(\d{2})\2(\d{2})(?![A-Za-z0-9])")
 _SHORT_DOTTED_CODE_RE = re.compile(r"(?<![A-Za-z0-9.])(\d{4})\.(\d{1,2})(?![A-Za-z0-9.])")
@@ -422,11 +423,11 @@ def parse_clock_hour_direction_surface(
         return None
     leading = ""
     if number_span.start > 0 and raw_text[number_span.start - 1] == "제":
-        leading = " "
+        leading = SPOKEN_NUMERIC_BOUNDARY
     metadata = {"surface_type": candidate.surface_type}
     pieces = [
         RenderPiece(
-            text=f"{leading}{hour_reading} ",
+            text=f"{leading}{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
             provenance="GENERATED_READING",
             source_span=number_span,
             owner=candidate.owner,
@@ -1421,9 +1422,9 @@ def _clock_hour_core(
     if has_je:
         je_text = match.string[match.start() : match.start(1)]
         if not je_text.endswith(" "):
-            leading = " "
+            leading = SPOKEN_NUMERIC_BOUNDARY
     return (
-        f"{leading}{hour_reading} ",
+        f"{leading}{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
         SourceSpan(match.start(1), _unit_start_after_group(match, 1, "시")),
     )
 
@@ -1464,7 +1465,7 @@ def _clock_hour_direction_candidates(
     if has_je:
         je_text = raw_text[match.start() : match.start(1)]
         if not je_text.endswith(" "):
-            prefix = " "
+            prefix = SPOKEN_NUMERIC_BOUNDARY
     core_start = match.start(1)
     core_end = si_end if compact else match.end(1)
     candidate = _numeric_marker_candidate(
@@ -1473,7 +1474,7 @@ def _clock_hour_direction_candidates(
         "time_hour_clock_direction",
         hour,
         owner="time",
-        reading=f"{prefix}{hour_reading} ",
+        reading=f"{prefix}{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
         core_span=SourceSpan(core_start, core_end),
     )
     candidate.metadata.update(

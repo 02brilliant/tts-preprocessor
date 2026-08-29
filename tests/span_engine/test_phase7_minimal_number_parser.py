@@ -76,13 +76,13 @@ def test_phase16d_signed_number_updates_former_unsupported_number_patterns_prese
 
 
 def test_phase10_unit_owner_prevents_number_partial_for_unit_case() -> None:
-    assert transform("50kg") == "오십 킬로그램"
+    assert transform("50kg") == "오십-킬로그램"
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("21명", "스물한 명"),
+        ("21명", "스물한-명"),
         ("3월", "삼월"),
         ("3~8", "삼에서 팔"),
     ],

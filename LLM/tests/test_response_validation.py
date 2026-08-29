@@ -210,12 +210,49 @@ def test_rule_generated_reading_mutation_is_critical_with_snapshot() -> None:
 def test_every_llm_stage_rejects_decimal_jjeom_rewrite(prompt_level: int) -> None:
     output = transform_with_trace("가격은 3.05달러입니다.")
     snapshot = build_normalization_snapshot(output)
-    assert output.normalized_text == "가격은 삼쩜영오 달러입니다."
+    assert output.normalized_text == "가격은 삼쩜영오-달러입니다."
 
     with pytest.raises(LLMStageContractError) as exc_info:
         validate_response(
             output.normalized_text,
-            "가격은 삼점영오 달러입니다.",
+            "가격은 삼점영오-달러입니다.",
+            prompt_level=prompt_level,
+            snapshot=snapshot,
+        )
+
+    assert exc_info.value.code == "LOCKED_READING_MUTATION"
+    assert exc_info.value.severity == "Critical"
+
+
+@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize(
+    ("source", "wrong_output"),
+    (
+        ("5kg을 운반했습니다.", "오 킬로그램을 운반했습니다."),
+        ("1번째 항목입니다.", "첫 번째 항목입니다."),
+        ("제7번째 항목입니다.", "제 일곱 번째 항목입니다."),
+    ),
+)
+def test_every_llm_stage_rejects_locked_numeric_boundary_rewrite(
+    prompt_level: int,
+    source: str,
+    wrong_output: str,
+) -> None:
+    output = transform_with_trace(source)
+    snapshot = build_normalization_snapshot(output)
+
+    assert "-" in output.normalized_text
+    assert validate_response(
+        output.normalized_text,
+        output.normalized_text,
+        prompt_level=prompt_level,
+        snapshot=snapshot,
+    ) == output.normalized_text
+
+    with pytest.raises(LLMStageContractError) as exc_info:
+        validate_response(
+            output.normalized_text,
+            wrong_output,
             prompt_level=prompt_level,
             snapshot=snapshot,
         )

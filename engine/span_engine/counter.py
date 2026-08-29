@@ -12,6 +12,7 @@ from engine.span_engine.large_unit import (
 )
 from engine.span_engine.mixed_integer import is_safe_mixed_integer_left_boundary
 from engine.span_engine.numeric_dae import evaluate_numeric_dae_counter_context
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
 NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살", "가지"})
@@ -318,7 +319,7 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
         reading = None
     if reading is None:
         return None
-    return reading + ("" if counter in SPACELESS_COUNTERS else " ")
+    return reading + ("" if counter in SPACELESS_COUNTERS else SPOKEN_NUMERIC_BOUNDARY)
 
 
 def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -375,8 +376,6 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
             )
             if reading is None:
                 continue
-            if has_space_before_counter and reading.endswith(" "):
-                reading = reading[:-1]
             number_span = SourceSpan(number_start, number_end)
             counter_span = SourceSpan(counter_start, counter_end)
             full_span = SourceSpan(number_start, counter_end)
@@ -421,7 +420,13 @@ def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 if decision.action != "DEFER_TO_COUNTER":
                     break
                 reason = decision.reason
-            claim_span = full_span if full_large_unit_counter_claim else number_span
+            claim_span = (
+                full_span
+                if full_large_unit_counter_claim
+                else SourceSpan(number_start, counter_start)
+                if has_space_before_counter and reading.endswith(SPOKEN_NUMERIC_BOUNDARY)
+                else number_span
+            )
             candidates.append(
                 SurfaceCandidate(
                     core_span=claim_span,
@@ -469,7 +474,9 @@ def _mixed_counter_number_reading(
         return None
     if mixed_core.value < 100:
         return None
-    return mixed_core.reading + ("" if counter in SPACELESS_COUNTERS else " ")
+    return mixed_core.reading + (
+        "" if counter in SPACELESS_COUNTERS else SPOKEN_NUMERIC_BOUNDARY
+    )
 
 
 def _has_supported_counter_prefix_tail(
@@ -702,16 +709,16 @@ def _has_bounded_context_anchor(
 
 def _name_character_count_reading(value: int) -> str | None:
     if value == 3:
-        return "석 "
+        return f"석{SPOKEN_NUMERIC_BOUNDARY}"
     if value == 4:
-        return "넉 "
+        return f"넉{SPOKEN_NUMERIC_BOUNDARY}"
     return _hybrid_character_count_reading(value)
 
 
 def _length_character_unit_reading(value: int) -> str | None:
     special_reading = special_determiner_reading(value, "자")
     if special_reading is not None:
-        return f"{special_reading} "
+        return f"{special_reading}{SPOKEN_NUMERIC_BOUNDARY}"
     return _hybrid_character_count_reading(value)
 
 
@@ -721,7 +728,7 @@ def _hybrid_character_count_reading(value: int) -> str | None:
         if 1 <= value <= HYBRID_COUNTER_THRESHOLD
         else _sino_or_large_integer_reading(value)
     )
-    return f"{reading} " if reading is not None else None
+    return f"{reading}{SPOKEN_NUMERIC_BOUNDARY}" if reading is not None else None
 
 
 def _sino_or_large_integer_reading(value: int) -> str | None:
@@ -787,7 +794,8 @@ def parse_counter_candidate(
                 return None
             source_gap = raw_text[numeric_span.end : counter_span.start]
             counter = raw_text[counter_span.start : counter_span.end]
-            return f"{reading}{source_gap}{counter}"
+            separator = "" if reading.endswith(SPOKEN_NUMERIC_BOUNDARY) else source_gap
+            return f"{reading}{separator}{counter}"
         return reading
     raw_number = raw_text[candidate.core_span.start : candidate.core_span.end]
     counter = candidate.metadata.get("counter")
@@ -819,8 +827,8 @@ def counter_render_pieces(
     ):
         return None
 
-    generated_space = reading.endswith(" ")
-    numeric_reading = reading[:-1] if generated_space else reading
+    generated_boundary = reading.endswith(SPOKEN_NUMERIC_BOUNDARY)
+    numeric_reading = reading[:-1] if generated_boundary else reading
     metadata = {"surface_type": candidate.surface_type}
     pieces = [
         RenderPiece(
@@ -831,7 +839,7 @@ def counter_render_pieces(
             metadata=metadata,
         )
     ]
-    if isinstance(source_space_span, SourceSpan):
+    if isinstance(source_space_span, SourceSpan) and not generated_boundary:
         pieces.append(
             RenderPiece(
                 text=raw_text[source_space_span.start : source_space_span.end],
@@ -841,12 +849,12 @@ def counter_render_pieces(
                 metadata=metadata,
             )
         )
-    elif generated_space:
+    elif generated_boundary:
         pieces.append(
             RenderPiece(
-                text=" ",
-                provenance="GENERATED_READING",
-                source_span=counter_span,
+                text=SPOKEN_NUMERIC_BOUNDARY,
+                provenance="GENERATED_PUNCT",
+                source_span=source_space_span or counter_span,
                 owner=candidate.owner,
                 metadata=metadata,
             )

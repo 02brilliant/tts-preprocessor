@@ -21,6 +21,7 @@ from engine.span_engine.signed_numeric import (
     apply_sign_profile,
     parse_sign_surface,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
@@ -87,7 +88,7 @@ def scan_duration_candidates(
                         match.start("hour"),
                         match.end("hour"),
                         SourceSpan(match.start("hour"), hour_full_end),
-                        f"{hour_reading} ",
+                        f"{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
                         "duration_hour_numeric_gate",
                     )
                 )
@@ -101,7 +102,7 @@ def scan_duration_candidates(
                     match.start("hour"),
                     match.end("hour"),
                     span,
-                    f"{hour_reading} ",
+                    f"{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
                     "duration_hour_numeric_gate",
                 )
             )
@@ -127,7 +128,7 @@ def scan_duration_candidates(
                     match.start("hour_only"),
                     match.end("hour_only"),
                     span,
-                    f"{hour_reading} ",
+                    f"{hour_reading}{SPOKEN_NUMERIC_BOUNDARY}",
                     "duration_hour_numeric_gate",
                 )
             )
@@ -200,7 +201,7 @@ def _scan_year_period_candidates(
                 match.start("year"),
                 match.end("year"),
                 span,
-                f"{year_reading} ",
+                f"{year_reading}{SPOKEN_NUMERIC_BOUNDARY}",
                 "duration_year_period_numeric_gate",
             )
         )
@@ -292,7 +293,7 @@ def _duration_amount_reading(raw: str, unit: str) -> str | None:
         if unsigned_reading is None:
             return None
         return apply_sign_profile(
-            unsigned_reading.rstrip(),
+            unsigned_reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY),
             sign,
             sign_profile=SignProfile.DEFAULT,
         )
@@ -302,7 +303,7 @@ def _duration_amount_reading(raw: str, unit: str) -> str | None:
     if unit == "분":
         reading = read_sino_time_suffix_number_text(raw)
         if reading is not None and "." in raw:
-            return f"{reading} "
+            return f"{reading}{SPOKEN_NUMERIC_BOUNDARY}"
         return reading
     if "." in raw or "," in raw:
         reading = read_number_text(raw)

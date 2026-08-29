@@ -55,7 +55,7 @@ def test_k_hangul_lexical_render_preserves_hangul_piece() -> None:
 def test_prefixed_ordinal_numeric_suffix_trace_owner() -> None:
     output = transform_with_trace("제5차")
 
-    assert output.normalized_text == "제 오차"
+    assert output.normalized_text == "제-오차"
     assert any(claim.owner == "numeric_suffix" for claim in output.trace.claim_logs)
     assert any(
         piece.owner == "numeric_suffix" and piece.provenance == "GENERATED_READING"
@@ -101,7 +101,7 @@ def test_k_year_code_preserve_has_no_surface_claim() -> None:
 def test_range_with_unit_trace_owner() -> None:
     output = transform_with_trace("3~5km")
 
-    assert output.normalized_text == "삼에서 오 킬로미터"
+    assert output.normalized_text == "삼에서 오-킬로미터"
     assert any(claim.owner == "range_with_unit" for claim in output.trace.claim_logs)
     assert any(
         piece.owner == "range_with_unit"

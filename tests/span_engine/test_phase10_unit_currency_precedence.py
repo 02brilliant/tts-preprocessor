@@ -8,10 +8,10 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("$100", "백 달러", "currency"),
-        ("50kg", "오십 킬로그램", "simple_unit"),
-        ("45㎡", "사십오 제곱미터", "special_unit"),
-        ("100MB", "백 메가바이트", "simple_unit"),
+        ("$100", "백-달러", "currency"),
+        ("50kg", "오십-킬로그램", "simple_unit"),
+        ("45㎡", "사십오-제곱미터", "special_unit"),
+        ("100MB", "백-메가바이트", "simple_unit"),
     ],
 )
 def test_unit_currency_precede_general_number(

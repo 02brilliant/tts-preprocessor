@@ -124,7 +124,7 @@ def test_three_or_more_dotted_blocks_keep_existing_routing(
         ("2만5508.07", "이만오천오백팔쩜영칠"),
         ("2만5508.07에", "이만오천오백팔쩜영칠에"),
         ("5만1839", "오만천팔백삼십구"),
-        ("3.5만", "삼쩜오 만"),
+        ("3.5만", "삼쩜오-만"),
     ],
 )
 def test_structured_compact_large_unit_decimal_and_regressions(
@@ -225,8 +225,8 @@ def test_korean_numeric_chain_rejects_code_like_tokens(text: str) -> None:
     ("text", "expected", "owner"),
     [
         ("3대", "3대", "contextual_number_unit"),
-        ("제15권", "제 십오권", "numeric_suffix"),
-        ("종로3가", "종로 삼 가", "administrative_suffix"),
+        ("제15권", "제-십오권", "numeric_suffix"),
+        ("종로3가", "종로 삼-가", "administrative_suffix"),
     ],
 )
 def test_specific_numeric_owners_precede_korean_numeric_chain(

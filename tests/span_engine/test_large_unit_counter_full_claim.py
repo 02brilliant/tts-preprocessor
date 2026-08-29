@@ -10,13 +10,13 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1만3천개", "일만삼천 개"),
-        ("1만3천개다.", "일만삼천 개다."),
-        ("1만3천개는", "일만삼천 개는"),
-        ("1만3천개였다", "일만삼천 개였다"),
-        ("1만3천개입니다", "일만삼천 개입니다"),
-        ("3만개", "삼만 개"),
-        ("12만개입니다", "십이만 개입니다"),
+        ("1만3천개", "일만삼천-개"),
+        ("1만3천개다.", "일만삼천-개다."),
+        ("1만3천개는", "일만삼천-개는"),
+        ("1만3천개였다", "일만삼천-개였다"),
+        ("1만3천개입니다", "일만삼천-개입니다"),
+        ("3만개", "삼만-개"),
+        ("12만개입니다", "십이만-개입니다"),
         ("1만3천개월", "일만삼천개월"),
     ],
 )
@@ -32,7 +32,7 @@ def test_large_unit_counter_user_reported_sentence_exact_output() -> None:
         "1만3천명이다. 1만3천이다. 1만3천 이다."
     )
     assert transform(text) == (
-        "일만삼천 개다. 일만삼천 개다. 일만 삼천 개다. "
+        "일만삼천-개다. 일만삼천-개다. 일만 삼천-개다. "
         "일만삼천 명이다. 일만삼천이다. 일만삼천 이다."
     )
 
@@ -40,13 +40,13 @@ def test_large_unit_counter_user_reported_sentence_exact_output() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1만3천 개다.", "일만삼천 개다."),
-        ("1만 3천개다.", "일만 삼천 개다."),
+        ("1만3천 개다.", "일만삼천-개다."),
+        ("1만 3천개다.", "일만 삼천-개다."),
         ("1만3천명이다.", "일만삼천 명이다."),
         ("1만3천이다.", "일만삼천이다."),
         ("1만3천 이다.", "일만삼천 이다."),
         ("1만3천여 명", "일만삼천여 명"),
-        ("6천400명", "육천사백 명"),
+        ("6천400명", "육천사백-명"),
         ("꽃이 만개했다.", "꽃이 만개했다."),
         ("만개다.", "만개다."),
     ],
@@ -82,7 +82,7 @@ def test_large_unit_counter_unsafe_or_protected_tail_preserves(text: str) -> Non
 def test_large_unit_counter_trace_and_provenance() -> None:
     output = transform_with_trace("1만3천개다.")
 
-    assert output.normalized_text == "일만삼천 개다."
+    assert output.normalized_text == "일만삼천-개다."
     assert [
         (
             claim.owner,

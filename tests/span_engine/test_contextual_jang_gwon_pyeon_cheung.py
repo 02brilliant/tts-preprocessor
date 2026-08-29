@@ -15,29 +15,29 @@ def _debug(text: str) -> dict:
 @pytest.mark.parametrize(
     ("text", "expected", "semantic"),
     [
-        ("사진 3장을 골랐다", "사진 세 장을 골랐다", "sheet_count"),
-        ("종이 4장", "종이 네 장", "sheet_count"),
-        ("3장 2절", "삼 장 이절", "chapter_number"),
-        ("책 3장을 읽었다", "책 삼 장을 읽었다", "chapter_number"),
-        ("책 3권을 샀다", "책 세 권을 샀다", "book_count"),
-        ("도서 4권", "도서 네 권", "book_count"),
-        ("3권 2호", "삼 권 이 호", "volume_number"),
-        ("시리즈 3권", "시리즈 삼 권", "volume_number"),
-        ("영화 3편을 봤다", "영화 세 편을 봤다", "work_count"),
-        ("논문 4편을 발표했다", "논문 네 편을 발표했다", "work_count"),
-        ("시리즈 3편", "시리즈 삼 편", "part_number"),
-        ("법전 3편", "법전 삼 편", "part_number"),
-        ("3층 회의실", "삼 층 회의실", "floor_location"),
-        ("3층에 산다", "삼 층에 산다", "floor_location"),
-        ("3층에서 만났다", "삼 층에서 만났다", "floor_location"),
-        ("지하 3층", "지하 삼 층", "floor_location"),
-        ("지상 3층", "지상 삼 층", "floor_location"),
+        ("사진 3장을 골랐다", "사진 세-장을 골랐다", "sheet_count"),
+        ("종이 4장", "종이 네-장", "sheet_count"),
+        ("3장 2절", "삼-장 이절", "chapter_number"),
+        ("책 3장을 읽었다", "책 삼-장을 읽었다", "chapter_number"),
+        ("책 3권을 샀다", "책 세-권을 샀다", "book_count"),
+        ("도서 4권", "도서 네-권", "book_count"),
+        ("3권 2호", "삼-권 이-호", "volume_number"),
+        ("시리즈 3권", "시리즈 삼-권", "volume_number"),
+        ("영화 3편을 봤다", "영화 세-편을 봤다", "work_count"),
+        ("논문 4편을 발표했다", "논문 네-편을 발표했다", "work_count"),
+        ("시리즈 3편", "시리즈 삼-편", "part_number"),
+        ("법전 3편", "법전 삼-편", "part_number"),
+        ("3층 회의실", "삼-층 회의실", "floor_location"),
+        ("3층에 산다", "삼-층에 산다", "floor_location"),
+        ("3층에서 만났다", "삼-층에서 만났다", "floor_location"),
+        ("지하 3층", "지하 삼-층", "floor_location"),
+        ("지상 3층", "지상 삼-층", "floor_location"),
         (
             "지하 1층부터 지상 3층까지",
-            "지하 일 층부터 지상 삼 층까지",
+            "지하 일-층부터 지상 삼-층까지",
             "floor_location",
         ),
-        ("지상3층", "지상삼 층", "floor_location"),
+        ("지상3층", "지상삼-층", "floor_location"),
     ],
 )
 def test_batch5_exact_anchors_confirm_meaning(
@@ -58,7 +58,7 @@ def test_batch5_exact_anchors_confirm_meaning(
 
 def test_basement_to_above_ground_floor_span_confirms_both_floors() -> None:
     debug = _debug("지하 1층부터 지상 3층까지")
-    assert debug["normalized_text"] == "지하 일 층부터 지상 삼 층까지"
+    assert debug["normalized_text"] == "지하 일-층부터 지상 삼-층까지"
     cheung_logs = [
         log
         for log in debug["trace"]["contextual_decision_logs"]
@@ -123,7 +123,7 @@ def test_batch5_malformed_surfaces_defer_without_partial_conversion(
     [
         ("+3권", "플러스 삼 권"),
         ("-3편", "마이너스 삼 편"),
-        ("1.5층", "일쩜오 층"),
+        ("1.5층", "일쩜오-층"),
     ],
 )
 def test_batch5_signed_and_decimal_use_residual_reading(
@@ -158,11 +158,11 @@ def test_batch5_protected_and_identifier_surfaces_keep_precedence(
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("제3장", "제 삼장", "numeric_suffix"),
-        ("제15권", "제 십오권", "numeric_suffix"),
-        ("제2편", "제 이편", "numeric_suffix"),
-        ("1~3층", "일에서 삼 층", "range"),
-        ("12-15장", "십이에서 십오 장", "range"),
+        ("제3장", "제-삼장", "numeric_suffix"),
+        ("제15권", "제-십오권", "numeric_suffix"),
+        ("제2편", "제-이편", "numeric_suffix"),
+        ("1~3층", "일에서 삼-층", "range"),
+        ("12-15장", "십이에서 십오-장", "range"),
     ],
 )
 def test_batch5_existing_ordinal_and_range_owners_keep_precedence(
@@ -182,8 +182,8 @@ def test_batch5_multiple_meanings_can_coexist() -> None:
         "3층 회의실에서 책 3장을 읽었다."
     )
     expected = (
-        "사진 세 장과 책 두 권, 영화 네 편을 챙겨 "
-        "삼 층 회의실에서 책 삼 장을 읽었다."
+        "사진 세-장과 책 두-권, 영화 네-편을 챙겨 "
+        "삼-층 회의실에서 책 삼-장을 읽었다."
     )
     debug = _debug(text)
     assert debug["normalized_text"] == expected

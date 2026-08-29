@@ -288,7 +288,7 @@ UNICODE_TILDE_RANGE_CASES = [
     TextCase(
         case_id="unicode-tilde-unit-ascii",
         text="3~8cm",
-        expected="삼에서 팔 센티미터",
+        expected="삼에서 팔-센티미터",
         rule="policy / unicode tilde range",
         reason="ASCII tilde numeric-unit ranges remain the reference behavior.",
         classification="range",
@@ -296,7 +296,7 @@ UNICODE_TILDE_RANGE_CASES = [
     TextCase(
         case_id="unicode-tilde-unit-math",
         text="3∼8cm",
-        expected="삼에서 팔 센티미터",
+        expected="삼에서 팔-센티미터",
         rule="policy / unicode tilde range",
         reason="Mathematical tilde must normalize before numeric-unit range parsing.",
         classification="range",
@@ -304,7 +304,7 @@ UNICODE_TILDE_RANGE_CASES = [
     TextCase(
         case_id="unicode-tilde-unit-fullwidth",
         text="3～8cm",
-        expected="삼에서 팔 센티미터",
+        expected="삼에서 팔-센티미터",
         rule="policy / unicode tilde range",
         reason="Fullwidth tilde must normalize before numeric-unit range parsing.",
         classification="range",

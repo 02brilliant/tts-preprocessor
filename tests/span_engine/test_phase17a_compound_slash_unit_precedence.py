@@ -7,11 +7,11 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 
 def test_compound_slash_unit_precedence_regression_smoke() -> None:
     assert transform("90km/h") == "시속 구십 킬로미터"
-    assert transform("90km") == "구십 킬로미터"
+    assert transform("90km") == "구십-킬로미터"
     assert transform("15km/L") == "리터당 십오 킬로미터"
     assert transform("15.2km/L") == "리터당 십오쩜이 킬로미터"
     assert transform("3~8km/h") == "3~8km/h"
-    assert transform("3~8cm") == "삼에서 팔 센티미터"
+    assert transform("3~8cm") == "삼에서 팔-센티미터"
 
 
 def test_compound_slash_unit_trace_owner() -> None:

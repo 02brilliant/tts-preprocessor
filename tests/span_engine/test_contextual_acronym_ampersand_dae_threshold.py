@@ -18,8 +18,8 @@ def _claims(text: str):
         ("KB", "케이비", "contextual_acronym"),
         ("KB금융", "케이비금융", "contextual_acronym"),
         ("KB 금융", "케이비 금융", "contextual_acronym"),
-        ("10KB", "십 킬로바이트", "simple_unit"),
-        ("10 KB", "십 킬로바이트", "simple_unit"),
+        ("10KB", "십-킬로바이트", "simple_unit"),
+        ("10 KB", "십-킬로바이트", "simple_unit"),
         ("1,000KB/s", "초당 천 킬로바이트", "compound_slash_unit"),
     ],
 )
@@ -146,15 +146,15 @@ def test_ampersand_acronym_markdown_fence_is_protected() -> None:
     ("text", "expected", "owner"),
     [
         ("39대", "39대", "contextual_number_unit"),
-        ("40대", "사십 대", "counter_noun"),
-        ("41대", "사십일 대", "counter_noun"),
-        ("39.9대", "삼십구쩜구 대", "contextual_number_unit"),
-        ("40.0대", "사십쩜영 대", "contextual_number_unit"),
-        ("40.5대", "사십쩜오 대", "contextual_number_unit"),
-        ("1,000대", "천 대", "counter_noun"),
-        ("6,700대,", "육천칠백 대,", "counter_noun"),
-        ("40대 남성", "사십 대 남성", "contextual_number_unit"),
-        ("100대 명소", "백 대 명소", "counter_noun"),
+        ("40대", "사십-대", "counter_noun"),
+        ("41대", "사십일-대", "counter_noun"),
+        ("39.9대", "삼십구쩜구-대", "contextual_number_unit"),
+        ("40.0대", "사십쩜영-대", "contextual_number_unit"),
+        ("40.5대", "사십쩜오-대", "contextual_number_unit"),
+        ("1,000대", "천-대", "counter_noun"),
+        ("6,700대,", "육천칠백-대,", "counter_noun"),
+        ("40대 남성", "사십-대 남성", "contextual_number_unit"),
+        ("100대 명소", "백-대 명소", "counter_noun"),
     ],
 )
 def test_numeric_dae_threshold_boundary(
@@ -171,22 +171,22 @@ def test_numeric_dae_threshold_boundary(
     [
         (
             "자동차 3대",
-            "자동차 세 대",
+            "자동차 세-대",
             "contextual_number_unit_confirmed",
         ),
         (
             "자동차는 모두 3대",
-            "자동차는 모두 세 대",
+            "자동차는 모두 세-대",
             "contextual_number_unit_confirmed",
         ),
         (
             "차량은 총 5대",
-            "차량은 총 다섯 대",
+            "차량은 총 다섯-대",
             "contextual_number_unit_confirmed",
         ),
         (
             "자동차 39.9대",
-            "자동차 삼십구쩜구 대",
+            "자동차 삼십구쩜구-대",
             "contextual_number_unit_confirmed",
         ),
     ],
@@ -203,10 +203,10 @@ def test_numeric_dae_under_40_requires_registered_quantity_context(
     ("text", "expected"),
     [
         ("가족은 모두 3대", "가족은 모두 3대"),
-        ("20대 남성", "이십 대 남성"),
+        ("20대 남성", "이십-대 남성"),
         ("5대 과제", "오대 과제"),
-        ("가족 3대", "가족 삼 대"),
-        ("가업을 3대째 이어 왔다", "가업을 삼 대째 이어 왔다"),
+        ("가족 3대", "가족 삼-대"),
+        ("가업을 3대째 이어 왔다", "가업을 삼-대째 이어 왔다"),
     ],
 )
 def test_numeric_dae_under_40_contextual_decisions(
@@ -219,7 +219,7 @@ def test_numeric_dae_under_40_contextual_decisions(
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("제40대", "제 사십대", "numeric_suffix"),
+        ("제40대", "제-사십대", "numeric_suffix"),
         ("40대3", "사십대삼", "korean_da_score_pair"),
         ("경기는 2대 1", "경기는 이 대 일", "korean_da_score_pair"),
         ("점수 2대1", "점수 이대일", "korean_da_score_pair"),
@@ -238,7 +238,7 @@ def test_numeric_dae_structural_owners_and_invalid_forms_keep_precedence(
 def test_spaced_threshold_dae_precedes_contextless_independent_pair() -> None:
     text = "40대 3"
 
-    assert transform(text) == "사십 대 삼"
+    assert transform(text) == "사십-대 삼"
     claims = _claims(text)
     assert [claim.owner for claim in claims] == ["counter_noun", "number"]
     assert not any(claim.owner == "korean_da_score_pair" for claim in claims)
@@ -292,8 +292,8 @@ def test_required_numeric_dae_sentence_uses_counter_and_quantity_sequence() -> N
         "자동차는 모두 6,700대 12,500입니다."
     )
     expected = (
-        "자동차는 모두 육천칠백 대, 만 이천오백입니다. "
-        "자동차는 모두 육천칠백 대 만이천오백입니다."
+        "자동차는 모두 육천칠백-대, 만 이천오백입니다. "
+        "자동차는 모두 육천칠백-대 만이천오백입니다."
     )
 
     assert transform(text) == expected

@@ -54,9 +54,9 @@ def test_existing_korean_dae_relations_keep_owner_and_output(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("제2대", "제 이대"),
-        ("제3대 대통령", "제 삼대 대통령"),
-        ("제10대 회장", "제 십대 회장"),
+        ("제2대", "제-이대"),
+        ("제3대 대통령", "제-삼대 대통령"),
+        ("제10대 회장", "제-십대 회장"),
     ],
 )
 def test_existing_prefixed_ordinal_dae_owner_is_unchanged(
@@ -105,12 +105,12 @@ def test_context_gate_distinguishes_defer_and_owner_fallback() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("차량 3대", "차량 세 대"),
-        ("장비 5대", "장비 다섯 대"),
-        ("버스 10대", "버스 열 대"),
-        ("서버 20대", "서버 스무 대"),
-        ("차량 2대입니다", "차량 두 대입니다"),
-        ("장비 3대 추가", "장비 세 대 추가"),
+        ("차량 3대", "차량 세-대"),
+        ("장비 5대", "장비 다섯-대"),
+        ("버스 10대", "버스 열-대"),
+        ("서버 20대", "서버 스무-대"),
+        ("차량 2대입니다", "차량 두-대입니다"),
+        ("장비 3대 추가", "장비 세-대 추가"),
     ],
 )
 def test_registered_direct_noun_context_delegates_to_integer_counter(
@@ -126,7 +126,7 @@ def test_registered_direct_noun_context_delegates_to_integer_counter(
 
 def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
     positive = "차량 2대 1대를 점검했다"
-    assert transform(positive) == "차량 두 대 한 대를 점검했다"
+    assert transform(positive) == "차량 두-대 한-대를 점검했다"
     claims = [
         claim
         for claim in _claims(positive)
@@ -135,14 +135,14 @@ def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
     assert len(claims) == 2
 
     comma_boundary = "차량 2대, 가족 1대가 모였다"
-    assert transform(comma_boundary) == "차량 두 대, 가족 일 대가 모였다"
+    assert transform(comma_boundary) == "차량 두-대, 가족 일-대가 모였다"
     assert [claim["owner"] for claim in _claims(comma_boundary)] == [
         "contextual_number_unit",
         "contextual_number_unit",
     ]
 
     distant = "차량 2대를 확인했고 3대를 샀다"
-    assert transform(distant) == "차량 두 대를 확인했고 3대를 샀다"
+    assert transform(distant) == "차량 두-대를 확인했고 3대를 샀다"
     assert [claim["owner"] for claim in _claims(distant)] == [
         "contextual_number_unit",
         "contextual_number_unit",
@@ -151,12 +151,12 @@ def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
 
 def test_decimal_dae_requires_the_same_explicit_context() -> None:
     positive = _debug("장비 1.5대")
-    assert positive["normalized_text"] == "장비 일쩜오 대"
+    assert positive["normalized_text"] == "장비 일쩜오-대"
     decimal_claim = positive["trace"]["claim_logs"][0]
     assert decimal_claim["owner"] == "contextual_number_unit"
     assert decimal_claim["claim_type"] == "surface"
 
-    for text, expected in (("1.5대", "일쩜오 대"), ("1.5대가", "일쩜오 대가")):
+    for text, expected in (("1.5대", "일쩜오-대"), ("1.5대가", "일쩜오-대가")):
         debug = _debug(text)
         assert debug["normalized_text"] == expected
         assert [claim["owner"] for claim in debug["trace"]["claim_logs"]] == [
@@ -171,7 +171,7 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "semantic"),
     [
-        ("장비는 3.5대가 필요하다", "장비는 삼쩜오 대가 필요하다", "machine_count"),
+        ("장비는 3.5대가 필요하다", "장비는 삼쩜오-대가 필요하다", "machine_count"),
         ("5대 과제", "오대 과제", "major_item"),
     ],
 )
@@ -271,13 +271,13 @@ def test_protected_and_code_like_dae_keep_existing_behavior(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3명", "세 명"),
-        ("3개", "세 개"),
+        ("3명", "세-명"),
+        ("3개", "세-개"),
         ("3권", "3권"),
         ("3장", "3장"),
         ("1척", "1척"),
-        ("21명", "스물한 명"),
-        ("40척", "사십 척"),
+        ("21명", "스물한-명"),
+        ("40척", "사십-척"),
     ],
 )
 def test_other_counters_are_unchanged(text: str, expected: str) -> None:
@@ -298,8 +298,8 @@ def test_mixed_numeric_dae_owner_e2e() -> None:
         "제3대 책임자는 경기 결과 2대1을 보고했다."
     )
     expected = (
-        "차량 세 대와 장비 일쩜오 대를 확인했고, 이십 대 남성과 가족 삼 대는 별도 기록했으며 "
-        "제 삼대 책임자는 경기 결과 이대일을 보고했다."
+        "차량 세-대와 장비 일쩜오-대를 확인했고, 이십-대 남성과 가족 삼-대는 별도 기록했으며 "
+        "제-삼대 책임자는 경기 결과 이대일을 보고했다."
     )
     assert transform(text) == expected
     owners = [claim["owner"] for claim in _claims(text)]

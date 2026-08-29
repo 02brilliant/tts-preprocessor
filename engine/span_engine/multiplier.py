@@ -10,6 +10,7 @@ from engine.span_engine.numeric_reading import (
     read_decimal_text,
     read_spaced_integer_value,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _NUMBER_RE = rf"{_INTEGER_RE}(?:\.\d+)?"
@@ -62,7 +63,7 @@ def parse_multiplier_candidate(
     if candidate.owner != "multiplier":
         return None
     reading = candidate.metadata.get("reading")
-    return f"{reading} 배" if isinstance(reading, str) else None
+    return f"{reading}{SPOKEN_NUMERIC_BOUNDARY}배" if isinstance(reading, str) else None
 
 
 def multiplier_render_pieces(
@@ -76,7 +77,7 @@ def multiplier_render_pieces(
         return None
     return [
         RenderPiece(
-            text=f"{reading} ",
+            text=f"{reading}{SPOKEN_NUMERIC_BOUNDARY}",
             provenance="GENERATED_READING",
             source_span=candidate.core_span,
             owner=candidate.owner,

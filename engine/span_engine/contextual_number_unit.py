@@ -26,6 +26,7 @@ from engine.span_engine.signed_numeric import (
     parse_signed_numeric_core,
     render_signed_numeric,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 RULE_VERSION = "contextual-number-unit-v1"
 OWNER = "contextual_number_unit"
@@ -1134,7 +1135,11 @@ def parse_contextual_number_unit_candidate(
         pieces.append(
             RenderPiece(
                 text=separator,
-                provenance="GENERATED_READING",
+                provenance=(
+                    "GENERATED_PUNCT"
+                    if separator == SPOKEN_NUMERIC_BOUNDARY
+                    else "GENERATED_READING"
+                ),
                 source_span=candidate.metadata.get("source_space_span") or number_span,
                 owner=OWNER,
                 metadata={"surface_type": candidate.surface_type},
@@ -1428,7 +1433,7 @@ def _number_reading(
         return read_spaced_integer_text(raw_number)
     if mode == "native_1_to_99":
         reading = counter_number_reading(raw_number, "사람")
-        return reading.rstrip() if reading is not None else None
+        return reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY) if reading is not None else None
     if unit == "가지":
         normalized = normalize_integer_text(raw_number)
         if normalized is None:
@@ -1439,21 +1444,25 @@ def _number_reading(
         if value <= 99:
             return native_number_under_100(value)
         reading = counter_number_reading(raw_number, "가지")
-        return reading.rstrip() if reading is not None else None
+        return reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY) if reading is not None else None
     reading = counter_number_reading(raw_number, "개")
-    return reading.rstrip() if reading is not None else None
+    return reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY) if reading is not None else None
 
 
 def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:
     unit = match.group("unit")
     if semantic_type == "residual_numeric_unit":
-        return " "
+        return SPOKEN_NUMERIC_BOUNDARY
     if semantic_type == "major_item":
         return match.group("space")
     if semantic_type in {"fixed_identifier_suffix", "fixed_numeric_compound"}:
-        return " "
+        return SPOKEN_NUMERIC_BOUNDARY
     if semantic_type == "duration_minute":
-        return " " if _match_has_decimal(match) else match.group("space")
+        return (
+            SPOKEN_NUMERIC_BOUNDARY
+            if _match_has_decimal(match)
+            else match.group("space")
+        )
     if semantic_type in {
         "kind_or_item_count",
         "honorific_person_count",
@@ -1471,12 +1480,12 @@ def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:
         "book_count",
         "work_count",
     }:
-        return " "
+        return SPOKEN_NUMERIC_BOUNDARY
     if unit in {"번", "분", "조", "부", "단", "등"}:
         return match.group("space")
     if unit == "대":
-        return " "
-    return " "
+        return SPOKEN_NUMERIC_BOUNDARY
+    return SPOKEN_NUMERIC_BOUNDARY
 
 
 def _legacy_result(
@@ -1552,11 +1561,13 @@ def _ambiguous_candidates(
     }
     native_semantic, sino_semantic = semantics[unit]
     sino_separator = (
-        source_space if unit in {"분", "번", "조", "부", "단", "등"} else " "
+        source_space
+        if unit in {"분", "번", "조", "부", "단", "등"}
+        else SPOKEN_NUMERIC_BOUNDARY
     )
     return (
         {
-            "reading": f"{native} {unit}{tail}",
+            "reading": f"{native}{SPOKEN_NUMERIC_BOUNDARY}{unit}{tail}",
             "semantic_type": native_semantic,
         },
         {

@@ -6,7 +6,7 @@ from engine.span_engine import transform_with_trace
 def test_phase17c_admin_suffix_provenance_and_validation() -> None:
     output = transform_with_trace("종로3가")
 
-    assert output.normalized_text == "종로 삼 가"
+    assert output.normalized_text == "종로 삼-가"
     assert any(
         piece.owner == "administrative_suffix"
         and piece.provenance == "GENERATED_READING"
@@ -26,7 +26,7 @@ def test_phase17c_admin_suffix_provenance_and_validation() -> None:
 def test_phase17c_admin_suffix_particle_must_not_broad_correct() -> None:
     output = transform_with_trace("종로3가는")
 
-    assert output.normalized_text == "종로 삼 가는"
+    assert output.normalized_text == "종로 삼-가는"
     assert not any(
         getattr(log, "metadata", {}).get("marker") == "PARTICLE_EXCEPTION_CONSUMED"
         for log in output.trace.particle_exception_logs

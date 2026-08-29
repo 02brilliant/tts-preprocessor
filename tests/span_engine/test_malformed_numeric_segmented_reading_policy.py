@@ -95,9 +95,9 @@ def test_structural_delimiter_colon_like_audit(text: str, expected: str) -> None
             ("version-1.5", "버전-일쩜오"),
         ("+1.5-2kg", "+1.5-2kg"),
         ("-1.5-2kg", "-1.5-2kg"),
-        ("1-2kg", "일에서 이 킬로그램"),
-        ("1-2개", "일에서 이 개"),
-        ("1-2원", "일에서 이 원"),
+        ("1-2kg", "일에서 이-킬로그램"),
+        ("1-2개", "일에서 이-개"),
+        ("1-2원", "일에서 이-원"),
     ],
 )
 def test_structural_delimiter_hyphen_dash_like_audit(text: str, expected: str) -> None:
@@ -161,7 +161,7 @@ def test_structural_delimiter_middle_dot_like_audit(text: str, expected: str) ->
     ("text", "expected"),
     [
         ("1~2", "일에서 이"),
-        ("1~2kg", "일에서 이 킬로그램"),
+        ("1~2kg", "일에서 이-킬로그램"),
         ("+1.5~2", "플러스 일쩜오에서 이"),
         ("1~~2", "1~~2"),
     ],

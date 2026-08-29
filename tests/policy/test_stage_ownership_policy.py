@@ -12,7 +12,7 @@ from engine.span_engine.transform import transform_with_trace
         ("1234-5678", "일이삼사 오육칠팔", "phone", {"hyphen_digit_blocks"}),
         ("12.12 사태", "십이십이 사태", "event", {"decimal", "number"}),
         ("긴급번호 112는 경찰 신고 번호다", "긴급번호 일일이는 경찰 신고 번호다", "emergency", {"number"}),
-        ("21명", "스물한 명", "counter_noun", {"number"}),
+        ("21명", "스물한-명", "counter_noun", {"number"}),
     ],
 )
 def test_span_claim_owner_precedence(

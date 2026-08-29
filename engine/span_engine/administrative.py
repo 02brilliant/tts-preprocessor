@@ -3,6 +3,7 @@ from __future__ import annotations
 from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 SUPPORTED_ADMINISTRATIVE_ANCHORS: dict[str, dict[str, str | bool]] = {
     "종로": {"suffix": "가", "requires_space": False},
@@ -140,9 +141,9 @@ def _build_candidate(
         metadata={
             "anchor": anchor,
             "suffix": suffix,
-            "reading": f"{generated_prefix}{number_reading} ",
+            "reading": f"{generated_prefix}{number_reading}{SPOKEN_NUMERIC_BOUNDARY}",
             "generated_prefix": generated_prefix,
-            "generated_suffix_separator": " ",
+            "generated_suffix_separator": SPOKEN_NUMERIC_BOUNDARY,
         },
     )
 

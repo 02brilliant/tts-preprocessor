@@ -26,10 +26,10 @@ def _install_selective_core_failure(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("text", "expected", "failed_tokens"),
     [
-        ("FAIL앞 45m²", "FAIL앞 사십오 제곱미터", ["FAIL앞"]),
-        ("45m² FAIL중 60Hz", "사십오 제곱미터 FAIL중 육십 헤르츠", ["FAIL중"]),
-        ("45m² FAIL끝", "사십오 제곱미터 FAIL끝", ["FAIL끝"]),
-        ("FAIL하나 FAIL둘 3kg", "FAIL하나 FAIL둘 삼 킬로그램", ["FAIL하나", "FAIL둘"]),
+        ("FAIL앞 45m²", "FAIL앞 사십오-제곱미터", ["FAIL앞"]),
+        ("45m² FAIL중 60Hz", "사십오-제곱미터 FAIL중 육십-헤르츠", ["FAIL중"]),
+        ("45m² FAIL끝", "사십오-제곱미터 FAIL끝", ["FAIL끝"]),
+        ("FAIL하나 FAIL둘 3kg", "FAIL하나 FAIL둘 삼-킬로그램", ["FAIL하나", "FAIL둘"]),
     ],
 )
 def test_segment_fallback_preserves_only_ordered_failed_subsegments(
@@ -81,12 +81,12 @@ def test_segment_fallback_keeps_exact_piece_and_trace_projection(
         for piece in output.render_pieces
     ]
 
-    assert output.normalized_text == "FAIL앞 사십오 제곱미터 정상 FAIL뒤 육십 헤르츠 자료"
+    assert output.normalized_text == "FAIL앞 사십오-제곱미터 정상 FAIL뒤 육십-헤르츠 자료"
     assert piece_rows == [
         ("FAIL앞", "ORIGINAL_BOUNDARY", (0, 5), None, {}),
         (" ", "ORIGINAL_BOUNDARY", (5, 6), None, {}),
         (
-            "사십오 제곱미터",
+            "사십오-제곱미터",
             "GENERATED_READING",
             (6, 10),
             "special_unit",
@@ -98,7 +98,7 @@ def test_segment_fallback_keeps_exact_piece_and_trace_projection(
         ("FAIL뒤", "ORIGINAL_BOUNDARY", (14, 19), None, {}),
         (" ", "ORIGINAL_BOUNDARY", (19, 20), None, {}),
         (
-            "육십 헤르츠",
+            "육십-헤르츠",
             "GENERATED_READING",
             (20, 24),
             "simple_unit",
@@ -177,7 +177,7 @@ def test_sentence_retry_preserves_generated_punctuation_none_span_and_call_order
         if piece.text == "," and piece.owner == "prosody"
     )
 
-    assert output.normalized_text == "그리고, 우리는 확인했다. FAIL구간 자료 육십 헤르츠"
+    assert output.normalized_text == "그리고, 우리는 확인했다. FAIL구간 자료 육십-헤르츠"
     assert generated_comma.provenance == "GENERATED_PUNCT"
     assert generated_comma.source_span is None
     assert calls == [
@@ -206,10 +206,10 @@ def test_paragraph_split_runs_after_segment_piece_assembly(
     output = transform_module.transform_with_trace(text)
 
     assert output.normalized_text == (
-        "사십오 제곱미터 정상.\n\nFAIL구간 자료.\n\n육십 헤르츠 정상"
+        "사십오-제곱미터 정상.\n\nFAIL구간 자료.\n\n육십-헤르츠 정상"
     )
     assert "".join(piece.text for piece in output.render_pieces) == (
-        "사십오 제곱미터 정상.\nFAIL구간 자료.\n육십 헤르츠 정상"
+        "사십오-제곱미터 정상.\nFAIL구간 자료.\n육십-헤르츠 정상"
     )
     assert output.trace.fallback_logs[0].span == SourceSpan(0, len(text))
     assert all(
@@ -228,13 +228,13 @@ def test_protected_subsegments_do_not_reenter_owners_during_recovery(
     output = transform_module.transform_with_trace(text)
 
     assert output.normalized_text == (
-        '문서 {"text":"25℃"} 3kg `60Hz` FAIL구간 사십오 제곱미터 자료'
+        '문서 {"text":"25℃"} 3kg `60Hz` FAIL구간 사십오-제곱미터 자료'
     )
     assert any(piece.text == '"25℃"' and piece.owner is None for piece in output.render_pieces)
     assert any(piece.text == "3kg" and piece.owner is None for piece in output.render_pieces)
     assert any(piece.text == "`60Hz`" and piece.owner is None for piece in output.render_pieces)
     assert any(
-        piece.text == "사십오 제곱미터" and piece.owner == "special_unit"
+        piece.text == "사십오-제곱미터" and piece.owner == "special_unit"
         for piece in output.render_pieces
     )
 

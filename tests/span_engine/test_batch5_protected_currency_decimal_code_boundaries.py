@@ -23,7 +23,7 @@ def test_batch5_square_bracket_currency_is_absolute_preserve() -> None:
 def test_batch5_unprotected_currency_still_transforms() -> None:
     text = "가격은 ₩1200입니다"
     output = transform_with_trace(text)
-    assert output.normalized_text == "가격은 천이백 원입니다"
+    assert output.normalized_text == "가격은 천이백-원입니다"
     assert any(
         claim.owner == "currency"
         and claim.surface_type == "CURRENCY_SURFACE"
@@ -35,11 +35,11 @@ def test_batch5_unprotected_currency_still_transforms() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("$-10", "마이너스 십 달러"),
-        ("-$10", "마이너스 십 달러"),
-        ("$10", "십 달러"),
-        ("-10 USD", "마이너스 십 달러"),
-        ("KRW-10", "마이너스 십 원"),
+        ("$-10", "마이너스 십-달러"),
+        ("-$10", "마이너스 십-달러"),
+        ("$10", "십-달러"),
+        ("-10 USD", "마이너스 십-달러"),
+        ("KRW-10", "마이너스 십-원"),
     ],
 )
 def test_batch5_registered_signed_currency_forms(
@@ -111,7 +111,7 @@ def test_batch5_a112_is_single_letter_code_not_emergency_or_partial_number() -> 
         ("AA112", "AA112"),
         ("A 112", "A 백십이"),
         ("긴급번호 112", "긴급번호 일일이"),
-        ("112명", "백십이 명"),
+        ("112명", "백십이-명"),
     ],
 )
 def test_batch5_code_emergency_and_general_number_boundaries(

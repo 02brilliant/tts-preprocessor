@@ -9,12 +9,12 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("오전 9시 6분께", "오전 아홉 시 육분께"),
-        ("9시6분께", "아홉 시 육분께"),
+        ("오전 9시 6분께", "오전 아홉-시 육분께"),
+        ("9시6분께", "아홉-시 육분께"),
         ("5분 15초께", "오분 십오초께"),
         ("5분15초께", "오분 십오초께"),
-        ("9시 5분 15초께", "아홉 시 오분 십오초께"),
-        ("9시5분15초께", "아홉 시 오분 십오초께"),
+        ("9시 5분 15초께", "아홉-시 오분 십오초께"),
+        ("9시5분15초께", "아홉-시 오분 십오초께"),
     ],
 )
 def test_structured_time_allows_approximate_kke_tail(
@@ -36,13 +36,13 @@ def test_non_structured_minute_kke_tail_preserves(text: str) -> None:
 
 
 def test_hour_only_kke_tail_uses_clock_hour_owner() -> None:
-    assert transform("9시께") == "아홉 시께"
+    assert transform("9시께") == "아홉-시께"
 
 
 def test_structured_time_kke_trace_uses_time_owner_not_preserve() -> None:
     output = transform_with_trace("오전 9시 6분께")
 
-    assert output.normalized_text == "오전 아홉 시 육분께"
+    assert output.normalized_text == "오전 아홉-시 육분께"
     assert [
         (claim.owner, claim.reason)
         for claim in output.trace.claim_logs
@@ -71,11 +71,11 @@ def test_structured_time_kke_trace_uses_time_owner_not_preserve() -> None:
         ("값은5천830이다", "값은오천팔백삼십이다"),
         ("값은2만3천이다", "값은이만삼천이다"),
         ("값은3천만5천이다", "값은삼천만오천이다"),
-        ("금액은6천원이다", "금액은육천 원이다"),
-        ("금액은6천5백원이다", "금액은육천오백 원이다"),
-        ("금액은2만3천원이다", "금액은이만삼천 원이다"),
-        ("금액은3천만5천원이다", "금액은삼천만오천 원이다"),
-        ("수량은6천개다", "수량은육천 개다"),
+        ("금액은6천원이다", "금액은육천-원이다"),
+        ("금액은6천5백원이다", "금액은육천오백-원이다"),
+        ("금액은2만3천원이다", "금액은이만삼천-원이다"),
+        ("금액은3천만5천원이다", "금액은삼천만오천-원이다"),
+        ("수량은6천개다", "수량은육천-개다"),
     ],
 )
 def test_mixed_integer_full_core_reads_across_safe_hangul_boundaries(
@@ -114,7 +114,7 @@ def test_mixed_integer_unsafe_or_malformed_surfaces_preserve(text: str) -> None:
 
 
 def test_prefixed_ordinal_reads_sino_before_mixed_integer_hangul() -> None:
-    assert transform("제6천원") == "제 육천원"
+    assert transform("제6천원") == "제-육천원"
 
 
 def test_mixed_integer_trace_full_claim_and_original_unit_provenance() -> None:
@@ -168,7 +168,7 @@ def test_mixed_decimal_full_claim_and_provenance() -> None:
 
 def test_user_reported_time_and_adjacent_currency_sentence() -> None:
     assert transform("오전 9시 6분께 22만원6천원이다.") == (
-        "오전 아홉 시 육분께 이십이만 원육천 원이다."
+        "오전 아홉-시 육분께 이십이만 원육천-원이다."
     )
 
 

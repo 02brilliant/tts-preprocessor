@@ -10,15 +10,15 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("45m²", "사십오 제곱미터"),
+        ("45m²", "사십오-제곱미터"),
         ("x²", "x²"),
         ("A²B", "A²B"),
         ("25℃", "이십오도"),
         ("25℉", "화씨 이십오도"),
-        ("7시간 05분", "일곱 시간 오분"),
-        ("3시간 18분", "세 시간 십팔분"),
-        ("2.5%p", "이쩜오 퍼센트포인트"),
-        ("-2.5%p", "마이너스 이쩜오 퍼센트포인트"),
+        ("7시간 05분", "일곱-시간 오분"),
+        ("3시간 18분", "세-시간 십팔분"),
+        ("2.5%p", "이쩜오-퍼센트포인트"),
+        ("-2.5%p", "마이너스 이쩜오-퍼센트포인트"),
         ("1/3", "삼분의 일"),
         ("-1/3", "마이너스 삼분의 일"),
         ("15.2km/L", "리터당 십오쩜이 킬로미터"),
@@ -79,7 +79,7 @@ def test_phase34c_public_transform_recovers_hangul_input_by_segment(monkeypatch)
         fail_transform_with_trace,
     )
 
-    assert transform_module.transform("45m² fallback 대상") == "사십오 제곱미터 fallback 대상"
+    assert transform_module.transform("45m² fallback 대상") == "사십오-제곱미터 fallback 대상"
 
 
 def test_phase34c_debug_path_records_segment_fallback_metadata(monkeypatch) -> None:
@@ -97,7 +97,7 @@ def test_phase34c_debug_path_records_segment_fallback_metadata(monkeypatch) -> N
     result = adapter.transform_for_production("45m² debug 대상", debug=True)
 
     assert result["ok"] is True
-    assert result["normalized_text"] == "사십오 제곱미터 debug 대상"
+    assert result["normalized_text"] == "사십오-제곱미터 debug 대상"
     assert result["fallback"] == "segment_preserve"
     assert result["error_type"] == "RuntimeError"
     assert result["error_stage"] == "transform"
@@ -113,7 +113,7 @@ def test_phase34c_engine_main_mode_less_error_result_recovers_segments(monkeypat
 
     monkeypatch.setattr(adapter, "transform", fail_transform)
 
-    assert engine_main.transform("45m² engine 대상") == "사십오 제곱미터 engine 대상"
+    assert engine_main.transform("45m² engine 대상") == "사십오-제곱미터 engine 대상"
 
 def test_phase34c_internal_failure_preserves_only_failed_source_segment(
     monkeypatch,
@@ -135,7 +135,7 @@ def test_phase34c_internal_failure_preserves_only_failed_source_segment(
     text = "45m² 정상 FAIL구간 60Hz 자료"
     output = transform_module.transform_with_trace(text)
 
-    assert output.normalized_text == "사십오 제곱미터 정상 FAIL구간 육십 헤르츠 자료"
+    assert output.normalized_text == "사십오-제곱미터 정상 FAIL구간 육십-헤르츠 자료"
     fallback_log = output.trace.fallback_logs[0]
     failures = fallback_log.metadata["segment_failures"]
     failed_start = text.index("FAIL구간")
@@ -155,7 +155,7 @@ def test_phase34c_internal_failure_preserves_only_failed_source_segment(
         for piece in output.render_pieces
     )
     assert any(
-        piece.text == "육십 헤르츠"
+        piece.text == "육십-헤르츠"
         and piece.owner == "simple_unit"
         for piece in output.render_pieces
     )

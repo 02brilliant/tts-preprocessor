@@ -17,9 +17,9 @@ from engine.span_engine.transform import transform_with_trace
         ("40째", "사십째"),
         ("7째만", "일곱째만"),
         ("7째abc", "일곱째abc"),
-        ("제12째", "제 열두째"),
-        ("제 12째", "제 열두째"),
-        ("2번째와 3째", "두 번째와 셋째"),
+        ("제12째", "제-열두째"),
+        ("제 12째", "제-열두째"),
+        ("2번째와 3째", "두-번째와 셋째"),
     ],
 )
 def test_ordinal_jje_canonical_readings(text: str, expected: str) -> None:

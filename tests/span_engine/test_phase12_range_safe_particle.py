@@ -12,8 +12,8 @@ from engine.span_engine import transform
         ("3~8를 선택", "삼에서 팔을 선택"),
         ("3~5를 선택", "삼에서 오를 선택"),
         ("3~5을 선택", "삼에서 오를 선택"),
-        ("3~8cm을 측정", "삼에서 팔 센티미터를 측정"),
-        ("3~8cm를 측정", "삼에서 팔 센티미터를 측정"),
+        ("3~8cm을 측정", "삼에서 팔-센티미터를 측정"),
+        ("3~8cm를 측정", "삼에서 팔-센티미터를 측정"),
     ],
 )
 def test_safe_particle_exception_after_generated_range(

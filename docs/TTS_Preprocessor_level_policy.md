@@ -20,6 +20,24 @@
 
 단계의 포함 관계는 문자열을 순차 전달한다는 뜻이 아니라 처리 책임을 상속한다는 뜻이다. 4단계는 2단계 결과에 4단계 전용 deterministic 발음 overlay를 적용한 뒤 3단계의 명확한 잔여 읽기와 4단계 폐쇄형 변경을 수행한다. 추가 후보가 없더라도 하위 단계의 확정 작업을 생략하지 않는다.
 
+## 규칙 엔진 숫자 발화 경계
+
+1·2단계의 공통 owner가 숫자 읽기와 단위·counter·서수 표면 사이에 새 경계를
+생성할 때는 공백 대신 ASCII 하이픈 U+002D(`-`)을 사용한다. 입력이 붙임형인지
+ASCII 공백 한 칸을 포함했는지와 관계없이 같은 owner가 확정하면 동일한 표면으로
+정규화한다. 하이픈 앞뒤에는 공백을 두지 않는다.
+
+예: `1번째→첫-번째`, `제7번째→제-일곱-번째`,
+`1~3번째→첫-번째에서 세-번째`, `3명/3 명→세-명`,
+`5kg/5 kg→오-킬로그램`, `10bp→십-베이시스 포인트`,
+`제1회→제-일회`, `제3 조→제-삼 조`.
+
+이는 숫자 내부 공백, 부호·범위 문법의 공백, 날짜 성분 사이의 구조 공백을
+전부 하이픈으로 바꾸는 규칙이 아니다. `N째`, `년·월·일`, `도`, `분기`,
+붙임 시간 표면처럼 owner가 붙임을 확정한 표면은 기존 형태를 유지한다. 규칙
+엔진이 생성한 숫자 발화 경계 하이픈은 provenance snapshot에서 locked reading의
+일부이며, 3·4단계 LLM은 이를 공백으로 되돌리거나 삭제할 수 없다.
+
 ## 1단계와 2단계
 
 2단계는 운영 서비스의 기준 규칙 엔진이다. 2단계 규칙을 추가하더라도 1단계 간소화 profile에서 제외된 항목은 1단계에 자동 포함하지 않는다. 2단계 출력에 영향을 주는 새 normalization 규칙은 사용자 검토 후 적용한다.
@@ -77,7 +95,7 @@ LLM은 overlay 결과를 locked input으로 받아 다시 원형으로 되돌리
 
 ## Provenance와 locked span
 
-규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~4단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 protected surface는 locked다. 4단계에서는 overlay가 좌표를 다시 투영하고 생성 발음 span을 `GENERATED_STAGE4_PRONUNCIATION`으로 locked 처리한다. metadata는 외부 API나 LLM 본문에 노출하지 않는다.
+규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~4단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 그 내부의 ASCII 숫자 발화 경계, protected surface는 locked다. 4단계에서는 overlay가 좌표를 다시 투영하고 생성 발음 span을 `GENERATED_STAGE4_PRONUNCIATION`으로 locked 처리한다. metadata는 외부 API나 LLM 본문에 노출하지 않는다.
 
 ## Validator와 fallback
 

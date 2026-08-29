@@ -75,7 +75,7 @@
       "status": "applied",
       "input": "7m^3",
       "before": "칠 미터^삼",
-      "after": "칠 세제곱미터",
+      "after": "칠-세제곱미터",
       "scope": "representative confirmed conflict for a registered English unit immediately followed by ^3"
     }
   ]

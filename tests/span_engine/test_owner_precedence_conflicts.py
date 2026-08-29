@@ -65,11 +65,11 @@ def test_currency_wins_over_number_and_code_like_invalid_tokens_preserve():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "만 이천삼백 원",
-            "이십오쩜구구 달러",
-            "삼백 유로",
-            "이십오쩜오영 달러",
-            "삼 킬로그램",
+            "만 이천삼백-원",
+            "이십오쩜구구-달러",
+            "삼백-유로",
+            "이십오쩜오영-달러",
+            "삼-킬로그램",
         ],
         expected_preserved=["EURA 300", "300EURabc", "USDX 300", "USB300"],
     )
@@ -84,9 +84,9 @@ def test_units_and_compound_units_do_not_enter_path_or_code_like_spans():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "삼 킬로그램",
-            "사십오 제곱미터",
-            "육십 헤르츠",
+            "삼-킬로그램",
+            "사십오-제곱미터",
+            "육십-헤르츠",
             "리터당 십오쩜이 킬로미터",
             "피에이치 칠쩜사",
         ],
@@ -112,8 +112,8 @@ def test_emergency_counter_phone_and_hyphen_precedence_boundaries():
             "백십구",
             "일 일 이",
             "일 일 구",
-            "백십이 명",
-            "백십구 건",
+            "백십이-명",
+            "백십구-건",
             "백십이번 버스",
             "백십구번 버스",
             "공일공 일이삼사 오육칠팔",
@@ -137,7 +137,7 @@ def test_signed_temperature_wins_unless_hyphen_code_prefix_blocks_it():
             "화씨 영하 이쩜오도",
             "영상 삼도",
             "온도영하 이쩜오도",
-            "이십오쩜구구 달러",
+            "이십오쩜구구-달러",
         ],
         expected_preserved=["A-2.5℃", "x-2.5℉", "B-2.5º"],
     )
@@ -153,14 +153,14 @@ def test_prefixed_ordinal_wins_over_counter_but_plain_counter_remains_counter():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "제 이문항",
-            "제 십오권",
-            "두 문항",
-            "사십 문항",
-            "백일 문항",
+            "제-이문항",
+            "제-십오권",
+            "두-문항",
+            "사십-문항",
+            "백일-문항",
             "피에이치 칠쩜사",
-            "제 이문항abc",
-            "제 이쩜오문항",
+            "제-이문항abc",
+            "제-이쩜오문항",
         ],
         expected_preserved=[],
     )

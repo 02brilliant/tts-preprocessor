@@ -61,8 +61,8 @@ def parse_ordinal_jje_candidate(
         if number_span.start > je_span.end:
             pieces.append(
                 RenderPiece(
-                    text=" ",
-                    provenance="ORIGINAL_SPACE",
+                    text="-",
+                    provenance="GENERATED_PUNCT",
                     source_span=SourceSpan(je_span.end, number_span.start),
                     owner=candidate.owner,
                     metadata={"surface_type": candidate.surface_type},
@@ -71,8 +71,8 @@ def parse_ordinal_jje_candidate(
         else:
             pieces.append(
                 RenderPiece(
-                    text=" ",
-                    provenance="GENERATED_READING",
+                    text="-",
+                    provenance="GENERATED_PUNCT",
                     source_span=je_span,
                     owner=candidate.owner,
                     metadata={"surface_type": candidate.surface_type},

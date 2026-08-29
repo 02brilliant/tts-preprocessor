@@ -53,7 +53,7 @@ def test_transform_with_trace_remains_pass_through_with_render_pieces() -> None:
 def test_phase1_pass_through_regression_cases() -> None:
     for text, expected in [
         ("AI", "에이아이"),
-        ("3~8cm", "삼에서 팔 센티미터"),
+        ("3~8cm", "삼에서 팔-센티미터"),
         ("FTA은", "에프티에이는"),
     ]:
         assert transform(text) == expected

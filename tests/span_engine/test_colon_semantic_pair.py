@@ -153,7 +153,7 @@ def test_colon_semantic_pair_protected_and_code_like_contexts():
     assert out != text
     assert "`1:2 비율`" in out
     assert "이십오도" in out
-    assert "삼 킬로그램" in out
+    assert "삼-킬로그램" in out
 
     for source in (
         "line 10:20",
@@ -189,13 +189,13 @@ def test_colon_semantic_pair_neighbors_still_transform():
     assert out != text
     assert "일 대 이 비율" in out
     assert "이십오도" in out
-    assert "이십오쩜구구 달러" in out
-    assert "삼 킬로그램" in out
+    assert "이십오쩜구구-달러" in out
+    assert "삼-킬로그램" in out
 
     text = "1：2 비율과 25℃, $25.99, 3kg는 모두 확인합니다."
     out = transform(text)
     assert out != text
     assert "일 대 이 비율" in out
     assert "이십오도" in out
-    assert "이십오쩜구구 달러" in out
-    assert "삼 킬로그램" in out
+    assert "이십오쩜구구-달러" in out
+    assert "삼-킬로그램" in out

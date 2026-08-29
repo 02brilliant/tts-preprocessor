@@ -41,8 +41,8 @@ def test_broad_signed_tilde_ranges_transform(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3~8개", "삼에서 팔 개"),
-        ("3~8명", "삼에서 팔 명"),
+        ("3~8개", "삼에서 팔-개"),
+        ("3~8명", "삼에서 팔-명"),
     ],
 )
 def test_range_compatible_korean_suffix_ranges_transform(
@@ -52,7 +52,7 @@ def test_range_compatible_korean_suffix_ranges_transform(
 
 
 def test_decimal_right_endpoint_range_with_unit_policy_v1() -> None:
-    assert transform("3~8.5kg") == "삼에서 팔쩜오 킬로그램"
+    assert transform("3~8.5kg") == "삼에서 팔쩜오-킬로그램"
 
 
 @pytest.mark.parametrize(

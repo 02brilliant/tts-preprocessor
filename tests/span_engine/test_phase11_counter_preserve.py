@@ -27,8 +27,8 @@ def test_leading_zero_counter_override_only_for_month_day(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("112명", "백십이 명"),
-        ("119건", "백십구 건"),
+        ("112명", "백십이-명"),
+        ("119건", "백십구-건"),
         ("112개", "백십이 개"),
         ("119명", "백십구 명"),
     ],
@@ -59,7 +59,7 @@ def test_emergency_counter_forbidden_signatures_do_not_appear(
         ("3번", "3번"),
         ("3분", "3분"),
         ("3초", "삼초"),
-        ("3건", "세 건"),
+        ("3건", "세-건"),
     ],
 )
 def test_unsupported_counter_nouns_use_phase11_number_suffix_fallback(
@@ -103,8 +103,8 @@ def test_signed_person_counter_uses_residual_reading(text: str, expected: str) -
 
 
 def test_decimal_registered_counter_suffix_now_transforms() -> None:
-    assert transform("3.5명") == "삼쩜오 명"
+    assert transform("3.5명") == "삼쩜오-명"
 
 
 def test_phase36b_comma_counter_form_now_transforms() -> None:
-    assert transform("1,000명") == "천 명"
+    assert transform("1,000명") == "천-명"

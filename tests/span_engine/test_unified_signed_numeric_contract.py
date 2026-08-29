@@ -106,15 +106,15 @@ def test_standalone_signed_numeric_canonical(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("+1.5kg", "플러스 일쩜오 킬로그램", "simple_unit"),
-        ("-45㎡", "마이너스 사십오 제곱미터", "special_unit"),
-        ("+10%", "플러스 십 퍼센트", "simple_unit"),
-        ("-2.5%p", "마이너스 이쩜오 퍼센트포인트", "percent_point"),
-        ("+1,000원", "플러스 천 원", "currency"),
-        ("-1,000.50원", "마이너스 천쩜오영 원", "currency"),
-        ("+$10", "플러스 십 달러", "currency"),
-        ("$-10", "마이너스 십 달러", "currency"),
-        ("+25.50억", "플러스 이십오쩜오영 억", "large_unit_atomic"),
+        ("+1.5kg", "플러스 일쩜오-킬로그램", "simple_unit"),
+        ("-45㎡", "마이너스 사십오-제곱미터", "special_unit"),
+        ("+10%", "플러스 십-퍼센트", "simple_unit"),
+        ("-2.5%p", "마이너스 이쩜오-퍼센트포인트", "percent_point"),
+        ("+1,000원", "플러스 천-원", "currency"),
+        ("-1,000.50원", "마이너스 천쩜오영-원", "currency"),
+        ("+$10", "플러스 십-달러", "currency"),
+        ("$-10", "마이너스 십-달러", "currency"),
+        ("+25.50억", "플러스 이십오쩜오영-억", "large_unit_atomic"),
         ("-1/3", "마이너스 삼분의 일", "fraction"),
     ],
 )
@@ -161,8 +161,8 @@ def test_temperature_and_angle_sign_profiles(
         ("+1:2", "플러스 일 대 이", "colon_semantic_pair"),
         ("1:-2", "일 대 마이너스 이", "colon_semantic_pair"),
         ("+1.5:-2.0", "플러스 일쩜오 대 마이너스 이쩜영", "colon_semantic_pair"),
-        ("+2.3~4kg", "플러스 이쩜삼에서 사 킬로그램", "range_with_unit"),
-        ("2.3~-4.5kg", "이쩜삼에서 마이너스 사쩜오 킬로그램", "range_with_unit"),
+        ("+2.3~4kg", "플러스 이쩜삼에서 사-킬로그램", "range_with_unit"),
+        ("2.3~-4.5kg", "이쩜삼에서 마이너스 사쩜오-킬로그램", "range_with_unit"),
         ("+82-10-1234-5678", "플러스 팔이 일공 일이삼사 오육칠팔", "phone"),
     ],
 )
@@ -265,8 +265,8 @@ def test_mixed_signed_numeric_e2e() -> None:
         "각도는 +30°, 경기는 +1:-2였고 차량 변화 +3대는 원문으로 기록했다."
     )
     expected = (
-        "값은 플러스 천쩜오영 원, 변화율은 마이너스 이쩜오 퍼센트포인트, "
-        "무게는 플러스 일쩜오 킬로그램, 온도는 영하 이십오도, 각도는 플러스 삼십도, "
+        "값은 플러스 천쩜오영-원, 변화율은 마이너스 이쩜오-퍼센트포인트, "
+        "무게는 플러스 일쩜오-킬로그램, 온도는 영하 이십오도, 각도는 플러스 삼십도, "
             "경기는 플러스 일 대 마이너스 이였고 차량 변화 플러스 삼 대는 원문으로 기록했다."
     )
     assert transform(text) == expected

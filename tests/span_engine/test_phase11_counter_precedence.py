@@ -8,11 +8,11 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("50kg", "오십 킬로그램", "simple_unit"),
-        ("3킬로그램", "삼 킬로그램", "counter_noun"),
-        ("21원", "이십일 원", "currency"),
-        ("₩21", "이십일 원", "currency"),
-        ("$21", "이십일 달러", "currency"),
+        ("50kg", "오십-킬로그램", "simple_unit"),
+        ("3킬로그램", "삼-킬로그램", "counter_noun"),
+        ("21원", "이십일-원", "currency"),
+        ("₩21", "이십일-원", "currency"),
+        ("$21", "이십일-달러", "currency"),
     ],
 )
 def test_counter_precedence_with_unit_currency(

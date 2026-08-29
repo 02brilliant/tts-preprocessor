@@ -2,6 +2,22 @@
 
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
 
+## Generated numeric boundaries use locked ASCII hyphens
+
+- owner가 확정한 숫자 읽기와 단위·counter·서수 표면 사이의 생성 공백을 ASCII
+  U+002D 하이픈으로 통일했다. 붙임형과 ASCII 공백 한 칸 입력은 같은 출력이다.
+  예: `1번째→첫-번째`, `제7번째→제-일곱-번째`, `3명/3 명→세-명`,
+  `5kg/5 kg→오-킬로그램`, `10bp→십-베이시스 포인트`,
+  `제1회→제-일회`.
+- 소수·큰수·범위도 같은 owner 경계를 쓴다. `1.5kg→일쩜오-킬로그램`,
+  `3만kg→삼만-킬로그램`, `1~3번째→첫-번째에서 세-번째`.
+- `N째`, 날짜 표지, 온도 `도`, `분기`, 붙임 분·초 등 등록된 붙임 예외와 숫자
+  내부·부호·범위·날짜 구조 공백은 변경하지 않는다.
+- 생성 하이픈은 provenance-aware validator의 locked reading이다. 3·4단계 LLM이
+  이를 공백으로 되돌리거나 삭제하면 Critical `LOCKED_READING_MUTATION`으로
+  거절한다. 아래 이전 항목의 공백 예시는 해당 시점의 역사 기록이며 현재 출력은
+  canonical 정책 문서를 따른다.
+
 ## Ordinal `N번째` reads the suffix only; tails stay untouched
 
 - `(숫자)[ ]번째`는 `ordinal` owner가 `번째`까지 claim하고 뒤 문자는 건드리지

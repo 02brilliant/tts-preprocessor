@@ -27,6 +27,7 @@ from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
     span_overlaps_excluded_ranges,
 )
+from engine.span_engine.spoken_boundary import trailing_spoken_numeric_boundary
 
 _SIGN_PATTERN = re.escape("".join(sorted(SIGNED_NUMERIC_SIGN_ALIASES)))
 _DECIMAL_RE = re.compile(
@@ -155,7 +156,7 @@ def _candidate_at_suffix(
                 "number": raw_text[decimal_span.start : decimal_span.end],
                 "suffix": suffix,
                 "suffix_span": SourceSpan(suffix_start, suffix_end),
-                "reading": f"{reading} ",
+                "reading": trailing_spoken_numeric_boundary(reading),
                 **_signed_contract_metadata(raw_number),
             },
         )

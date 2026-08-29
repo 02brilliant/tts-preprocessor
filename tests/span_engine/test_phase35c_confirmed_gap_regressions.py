@@ -45,7 +45,7 @@ from engine.span_engine import transform
 def test_phase35c_embedded_multi_currency_prefix_symbols() -> None:
     """All three currency prefix symbols must transform within a Korean sentence."""
     text = "해외 가격표에는 $25.99, €1,234, ￥1,500이 나란히 적혀 있었다."
-    expected = "해외 가격표에는 이십오쩜구구 달러, 천이백삼십사 유로, 천오백 엔이 나란히 적혀 있었다."
+    expected = "해외 가격표에는 이십오쩜구구-달러, 천이백삼십사-유로, 천오백-엔이 나란히 적혀 있었다."
     # CURRENTLY FAILS:
     #   actual = '해외 가격표에는 $25.99, €1,234, 천오백 엔이 나란히 적혀 있었다.'
     assert transform(text) == expected
@@ -57,17 +57,17 @@ def test_phase35c_embedded_multi_currency_prefix_symbols() -> None:
         # $ inside Korean sentence
         (
             "가격은 $25.99입니다.",
-            "가격은 이십오쩜구구 달러입니다.",
+            "가격은 이십오쩜구구-달러입니다.",
         ),
         # € inside Korean sentence (bare, no decimal)
         (
             "비용은 €1,234입니다.",
-            "비용은 천이백삼십사 유로입니다.",
+            "비용은 천이백삼십사-유로입니다.",
         ),
         # ￥ inside Korean sentence (already passes per smoke, kept as regression guard)
         (
             "금액은 ￥1,500입니다.",
-            "금액은 천오백 엔입니다.",
+            "금액은 천오백-엔입니다.",
         ),
     ],
 )
@@ -97,7 +97,7 @@ def test_phase35c_embedded_single_currency_in_korean_sentence(
 def test_phase35c_prefix_symbol_space_currency_full_consume() -> None:
     """Prefix symbol + space + amount must be fully consumed as a currency token."""
     text = "통화 검증 문단에는 € 300, $ 300, ￦ 300도 함께 넣는다."
-    expected = "통화 검증 문단에는 삼백 유로, 삼백 달러, 삼백 원도 함께 넣는다."
+    expected = "통화 검증 문단에는 삼백-유로, 삼백-달러, 삼백-원도 함께 넣는다."
     # CURRENTLY FAILS:
     #   actual = '통화 검증 문단에는 € 300, $ 300, ￦ 삼백도 함께 넣는다.'
     assert transform(text) == expected
@@ -107,11 +107,11 @@ def test_phase35c_prefix_symbol_space_currency_full_consume() -> None:
     ("text", "expected"),
     [
         # Standalone prefix-space currency forms
-        ("€ 300", "삼백 유로"),
-        ("$ 300", "삼백 달러"),
-        ("￦ 300", "삼백 원"),
-        ("€ 1,234", "천이백삼십사 유로"),
-        ("$ 25.99", "이십오쩜구구 달러"),
+        ("€ 300", "삼백-유로"),
+        ("$ 300", "삼백-달러"),
+        ("￦ 300", "삼백-원"),
+        ("€ 1,234", "천이백삼십사-유로"),
+        ("$ 25.99", "이십오쩜구구-달러"),
     ],
 )
 def test_phase35c_standalone_prefix_symbol_space_currency(
@@ -131,7 +131,7 @@ def test_phase35c_won_space_amount_not_partial_rewrite() -> None:
         "Expected full consume to '삼백 원'."
     )
     # And that the correct full transform IS produced
-    assert result == "삼백 원"
+    assert result == "삼백-원"
 
 
 # ---------------------------------------------------------------------------

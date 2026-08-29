@@ -29,7 +29,7 @@ def test_signed_degree_provenance_and_validation() -> None:
 def test_signed_unit_provenance_validation() -> None:
     output = transform_with_trace("-3kg")
 
-    assert output.normalized_text == "마이너스 삼 킬로그램"
+    assert output.normalized_text == "마이너스 삼-킬로그램"
     assert not any(
         piece.owner in {"signed_temperature", "signed_degree"}
         and piece.provenance == "GENERATED_READING"

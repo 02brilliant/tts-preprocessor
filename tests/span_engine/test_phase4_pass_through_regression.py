@@ -9,7 +9,7 @@ from engine.span_engine import transform, transform_with_trace
     ("text", "expected"),
     [
         ("AI", "에이아이"),
-        ("3~8cm", "삼에서 팔 센티미터"),
+        ("3~8cm", "삼에서 팔-센티미터"),
         ("FTA은", "에프티에이는"),
         ("전문  가", "전문  가"),
         ("안녕하세요,", "안녕하세요,"),

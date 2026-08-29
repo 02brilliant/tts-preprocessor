@@ -8,8 +8,8 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 def test_unsigned_special_unit_regression_kept() -> None:
     assert transform("5℃") == "오도"
     assert transform("3°") == "삼도"
-    assert transform("20％") == "이십 퍼센트"
-    assert transform("45㎡") == "사십오 제곱미터"
+    assert transform("20％") == "이십-퍼센트"
+    assert transform("45㎡") == "사십오-제곱미터"
 
 
 def test_signed_temperature_precedes_special_unit_in_trace() -> None:

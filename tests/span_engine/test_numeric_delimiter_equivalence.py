@@ -44,14 +44,14 @@ def test_colon_like_delimiter_equivalence_for_time_semantic_pair_and_fallback():
 
 def test_range_like_delimiter_equivalence_for_unit_ranges_and_fallback():
     cases = [
-        ("1–2개", "일에서 이 개"),
-        ("1~2개", "일에서 이 개"),
-        ("1～2개", "일에서 이 개"),
-        ("1–2kg", "일에서 이 킬로그램"),
-        ("1.5–2kg", "일쩜오에서 이 킬로그램"),
-        ("1.5~2kg", "일쩜오에서 이 킬로그램"),
-        ("1.5～2kg", "일쩜오에서 이 킬로그램"),
-        ("1~2cm", "일에서 이 센티미터"),
+        ("1–2개", "일에서 이-개"),
+        ("1~2개", "일에서 이-개"),
+        ("1～2개", "일에서 이-개"),
+        ("1–2kg", "일에서 이-킬로그램"),
+        ("1.5–2kg", "일쩜오에서 이-킬로그램"),
+        ("1.5~2kg", "일쩜오에서 이-킬로그램"),
+        ("1.5～2kg", "일쩜오에서 이-킬로그램"),
+        ("1~2cm", "일에서 이-센티미터"),
         ("1–2테스트", "1–2테스트"),
         ("1~2테스트", "일에서 이 테스트"),
         ("1～2테스트", "일에서 이 테스트"),
@@ -71,5 +71,5 @@ def test_delimiter_equivalence_is_scanner_local_with_neighbor_survival():
         out = transform(source)
         assert semantic_pair in out
         assert "이십오도" in out
-        assert "이십오쩜구구 달러" in out
-        assert "삼 킬로그램" in out
+        assert "이십오쩜구구-달러" in out
+        assert "삼-킬로그램" in out

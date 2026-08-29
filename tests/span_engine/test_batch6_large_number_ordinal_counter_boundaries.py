@@ -30,7 +30,7 @@ def test_batch6_unsupported_large_number_fallback_is_segment_local_with_hangul()
     text = "값은 100000000000000000000이고 3kg이다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "값은 100000000000000000000이고 삼 킬로그램이다"
+    assert output.normalized_text == "값은 100000000000000000000이고 삼-킬로그램이다"
     assert any(
         piece.owner == "simple_unit" and piece.provenance == "GENERATED_READING"
         for piece in output.render_pieces
@@ -53,9 +53,9 @@ def test_batch6_unsupported_large_number_fallback_is_segment_local_with_hangul()
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("제5차", "제 오차"),
-        ("제62회", "제 육십이회"),
-        ("제 15권", "제 십오권"),
+        ("제5차", "제-오차"),
+        ("제62회", "제-육십이회"),
+        ("제 15권", "제-십오권"),
     ],
 )
 def test_batch6_prefixed_ordinal_spacing_is_owner_generated(
@@ -78,10 +78,10 @@ def test_batch6_prefixed_ordinal_spacing_is_owner_generated(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("제2.5차", "제 이쩜오차"),
+        ("제2.5차", "제-이쩜오차"),
         ("제2-차", "제2-차"),
         ("A제5차", "A제5차"),
-        ("제5차abc", "제 오차abc"),
+        ("제5차abc", "제-오차abc"),
     ],
 )
 def test_batch6_prefixed_ordinal_split_or_preserve_forms(
@@ -116,7 +116,7 @@ def test_batch6_large_approximate_claim_is_atomic() -> None:
 
 def test_batch6_emergency_and_counter_claims_are_independent() -> None:
     output = transform_with_trace("긴급번호 112는 112명과 다르다")
-    assert output.normalized_text == "긴급번호 일일이는 백십이 명과 다르다"
+    assert output.normalized_text == "긴급번호 일일이는 백십이-명과 다르다"
     assert [claim.owner for claim in output.trace.claim_logs] == [
         "emergency",
         "counter_noun",

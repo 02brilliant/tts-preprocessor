@@ -8,6 +8,7 @@ from engine.span_engine.numeric_reading import (
     read_sino_time_suffix_number_text,
 )
 from engine.span_engine.units import starts_with_supported_unit
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 ORDINAL_ONLY_SUFFIXES = frozenset({"차", "과"})
 PREFIXED_ONLY_EXTRA_SUFFIXES = frozenset(
@@ -134,7 +135,12 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                 break
             candidates.append(
                 SurfaceCandidate(
-                    core_span=SourceSpan(number_start, number_end),
+                    core_span=SourceSpan(
+                        number_start,
+                        suffix_start
+                        if suffix in SPACED_UNPREFIXED_NUMERIC_SUFFIXES
+                        else number_end,
+                    ),
                     full_span=SourceSpan(number_start, suffix_end),
                     owner="numeric_suffix",
                     surface_type="NUMERIC_SUFFIX_SURFACE",
@@ -144,11 +150,8 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                         "number": number,
                         "suffix": suffix,
                         "reading": (
-                            f"{reading} "
-                            if (
-                                suffix in SPACED_UNPREFIXED_NUMERIC_SUFFIXES
-                                and suffix_start == number_end
-                            )
+                            f"{reading}{SPOKEN_NUMERIC_BOUNDARY}"
+                            if suffix in SPACED_UNPREFIXED_NUMERIC_SUFFIXES
                             else reading
                         ),
                     },
@@ -198,7 +201,7 @@ def scan_numeric_suffix_candidates(raw_text: str) -> list[SurfaceCandidate]:
                             reason="prefixed_ordinal_numeric_core",
                             metadata={
                                 "number": number,
-                                "reading": f"제 {reading}",
+                                "reading": f"제-{reading}",
                             },
                         )
                     )
@@ -286,7 +289,7 @@ def _prefixed_ordinal_reading(
     number_reading: str, suffix: str, *, unit_space: bool
 ) -> str:
     joiner = " " if suffix in SOURCE_SPACED_PREFIXED_SUFFIXES and unit_space else ""
-    return f"제 {number_reading}{joiner}{suffix}"
+    return f"제-{number_reading}{joiner}{suffix}"
 
 
 def _suffix_start_for_match(

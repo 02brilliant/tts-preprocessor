@@ -41,16 +41,16 @@ CASES = [
     ProbeCase("strong_3_04", "3:04", "세시 사분"),
     ProbeCase("strong_13_05", "13:05", "십삼시 오분"),
     ProbeCase("strong_24_09", "24:09", "이십사시 구분"),
-    ProbeCase("suffix_hour_minute_compact", "11시23분", "열한 시 이십삼분"),
+    ProbeCase("suffix_hour_minute_compact", "11시23분", "열한-시 이십삼분"),
     ProbeCase(
         "suffix_hour_minute_second_compact",
         "11시23분45초",
-        "열한 시 이십삼분 사십오초",
+        "열한-시 이십삼분 사십오초",
     ),
     ProbeCase(
         "suffix_hour_minute_second_mixed",
         "11시23분 45초",
-        "열한 시 이십삼분 사십오초",
+        "열한-시 이십삼분 사십오초",
     ),
     ProbeCase(
         "suffix_minute_second_compact",
@@ -60,10 +60,10 @@ CASES = [
     ProbeCase(
         "suffix_leading_zero_hour_compact",
         "09시23분45초",
-        "아홉 시 이십삼분 사십오초",
+        "아홉-시 이십삼분 사십오초",
     ),
-    ProbeCase("suffix_zero_hour", "0시", "영 시"),
-    ProbeCase("suffix_double_zero_hour", "00시", "영 시"),
+    ProbeCase("suffix_zero_hour", "0시", "영-시"),
+    ProbeCase("suffix_double_zero_hour", "00시", "영-시"),
     ProbeCase("spaced_hour_ordinary_number", "3 시", "삼 시"),
     ProbeCase("spaced_duration_ordinary_number", "3 시간", "삼 시간"),
     ProbeCase("spaced_leading_zero_preserve", "09 시", "09 시"),
@@ -80,7 +80,7 @@ CASES = [
     ProbeCase(
         "suffix_second_amount_not_clock_limited",
         "11시23분60초",
-        "열한 시 이십삼분 육십초",
+        "열한-시 이십삼분 육십초",
     ),
     ProbeCase("ambiguous_3_40_preserve", "3:40", "3:40"),
     ProbeCase("ambiguous_0_30_preserve", "0:30", "0:30"),

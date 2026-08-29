@@ -12,6 +12,7 @@ from engine.span_engine.signed_numeric import (
     apply_sign_profile,
     parse_signed_numeric_core,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 CURRENCY_SYMBOL_READINGS: dict[str, str] = {
     "$": "달러",
@@ -505,11 +506,8 @@ def _scan_large_unit_currency(raw_text: str) -> list[SurfaceCandidate]:
         reading = _large_unit_body_reading(body)
         if reading is None:
             continue
-        if match.end(1) == match.start(2):
-            reading = f"{reading} {currency}"
-            span = SourceSpan(match.start(), match.end())
-        else:
-            span = SourceSpan(match.start(), match.end(1))
+        reading = f"{reading}{SPOKEN_NUMERIC_BOUNDARY}"
+        span = SourceSpan(match.start(), match.start(2))
         candidates.append(
             SurfaceCandidate(
                 core_span=span,
@@ -585,10 +583,8 @@ def _korean_suffix_candidate(
     validation_span = SourceSpan(amount_start, suffix_end)
     if not _valid_amount_and_boundary(raw_text, validation_span, amount):
         return None
-    reading = _korean_suffix_amount_reading(amount, currency_name)
-    if suffix_start == amount_end:
-        reading += " "
-    span = SourceSpan(amount_start, amount_end)
+    reading = f"{_korean_suffix_amount_reading(amount, currency_name)}{SPOKEN_NUMERIC_BOUNDARY}"
+    span = SourceSpan(amount_start, suffix_start)
     return SurfaceCandidate(
         core_span=span,
         full_span=span,
@@ -605,7 +601,7 @@ def _korean_suffix_candidate(
 
 
 def _reading(amount: str, currency_name: str) -> str:
-    return f"{_amount_reading(amount, currency_name)} {currency_name}"
+    return f"{_amount_reading(amount, currency_name)}{SPOKEN_NUMERIC_BOUNDARY}{currency_name}"
 
 
 def _signed_contract_metadata(amount: str) -> dict[str, object]:

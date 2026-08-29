@@ -26,7 +26,7 @@ PARSER_CONTEXT_CASES = (
     TextCase(
         case_id="parser-context-range-in-korean-sentence",
         text="시편은 3~8cm다",
-        expected="시편은 삼에서 팔 센티미터다",
+        expected="시편은 삼에서 팔-센티미터다",
         rule="parser context / range + unit",
         reason="range parser는 한글 명사 문맥 안에서도 숫자와 기호만 구조적으로 해석해야 한다.",
         classification="parser",
@@ -34,7 +34,7 @@ PARSER_CONTEXT_CASES = (
     TextCase(
         case_id="parser-context-currency-in-korean-sentence",
         text="비용은 €1,234.56이다",
-        expected="비용은 천이백삼십사쩜오육 유로이다",
+        expected="비용은 천이백삼십사쩜오육-유로이다",
         rule="parser context / currency",
         reason="currency parser는 한글 predicate 문맥을 읽어도 한글 literal을 rewrite하지 않는다.",
         classification="parser",

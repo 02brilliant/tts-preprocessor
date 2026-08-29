@@ -9,9 +9,9 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("오후 2시", "오후 두 시"),
-        ("오늘 밤 11시부터", "오늘 밤 열한 시부터"),
-        ("13시에는", "십삼 시에는"),
+        ("오후 2시", "오후 두-시"),
+        ("오늘 밤 11시부터", "오늘 밤 열한-시부터"),
+        ("13시에는", "십삼-시에는"),
         ("7:05", "일곱시 오분"),
         ("24:00", "이십사시"),
         ("24:01", "이십사시 일분"),
@@ -86,7 +86,7 @@ def test_batch3_suffix_clock_spacing_is_generated_by_time_owner() -> None:
     text = "13시에는 문을 닫는다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "십삼 시에는 문을 닫는다"
+    assert output.normalized_text == "십삼-시에는 문을 닫는다"
     assert any(
         claim.owner == "time"
         and claim.surface_type == "TIME_SURFACE"
@@ -97,7 +97,7 @@ def test_batch3_suffix_clock_spacing_is_generated_by_time_owner() -> None:
     assert any(
         piece.owner == "time"
         and piece.provenance == "GENERATED_READING"
-        and piece.text == "십삼 "
+        and piece.text == "십삼-"
         for piece in output.render_pieces
     )
 

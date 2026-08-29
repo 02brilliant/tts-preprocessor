@@ -12,6 +12,7 @@ from engine.span_engine.signed_numeric import (
     parse_sign_surface,
     parse_signed_numeric_core,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 _INTEGER_RE = r"(?:\d{1,3}(?:,\d{3})+|\d+)"
 _DECIMAL_RE = rf"{_INTEGER_RE}\.\d+"
@@ -83,7 +84,7 @@ def scan_percent_point_candidates(
                 reason="percent_point_full_consume_gate",
                 metadata={
                     "number": number,
-                    "reading": f"{reading} 퍼센트포인트",
+                    "reading": f"{reading}{SPOKEN_NUMERIC_BOUNDARY}퍼센트포인트",
                     "sign_profile": policy.sign_profile.value,
                     "sign_surface": sign_surface or None,
                     "numeric_form": numeric_form,

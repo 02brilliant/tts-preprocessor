@@ -378,14 +378,14 @@ NUMERIC_DENSITY_CASES = [
     TextCase(
         case_id="numeric-density-heavy-default-no-comma",
         text="2025년 1월 3일 13:05에 100원을 결제한다",
-        expected="이천이십오년 일월 삼일 십삼시 오분에 백 원을 결제한다",
+        expected="이천이십오년 일월 삼일 십삼시 오분에 백-원을 결제한다",
         rule="prosody / numeric density negative",
         reason="A numeric-heavy protected sentence should default to no comma.",
     ),
     TextCase(
         case_id="numeric-density-heavy-strong-boundary-one-exception",
         text="그리고 2025년 1월 3일 13:05에 100원을 결제한다",
-        expected="그리고, 이천이십오년 일월 삼일 십삼시 오분에 백 원을 결제한다",
+        expected="그리고, 이천이십오년 일월 삼일 십삼시 오분에 백-원을 결제한다",
         rule="prosody / numeric density exception",
         reason="A heavy protected sentence may still allow one strong connector boundary.",
     ),
@@ -478,7 +478,7 @@ PHONETIC_BOUNDARY_NEGATIVE_CASES = [
     TextCase(
         case_id="phonetic-boundary-currency",
         text="100원을 냈다",
-        expected="백 원을 냈다",
+        expected="백-원을 냈다",
         rule="prosody / phonetic boundary negative",
         reason="A phonetic currency binding must remain unsplit.",
     ),

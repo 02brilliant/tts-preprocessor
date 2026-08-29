@@ -27,22 +27,22 @@ def test_leading_zero_two_block_uses_digit_code_reading():
 
 def test_hyphen_two_block_with_range_compatible_unit():
     cases = [
-        ("1-2장", "일에서 이 장"),
-        ("1–2장", "일에서 이 장"),
-        ("1~2장", "일에서 이 장"),
-        ("1～2장", "일에서 이 장"),
-        ("3-4페이지", "삼에서 사 페이지"),
-        ("10-20개", "십에서 이십 개"),
-        ("10–20개", "십에서 이십 개"),
-        ("2-3명", "이에서 삼 명"),
-        ("3-5분", "삼에서 오 분"),
-        ("1-2kg", "일에서 이 킬로그램"),
-        ("1–2kg", "일에서 이 킬로그램"),
-        ("1~2kg", "일에서 이 킬로그램"),
-        ("1～2kg", "일에서 이 킬로그램"),
-        ("2-3cm", "이에서 삼 센티미터"),
-        ("10-20%", "십에서 이십 퍼센트"),
-        ("100-200원", "백에서 이백 원"),
+        ("1-2장", "일에서 이-장"),
+        ("1–2장", "일에서 이-장"),
+        ("1~2장", "일에서 이-장"),
+        ("1～2장", "일에서 이-장"),
+        ("3-4페이지", "삼에서 사-페이지"),
+        ("10-20개", "십에서 이십-개"),
+        ("10–20개", "십에서 이십-개"),
+        ("2-3명", "이에서 삼-명"),
+        ("3-5분", "삼에서 오-분"),
+        ("1-2kg", "일에서 이-킬로그램"),
+        ("1–2kg", "일에서 이-킬로그램"),
+        ("1~2kg", "일에서 이-킬로그램"),
+        ("1～2kg", "일에서 이-킬로그램"),
+        ("2-3cm", "이에서 삼-센티미터"),
+        ("10-20%", "십에서 이십-퍼센트"),
+        ("100-200원", "백에서 이백-원"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -50,11 +50,11 @@ def test_hyphen_two_block_with_range_compatible_unit():
 
 def test_hyphen_two_block_optional_spacing_and_korean_tail():
     cases = [
-        ("1-2 장", "일에서 이 장"),
-        ("1-2 장입니다", "일에서 이 장입니다"),
-        ("1-2장으로", "일에서 이 장으로"),
-        ("10-20 개는", "십에서 이십 개는"),
-        ("10-20개는", "십에서 이십 개는"),
+        ("1-2 장", "일에서 이-장"),
+        ("1-2 장입니다", "일에서 이-장입니다"),
+        ("1-2장으로", "일에서 이-장으로"),
+        ("10-20 개는", "십에서 이십-개는"),
+        ("10-20개는", "십에서 이십-개는"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -80,7 +80,7 @@ def test_hyphen_two_block_non_unit_and_code_like_contexts_preserve():
 
 
 def test_hyphen_two_block_range_preserves_input_order_without_value_gate():
-    assert transform("5-3개") == "오에서 삼 개"
+    assert transform("5-3개") == "오에서 삼-개"
 
 
 def test_hyphen_two_block_arbitrary_noun_does_not_range_claim():
@@ -160,7 +160,7 @@ def test_protected_numeric_delimited_spans_do_not_block_neighbors():
     assert out != text
     assert "`1-2`" in out
     assert "이십오도" in out
-    assert "삼 킬로그램" in out
+    assert "삼-킬로그램" in out
 
     text = (
         '"The meeting was at 13:05."라고 적었고, '
@@ -169,5 +169,5 @@ def test_protected_numeric_delimited_spans_do_not_block_neighbors():
     out = transform(text)
     assert out != text
     assert "The meeting was at 13:05." in out
-    assert "이십오쩜구구 달러" in out
+    assert "이십오쩜구구-달러" in out
     assert "피에이치 칠쩜사" in out

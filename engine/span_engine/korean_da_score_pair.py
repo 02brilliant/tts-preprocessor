@@ -9,6 +9,7 @@ from engine.span_engine.currency import (
     KOREAN_CURRENCY_SUFFIX_READINGS,
 )
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 from engine.span_engine.numeric_dae import (
     explicit_numeric_dae_counter_context_reason,
     is_sino_threshold_numeric_dae,
@@ -179,7 +180,9 @@ def scan_korean_da_score_pair_candidates(raw_text: str) -> list[SurfaceCandidate
         if is_quantity_sequence:
             counter_reading = counter_number_reading(left, "대")
             if counter_reading is not None:
-                left_reading = counter_reading.rstrip()
+                left_reading = counter_reading.removesuffix(
+                    SPOKEN_NUMERIC_BOUNDARY
+                )
         compact_integer_rendering = _uses_compact_integer_rendering(
             raw_text, left, right, delimiter_span
         )
@@ -302,10 +305,19 @@ def _delimiter_render_pieces(
     pieces: list[RenderPiece] = []
     delimiter = raw_text[delimiter_span.start : delimiter_span.end]
     if not compact_integer_rendering and not delimiter.startswith(" "):
+        generated_separator = (
+            SPOKEN_NUMERIC_BOUNDARY
+            if candidate.owner == "numeric_dae_quantity_sequence"
+            else " "
+        )
         pieces.append(
             RenderPiece(
-                text=" ",
-                provenance="GENERATED_READING",
+                text=generated_separator,
+                provenance=(
+                    "GENERATED_PUNCT"
+                    if generated_separator == SPOKEN_NUMERIC_BOUNDARY
+                    else "GENERATED_READING"
+                ),
                 source_span=None,
                 owner=candidate.owner,
                 metadata={"surface_type": candidate.surface_type},

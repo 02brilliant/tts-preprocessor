@@ -3,6 +3,7 @@ from __future__ import annotations
 from engine.span_engine.counter import HYBRID_COUNTER_THRESHOLD, native_number_under_100
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_decimal_text, read_spaced_integer_text
+from engine.span_engine.spoken_boundary import join_spoken_numeric_boundary
 from engine.span_engine.units import is_free_standing_je_before
 
 
@@ -47,7 +48,7 @@ def parse_ordinal_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surfa
     body = reading[2:].lstrip() if isinstance(je_span, SourceSpan) else reading
     if not body.endswith(_ORDINAL_SUFFIX):
         return None
-    number_with_space = body[: -len(_ORDINAL_SUFFIX)]
+    number_with_boundary = body[: -len(_ORDINAL_SUFFIX)]
     pieces: list[RenderPiece] = []
     if isinstance(je_span, SourceSpan):
         pieces.append(
@@ -62,18 +63,18 @@ def parse_ordinal_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surfa
         if number_span.start > je_span.end and raw_text[je_span.end:number_span.start] == " ":
             pieces.append(
                 RenderPiece(
-                    text=" ",
-                    provenance="ORIGINAL_SPACE",
+                    text="-",
+                    provenance="GENERATED_PUNCT",
                     source_span=SourceSpan(je_span.end, number_span.start),
                     owner=candidate.owner,
                     metadata={"surface_type": candidate.surface_type},
                 )
             )
-            generated_number = number_with_space
+            generated_number = number_with_boundary
         else:
-            generated_number = f" {number_with_space}"
+            generated_number = f"-{number_with_boundary}"
     else:
-        generated_number = number_with_space
+        generated_number = number_with_boundary
     pieces.extend(
         [
             RenderPiece(
@@ -108,7 +109,7 @@ def ordinal_reading(raw_number: str) -> str | None:
         return None
     if "." in raw_number:
         sino = read_decimal_text(raw_number)
-        return f"{sino} 번째" if sino is not None else None
+        return join_spoken_numeric_boundary(sino, _ORDINAL_SUFFIX) if sino is not None else None
     if not raw_number.isdigit():
         return None
     if len(raw_number) > 1 and raw_number.startswith("0"):
@@ -117,13 +118,13 @@ def ordinal_reading(raw_number: str) -> str | None:
     if value < 1:
         return None
     if value in _SPECIAL_ORDINAL_READINGS:
-        return f"{_SPECIAL_ORDINAL_READINGS[value]} 번째"
+        return join_spoken_numeric_boundary(_SPECIAL_ORDINAL_READINGS[value], _ORDINAL_SUFFIX)
     if value <= HYBRID_COUNTER_THRESHOLD:
         native = native_number_under_100(value)
         if native is not None:
-            return f"{native} 번째"
+            return join_spoken_numeric_boundary(native, _ORDINAL_SUFFIX)
     sino = read_spaced_integer_text(raw_number)
-    return f"{sino} 번째" if sino is not None else None
+    return join_spoken_numeric_boundary(sino, _ORDINAL_SUFFIX) if sino is not None else None
 
 
 def _match_invalid_ordinal_preserve(
@@ -157,7 +158,7 @@ def _match_ordinal_candidate(raw_text: str, index: int) -> SurfaceCandidate | No
     if reading is None:
         return None
     claim_start = je_span.start if je_span is not None else number_start
-    full_reading = f"제 {reading}" if je_span is not None else reading
+    full_reading = f"제-{reading}" if je_span is not None else reading
     span = SourceSpan(claim_start, suffix_end)
     return SurfaceCandidate(
         core_span=span,

@@ -55,7 +55,7 @@ def test_colon_english_prose_preserved() -> None:
     assert_preserve_and_transform(
         text,
         preserved=["Result: pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠쩜사", "이십오쩜구구 달러"],
+        transformed=["피에이치 칠쩜사", "이십오쩜구구-달러"],
     )
 
 

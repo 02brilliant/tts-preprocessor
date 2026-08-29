@@ -113,7 +113,7 @@ FULL_PIPELINE_PROTECTION_CASES = [
     TextCase(
         case_id="full-pipeline-protects-hybrid-counter-after-connector",
         text="그리고 자료는 21명에게 배포한다",
-        expected="그리고, 자료는 스물한 명에게 배포한다",
+        expected="그리고, 자료는 스물한-명에게 배포한다",
         rule="protected phrase / hybrid counter + prosody interaction",
         reason="The connector comma must not cause prosody to split or reinterpret the hybrid counter result.",
     ),

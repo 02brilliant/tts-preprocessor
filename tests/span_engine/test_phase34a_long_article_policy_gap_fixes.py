@@ -39,10 +39,10 @@ def test_phase34a_temperature_unsafe_tail_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("7시간 05분", "일곱 시간 오분"),
-        ("2시간 32분", "두 시간 삼십이분"),
-        ("3시간 이상", "세 시간 이상"),
-        ("3시간 18분", "세 시간 십팔분"),
+        ("7시간 05분", "일곱-시간 오분"),
+        ("2시간 32분", "두-시간 삼십이분"),
+        ("3시간 이상", "세-시간 이상"),
+        ("3시간 18분", "세-시간 십팔분"),
     ],
 )
 def test_phase34a_duration_time_units(text: str, expected: str) -> None:
@@ -52,10 +52,10 @@ def test_phase34a_duration_time_units(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("15건", "열다섯 건"),
-        ("59건", "오십구 건"),
-        ("120점", "백이십 점"),
-        ("8곳", "여덟 곳"),
+        ("15건", "열다섯-건"),
+        ("59건", "오십구-건"),
+        ("120점", "백이십-점"),
+        ("8곳", "여덟-곳"),
     ],
 )
 def test_phase34a_counter_inventory_expansion(text: str, expected: str) -> None:
@@ -65,18 +65,18 @@ def test_phase34a_counter_inventory_expansion(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("$25.99", "이십오쩜구구 달러"),
-        ("€1,234", "천이백삼십사 유로"),
-        ("1,234.56 EUR", "천이백삼십사쩜오육 유로"),
-        ("1,234.56€", "천이백삼십사쩜오육 유로"),
-        ("300 USD", "삼백 달러"),
-        ("300 EUR", "삼백 유로"),
-        ("300 KRW", "삼백 원"),
-        ("₩12,300", "만 이천삼백 원"),
-        ("￥1,500", "천오백 엔"),
-        ("€1,234.56", "천이백삼십사쩜오육 유로"),
-        ("$300", "삼백 달러"),
-        ("￦300", "삼백 원"),
+        ("$25.99", "이십오쩜구구-달러"),
+        ("€1,234", "천이백삼십사-유로"),
+        ("1,234.56 EUR", "천이백삼십사쩜오육-유로"),
+        ("1,234.56€", "천이백삼십사쩜오육-유로"),
+        ("300 USD", "삼백-달러"),
+        ("300 EUR", "삼백-유로"),
+        ("300 KRW", "삼백-원"),
+        ("₩12,300", "만 이천삼백-원"),
+        ("￥1,500", "천오백-엔"),
+        ("€1,234.56", "천이백삼십사쩜오육-유로"),
+        ("$300", "삼백-달러"),
+        ("￦300", "삼백-원"),
     ],
 )
 def test_phase34a_currency_decimal_and_code_coverage(text: str, expected: str) -> None:
@@ -103,11 +103,11 @@ def test_phase34a_currency_code_like_unsafe_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("12.5MB", "십이쩜오 메가바이트"),
-        ("3.2GB", "삼쩜이 기가바이트"),
-        ("8GB", "팔 기가바이트"),
-        ("2.4PB", "이쩜사 페타바이트"),
-        ("3.2kWh", "삼쩜이 킬로와트시"),
+        ("12.5MB", "십이쩜오-메가바이트"),
+        ("3.2GB", "삼쩜이-기가바이트"),
+        ("8GB", "팔-기가바이트"),
+        ("2.4PB", "이쩜사-페타바이트"),
+        ("3.2kWh", "삼쩜이-킬로와트시"),
         ("1Gbps", "일 기가비피에스"),
     ],
 )
@@ -126,16 +126,16 @@ def test_phase34a_data_unit_unsafe_tail_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("60Hz", "육십 헤르츠"),
-        ("60hz", "육십 헤르츠"),
-        ("0.5Hz", "영쩜오 헤르츠"),
-        ("0.5hz", "영쩜오 헤르츠"),
-        ("120 Hz", "백이십 헤르츠"),
-        ("120 hz", "백이십 헤르츠"),
-        ("3.2MHz", "삼쩜이 메가헤르츠"),
-        ("3.2GHz", "삼쩜이 기가헤르츠"),
-        ("5Hz급", "오 헤르츠급"),
-        ("5hz급", "오 헤르츠급"),
+        ("60Hz", "육십-헤르츠"),
+        ("60hz", "육십-헤르츠"),
+        ("0.5Hz", "영쩜오-헤르츠"),
+        ("0.5hz", "영쩜오-헤르츠"),
+        ("120 Hz", "백이십-헤르츠"),
+        ("120 hz", "백이십-헤르츠"),
+        ("3.2MHz", "삼쩜이-메가헤르츠"),
+        ("3.2GHz", "삼쩜이-기가헤르츠"),
+        ("5Hz급", "오-헤르츠급"),
+        ("5hz급", "오-헤르츠급"),
     ],
 )
 def test_phase34a_frequency_unit_coverage(text: str, expected: str) -> None:
@@ -206,7 +206,7 @@ def test_phase34a_separator_normal_cases_retained(text: str, expected: str) -> N
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("4위", "사 위"),
+        ("4위", "사-위"),
         ("1∼11월", "일월에서 십일월"),
         ("2:1", "이 대 일"),
         ("(-3)", ""),

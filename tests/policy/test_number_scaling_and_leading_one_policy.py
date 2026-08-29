@@ -107,7 +107,7 @@ NUMERIC_SCALING_CASES = [
     TextCase(
         case_id="scaling-compact-krw-decimal",
         text="1.5조 원",
-        expected="일쩜오 조 원",
+        expected="일쩜오-조 원",
         rule="numeric scaling / compact KRW",
         reason="Compact decimal big-unit currency keeps the decimal reading instead of expanding into lower large-number units.",
     ),

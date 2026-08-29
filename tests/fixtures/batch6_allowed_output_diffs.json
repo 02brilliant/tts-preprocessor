@@ -11,7 +11,7 @@
     {
       "decision_id": "mixed-sentence-forum-ordinal-and-yeo",
       "input": "서울신라호텔에서 열린 '2025 제5차 포럼'에는 전문가 60여 명이 모였습니다.",
-      "expected": "서울신라호텔에서 열린 '이천이십오 제 오차 포럼'에는 전문가 육십여 명이 모였습니다.",
+      "expected": "서울신라호텔에서 열린 '이천이십오 제-오차 포럼'에는 전문가 육십여 명이 모였습니다.",
       "owner_contract": "prefixed ordinal owns 제5차 and generates canonical spacing after 제 while the independent number before 여 retains its attached approximate marker"
     },
     {
@@ -23,7 +23,7 @@
     {
       "decision_id": "mixed-sentence-ordinal-and-acronym-tail",
       "input": "제62회 무역의 날 기념식에선 SK하이닉스가 참여했습니다.",
-      "expected": "제 육십이회 무역의 날 기념식에선 에스케이하이닉스가 참여했습니다.",
+      "expected": "제-육십이회 무역의 날 기념식에선 에스케이하이닉스가 참여했습니다.",
       "owner_contract": "prefixed ordinal and acronym fallback claims remain independent and render their canonical readings"
     },
     {
@@ -35,7 +35,7 @@
     {
       "decision_id": "scenario-emergency-and-general-number-same-sentence",
       "input": "긴급번호 112는 경찰 신고 번호이고 112명은 회의실에 있다",
-      "expected": "긴급번호 일일이는 경찰 신고 번호이고 백십이 명은 회의실에 있다",
+      "expected": "긴급번호 일일이는 경찰 신고 번호이고 백십이-명은 회의실에 있다",
       "owner_contract": "emergency owns the contextual digit surface while counter_noun independently owns 112명 and generates its canonical counter space"
     }
   ],

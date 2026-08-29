@@ -33,10 +33,10 @@ def test_standalone_leading_zero_malformed_decimals_preserve(src: str) -> None:
         ("1.5", "일쩜오"),
         ("+1.5", "플러스 일쩜오"),
         ("-1.5", "마이너스 일쩜오"),
-        ("0.8초", "영쩜팔 초"),
-        ("0.03%", "영쩜영삼 퍼센트"),
-        ("0.5배", "영쩜오 배"),
-        ("0.5명", "영쩜오 명"),
+        ("0.8초", "영쩜팔-초"),
+        ("0.03%", "영쩜영삼-퍼센트"),
+        ("0.5배", "영쩜오-배"),
+        ("0.5명", "영쩜오-명"),
     ],
 )
 def test_valid_zero_decimal_behavior_unchanged(src: str, expected: str) -> None:

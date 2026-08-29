@@ -23,7 +23,7 @@ def test_phase8_unsupported_and_literal_inputs_preserve(text: str) -> None:
     if text == "1-1-9":
         assert transform(text) == "일 일 구"
     elif text == "종로3가":
-        assert transform(text) == "종로 삼 가"
+        assert transform(text) == "종로 삼-가"
     else:
         assert transform(text) == text
 

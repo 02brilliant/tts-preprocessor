@@ -10,7 +10,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected="회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사쩜오육 유로이다",
+        expected="회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사쩜오육-유로이다",
         rule="canonical / bracket + date_time + currency",
         reason="정책 7장의 대표 복합 canonical output이다.",
         classification="canonical",
@@ -26,7 +26,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-emergency-vs-general-number",
         text="긴급번호 112는 경찰 신고 번호이고 112명은 회의실에 있다",
-        expected="긴급번호 일일이는 경찰 신고 번호이고 백십이 명은 회의실에 있다",
+        expected="긴급번호 일일이는 경찰 신고 번호이고 백십이-명은 회의실에 있다",
         rule="canonical / emergency vs number split",
         reason="같은 숫자라도 emergency context와 일반 숫자 owner가 분리되어야 한다.",
         classification="canonical",
@@ -34,7 +34,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-event-currency-prosody",
         text="그리고 12.12 사태 자료와 €1,234.56 보고서를 검토한다",
-        expected="그리고, 십이십이 사태 자료와 천이백삼십사쩜오육 유로 보고서를 검토한다",
+        expected="그리고, 십이십이 사태 자료와 천이백삼십사쩜오육-유로 보고서를 검토한다",
         rule="canonical / event + currency + prosody",
         reason="정책 canonical table의 event/currency/prosody 복합 출력이다.",
         classification="canonical",
@@ -42,7 +42,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-counter-hybrid",
         text="21명",
-        expected="스물한 명",
+        expected="스물한-명",
         rule="canonical / counter hybrid",
         reason="hybrid threshold 이하 counter는 native reading을 써야 한다.",
         classification="canonical",
@@ -50,7 +50,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-counter-hybrid-upper-bound",
         text="31명",
-        expected="서른한 명",
+        expected="서른한-명",
         rule="canonical / counter hybrid upper bound",
         reason="명 counter는 1~39에서 native/hybrid reading을 사용한다.",
         classification="canonical",
@@ -58,7 +58,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-range-with-unit",
         text="3~8cm",
-        expected="삼에서 팔 센티미터",
+        expected="삼에서 팔-센티미터",
         rule="canonical / final_range",
         reason="range owner는 unit residue 없이 full-consume 해야 한다.",
         classification="canonical",
@@ -98,7 +98,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-special-unit",
         text="45㎡",
-        expected="사십오 제곱미터",
+        expected="사십오-제곱미터",
         rule="canonical / special unit",
         reason="registered special unit inventory의 exact canonical output이다.",
         classification="canonical",

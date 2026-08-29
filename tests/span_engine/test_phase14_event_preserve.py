@@ -42,7 +42,7 @@ def test_one_digit_right_block_event_now_normalizes(text: str, expected: str) ->
         ("3.14", "삼쩜일사"),
         ("1.2.3", "1.2.3"),  # Multiple dots not handled by decimal
         ("12.12abc", "12.12abc"),
-        ("12.12 kg", "십이쩜일이 킬로그램"),
+        ("12.12 kg", "십이쩜일이-킬로그램"),
     ],
 )
 def test_ambiguous_or_unsupported_dotted_event_behavior(text: str, expected: str) -> None:

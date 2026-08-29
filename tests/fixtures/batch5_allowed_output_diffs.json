@@ -11,7 +11,7 @@
     {
       "decision_id": "currency-negative-form-not-supported",
       "input": "$-10",
-      "expected": "마이너스 십 달러",
+      "expected": "마이너스 십-달러",
       "owner_contract": "currency symbol prefix accepts a signed decimal-aware numeric amount"
     },
     {

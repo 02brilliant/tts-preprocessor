@@ -29,7 +29,7 @@ def test_multiline_smart_quote_preserves_inside_but_transforms_outside():
     assert "The temperature is 25℃.\n\nResult: pH 7.4 was maintained" in out
     assert "Result: pH 7.4 was maintained for 3 hours." in out
     assert "이십오도" in out
-    assert "이십오쩜구구 달러" in out
+    assert "이십오쩜구구-달러" in out
 
 
 def test_inline_backtick_quoted_english_preserve():
@@ -72,7 +72,7 @@ def test_markdown_code_fence_preserve_but_outside_transform():
     assert "``` 하지만 본문" in out
     assert "이십오도" in out
     assert "피에이치 칠쩜사" in out
-    assert "이십오쩜구구 달러" in out
+    assert "이십오쩜구구-달러" in out
 
 
 def test_markdown_shell_fence_preserve_but_outside_transform():

@@ -224,7 +224,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-leading-zero-clock-hour",
         text="09시",
-        expected="아홉 시",
+        expected="아홉-시",
         rule="suffix clock / leading-zero time override",
         reason="The attached time owner removes hour leading zeros, applies the 0..24 clock-hour range, and emits canonical clock spacing.",
         classification="override",
@@ -232,7 +232,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-leading-zero-clock-hour-minute",
         text="07시 05분",
-        expected="일곱 시 오분",
+        expected="일곱-시 오분",
         rule="suffix clock / leading-zero time override",
         reason="The time owner normalizes the hour and minute numeric cores while preserving the existing suffix-clock reading rules.",
         classification="override",
@@ -240,7 +240,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-zero-clock-hour",
         text="00시",
-        expected="영 시",
+        expected="영-시",
         rule="suffix clock / zero hour",
         reason="An attached zero-valued clock hour uses the registered clock-hour owner and reads 영 시.",
         classification="override",
@@ -376,7 +376,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-suffix-clock-afternoon-spacing",
         text="오후 2시 본회의",
-        expected="오후 두 시 본회의",
+        expected="오후 두-시 본회의",
         rule="suffix clock / generated spacing",
         reason="Afternoon context licenses native hour reading while canonical generated spacing remains before the original 시 marker.",
         classification="override",
@@ -384,7 +384,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-suffix-clock-night-particle-spacing",
         text="오늘 밤 11시부터",
-        expected="오늘 밤 열한 시부터",
+        expected="오늘 밤 열한-시부터",
         rule="suffix clock / generated spacing + particle",
         reason="Night context licenses native hour reading; a following particle does not remove canonical spacing before the original 시 marker.",
         classification="override",

@@ -5,7 +5,7 @@
     {
       "decision_id": "adversarial-protected-two-block-hyphen",
       "input": "12-15장",
-      "expected": "십이에서 십오 장",
+      "expected": "십이에서 십오-장",
       "owner_contract": "an attached or one-space registered 장 suffix licenses the restricted hyphen range owner; bare two-block hyphens remain preserve"
     },
     {

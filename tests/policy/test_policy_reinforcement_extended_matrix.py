@@ -224,7 +224,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-unit-kg-math",
         text="3∼8kg",
-        expected="삼에서 팔 킬로그램",
+        expected="삼에서 팔-킬로그램",
         rule="policy / unicode tilde range extended",
         reason="Unicode tilde normalization must work for additional basic units, not just cm.",
         classification="range",
@@ -232,7 +232,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-unit-kg-fullwidth",
         text="3～8kg",
-        expected="삼에서 팔 킬로그램",
+        expected="삼에서 팔-킬로그램",
         rule="policy / unicode tilde range extended",
         reason="Fullwidth tilde normalization must work for additional basic units, not just cm.",
         classification="range",
@@ -240,7 +240,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-ascii",
         text="1~3명",
-        expected="일에서 삼 명",
+        expected="일에서 삼-명",
         rule="policy / unicode tilde range extended",
         reason="Range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",
@@ -248,7 +248,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-math",
         text="1∼3명",
-        expected="일에서 삼 명",
+        expected="일에서 삼-명",
         rule="policy / unicode tilde range extended",
         reason="Unicode range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",
@@ -256,7 +256,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-fullwidth",
         text="1～3명",
-        expected="일에서 삼 명",
+        expected="일에서 삼-명",
         rule="policy / unicode tilde range extended",
         reason="Fullwidth range operands use the canonical sino reading before the shared counter suffix.",
         classification="range",

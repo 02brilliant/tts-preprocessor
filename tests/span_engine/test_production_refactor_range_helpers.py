@@ -36,7 +36,7 @@ def test_p2_numeric_sign_rendering_characterization(
     [
         (
             "-2.3~+4.5kg이다",
-            "마이너스 이쩜삼에서 플러스 사쩜오 킬로그램이다",
+            "마이너스 이쩜삼에서 플러스 사쩜오-킬로그램이다",
             "range_with_unit",
             "RANGE_WITH_UNIT_SURFACE",
             "numeric_delimited_hyphen_range_with_unit_gate",

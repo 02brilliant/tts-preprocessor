@@ -38,6 +38,7 @@ from engine.span_engine.units import (
     range_compatible_units_by_length,
     unit_allows_space_before,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 RANGE_SEPARATORS = frozenset({"~", "∼", "～", "〜"})
 DATE_TIME_SHARED_SUFFIXES = frozenset({"년", "월", "일", "시", "분", "초"})
@@ -122,6 +123,7 @@ _PREV_BLOCKERS = frozenset("+-.,~:/")
 _PREV_SYMBOL_BLOCKERS = frozenset("$€£¥₩")
 _SENTENCE_PUNCTUATION = frozenset({".", ",", "!", "?", ";", ":", "…", "。", "，", "！", "？"})
 _BROAD_RANGE_SPACED_TAILS = ("숫자범위", "범위", "구간")
+_BROAD_RANGE_NUMERIC_SUFFIXES = ("차원", "차량", "차로", "위권", "위자", "차", "위")
 _BROAD_RANGE_ATTACHED_TAILS = (
     "였고",
     "였지만",
@@ -371,7 +373,7 @@ def scan_paired_large_unit_range_with_unit_candidates(
                         "left_has_decimal": left.has_decimal,
                         "right_has_decimal": right.has_decimal,
                         "separator_span": SourceSpan(left.end, right_start),
-                        "reading": f"{left.reading}에서 {right.reading} {unit_reading}",
+                        "reading": f"{left.reading}에서 {right.reading}{SPOKEN_NUMERIC_BOUNDARY}{unit_reading}",
                     },
                 )
             )
@@ -852,7 +854,7 @@ def _hyphen_korean_suffix_candidate(
             else _range_reading(
                 left, right, range_zero_style=is_tilde_like(delimiter)
             )
-            + " "
+            + SPOKEN_NUMERIC_BOUNDARY
         )
         return SurfaceCandidate(
             core_span=SourceSpan(left_start, core_end),
@@ -889,7 +891,9 @@ def _basic_tilde_numeric_delimited_candidate(
     if not _valid_after_basic_tilde_range(raw_text, span):
         return None
     reading = _range_reading(left, right, range_zero_style=True)
-    if _needs_hangul_tail_space(raw_text, right_end, _BROAD_RANGE_ATTACHED_TAILS):
+    if raw_text.startswith(_BROAD_RANGE_NUMERIC_SUFFIXES, right_end):
+        reading += SPOKEN_NUMERIC_BOUNDARY
+    elif _needs_hangul_tail_space(raw_text, right_end, _BROAD_RANGE_ATTACHED_TAILS):
         reading += " "
     return SurfaceCandidate(
         core_span=span,
@@ -931,7 +935,7 @@ def _korean_suffix_candidate(
             and suffix not in DURATION_SHARED_SUFFIXES
             and suffix not in PAGE_DOCUMENT_SUFFIXES
         ):
-            reading += " "
+            reading += SPOKEN_NUMERIC_BOUNDARY
         return SurfaceCandidate(
             core_span=core_span,
             full_span=SourceSpan(left_start, suffix_span.end),
@@ -1071,7 +1075,10 @@ def _compact_large_unit_suffix_candidate(
                         "unit_reading": unit_reading,
                         "unit_start": unit_start,
                         "prefix_reading": _range_reading(left, right),
-                        "reading": _range_reading(left, right) + suffix + " " + unit_reading,
+                        "reading": _range_reading(left, right)
+                        + suffix
+                        + SPOKEN_NUMERIC_BOUNDARY
+                        + unit_reading,
                     },
                 )
         if not _valid_after_korean_suffix(raw_text, suffix_span):
@@ -1105,7 +1112,7 @@ def _range_reading(
         f"에서 {_numeric_delimited_or_numeric_like_reading(right, range_zero_style=range_zero_style)}"
     )
     if unit_reading is not None:
-        reading += " " + unit_reading
+        reading += SPOKEN_NUMERIC_BOUNDARY + unit_reading
     return reading
 
 
@@ -1135,7 +1142,10 @@ def _range_shared_suffix_reading(left: str, right: str, suffix: str) -> str:
 def _range_duration_suffix_reading(left: str, right: str, suffix: str) -> str:
     left_reading = _duration_hour_prefix_reading(left)
     right_reading = _duration_hour_prefix_reading(right)
-    return f"{left_reading} {suffix}에서 {right_reading} "
+    return (
+        f"{left_reading}{SPOKEN_NUMERIC_BOUNDARY}{suffix}에서 "
+        f"{right_reading}{SPOKEN_NUMERIC_BOUNDARY}"
+    )
 
 
 def _gaji_range_reading(left: str, right: str) -> str:
@@ -1165,7 +1175,11 @@ def _numeric_like_shared_suffix_part(
         hour = int(raw)
         reading = clock_hour_reading(hour)
         if reading is not None:
-            return f"{reading} 시" if include_suffix else f"{reading} "
+            return (
+                f"{reading}{SPOKEN_NUMERIC_BOUNDARY}시"
+                if include_suffix
+                else f"{reading}{SPOKEN_NUMERIC_BOUNDARY}"
+            )
     reading = _numeric_like_reading(raw)
     return f"{reading}{suffix}" if include_suffix else reading
 

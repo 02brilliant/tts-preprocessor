@@ -37,7 +37,7 @@ def test_broadcast_time_title_core_marker_accepts_complete_hangul_tail(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("24시리즈", "이십사 시리즈"),
+        ("24시리즈", "이십사-시리즈"),
         ("24시스템", "이십사 시스템"),
     ],
 )

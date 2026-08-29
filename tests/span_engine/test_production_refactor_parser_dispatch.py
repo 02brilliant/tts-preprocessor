@@ -148,7 +148,7 @@ def test_large_unit_core_surface_provenance_contract() -> None:
 def test_multiplier_remains_full_span_policy_distinct_control() -> None:
     output = transform_with_trace("3배")
 
-    assert output.normalized_text == "세 배"
+    assert output.normalized_text == "세-배"
     assert _claim_snapshot(output) == [
         (
             "multiplier",
@@ -160,10 +160,10 @@ def test_multiplier_remains_full_span_policy_distinct_control() -> None:
         )
     ]
     assert _parser_snapshot(output) == [
-        ("multiplier", "MULTIPLIER_SURFACE", "success", "세 배", 0, 2)
+        ("multiplier", "MULTIPLIER_SURFACE", "success", "세-배", 0, 2)
     ]
     assert _piece_snapshot(output) == [
-        ("세 ", "GENERATED_READING", "multiplier", 0, 1),
+        ("세-", "GENERATED_READING", "multiplier", 0, 1),
         ("배", "ORIGINAL_KOREAN", "multiplier", 1, 2),
     ]
 
@@ -172,12 +172,12 @@ def test_common_generated_surface_and_preserve_no_surface_contract() -> None:
     generated = transform_with_trace("3 kg")
     preserved = transform_with_trace("pH7.4test")
 
-    assert generated.normalized_text == "삼 킬로그램"
+    assert generated.normalized_text == "삼-킬로그램"
     assert _parser_snapshot(generated) == [
-        ("simple_unit", "SIMPLE_UNIT_SURFACE", "success", "삼 킬로그램", 0, 4)
+        ("simple_unit", "SIMPLE_UNIT_SURFACE", "success", "삼-킬로그램", 0, 4)
     ]
     assert _piece_snapshot(generated) == [
-        ("삼 킬로그램", "GENERATED_READING", "simple_unit", 0, 4)
+        ("삼-킬로그램", "GENERATED_READING", "simple_unit", 0, 4)
     ]
 
     assert preserved.normalized_text == "pH7.4test"

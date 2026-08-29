@@ -22,7 +22,7 @@ def test_large_unit_atomic_provenance_and_validation() -> None:
 def test_large_unit_registered_counter_provenance_and_validation() -> None:
     output = transform_with_trace("3만개")
 
-    assert output.normalized_text == "삼만 개"
+    assert output.normalized_text == "삼만-개"
     assert any(
         piece.owner == "counter_noun"
         and piece.provenance == "GENERATED_READING"

@@ -43,7 +43,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-currency-eur-comma-decimal",
         text="€1,234.56",
-        expected="천이백삼십사쩜오육 유로",
+        expected="천이백삼십사쩜오육-유로",
         rule="regression / atomic currency parse",
         reason="The full EUR comma-decimal span must normalize atomically instead of partially consuming only the number or code.",
         classification="override",
@@ -52,7 +52,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-suffix-clock-afternoon-spacing",
         text="오후 2시 출발",
-        expected="오후 두 시 출발",
+        expected="오후 두-시 출발",
         rule="regression / suffix-clock generated spacing",
         reason="An 오후 H시 form uses the native hour reading and retains canonical generated spacing before the original 시 marker.",
         classification="override",
@@ -117,7 +117,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-leading-zero-time-override",
         text="09시",
-        expected="아홉 시",
+        expected="아홉-시",
         rule="regression / suffix clock override",
         reason="The suffix-clock owner removes leading zeros before applying its existing clock-hour reading.",
         classification="override",

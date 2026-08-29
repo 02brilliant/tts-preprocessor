@@ -10,6 +10,24 @@ The goal is to keep common standalone numeric parsing separate from
 owner-attached numeric parsing. Owner-specific exceptions must full-claim their
 surface or preserve it; they must not rely on broad internal digit fallback.
 
+### Canonical spoken numeric boundary
+
+An owner-confirmed boundary between a generated numeric reading and its spoken
+unit, counter, or ordinal surface is rendered with ASCII U+002D (`-`) and no
+surrounding whitespace. Attached and one-ASCII-space inputs canonicalize to the
+same output: `5kg`/`5 kg -> 오-킬로그램`, `3명`/`3 명 -> 세-명`,
+`1번째 -> 첫-번째`, and `제7번째 -> 제-일곱-번째`. Decimal and large-number
+cores use the same boundary (`1.5kg -> 일쩜오-킬로그램`,
+`3만kg -> 삼만-킬로그램`). This boundary is part of the generated, locked
+reading passed to LLM stages.
+
+The rule does not replace spaces internal to number readings, sign/range
+grammar, or date structures. Registered attached exceptions keep their shape,
+including `1째 -> 첫째`, `2025년 -> 이천이십오년`, `25℃ -> 이십오도`,
+`1분기 -> 일분기`, and `5분15초 -> 오분 십오초`. Any older output example in
+historical audit prose that differs only by this generated boundary is
+superseded by this section.
+
 Contextual number-unit owners are an owner-attached exception. A supported
 positive integer or valid decimal plus an approved exact anchor is confirmed
 through the existing number/counter renderer. Decimal numeric cores always use

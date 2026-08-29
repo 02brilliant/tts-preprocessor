@@ -12,6 +12,7 @@ from engine.span_engine.signed_numeric import (
     render_signed_numeric,
     parse_signed_numeric_core,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 LARGE_UNIT_ATOMIC_INVENTORY = frozenset({"만", "억", "조", "경"})
 _AMBIGUOUS_SUFFIX_PREFIXES = ("개",)
@@ -278,7 +279,7 @@ def _surface_candidate(parsed: _LargeUnitParse, tail: str) -> SurfaceCandidate:
     insert_tail_space = _needs_hangul_tail_spacing(tail)
     reading = parsed.reading
     if parsed.has_decimal and not parsed.reading_includes_suffix:
-        reading = f"{reading} "
+        reading = f"{reading}{SPOKEN_NUMERIC_BOUNDARY}"
     return SurfaceCandidate(
         core_span=parsed.core_span,
         full_span=parsed.core_span,
@@ -390,7 +391,7 @@ def parse_large_unit_quantity_core_at(
     if parsed.reading_includes_suffix:
         reading = parsed.reading
     elif parsed.has_decimal:
-        reading = f"{numeric_reading} {suffix}"
+        reading = f"{numeric_reading}{SPOKEN_NUMERIC_BOUNDARY}{suffix}"
     else:
         reading = f"{numeric_reading}{suffix}"
     return LargeUnitQuantityCoreParse(

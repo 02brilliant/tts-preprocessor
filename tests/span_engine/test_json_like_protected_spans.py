@@ -34,7 +34,7 @@ def test_json_like_string_values_preserve_source_and_production(text: str):
 
 def test_json_like_outside_text_still_transforms():
     text = '{"price":"KRW1000"} 밖의 KRW1000'
-    expected = '{"price":"KRW1000"} 밖의 천 원'
+    expected = '{"price":"KRW1000"} 밖의 천-원'
 
     assert transform(text) == expected
     assert production_source_transform(text) == expected
@@ -51,7 +51,7 @@ def test_json_like_integrated_protected_contexts_source_and_production():
         "보호 구간에는 `KRW1000`, `2천8백28억`, "
         '{"price":"1,000원"}, {"range":"1~2테스트"}, '
         "/path/2,345억/log, https://example.com?q=KRW1000이 있고, "
-        "문장 밖의 천 원, 이천팔백이십팔억, 일에서 이 테스트는 처리되어야 한다."
+        "문장 밖의 천-원, 이천팔백이십팔억, 일에서 이 테스트는 처리되어야 한다."
     )
 
     assert transform(text) == expected
@@ -60,7 +60,7 @@ def test_json_like_integrated_protected_contexts_source_and_production():
 
 def test_non_json_quote_policy_is_not_expanded():
     text = '그는 "KRW1000"이라고 말했다.'
-    expected = '그는 "천 원"이라고 말했다.'
+    expected = '그는 "천-원"이라고 말했다.'
 
     assert transform(text) == expected
     assert production_source_transform(text) == expected

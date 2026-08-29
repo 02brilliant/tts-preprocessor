@@ -54,7 +54,7 @@ def test_emergency_fallback_trace_debug_export() -> None:
     debug = output_to_debug_dict(output)
 
     json.dumps(debug, ensure_ascii=False)
-    assert output.normalized_text == "백십이 명"
+    assert output.normalized_text == "백십이-명"
     assert not any(claim.owner == "emergency" for claim in output.trace.claim_logs)
     assert any(claim.owner == "counter_noun" for claim in output.trace.claim_logs)
     assert not any(claim.owner == "number" for claim in output.trace.claim_logs)

@@ -84,6 +84,7 @@ from engine.span_engine.units import (
     parse_korean_numeric_unit_candidate,
     parse_unit_candidate,
 )
+from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 
 
 _SURFACE_TRACE_METADATA_KEYS = (
@@ -350,7 +351,7 @@ def _make_compact_large_unit_range_with_unit_surface(
             metadata={"surface_type": candidate.surface_type},
         ),
         RenderPiece(
-            text=" " + unit_reading,
+            text=SPOKEN_NUMERIC_BOUNDARY + unit_reading,
             provenance="GENERATED_READING",
             source_span=SourceSpan(unit_start, candidate.core_span.end),
             owner=candidate.owner,
@@ -409,8 +410,8 @@ def _make_paired_large_unit_range_with_unit_surface(
     if left_has_decimal:
         pieces.append(
             RenderPiece(
-                text=" ",
-                provenance="GENERATED_READING",
+                text=SPOKEN_NUMERIC_BOUNDARY,
+                provenance="GENERATED_PUNCT",
                 source_span=left_suffix_span,
                 owner=candidate.owner,
                 metadata={"surface_type": candidate.surface_type},
@@ -444,8 +445,8 @@ def _make_paired_large_unit_range_with_unit_surface(
     if right_has_decimal:
         pieces.append(
             RenderPiece(
-                text=" ",
-                provenance="GENERATED_READING",
+                text=SPOKEN_NUMERIC_BOUNDARY,
+                provenance="GENERATED_PUNCT",
                 source_span=right_suffix_span,
                 owner=candidate.owner,
                 metadata={"surface_type": candidate.surface_type},
@@ -461,7 +462,7 @@ def _make_paired_large_unit_range_with_unit_surface(
             metadata={"surface_type": candidate.surface_type},
         ),
         RenderPiece(
-            text=" " + unit_reading,
+            text=SPOKEN_NUMERIC_BOUNDARY + unit_reading,
             provenance="GENERATED_READING",
             source_span=SourceSpan(unit_start, candidate.core_span.end),
             owner=candidate.owner,

@@ -23,7 +23,7 @@ def test_unsupported_currency_patterns_preserve(text: str) -> None:
 
 
 def test_registered_comma_currency_symbol_transforms() -> None:
-    assert transform("$1,200") == "천이백 달러"
+    assert transform("$1,200") == "천이백-달러"
 
 
 @pytest.mark.parametrize(
@@ -50,9 +50,9 @@ def test_single_letter_alnum_code_updates_former_unit_preserve_case() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("50 kg", "오십 킬로그램"),
-        ("1,000kg", "천 킬로그램"),
-        ("3.5kg", "삼쩜오 킬로그램"),
+        ("50 kg", "오십-킬로그램"),
+        ("1,000kg", "천-킬로그램"),
+        ("3.5kg", "삼쩜오-킬로그램"),
     ],
 )
 def test_phase36b_space_and_comma_unit_forms_now_transform(

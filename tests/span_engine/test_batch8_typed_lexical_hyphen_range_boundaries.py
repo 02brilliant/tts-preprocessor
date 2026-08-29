@@ -8,7 +8,7 @@ from engine.span_engine.transform import transform_with_trace
 
 @pytest.mark.parametrize(
     ("text", "expected"),
-    [("12-15장", "십이에서 십오 장"), ("12-15 장", "십이에서 십오 장")],
+    [("12-15장", "십이에서 십오-장"), ("12-15 장", "십이에서 십오-장")],
 )
 def test_batch8_registered_jang_suffix_licenses_restricted_hyphen_range(
     text: str, expected: str

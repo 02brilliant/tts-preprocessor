@@ -273,7 +273,7 @@ def test_finance_index_numeric_suffix_respects_protected_contexts(
         ("`Wi-Fi`", "`Wi-Fi`"),
         ("[GUI]", "GUI"),
         ("[Wi-Fi]", "Wi-Fi"),
-        ("5GHz 대역", "오 기가헤르츠 대역"),
+        ("5GHz 대역", "오-기가헤르츠 대역"),
         ("USB300", "USB300"),
         ("APIv2", "APIv2"),
         ("JSONPath", "JSONPath"),

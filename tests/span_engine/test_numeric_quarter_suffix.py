@@ -15,7 +15,7 @@ from engine.span_engine import SourceSpan, transform_with_trace
         ("10분기", "십분기"),
         ("2025년 1분기", "이천이십오년 일분기"),
         ("1 분기", "일 분기"),
-        ("제1분기", "제 일분기"),
+        ("제1분기", "제-일분기"),
     ),
 )
 def test_registered_quarter_suffix_reads_only_the_numeric_core(
@@ -30,9 +30,9 @@ def test_registered_quarter_suffix_reads_only_the_numeric_core(
     (
         ("1분기부터 4분기까지", "일분기부터 사분기까지"),
         ("실적은 2분기였다.", "실적은 이분기였다."),
-        ("1.5분기", "일쩜오 분기"),
-        ("+1.5분기", "플러스 일쩜오 분기"),
-        ("-1.5분기", "마이너스 일쩜오 분기"),
+        ("1.5분기", "일쩜오-분기"),
+        ("+1.5분기", "플러스 일쩜오-분기"),
+        ("-1.5분기", "마이너스 일쩜오-분기"),
         ("+1분기", "플러스 일분기"),
         ("-1분기", "마이너스 일분기"),
     ),
@@ -118,8 +118,8 @@ def test_quarter_suffix_debug_contract_has_no_contextual_decision_log() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     (
-        ("1~4분기", "일에서 사 분기"),
-        ("1-4분기", "일에서 사 분기"),
+        ("1~4분기", "일에서 사-분기"),
+        ("1-4분기", "일에서 사-분기"),
     ),
 )
 def test_quarter_range_uses_general_range_policy_not_date_shared_suffix(

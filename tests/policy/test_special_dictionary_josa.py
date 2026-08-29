@@ -36,7 +36,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="special-emergency-suffixed-number-is-general-number",
         text="112명",
-        expected="백십이 명",
+        expected="백십이-명",
         rule="emergency number / disallowed suffix",
         reason="명 is not an allowed emergency tail, so policy requires general-number fallback.",
     ),
@@ -106,7 +106,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="dictionary-currency-wins-over-acronym-fallback",
         text="USD 100",
-        expected="백 달러",
+        expected="백-달러",
         rule="currency / precedence over acronym fallback",
         reason="A supported currency code must normalize as currency before any generic acronym fallback can run.",
     ),

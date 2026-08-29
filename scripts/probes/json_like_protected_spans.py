@@ -32,7 +32,7 @@ CASES = [
     ProbeCase(
         "outside_json_transforms",
         '{"price":"KRW1000"} 밖의 KRW1000',
-        '{"price":"KRW1000"} 밖의 천 원',
+        '{"price":"KRW1000"} 밖의 천-원',
     ),
     ProbeCase(
         "integrated_sentence",
@@ -46,13 +46,13 @@ CASES = [
             "보호 구간에는 `KRW1000`, `2천8백28억`, "
             '{"price":"1,000원"}, {"range":"1~2테스트"}, '
             "/path/2,345억/log, https://example.com?q=KRW1000이 있고, "
-            "문장 밖의 천 원, 이천팔백이십팔억, 일에서 이 테스트는 처리되어야 한다."
+            "문장 밖의 천-원, 이천팔백이십팔억, 일에서 이 테스트는 처리되어야 한다."
         ),
     ),
     ProbeCase(
         "non_json_quote_policy_unchanged",
         '그는 "KRW1000"이라고 말했다.',
-        '그는 "천 원"이라고 말했다.',
+        '그는 "천-원"이라고 말했다.',
     ),
 ]
 
