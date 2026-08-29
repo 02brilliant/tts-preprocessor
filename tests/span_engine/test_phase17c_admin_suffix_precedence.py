@@ -6,8 +6,8 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 
 
 def test_phase17c_admin_suffix_precedence_smoke() -> None:
-    assert transform("종로3가") == "종로삼가"
-    assert transform("역삼동 12번지") == "역삼동 십이번지"
+    assert transform("종로3가") == "종로 삼 가"
+    assert transform("역삼동 12번지") == "역삼동 십이 번지"
     assert transform("3시") == "세 시"
     assert transform("21명") == "스물한 명"
     assert transform("21호") == "21호"

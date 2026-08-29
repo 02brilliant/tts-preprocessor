@@ -35,7 +35,7 @@ def test_phase18b_leading_connector_comma_expected(
         ("그리고 90km/h입니다", "그리고, 시속 구십 킬로미터입니다"),
         ("그리고 123-456-7890입니다", "그리고, 일이삼 사오육 칠팔구공입니다"),
         ("그리고 2025-01-03입니다", "그리고, 이천이십오년 일월 삼일입니다"),
-        ("그리고 종로3가입니다", "그리고, 종로삼가입니다"),
+        ("그리고 종로3가입니다", "그리고, 종로 삼 가입니다"),
     ],
 )
 def test_phase18b_leading_connector_before_generated_surface_expected(

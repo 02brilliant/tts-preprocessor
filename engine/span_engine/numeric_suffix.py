@@ -295,10 +295,8 @@ def _suffix_start_for_match(
     suffix: str,
     ordinal_prefix_span: SourceSpan | None,
 ) -> int:
-    if ordinal_prefix_span is not None and suffix in SOURCE_SPACED_PREFIXED_SUFFIXES:
+    if ordinal_prefix_span is not None:
         return _consume_optional_ascii_space(raw_text, number_end)
-    if suffix in PREFIXED_ONLY_SUFFIXES and ordinal_prefix_span is not None:
-        return number_end
     return _consume_optional_ascii_space(raw_text, number_end)
 
 

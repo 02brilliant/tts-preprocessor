@@ -68,6 +68,7 @@ from engine.span_engine.numeric_dae import (
 from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.numeric_suffix import parse_numeric_suffix_candidate
 from engine.span_engine.ordinal import parse_ordinal_candidate
+from engine.span_engine.ordinal_jje import parse_ordinal_jje_candidate
 from engine.span_engine.parenthesized_hangul_alias import (
     parse_parenthesized_hangul_alias_candidate,
 )
@@ -219,6 +220,8 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_numeric_suffix_candidate(raw_text, candidate)
     elif candidate.owner == "ordinal":
         return parse_ordinal_candidate(raw_text, candidate)
+    elif candidate.owner == "ordinal_jje":
+        return parse_ordinal_jje_candidate(raw_text, candidate)
     elif candidate.owner == "contextual_number_unit":
         return parse_contextual_number_unit_candidate(raw_text, candidate)
     elif candidate.owner == "counter_noun":

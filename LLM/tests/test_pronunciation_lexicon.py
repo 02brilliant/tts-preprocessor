@@ -25,7 +25,19 @@ STAGE4_EXACT_CONTRASTS = (
 def test_stage_four_registry_contains_only_fixed_entries() -> None:
     surfaces = {entry.surface for entry in entries_for_stage(4)}
     assert {"색연필", "문고리", "생산량", "입원료", "백분율"} <= surfaces
+    assert {
+        "한여름",
+        "직행열차",
+        "영업용",
+        "서울역",
+        "휘발유",
+        "눈동자",
+        "신바람",
+        "강가",
+        "강줄기",
+    } <= surfaces
     assert "대가" not in surfaces
+    assert "인기" not in surfaces
 
 
 def test_fixed_entries_are_not_llm_mutation_candidates_after_overlay_split() -> None:

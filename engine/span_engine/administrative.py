@@ -128,6 +128,8 @@ def _build_candidate(
         return None
     if is_unsafe_admin_tail(raw_text[suffix_end:]):
         return None
+    number_reading = number_to_korean_under_10000(int(number))
+    generated_prefix = "" if requires_space else " "
     return SurfaceCandidate(
         core_span=SourceSpan(number_start, number_end),
         full_span=full_span,
@@ -135,7 +137,13 @@ def _build_candidate(
         surface_type="ADMINISTRATIVE_SUFFIX_SURFACE",
         suffix_spans=[SourceSpan(number_end, suffix_end)],
         reason="administrative_suffix_anchor_gate",
-        metadata={"anchor": anchor, "suffix": suffix, "reading": number_to_korean_under_10000(int(number))},
+        metadata={
+            "anchor": anchor,
+            "suffix": suffix,
+            "reading": f"{generated_prefix}{number_reading} ",
+            "generated_prefix": generated_prefix,
+            "generated_suffix_separator": " ",
+        },
     )
 
 

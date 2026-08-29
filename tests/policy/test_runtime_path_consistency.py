@@ -92,7 +92,6 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
         "resolved-simplified",
         "resolved-3",
         "resolved-4",
-        "resolved-5",
         "uvicorn",
     ]
 

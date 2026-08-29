@@ -40,6 +40,15 @@ _STAGE4_ENTRIES = (
     PronunciationEntry("입원료", "이붠뇨", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
     PronunciationEntry("구근류", "구근뉴", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
     PronunciationEntry("백분율", "백뿐뉼", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("한여름", "한녀름", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("직행열차", "직행녈차", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("영업용", "영업뇽", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("서울역", "서울력", "n_insertion", 4, "NIKL Standard Pronunciation Rules 29 and 20"),
+    PronunciationEntry("휘발유", "휘발류", "n_insertion", 4, "NIKL Standard Pronunciation Rules 29 and 20"),
+    PronunciationEntry("눈동자", "눈똥자", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("신바람", "신빠람", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("강가", "강까", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("강줄기", "강쭐기", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
 )
 
 PRONUNCIATION_ENTRIES = _STAGE4_ENTRIES

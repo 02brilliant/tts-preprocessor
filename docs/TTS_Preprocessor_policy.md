@@ -195,12 +195,17 @@ LLM OFF 기본 출력에서도 `18분 -> 18분`처럼 raw 숫자가 남을 수 �
 
 `번`의 identifier exact allowlist는 `버스`, `출구`, `문제`, `문항`,
 `질문`, `후보`, `좌석`, `객실`, `창구`, `게이트`, `트랙`, `채널`,
-`노선`, `테이블`, `파일`, `항목`이다. occurrence는 앞 marker
+`노선`, `테이블`, `파일`, `항목`, `선택지`, `버튼`, `메뉴`, `승강장`,
+`선수`, `타자`, `주자`, `국도`이다. `방`과 `차량`은 번호/횟수 의미를
+규칙만으로 확정하지 않고 LLM 문맥 판단 대상으로 유보한다. occurrence는 앞 marker
 `총`/`모두`, 직접 tail `씩`/`이나`, 또는 exact action
 `반복`, `재시도`, `방문`, `시도`, `호출`, `클릭`, `재생`, `확인`,
 `우회`에서만
-확정한다. 고정 주소 suffix `N번지`는 기존 붙임형 Sino canonical로
-확정한다.
+확정한다. 고정 ID suffix `번지·번길·번선·번대·번가`는 한자어 수사와
+suffix 사이에 생성 공백 한 칸을 두고 확정한다. 입력 공백 유무와 무관하게
+`5번지`, `5 번지`는 모두 `오 번지`다. 고정 suffix 뒤 ASCII tail은 전체
+표면을 보존한다. 도로명 안의 `시민로5번길`처럼 숫자 왼쪽이 한글이어도
+고정 suffix 전체가 안전하게 확인되면 `시민로 오 번길`로 읽는다.
 
 ```text
 3번 버스 -> 삼번 버스
@@ -230,6 +235,107 @@ A제7번째 -> A제7번째
 1–4는 `첫·두·세·네`, 5–39는 native, 40+는 Sino, 소수는 Sino decimal이다.
 free-standing `제`는 prefixed ordinal과 같이 `제` 뒤에 generated space를 둔다.
 `제` 앞에 글자가 붙은 `A제7번째`는 보존한다.
+
+### `N째`와 `제N째`
+
+`N째`는 `ordinal_jje` owner가 처리한다. 스캔 우선순위는 `N번째` 뒤,
+generic `numeric_suffix`와 `number` 앞이다. 1–4는 각각
+`첫째·둘째·셋째·넷째`, 5–39는 native 수사와 `째`를 붙이고, 40 이상은
+Sino 수사와 `째`를 붙인다. 숫자와 `째`까지만 claim하고 뒤의 조사·한글·
+ASCII 표면은 원문 그대로 둔다.
+
+```text
+1째 -> 첫째
+2째 -> 둘째
+12째 -> 열두째
+21째 -> 스물한째
+40째 -> 사십째
+7째만 -> 일곱째만
+제12째 -> 제 열두째
+```
+
+`0째`, leading-zero `01째`, decimal `2.5째`, free-standing이 아닌
+`A제12째`는 원문 보존한다. `숫자~숫자째`는 range owner가 전체 숫자 범위를
+먼저 점유하고 양 끝에 같은 `ordinal_jje` 읽기를 적용한다.
+
+```text
+1~3째 -> 첫째에서 셋째
+2~12째 -> 둘째에서 열두째
+39~40째 -> 서른아홉째에서 사십째
+```
+
+`N~N번째`도 양 끝에 단일 `N번째` 정책을 각각 적용한다.
+
+```text
+1~3번째 -> 첫 번째에서 세 번째
+2~12번째 -> 두 번째에서 열두 번째
+39~40번째 -> 서른아홉 번째에서 사십 번째
+```
+
+zero·leading-zero·`째`의 decimal endpoint처럼 단일 ordinal 정책에서 허용되지
+않는 endpoint가 있으면 전체 range를 보존한다. `제1~3째`, `제1~3번째` 같은
+prefixed range는 별도 승인 범위가 아니므로 `제N`만 부분 변환하지 않고 전체를
+보존한다.
+
+### 고정 숫자 suffix와 행정 주소 spacing
+
+고정 ID suffix `번지·번길·번선·번대·번가`는 `contextual_number_unit`
+owner가 숫자와 suffix를 full consume하고 `Sino + ASCII 공백 + 원문 suffix`
+형태로 렌더한다. 행정 anchor `종로+N가`, `역삼동 N번지`도 같은 공백
+canonical을 사용한다.
+
+```text
+274번지 -> 이백칠십사 번지
+5번길 -> 오 번길
+100번대 -> 백 번대
+시민로5번길 -> 시민로 오 번길
+종로3가 -> 종로 삼 가
+역삼동 12번지 -> 역삼동 십이 번지
+```
+
+### bare `N차`·`N위`와 고정 복합 suffix
+
+bare `N차`와 `N위`는 문맥과 무관하게 한자어로 읽고 단위 앞에 공백 한
+칸을 둔다. 고정 복합 `차원·차량·차로·위권·위자`도 동일하게
+`Sino + 공백 + 원문 복합 suffix`로 읽으며 복합 suffix 뒤 조사·어미는
+원문 그대로 유지한다. owner가 숫자와 복합 suffix를 함께 claim하지 못하면
+숫자만 부분 변환하지 않는다.
+
+```text
+1차 시험 -> 일 차 시험
+1위 -> 일 위
+1위가 -> 일 위가
+3차원 -> 삼 차원
+1차량 -> 일 차량
+2차로 -> 이 차로
+1위권 -> 일 위권
+1위자 -> 일 위자
+3차원의 -> 삼 차원의
+```
+
+`N차례`는 기존 counter hybrid가 계속 우선하여 `1차례 -> 한 차례`다.
+`N등`과 `N호`의 기존 문맥 정책은 변경하지 않는다. `1~3위`는 기존 range
+canonical인 `일에서 삼 위`를 유지한다. ordinal range는 각각
+`1~3째 -> 첫째에서 셋째`, `1~3번째 -> 첫 번째에서 세 번째`로 읽는다.
+
+### prefixed `제N` suffix spacing
+
+free-standing `제`와 숫자 뒤에 등록된 prefixed suffix가 붙거나 ASCII 공백
+한 칸으로 분리되어 있으면 같은 canonical로 렌더한다. `조`만 기존 source
+spacing 정책을 유지하고 나머지 등록 suffix의 입력 공백은 출력에서 접는다.
+
+```text
+제1 회 -> 제 일회
+제 1 회 -> 제 일회
+제1회 -> 제 일회
+제1 번 -> 제 일번
+제3 문항 -> 제 삼문항
+제1 -> 제 일
+제2.5 -> 제 이쩜오
+```
+
+미등록 suffix는 기존 숫자 core 정책을 유지하고, Latin unit의 ASCII tail
+차단과 기존 `제N+Latin unit` 계약은 변경하지 않는다.
 
 `점`의 score allowlist는 `점수`, `평점`, `만점`, `득점`, `실점`,
 `감점`, `가점`, `별점`, `획득`, `기록`, `차이`, `격차`, `평균`,
@@ -3764,6 +3870,9 @@ protected literal은 claim phase 안에서 `preserve` owner와
 | 35 | compound exact unit | `1kWh` | `compound_exact_unit` |
 | 36 | special unit | `10Hz`, `45㎡` | `special_unit` |
 | 37 | simple unit | `50kg`, `3km` | `simple_unit` |
+| 37a | contextual number/unit and fixed suffix | `5번길`, `1차`, `3차원`, `1위권` | `contextual_number_unit` |
+| 37b | ordinal `N번째` | `2번째`, `제7번째` | `ordinal` |
+| 37c | ordinal `N째` | `2째`, `제12째` | `ordinal_jje` |
 | 38 | decimal registered suffix | `1.5차`, `4.5주` | `decimal_registered_suffix` |
 | 39 | numeric suffix / prefixed ordinal | `제5차`, `제 15권`, `3번` | `numeric_suffix` |
 | 39a | threshold or explicit contextual numeric `대` | `40대`, `차량 3대`, `자동차는 모두 3대` | `counter_noun`, `decimal_registered_suffix` |
@@ -5994,8 +6103,8 @@ suffix whitelist 후보:
 예:
 
 ```text
-종로3가 -> 종로삼가
-역삼동 12번지 -> 역삼동 십이번지
+종로3가 -> 종로 삼 가
+역삼동 12번지 -> 역삼동 십이 번지
 ```
 
 주의 케이스:
@@ -7391,7 +7500,7 @@ FTA은 적용됐다 -> 에프티에이는 적용됐다
 
 ```text
 유로을 입력했다 -> 유로을 입력했다
-종로3가역으로 오세요 -> 종로삼가역으로 오세요
+종로3가역으로 오세요 -> 종로 삼 가역으로 오세요
 테헤란로 8길 -> 테헤란로 팔길
 제4과 본문 읽기 -> 제 사과 본문 읽기
 3가 맞다 -> 삼가 맞다
@@ -7497,7 +7606,7 @@ span == rendered_original_piece.source_span
 FTA은 -> 에프티에이는     # Safe: 은/는 교정
 AI이 -> 에이아이이        # Safe 대상이지만 가로 교정하지 않음
 제4과 -> 제 사과           # canonical numeric suffix output
-종로3가 -> 종로삼가       # Risky: 가 보존
+종로3가 -> 종로 삼 가       # Risky: 가 보존
 ```
 
 금지:
@@ -7845,7 +7954,7 @@ Paragraph Split Threshold Table:
 - 등록 suffix 의미 부여와 Korean-eligible token 내부 일반 숫자 core 읽기는 서로 다른 처리다. 완성형 한글과 하나 이상의 유효한 ASCII 정수 block만으로 이루어진 token은 specific owner가 선점하지 않은 경우 `korean_numeric_chain`이 token 전체를 claim하고 각 숫자 block만 한자어 숫자로 읽는다.
 - `korean_numeric_chain`은 한글 literal을 rewrite하거나 자동 공백을 만들지 않는다. ASCII 영문자, compatibility jamo, `_`, `/`, URL/path/email/JSON/shell/identifier-like 구조, invalid comma/decimal 또는 부분 residue가 생기는 token은 제외한다.
 - 기존 structured 숫자 표현과의 충돌을 피하기 위해 `십/백/천/만/억/조/경`이 포함된 token 및 registered numeric suffix/counter block은 chain 자격에서 제외한다. 숫자로 시작하고 숫자 block이 하나뿐인 경우에는 `5극`, `3특`처럼 단일 비등록 완성형 한글 literal이 붙은 경우만 chain으로 처리한다. `123입니다` 같은 일반 숫자+문법 tail은 기존 `number` owner와 literal 보존 경계를 유지한다.
-- registered counter/date/unit/currency/numeric-suffix/administrative owner와 `ambiguous_numeric_dae_preserve`가 항상 우선한다. 따라서 명시 문맥의 `차량 3대 -> 차량 세 대`, bare `3대 -> 3대`, `제15권 -> 제 십오권`, `종로3가 -> 종로삼가`의 owner 경계를 유지한다.
+- registered counter/date/unit/currency/numeric-suffix/administrative owner와 `ambiguous_numeric_dae_preserve`가 항상 우선한다. 따라서 명시 문맥의 `차량 3대 -> 차량 세 대`, bare `3대 -> 3대`, `제15권 -> 제 십오권`, `종로3가 -> 종로 삼 가`의 owner 경계를 유지한다.
 
 ```text
 다우존스30 -> 다우존스삼십
@@ -7896,7 +8005,7 @@ A1한2 -> A1한2
 | `15.2km/L` | `compound_unit` | 아니오 | parse phase | compound unit 내부 | invalid slash tail이면 preserve | `리터당 십오쩜이 킬로미터` |
 | `45㎡` | `special_unit` | 아니오 | parse phase | special unit 내부 | unsafe tail이면 preserve | `사십오 제곱미터` |
 | `-2.5℃` | `temperature/signed_degree` | 아니오 | parse phase | temperature parse 내부 | invalid decimal length면 preserve | `영하 이쩜오도` |
-| `종로3가` | `administrative_suffix` | 예 | parse phase | gate 실패 시 preserve 또는 number | 주소 context 없으면 broad parse 금지 | `종로삼가` |
+| `종로3가` | `administrative_suffix` | 예 | parse phase | gate 실패 시 preserve 또는 number | 주소 context 없으면 broad parse 금지 | `종로 삼 가` |
 
 ## 18. 주요 입력별 처리 예시
 
@@ -8102,7 +8211,7 @@ A1한2 -> A1한2
 출력:
 
 ```text
-종로삼가
+종로 삼 가
 ```
 
 단, `3가 맞다`는 같은 규칙으로 처리하면 안 된다. 좌측 지명/주소 context가 없으면 preserve 또는 general number 정책을 따른다.
@@ -8127,7 +8236,7 @@ A1한2 -> A1한2
 | `pH 7.4` | `피에이치 칠쩜사` | special parser |
 | `123-456-7890` | `일이삼 사오육 칠팔구공` | hyphen digit blocks |
 | `1-1-9` | `일 일 구` | hyphen digit blocks |
-| `종로3가` | `종로삼가` | administrative suffix gate |
+| `종로3가` | `종로 삼 가` | administrative suffix gate |
 
 
 ## 20. Ambiguous / Terminal Fallback Preserve Cases
@@ -8842,7 +8951,7 @@ AㄱB -> preserve 또는 mixed token owner 필요
 AI이 -> 에이아이이
 FTA은 -> 에프티에이는
 FTA는 -> 에프티에이는
-종로3가 -> 종로삼가
+종로3가 -> 종로 삼 가
 제4과 -> 제 사과
 12로 나누다 -> 십이로 나누다
 3가 맞다 -> 삼가 맞다

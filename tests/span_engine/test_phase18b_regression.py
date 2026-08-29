@@ -6,7 +6,7 @@ from engine.span_engine import transform
 def test_phase18b_regression_smoke() -> None:
     assert transform("90km/h") == "시속 구십 킬로미터"
     assert transform("60fps") == "육십 에프피에스"
-    assert transform("종로3가") == "종로삼가"
+    assert transform("종로3가") == "종로 삼 가"
     assert transform("3만") == "삼만"
     assert transform("ㄱㄴㄷ") == "기역 니은 디귿"
     assert transform("-2.5℃") == "영하 이쩜오도"

@@ -49,6 +49,8 @@ _SUPPORTED_UNITS = (
     "권",
     "편",
     "층",
+    "차",
+    "위",
 )
 _NATIVE_THROUGH_99_RESIDUAL_UNITS = frozenset({"가지", "분"})
 _DEFAULT_RESIDUAL_SINO_THRESHOLD = 40
@@ -104,6 +106,9 @@ _COMMON_TAILS = frozenset(
 )
 _GAJI_TAILS = _COMMON_TAILS | {"씩"}
 _BEON_TAILS = _COMMON_TAILS | {"씩", "이나"}
+_BEON_FIXED_SUFFIXES = ("지", "길", "선", "대", "가")
+_CHA_FIXED_SUFFIXES = ("원", "량", "로")
+_WI_FIXED_SUFFIXES = ("권", "자")
 
 PERSON_BUN_NOUNS = frozenset(
     {
@@ -141,6 +146,14 @@ BEON_IDENTIFIER_NOUNS = frozenset(
         "테이블",
         "파일",
         "항목",
+        "선택지",
+        "버튼",
+        "메뉴",
+        "승강장",
+        "선수",
+        "타자",
+        "주자",
+        "국도",
     }
 )
 BEON_OCCURRENCE_MARKERS = frozenset({"총", "모두"})
@@ -419,7 +432,10 @@ def _scan_standard_candidates(
     candidates: list[SurfaceCandidate] = []
     for match in _BROAD_SURFACE_RE.finditer(raw_text):
         unit = match.group("unit")
-        if unit not in units or not _eligible_match_boundary(raw_text, match):
+        if unit not in units or not (
+            _eligible_match_boundary(raw_text, match)
+            or _eligible_embedded_fixed_suffix(raw_text, match)
+        ):
             continue
         if not _is_supported_tail(unit, match.group("tail")):
             continue
@@ -493,13 +509,14 @@ def _evaluate_standard_match(
         return _deferred(raw_text, match, "time_or_person", "exact_anchor_missing")
 
     if unit == "번":
-        if tail.startswith("지"):
+        fixed_suffix = _matching_fixed_suffix(unit, tail)
+        if fixed_suffix is not None:
             return _confirmed(
                 raw_text,
                 match,
-                "identifier",
+                "fixed_identifier_suffix",
                 "sino",
-                "fixed_suffix:번지",
+                f"fixed_suffix:번{fixed_suffix}",
             )
         identifier_noun = _matching_noun_anchor(
             following, BEON_IDENTIFIER_NOUNS
@@ -529,6 +546,42 @@ def _evaluate_standard_match(
             )
         return _deferred(
             raw_text, match, "occurrence_or_identifier", "exact_anchor_missing"
+        )
+
+    if unit == "차":
+        fixed_suffix = _matching_fixed_suffix(unit, tail)
+        if fixed_suffix is not None:
+            return _confirmed(
+                raw_text,
+                match,
+                "fixed_numeric_compound",
+                "sino",
+                f"fixed_suffix:차{fixed_suffix}",
+            )
+        return _confirmed(
+            raw_text,
+            match,
+            "sequence_number",
+            "sino",
+            "bare_sequence_unit:차",
+        )
+
+    if unit == "위":
+        fixed_suffix = _matching_fixed_suffix(unit, tail)
+        if fixed_suffix is not None:
+            return _confirmed(
+                raw_text,
+                match,
+                "fixed_numeric_compound",
+                "sino",
+                f"fixed_suffix:위{fixed_suffix}",
+            )
+        return _confirmed(
+            raw_text,
+            match,
+            "rank_number",
+            "sino",
+            "bare_rank_unit:위",
         )
 
     if unit == "점":
@@ -1159,7 +1212,17 @@ def _confirmed(
     )
     if number_reading is None:
         return None
+    if _eligible_embedded_fixed_suffix(raw_text, match):
+        number_reading = f" {number_reading}"
     separator = _canonical_separator(match, semantic_type)
+    claim_end: int | None = None
+    fixed_suffix = _matching_fixed_suffix(unit, match.group("tail"))
+    if semantic_type in {"fixed_identifier_suffix", "fixed_numeric_compound"}:
+        if fixed_suffix is None:
+            return None
+        # Claim only the registered lexical suffix.  A following particle or
+        # ending remains an independent, source-exact Korean span.
+        claim_end = match.end("unit") + len(fixed_suffix)
     return _candidate(
         raw_text,
         match,
@@ -1168,6 +1231,7 @@ def _confirmed(
         number_reading=number_reading,
         separator=separator,
         matched_anchor=matched_anchor,
+        claim_end=claim_end,
     )
 
 
@@ -1206,8 +1270,10 @@ def _candidate(
     separator: str = "",
     matched_anchor: str | None = None,
     blocking_reason: str | None = None,
+    claim_end: int | None = None,
 ) -> SurfaceCandidate:
-    span = SourceSpan(match.start(), match.end())
+    effective_end = match.end() if claim_end is None else claim_end
+    span = SourceSpan(match.start(), effective_end)
     prefix_span = (
         SourceSpan(match.start("prefix"), match.end("prefix"))
         if match.group("prefix")
@@ -1223,10 +1289,10 @@ def _candidate(
         if match.group("space")
         else None
     )
-    unit_tail_span = SourceSpan(match.start("unit"), match.end("tail"))
+    unit_tail_span = SourceSpan(match.start("unit"), effective_end)
     unit = match.group("unit")
-    tail = match.group("tail")
-    raw_surface = match.group(0)
+    tail = raw_text[match.end("unit") : effective_end]
+    raw_surface = raw_text[match.start() : effective_end]
     new_result = (
         f"{number_reading}{separator}{unit}{tail}"
         if decision_kind is ContextualDecisionKind.CONFIRMED
@@ -1384,6 +1450,8 @@ def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:
         return " "
     if semantic_type == "major_item":
         return match.group("space")
+    if semantic_type in {"fixed_identifier_suffix", "fixed_numeric_compound"}:
+        return " "
     if semantic_type == "duration_minute":
         return " " if _match_has_decimal(match) else match.group("space")
     if semantic_type in {
@@ -1479,6 +1547,8 @@ def _ambiguous_candidates(
         "권": ("book_count", "volume_number"),
         "편": ("work_count", "part_number"),
         "층": ("floor_count", "floor_location"),
+        "차": ("sequence_number", "sequence_number"),
+        "위": ("rank_number", "rank_number"),
     }
     native_semantic, sino_semantic = semantics[unit]
     sino_separator = (
@@ -1515,6 +1585,8 @@ def _ambiguous_semantic_type(unit: str) -> str:
         "권": "book_or_volume",
         "편": "work_or_part_number",
         "층": "floor_location_or_count",
+        "차": "sequence_number",
+        "위": "rank_number",
     }[unit]
 
 
@@ -1643,6 +1715,24 @@ def _eligible_match_boundary(
     return True
 
 
+def _eligible_embedded_fixed_suffix(
+    raw_text: str, match: re.Match[str]
+) -> bool:
+    if match.group("unit") != "번" or match.group("prefix") is not None:
+        return False
+    if _matching_fixed_suffix("번", match.group("tail")) is None:
+        return False
+    start, end = match.start(), match.end()
+    if start == 0 or not ("가" <= raw_text[start - 1] <= "힣"):
+        return False
+    if raw_text[start - 1] == "제":
+        return False
+    following = raw_text[end] if end < len(raw_text) else None
+    return following is None or not (
+        following.isascii() and following.isalnum()
+    )
+
+
 def _previous_word(raw_text: str, start: int) -> str:
     end = start
     while end > 0 and raw_text[end - 1].isspace():
@@ -1767,8 +1857,10 @@ def _is_structured_duration_minute(raw_text: str, start: int) -> bool:
 def _is_supported_tail(unit: str, tail: str) -> bool:
     if unit == "가지":
         return tail in _GAJI_TAILS
-    if unit == "번" and tail.startswith("지"):
-        return True
+    if unit in {"번", "차", "위"}:
+        if _matching_fixed_suffix(unit, tail) is not None:
+            return True
+        return tail in (_BEON_TAILS if unit == "번" else _COMMON_TAILS)
     if unit == "대" and tail.startswith("째"):
         return True
     if unit == "부" and tail.startswith("작"):
@@ -1784,6 +1876,21 @@ def _is_supported_tail(unit: str, tail: str) -> bool:
     if tail.startswith(("이었", "였")):
         return True
     return tail in (_BEON_TAILS if unit == "번" else _COMMON_TAILS)
+
+
+def _matching_fixed_suffix(unit: str, tail: str) -> str | None:
+    suffixes = {
+        "번": _BEON_FIXED_SUFFIXES,
+        "차": _CHA_FIXED_SUFFIXES,
+        "위": _WI_FIXED_SUFFIXES,
+    }.get(unit, ())
+    for suffix in suffixes:
+        if not tail.startswith(suffix):
+            continue
+        remainder = tail[len(suffix) :]
+        if remainder in _COMMON_TAILS or remainder.startswith(("이었", "였")):
+            return suffix
+    return None
 
 
 def _preceded_by_spaced_ordinal(raw_text: str, start: int) -> bool:

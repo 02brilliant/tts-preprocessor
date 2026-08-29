@@ -13,6 +13,21 @@ _DIGIT_RE = re.compile(r"[0-9]+")
 _HANGUL_BLOCK_RE = re.compile(r"[가-힣]+")
 _KOREAN_NUMERIC_UNIT_CHARS = frozenset("십백천만억조경")
 _BOUNDARY_BLOCKERS = frozenset({"_", "-", "+", "/", "\\", "=", ".", ":"})
+_REGISTERED_OWNER_HANGUL_BLOCKS = frozenset(
+    {
+        "째",
+        "번지",
+        "번길",
+        "번선",
+        "번대",
+        "번가",
+        "차원",
+        "차량",
+        "차로",
+        "위권",
+        "위자",
+    }
+)
 
 
 def scan_korean_numeric_chain_candidates(raw_text: str) -> list[SurfaceCandidate]:
@@ -142,7 +157,14 @@ def _is_eligible_safe_chain(raw: str) -> bool:
     if any(char in _KOREAN_NUMERIC_UNIT_CHARS for char in raw):
         return False
     hangul_blocks = _HANGUL_BLOCK_RE.findall(raw)
-    if any(block in NUMERIC_SUFFIXES for block in hangul_blocks):
+    if any(
+        block in NUMERIC_SUFFIXES
+        or any(
+            block.startswith(prefix)
+            for prefix in _REGISTERED_OWNER_HANGUL_BLOCKS
+        )
+        for block in hangul_blocks
+    ):
         return False
     numeric_blocks = list(_DIGIT_RE.finditer(raw))
     if raw[0].isdigit() and len(numeric_blocks) == 1:

@@ -226,7 +226,7 @@ def test_korean_numeric_chain_rejects_code_like_tokens(text: str) -> None:
     [
         ("3대", "3대", "contextual_number_unit"),
         ("제15권", "제 십오권", "numeric_suffix"),
-        ("종로3가", "종로삼가", "administrative_suffix"),
+        ("종로3가", "종로 삼 가", "administrative_suffix"),
     ],
 )
 def test_specific_numeric_owners_precede_korean_numeric_chain(

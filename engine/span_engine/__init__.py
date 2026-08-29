@@ -120,6 +120,11 @@ from engine.span_engine.lexicon import (
     spell_uppercase_acronym,
 )
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.ordinal_jje import (
+    ordinal_jje_reading,
+    parse_ordinal_jje_candidate,
+    scan_ordinal_jje_candidates,
+)
 from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import (
     PARTICLE_EXCEPTION_CONSUMED,
@@ -266,12 +271,14 @@ __all__ = [
     "NATIVE_COUNTERS",
     "LETTER_READINGS",
     "number_to_korean_under_10000",
+    "ordinal_jje_reading",
     "output_to_debug_dict",
     "PARTICLE_EXCEPTION_CONSUMED",
     "ParticleExceptionResult",
     "ProtectedBracketResult",
     "parse_candidates",
     "parse_administrative_suffix_candidate",
+    "parse_ordinal_jje_candidate",
     "parse_counter_candidate",
     "parse_compound_exact_unit_candidate",
     "parse_compound_slash_unit_candidate",
@@ -295,6 +302,7 @@ __all__ = [
     "scan_currency_candidates",
     "scan_counter_candidates",
     "scan_administrative_suffix_candidates",
+    "scan_ordinal_jje_candidates",
     "scan_compound_exact_unit_candidates",
     "scan_compound_slash_unit_candidates",
     "scan_simple_unit_candidates",

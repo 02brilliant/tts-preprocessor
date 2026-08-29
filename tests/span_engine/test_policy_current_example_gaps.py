@@ -158,8 +158,8 @@ def test_news_attached_surface_preserve_boundaries(text: str, expected: str) -> 
     ("text", "expected"),
     [
         ("12로 나누다", "십이로 나누다"),
-        ("종로3가", "종로삼가"),
-        ("역삼동 12번지", "역삼동 십이번지"),
+        ("종로3가", "종로 삼 가"),
+        ("역삼동 12번지", "역삼동 십이 번지"),
         ("3로 이동", "삼로 이동"),
         ("5로 설정", "오로 설정"),
     ],

@@ -5,7 +5,19 @@ from engine.span_engine.source_map import build_source_map
 
 BOUNDARY_CHARS = frozenset("[](){}【】:|")
 PUNCT_LOCK_CHARS = frozenset(".,!?")
-_ORDINAL_SUFFIX = "번째"
+_ORDINAL_SUFFIXES = ("번째", "째")
+_FIXED_NUMERIC_SUFFIXES = (
+    "번지",
+    "번길",
+    "번선",
+    "번대",
+    "번가",
+    "차원",
+    "차량",
+    "차로",
+    "위권",
+    "위자",
+)
 
 
 def _is_modern_hangul_syllable(char: str) -> bool:
@@ -17,11 +29,43 @@ def _is_ascii_digit(char: str) -> bool:
 
 
 def _ordinal_suffix_token_end(raw_text: str, hangul_start: int) -> int | None:
-    if not raw_text.startswith(_ORDINAL_SUFFIX, hangul_start):
+    suffix = next(
+        (
+            candidate
+            for candidate in _ORDINAL_SUFFIXES
+            if raw_text.startswith(candidate, hangul_start)
+        ),
+        None,
+    )
+    if suffix is None:
         return None
     if _ordinal_numeric_prefix_start(raw_text, hangul_start) is None:
         return None
-    return hangul_start + len(_ORDINAL_SUFFIX)
+    return hangul_start + len(suffix)
+
+
+def _fixed_numeric_suffix_token_end(
+    raw_text: str, hangul_start: int
+) -> int | None:
+    suffix = next(
+        (
+            candidate
+            for candidate in _FIXED_NUMERIC_SUFFIXES
+            if raw_text.startswith(candidate, hangul_start)
+        ),
+        None,
+    )
+    if suffix is None:
+        return None
+    number_end = hangul_start
+    if number_end > 0 and raw_text[number_end - 1] == " ":
+        number_end -= 1
+    number_start = number_end
+    while number_start > 0 and _is_ascii_digit(raw_text[number_start - 1]):
+        number_start -= 1
+    if number_start == number_end:
+        return None
+    return hangul_start + len(suffix)
 
 
 def _ordinal_numeric_prefix_start(raw_text: str, hangul_start: int) -> int | None:
@@ -100,17 +144,19 @@ def tokenize_immutable_spans(
 
         if _is_modern_hangul_syllable(char):
             start = i
-            ordinal_end = _ordinal_suffix_token_end(raw_text, start)
-            if ordinal_end is not None:
+            suffix_end = _ordinal_suffix_token_end(raw_text, start)
+            if suffix_end is None:
+                suffix_end = _fixed_numeric_suffix_token_end(raw_text, start)
+            if suffix_end is not None:
                 tokens.append(
                     SpanToken(
                         kind="KOREAN_LITERAL",
-                        raw=raw_text[start:ordinal_end],
-                        span=SourceSpan(start, ordinal_end),
+                        raw=raw_text[start:suffix_end],
+                        span=SourceSpan(start, suffix_end),
                         immutable=True,
                     )
                 )
-                i = ordinal_end
+                i = suffix_end
                 continue
             while i < len(raw_text) and _is_modern_hangul_syllable(raw_text[i]):
                 i += 1

@@ -267,6 +267,44 @@
   괄호·원문 내부 삭제 정책은 유지된다. `Su(수호이) -> 수호이`가 canonical이며,
   일반 괄호 내부는 여전히 삭제한다.
 
+## Numeric suffix and ordinal alignment
+
+- Added the dedicated `ordinal_jje` owner for `N째` and `제N째`: 1–4 use
+  `첫째·둘째·셋째·넷째`, 5–39 use native readings, and 40+ use Sino readings.
+  Zero, leading-zero, decimal, and embedded `제` surfaces preserve.
+- Added full-range ordinal readings using the existing endpoint policies:
+  `1~3째 -> 첫째에서 셋째` and
+  `1~3번째 -> 첫 번째에서 세 번째`. Unsupported prefixed forms such as
+  `제1~3째` and `제1~3번째` preserve atomically to prevent partial conversion.
+- Canonicalized fixed ID suffixes `번지·번길·번선·번대·번가` to
+  `Sino + generated space + source suffix`, including safe Korean road-name
+  attachment such as `시민로5번길 -> 시민로 오 번길`.
+- Canonicalized administrative address spacing:
+  `종로3가 -> 종로 삼 가`, `역삼동 12번지 -> 역삼동 십이 번지`.
+- Added deterministic Sino readings for bare `N차`/`N위` and fixed compounds
+  `차원·차량·차로·위권·위자`. Existing `N차례`, `N등`, and `N호` policies
+  remain unchanged.
+- Collapsed optional source spacing between a prefixed `제N` numeric surface and
+  every registered Hangul suffix except the existing source-spaced `조` policy.
+- Expanded the exact `N번` identifier-noun allowlist with
+  `선택지·버튼·메뉴·승강장·선수·타자·주자·국도`; `방` and `차량`
+  remain deferred for LLM context resolution.
+
+## Stage-4 exact pronunciation overlay expansion
+
+- Added nine stage-4-only exact overlays: `한여름→한녀름`,
+  `직행열차→직행녈차`, `영업용→영업뇽`, `서울역→서울력`,
+  `휘발유→휘발류`, `눈동자→눈똥자`, `신바람→신빠람`, `강가→강까`,
+  and `강줄기→강쭐기`.
+- Kept the existing exact matcher: independent whole word or one approved
+  grammatical tail only, with protected/locked spans and longer compounds
+  excluded. No morphology analyzer or raw-substring expansion was added.
+- Kept `인기→인끼` unregistered because `개인기·무인기` require stronger
+  lexical identity than the current matcher provides.
+- The overlay changes only the internal stage-4 base and final `speech_text`;
+  stage 2 `normalized_text`, stage 3, and the shared rule-engine profiles remain
+  unchanged.
+
 ## Article numeric owner alignment
 
 - `5000분의 1` 같은 denominator-first Korean fraction을 하나의

@@ -28,6 +28,8 @@ from engine.span_engine.signed_numeric import (
     render_signed_numeric,
 )
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.ordinal import ordinal_reading
+from engine.span_engine.ordinal_jje import ordinal_jje_reading
 from engine.span_engine.compound_unit import COMPOUND_EXACT_UNIT_NAMES
 from engine.span_engine.units import (
     SIMPLE_UNIT_READINGS,
@@ -141,7 +143,10 @@ _BROAD_RANGE_ATTACHED_TAILS = (
     "에",
     "에서",
 )
-_BASIC_TILDE_DEFERRED_SUFFIXES = tuple(KOREAN_RANGE_SUFFIXES | {"만", "억", "조", "경"})
+_BASIC_TILDE_DEFERRED_SUFFIXES = tuple(
+    KOREAN_RANGE_SUFFIXES | {"만", "억", "조", "경", "번째", "째"}
+)
+_ORDINAL_RANGE_SUFFIXES = ("번째", "째")
 _COMPACT_LARGE_UNIT_RANGE_SUFFIXES = ("만원", "억원", "조원", "경원", "만", "억", "조", "경")
 _COLON_PAIR_ATTACHED_TAILS = (
     "였고",
@@ -224,8 +229,25 @@ def scan_range_candidates(raw_text: str) -> list[SurfaceCandidate]:
             continue
         left = raw_text[left_start:left_end]
         right = raw_text[right_start:right_end]
+
+        prefixed_ordinal_preserve = _prefixed_ordinal_range_preserve_candidate(
+            raw_text, left_start, right_end
+        )
+        if prefixed_ordinal_preserve is not None:
+            candidates.append(prefixed_ordinal_preserve)
+            index = prefixed_ordinal_preserve.full_span.end
+            continue
+
         if not _valid_numbers(raw_text, left_start, right_end, left, right):
             index = right_end
+            continue
+
+        ordinal_suffix_candidate = _ordinal_range_suffix_candidate(
+            raw_text, left_start, right_end, left, right
+        )
+        if ordinal_suffix_candidate is not None:
+            candidates.append(ordinal_suffix_candidate)
+            index = ordinal_suffix_candidate.full_span.end
             continue
 
         unit_candidate = _unit_candidate(
@@ -925,6 +947,70 @@ def _korean_suffix_candidate(
                 "reading": reading,
             },
         )
+    return None
+
+
+def _ordinal_range_suffix_candidate(
+    raw_text: str, left_start: int, right_end: int, left: str, right: str
+) -> SurfaceCandidate | None:
+    for suffix in _ORDINAL_RANGE_SUFFIXES:
+        if not raw_text.startswith(suffix, right_end):
+            continue
+        suffix_span = SourceSpan(right_end, right_end + len(suffix))
+        if suffix == "번째":
+            left_reading = ordinal_reading(left)
+            right_reading = ordinal_reading(right)
+        else:
+            left_reading = ordinal_jje_reading(left)
+            right_reading = ordinal_jje_reading(right)
+        if left_reading is None or right_reading is None:
+            return _preserve_candidate(
+                SourceSpan(left_start, suffix_span.end),
+                "range_ordinal_suffix_invalid_endpoint_preserve",
+            )
+        return SurfaceCandidate(
+            core_span=SourceSpan(left_start, right_end),
+            full_span=SourceSpan(left_start, suffix_span.end),
+            owner="range",
+            surface_type="RANGE_SURFACE",
+            suffix_spans=[suffix_span],
+            reason="range_ordinal_suffix_gate",
+            metadata={
+                "left": left,
+                "right": right,
+                "suffix": suffix,
+                "suffix_span": suffix_span,
+                "reading": (
+                    f"{left_reading}에서 "
+                    f"{right_reading[: -len(suffix)]}"
+                ),
+            },
+        )
+    return None
+
+
+def _prefixed_ordinal_range_preserve_candidate(
+    raw_text: str, left_start: int, right_end: int
+) -> SurfaceCandidate | None:
+    prefix_start: int | None = None
+    if left_start > 0 and raw_text[left_start - 1] == "제":
+        prefix_start = left_start - 1
+    elif (
+        left_start > 1
+        and raw_text[left_start - 1] == " "
+        and raw_text[left_start - 2] == "제"
+    ):
+        prefix_start = left_start - 2
+    if prefix_start is None:
+        return None
+    if prefix_start > 0 and not raw_text[prefix_start - 1].isspace():
+        return None
+    for suffix in _ORDINAL_RANGE_SUFFIXES:
+        if raw_text.startswith(suffix, right_end):
+            return _preserve_candidate(
+                SourceSpan(prefix_start, right_end + len(suffix)),
+                "prefixed_ordinal_range_unsupported_preserve",
+            )
     return None
 
 

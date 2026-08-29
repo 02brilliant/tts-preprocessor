@@ -35,7 +35,7 @@ def test_phase18c_bracket_blockers_keep_no_newline(text: str, expected: str) -> 
         ),
         (
             "첫 문장입니다. 종로3가입니다. 두 번째 문장입니다.",
-            "첫 문장입니다. 종로삼가입니다. 두 번째 문장입니다.",
+            "첫 문장입니다. 종로 삼 가입니다. 두 번째 문장입니다.",
         ),
     ],
 )

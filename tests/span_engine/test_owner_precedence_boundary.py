@@ -64,6 +64,8 @@ def test_claim_order_documentation_snapshot() -> None:
         "special_unit",
         "simple_unit",
         "contextual_number_unit",
+        "ordinal",
+        "ordinal_jje",
         "decimal_registered_suffix",
         "numeric_suffix",
         "contextual_numeric_dae",

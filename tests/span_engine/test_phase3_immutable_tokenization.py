@@ -30,6 +30,21 @@ def test_korean_literals_split_from_plain_ascii_and_digits() -> None:
         ("KOREAN_LITERAL", "번째", True),
         ("KOREAN_LITERAL", "만", True),
     ]
+    assert _token_summary("7째만") == [
+        ("PLAIN", "7", False),
+        ("KOREAN_LITERAL", "째", True),
+        ("KOREAN_LITERAL", "만", True),
+    ]
+    assert _token_summary("5번길은") == [
+        ("PLAIN", "5", False),
+        ("KOREAN_LITERAL", "번길", True),
+        ("KOREAN_LITERAL", "은", True),
+    ]
+    assert _token_summary("1차원의") == [
+        ("PLAIN", "1", False),
+        ("KOREAN_LITERAL", "차원", True),
+        ("KOREAN_LITERAL", "의", True),
+    ]
 
 
 def test_compatibility_jamo_is_not_korean_literal_in_phase3() -> None:

@@ -71,6 +71,7 @@ from engine.span_engine.numeric_dae import (
 )
 from engine.span_engine.numeric_suffix import scan_numeric_suffix_candidates
 from engine.span_engine.ordinal import scan_ordinal_candidates
+from engine.span_engine.ordinal_jje import scan_ordinal_jje_candidates
 from engine.span_engine.parenthesized_hangul_alias import (
     scan_parenthesized_hangul_alias_candidates,
 )
@@ -144,6 +145,17 @@ _NUMBER_BLOCKING_KOREAN_SUFFIXES = (
     "억",
     "조",
     "차례",
+    "째",
+    "번지",
+    "번길",
+    "번선",
+    "번대",
+    "번가",
+    "차원",
+    "차량",
+    "차로",
+    "위권",
+    "위자",
     "건",
     "곳",
     "팀",
@@ -171,6 +183,20 @@ _NUMBER_BLOCKING_KOREAN_SUFFIXES = (
     "항목",
     "사례",
     "척",
+)
+
+_REGISTERED_FIXED_OWNER_KOREAN_SUFFIXES = (
+    "째",
+    "번지",
+    "번길",
+    "번선",
+    "번대",
+    "번가",
+    "차원",
+    "차량",
+    "차로",
+    "위권",
+    "위자",
 )
 
 _NUMBER_BLOCKING_NEXT_CHARS = (
@@ -293,6 +319,8 @@ CLAIM_ORDER_DOC = (
     "special_unit",
     "simple_unit",
     "contextual_number_unit",
+    "ordinal",
+    "ordinal_jje",
     "decimal_registered_suffix",
     "numeric_suffix",
     "contextual_numeric_dae",
@@ -518,6 +546,7 @@ def claim_surfaces(
     candidates.extend(_claim_scanned_candidates(hangul_context_unit_candidates, registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_number_unit_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_ordinal_candidates(raw_text), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_ordinal_jje_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_decimal_registered_suffix_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_numeric_suffix_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(contextual_dae_counter_candidates, registry, excluded_ranges))
@@ -912,6 +941,8 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
 
     if raw_text.startswith("대", span.end) and _consume_ascii_digits(raw_text, span.end + 1) > span.end + 1:
         return _is_first_number_in_compact_dae_relation(raw_text, span)
+    if raw_text.startswith(_REGISTERED_FIXED_OWNER_KOREAN_SUFFIXES, span.end):
+        return False
     if _is_hangul_embedded_number_context(raw_text, span):
         return True
 

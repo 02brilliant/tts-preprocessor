@@ -50,7 +50,7 @@ provenance-aware validator
 speech_text 또는 stage4_base_text fallback
 ```
 
-overlay는 코드에 등록된 exact whole-word 또는 승인된 조사·어미 경계만 바꾼다. 기존 폐쇄형 ㄴ 첨가·어휘화된 합성어 된소리와, 공식 근거가 확인된 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류, 백분율`을 포함한다. 더 긴 고유명사·제품명 내부, protected/locked span, 미승인 유사어에는 적용하지 않는다. 이 처리는 LLM 추론이 아니며 2단계 `normalized_text` 출력에는 영향을 주지 않는다. 외부 응답의 `normalized_text`는 계속 2단계 결과이고 `speech_text`에만 overlay 이후 결과가 반영된다.
+overlay는 코드에 등록된 exact whole-word 또는 승인된 조사·어미 경계만 바꾼다. 기존 폐쇄형 ㄴ 첨가·어휘화된 합성어 된소리와, 공식 근거가 확인된 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류, 백분율`을 포함한다. 추가 exact 목록은 `한여름→한녀름, 직행열차→직행녈차, 영업용→영업뇽, 서울역→서울력, 휘발유→휘발류, 눈동자→눈똥자, 신바람→신빠람, 강가→강까, 강줄기→강쭐기`다. 더 긴 고유명사·제품명·합성어 내부, protected/locked span, 미승인 유사어에는 적용하지 않는다. 이 처리는 LLM 추론이 아니며 2단계 `normalized_text` 출력에는 영향을 주지 않는다. 외부 응답의 `normalized_text`는 계속 2단계 결과이고 `speech_text`에만 overlay 이후 결과가 반영된다.
 
 LLM은 overlay 결과를 locked input으로 받아 다시 원형으로 되돌리거나 다른 발음형으로 바꿀 수 없다. LLM이 추가로 허용받는 한국어 변경은 받침 없는 일반 체언의 승인된 `이다` 계열 축약뿐이며, 3단계의 복합명사 발화 경계와 제한적 운율을 그대로 상속한다.
 
@@ -58,7 +58,7 @@ LLM은 overlay 결과를 locked input으로 받아 다시 원형으로 되돌리
 
 ### 향후 4단계 강화 참고 메모
 
-별도 시험 단계와 문맥 동형어 `대가` 처리를 검토했으나 문맥 오판 위험에 비해 추가 품질 범위가 한 단어로 작아 제거했다. `대가`는 4단계에서도 원형을 유지한다. exact 발음 목록을 2단계로 승격하는 방안은 운영 중인 2단계 출력 변경과 TTS 자체 G2P 중복 위험 때문에 적용하지 않았다. 모든 `-량/-력/-률` 계열, 일반 사이시옷·일반 G2P, 조사 `의`, `효과` 같은 복수 표준발음도 false positive를 안전하게 제한할 근거가 없어 제외했다. 항상 2-pass는 latency와 오류 연쇄 대비 입증된 이득이 없어 채택하지 않았다. 향후 강화는 exact 항목의 공식 근거·positive/negative/contrast test가 확보된 경우 overlay 목록을 보수적으로 확장하는 순서로 검토한다.
+별도 시험 단계와 문맥 동형어 `대가` 처리를 검토했으나 문맥 오판 위험에 비해 추가 품질 범위가 한 단어로 작아 제거했다. `대가`는 4단계에서도 원형을 유지한다. `인기→인끼`도 `개인기·무인기`와의 lexical identity를 현재 matcher만으로 안전하게 확정할 수 없어 등록하지 않는다. exact 발음 목록을 2단계로 승격하는 방안은 운영 중인 2단계 출력 변경과 TTS 자체 G2P 중복 위험 때문에 적용하지 않았다. 모든 `-량/-력/-률` 계열, 일반 사이시옷·일반 G2P, 조사 `의`, `효과` 같은 복수 표준발음도 false positive를 안전하게 제한할 근거가 없어 제외했다. 형태소 분석기와 raw substring 확장은 도입하지 않으며, 항상 2-pass도 latency와 오류 연쇄 대비 입증된 이득이 없어 채택하지 않았다. 향후 강화는 exact 항목의 공식 근거·positive/negative/contrast test가 확보된 경우 overlay 목록을 보수적으로 확장하는 순서로 검토한다.
 
 ## Pronunciation lexicon
 
@@ -66,10 +66,14 @@ LLM은 overlay 결과를 locked input으로 받아 다시 원형으로 되돌리
 
 4단계 overlay의 `ㄴ/ㄹ` exact 목록은 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류`이며 국립국어원 표준 발음법 제20항의 예시를 따른다. `백분율[백뿐뉼]`은 제29항 근거로 별도 등록한다.
 
+추가 목록 중 `한여름·직행열차·영업용`은 제29항의 ㄴ 첨가, `서울역·휘발유`는 제29항과 후속 유음화가 반영된 exact 최소 overlay다. `눈동자·신바람·강가·강줄기`는 제28항의 합성어 경음화 exact 예다. 지정된 부분만 표기하며 일반 음운 변화를 연쇄 전사하지 않는다.
+
 공식 근거:
 
 - [국립국어원 표준 발음법 제20항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=&pageIndex=1&qna_seq=313452)
 - [국립국어원 `백분율` 발음 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=313432)
+- [국립국어원 표준 발음법 제29항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=307219)
+- [국립국어원 표준 발음법 제28항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?pageIndex=1&qna_seq=313557)
 
 ## Provenance와 locked span
 

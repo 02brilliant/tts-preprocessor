@@ -206,7 +206,7 @@ def test_phase34a_separator_normal_cases_retained(text: str, expected: str) -> N
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("4위", "사위"),
+        ("4위", "사 위"),
         ("1∼11월", "일월에서 십일월"),
         ("2:1", "이 대 일"),
         ("(-3)", ""),
