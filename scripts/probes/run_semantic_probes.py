@@ -14,6 +14,7 @@ CORE_PROBES = (
     ROOT_DIR / "scripts" / "probes" / "registered_unit_surface.py",
     ROOT_DIR / "scripts" / "probes" / "json_like_protected_spans.py",
     ROOT_DIR / "scripts" / "probes" / "contextual_number_units.py",
+    ROOT_DIR / "scripts" / "probes" / "deploy_critical_surface.py",
 )
 SCENARIO_PROBES = (
     ROOT_DIR / "scripts" / "probes" / "scenario_regression.py",

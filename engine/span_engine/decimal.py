@@ -22,6 +22,7 @@ from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.sign_aliases import is_signed_numeric_sign
 from engine.span_engine.span_guards import (
     is_decimal_like_url_or_path_context,
+    iter_file_like_malformed_numeric_spans,
     span_overlaps_excluded_ranges,
 )
 
@@ -164,6 +165,18 @@ def scan_malformed_dotted_preserve_candidates(
                 owner="preserve",
                 surface_type="MALFORMED_DOTTED_NUMERIC_PRESERVE_SURFACE",
                 reason="malformed_dotted_numeric_preserve",
+            )
+        )
+    for span in iter_file_like_malformed_numeric_spans(raw_text):
+        if span_overlaps_excluded_ranges(span, excluded_ranges):
+            continue
+        candidates.append(
+            SurfaceCandidate(
+                core_span=span,
+                full_span=span,
+                owner="preserve",
+                surface_type="FILE_LIKE_MALFORMED_NUMERIC_PRESERVE_SURFACE",
+                reason="file_like_malformed_numeric_preserve",
             )
         )
     return candidates

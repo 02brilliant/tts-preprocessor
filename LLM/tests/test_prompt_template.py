@@ -102,7 +102,7 @@ def test_every_active_prompt_has_one_plain_input_contract(path: Path) -> None:
 
 def test_level3_prompt_preserves_korean_and_locked_readings() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-    for fixed_reading in ("삼번 버스", "오분 뒤", "제 삼장", "KBS news"):
+    for fixed_reading in ("삼번 버스", "오분 뒤", "제-삼장", "KBS news"):
         assert fixed_reading in prompt
     assert "승인된 복합명사 ASCII 하이픈과 쉼표 외" in prompt
     assert "한국어 단어를 발음식으로 전사하지 않는다" in prompt
@@ -120,15 +120,15 @@ def test_compound_boundary_policy_is_inherited_from_level3() -> None:
 def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
     assert "규칙 엔진이 문맥 모호성 때문에 보류한" in prompt
-    assert "3번 확인했다 → 세 번 확인했다" in prompt
+    assert "3번 확인했다 → 세-번 확인했다" in prompt
     assert "3번 버스 → 삼번 버스" in prompt
-    assert "0.5%p → 영쩜오 퍼센트포인트" in prompt
+    assert "0.5%p → 영쩜오-퍼센트포인트" in prompt
     assert "해석이 둘 이상이면 원형을 유지한다" in prompt
 
 
 def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
-    for fixed_reading in ("세 대", "삼번 버스", "오분 뒤", "제 삼장"):
+    for fixed_reading in ("세-대", "삼번 버스", "오분 뒤", "제-삼장"):
         assert fixed_reading in prompt
     assert "띄어쓰기" in prompt
     assert "다시 판단하지 않는다" in prompt
@@ -185,7 +185,7 @@ def test_active_prompt_injects_only_plain_normalized_text() -> None:
 def test_decimal_examples_match_the_rule_engine_locked_jjeom_surface(path: Path) -> None:
     prompt = path.read_text(encoding="utf-8")
     assert "삼쩜영오" in prompt
-    assert "영쩜오 퍼센트포인트" in prompt
+    assert "영쩜오-퍼센트포인트" in prompt
     assert "삼 점 영오" not in prompt
     assert "영 점 오 퍼센트포인트" not in prompt
 

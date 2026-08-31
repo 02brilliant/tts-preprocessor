@@ -117,7 +117,10 @@ from engine.span_engine.signed import (
     scan_signed_temperature_candidates,
     scan_signed_number_candidates,
 )
-from engine.span_engine.span_guards import span_overlaps_excluded_ranges
+from engine.span_engine.span_guards import (
+    is_file_like_malformed_numeric_context,
+    span_overlaps_excluded_ranges,
+)
 from engine.span_engine.units import (
     scan_caret_power_unit_candidates,
     scan_caret_literal_unit_candidates,
@@ -934,6 +937,9 @@ def _is_supported_number(raw_text: str, span: SourceSpan, raw: str) -> bool:
             return False
 
     if _is_url_or_path_context(raw_text, span):
+        return False
+
+    if is_file_like_malformed_numeric_context(raw_text, span):
         return False
 
     if _starts_compact_mixed_korean_arabic_numeric(raw_text, span.end):

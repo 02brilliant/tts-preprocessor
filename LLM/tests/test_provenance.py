@@ -13,7 +13,7 @@ def test_snapshot_projects_generated_readings_to_normalized_coordinates() -> Non
     for span in locked:
         assert snapshot.normalized_text[span.normalized_start:span.normalized_end] == span.text
     assert any("에이아이" in span.text for span in locked)
-    assert any("삼 킬로그램" in span.text for span in locked)
+    assert any("삼-킬로그램" in span.text for span in locked)
 
 
 def test_snapshot_marks_canonical_protected_literals() -> None:
