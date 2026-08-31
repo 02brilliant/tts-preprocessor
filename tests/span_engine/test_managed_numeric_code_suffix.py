@@ -31,7 +31,9 @@ def prod(src: str) -> str:
         ("f/a-50", "에프에이-오십"),
         ("A/S-1.5", "에이에스-일쩜오"),
         ("mig-9", "미그-나인"),
+        ("Mig-21", "미그-이십일"),
         ("Su-57", "수호이-오십칠"),
+        ("Su-27", "수호이-이십칠"),
         ("sU-9", "수호이-나인"),
         ("mk-10", "엠케이-십"),
         ("KC-9", "케이씨-나인"),
@@ -131,6 +133,11 @@ def test_new_managed_dictionary_standalone_entries(src: str, expected: str) -> N
 
 @pytest.mark.parametrize("src", ["Su", "su", "sU"])
 def test_su_without_numeric_suffix_remains_unmanaged(src: str) -> None:
+    assert prod(src) == src
+
+
+@pytest.mark.parametrize("src", ["Mig", "mig", "MiG"])
+def test_mig_without_numeric_suffix_remains_unmanaged(src: str) -> None:
     assert prod(src) == src
 
 

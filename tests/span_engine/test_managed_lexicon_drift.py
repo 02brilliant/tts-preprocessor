@@ -98,6 +98,7 @@ def test_finance_index_numeric_suffix_full_claim_blocks_partial_p500() -> None:
         ("NASDAQ", "나스닥"),
         ("KOSPI", "코스피"),
         ("KOSDAQ", "코스닥"),
+        ("KAIST", "카이스트"),
     ],
 )
 def test_managed_lexicon_representative_entries_are_span_dictionary(
@@ -234,6 +235,7 @@ def test_managed_lexicon_does_not_expand_broad_fallbacks(text: str) -> None:
         ("KBO 리그", "케이비오 리그"),
         ("KBL 경기", "케이비엘 경기"),
         ("KFA 발표", "케이에프에이 발표"),
+        ("KAIST 캠퍼스", "카이스트 캠퍼스"),
         ("MLB 경기", "엠엘비 경기"),
         ("NBA 경기", "엔비에이 경기"),
         ("NFL 경기", "엔에프엘 경기"),

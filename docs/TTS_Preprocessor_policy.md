@@ -12557,8 +12557,8 @@ structured owner. Leading-zero malformed decimals remain preserved by their
 existing owner.
 Invalid comma forms such as `2,34` and mixed-unit malformed forms such as
 `3백..4십만` remain separate preserve/design boundaries. File-like and code-like tokens such as `file-25..50.txt`,
-`v25..50`, and `SKU25..50` remain a separate prerequisite safety track and are
-not solved by leading-zero cleanup. `version-1.5` is handled by the managed
+`v25..50`, and `SKU25..50` exact-preserve under the file-like malformed numeric
+guard and are not solved by leading-zero cleanup. `version-1.5` is handled by the managed
 dictionary numeric-code owner.
 
 Invalid comma grouping and leading-zero malformed decimal policy remain

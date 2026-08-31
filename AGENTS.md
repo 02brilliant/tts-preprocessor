@@ -40,6 +40,10 @@ git branch --show-current
 PYTHONPATH=. .venv/bin/python -m pytest -m "not binary_runtime" -q
 ```
 
+- Linux/macOS 통합 배포는 `scripts/deploy_with_gates.sh`를 사용한다. packaged path가
+  dirty이면 배포 전 자동 commit한 뒤 `deploy_server.sh` 내부의 source pytest와
+  semantic probe 게이트를 실행한다.
+
 - 변경 범위가 작더라도 관련 테스트를 먼저 실행하고, 완료 전에는 가능한 경우 기본 소스 테스트 전체를 실행한다.
 - 테스트 실패를 숨기거나 무시하지 않는다.
 - 실패가 기존 문제로 판단되더라도 실패한 테스트 이름과 근거를 보고한다.

@@ -158,6 +158,7 @@ span production managed dictionary and covered by production-path tests.
 | `KBO` | 케이비오 | current | exact | safe token boundary | Fixed sports organization term. |
 | `KBS` | 케이비에스 | current | exact | safe token boundary | Fixed broadcast term. |
 | `KFA` | 케이에프에이 | current | exact | safe token boundary | Fixed sports organization term. |
+| `KAIST` | 카이스트 | current | exact | safe token boundary | Fixed institution term. |
 | `KOSDAQ` | 코스닥 | current | exact | safe token boundary | Fixed finance index. |
 | `KOSPI` | 코스피 | current | exact | safe token boundary | Fixed finance index. |
 | `KTX` | 케이티엑스 | current | exact | safe token boundary | Fixed rail service acronym. |

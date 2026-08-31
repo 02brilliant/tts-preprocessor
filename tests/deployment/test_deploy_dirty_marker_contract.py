@@ -108,6 +108,8 @@ def test_deploy_script_documents_dirty_marker_contract() -> None:
     assert 'SOURCE_REVISION="${SOURCE_REVISION}-dirty"' in deploy
     assert "Packaging uncommitted or untracked files from the worktree." in deploy
     assert "Production serves the rebuilt binary, not live engine source." in deploy
+    assert "DEPLOY_ALLOW_DIRTY=1" in deploy
+    assert "enforce_clean_packaged_tree" in deploy
     status_block_start = deploy.index("PACKAGED_TREE_STATUS=\"$(")
     status_block_end = deploy.index(")\"", status_block_start)
     status_block = deploy[status_block_start:status_block_end]
@@ -138,6 +140,8 @@ def test_deploy_id_dirty_marker_follows_packaged_pathspec(
     _install_pathspec_aware_fake_git(tmp_path=tmp_path)
     env["FAKE_GIT_PORCELAIN"] = porcelain
     env["FAKE_LOCAL_PROBE_STATUS"] = "41"
+    if expect_dirty:
+        env["DEPLOY_ALLOW_DIRTY"] = "1"
 
     result = _run_deploy(script, env)
 
@@ -161,3 +165,19 @@ def test_deploy_id_dirty_marker_follows_packaged_pathspec(
             "Packaging uncommitted or untracked files from the worktree."
             not in result.stdout
         )
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_packaged_dirty_tree_blocks_without_allow_override(tmp_path: Path) -> None:
+    script, env, _calls = _prepare_deploy_tree(tmp_path)
+    _install_pathspec_aware_fake_git(tmp_path=tmp_path)
+    env["FAKE_GIT_PORCELAIN"] = " M engine/foo.py"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode != 0
+    assert "Packaged paths are dirty" in result.stderr
+    assert "DEPLOY_ALLOW_DIRTY=1" in result.stderr

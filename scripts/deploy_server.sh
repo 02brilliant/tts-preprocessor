@@ -120,7 +120,44 @@ validate_local_macos_archive() (
     echo "[deploy][ERROR] macOS ZIP payload is missing, non-executable, or contains a symlink." >&2
     return 1
   fi
+
+  echo "[deploy] Running macOS packaged binary core semantic probes..."
+  if ! PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" \
+    "$LOCAL_SEMANTIC_PROBES_DIR/run_semantic_probes.py" \
+    --suite core \
+    --runtime binary \
+    --binary "$extract_dir/tts-preprocessor"; then
+    echo "[deploy][ERROR] macOS packaged binary core semantic probes failed." >&2
+    return 1
+  fi
 )
+
+run_source_pytest() {
+  if [[ "${DEPLOY_SKIP_SOURCE_PYTEST:-0}" == "1" ]]; then
+    echo "[deploy] Skipping source pytest (DEPLOY_SKIP_SOURCE_PYTEST=1)."
+    return 0
+  fi
+
+  echo "[deploy] Running source pytest (-m not binary_runtime)..."
+  if ! PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" -m pytest -m "not binary_runtime" -q; then
+    echo "[deploy][ERROR] Source pytest failed. Deployment aborted." >&2
+    exit 1
+  fi
+  echo "[deploy][OK] Source pytest passed."
+}
+
+enforce_clean_packaged_tree() {
+  if [[ -z "$PACKAGED_TREE_STATUS" ]]; then
+    return 0
+  fi
+  if [[ "${DEPLOY_ALLOW_DIRTY:-0}" == "1" ]]; then
+    return 0
+  fi
+
+  echo "[deploy][ERROR] Packaged paths are dirty. Commit or stash the changes," >&2
+  echo "[deploy][ERROR] or rerun with DEPLOY_ALLOW_DIRTY=1 to deploy the worktree." >&2
+  exit 1
+}
 
 cleanup_failed_macos_upload() {
   ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_MACOS_TEMP" <<'REMOTE'
@@ -365,6 +402,9 @@ if [[ -n "$PACKAGED_TREE_STATUS" ]]; then
   echo "[deploy] Production serves the rebuilt binary, not live engine source."
   printf '%s\n' "$PACKAGED_TREE_STATUS"
 fi
+
+enforce_clean_packaged_tree
+run_source_pytest
 
 echo "[deploy] Validating the local worktree with core semantic probes..."
 if ! PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" \

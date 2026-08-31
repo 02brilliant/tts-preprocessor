@@ -203,7 +203,7 @@ Current standalone invalid/malformed forms:
 | `-.5` | `-.5` | no | none |
 | `1.` | `일.` | yes | audit whether bare trailing dot should preserve |
 | `+1.` | `+1.` | no | none |
-| `3..140` | `삼..백사십` | yes | separate segmented reading design; not leading-zero cleanup |
+| `3..140` | `3..140` | yes | atomic malformed-dotted preserve; historical segmented proposal only |
 | `1,0000` | `1,0000` | no | none |
 
 ## 4. Owner-attached numeric matrix
@@ -333,7 +333,7 @@ Clock-hour `N시` is handled by the time owner with an owner-local safe Korean t
 
 | registered numeric suffix | registered Korean numeric suffix inventory, including explicit numeric suffixes such as `차`, `과`, `선`, `분기`, `시리즈`, and prefixed-only `조` | valid decimal may use `+` or owner-local minus alias; signed integers on Sino suffixes such as `시리즈`/`분기` are read | yes for valid decimal numeric core attached to a registered/approved suffix | yes for valid comma decimal | attached integer preserves attachment (`1분기 -> 일분기`); `시리즈` inserts a generated space (`3시리즈 -> 삼 시리즈`); one input ASCII space is preserved (`1 분기 -> 일 분기`); decimal renders one generated space before original suffix (`1.5분기 -> 일쩜오 분기`); prefixed `제` is `제 ` + Sino + attached suffix (`제3시리즈 -> 제 삼시리즈`); `조` preserves source number-unit space (`제3조 -> 제 삼조`, `제3 조 -> 제 삼 조`) | malformed/leading-zero and unsafe/code-like tails preserve atomically; a shorter registered prefix such as time `분` cannot claim inside longer `분기`; arbitrary Hangul suffixes and whitespace-separated ordinary nouns are not eligible | integer uses Sino reading plus original suffix (`1분기 2분기 -> 일분기 이분기`); signed Sino integers read (`+1분기 -> 플러스 일분기`, `+3시리즈 -> 플러스 삼 시리즈`); decimal uses ordinary decimal/Sino reading (`+1.5분기 -> 플러스 일쩜오 분기`); `분기` range stays general rather than date-shared (`1~4분기 -> 일에서 사 분기`) |
 | Korean numeric chain | a full Korean-eligible token made only of completed Hangul and one or more valid ASCII integer blocks; a single digit block at token start is limited to one unregistered Hangul literal such as `5극` | no sign | no; invalid decimal/comma residue blocks the owner | no | preserves all source adjacency and spacing; inserts no semantic suffix space | ASCII letters, compatibility jamo, `_`, `/`, URL/path/email/code-like structures, Korean numeric-unit literals, registered suffix/counter blocks, explicit ambiguous attached `N대` surfaces, and partial residue are excluded; registered/preserve owners win first | reads only numeric cores without assigning suffix meaning: `다우존스30 -> 다우존스삼십`, `5극3특 -> 오극삼특`; `3대` is an explicit atomic-preserve exception and `123입니다` remains the existing generic number + original Korean path |
-| percent | integer, decimal, slash fraction for percent-point `%p`/`%P`; `%` supports signed decimal-aware forms | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed percent or percent-point conditions | yes | yes where numeric reader accepts | no space or one ASCII space | malformed percent/percent-point preserves; dash-like invalid forms preserve, e.g. `–1,00.5%` | ordinary decimal fractional zero uses `영`, e.g. `25.50% -> 이십오쩜오영 퍼센트`, `–2.03% -> 마이너스 이쩜영삼 퍼센트` |
+| percent | integer, decimal, slash fraction for percent-point `%p`/`%P`; `%` supports signed decimal-aware forms | `+`/`-` plus owner-local dash-like minus aliases such as `–` only under full-claim signed percent or percent-point conditions | yes | yes where numeric reader accepts | no space or one ASCII space | malformed percent/percent-point preserves; dash-like invalid forms preserve, e.g. `–1,00.5%` | ordinary decimal fractional zero uses `영`, e.g. `25.50% -> 이십오쩜오영 퍼센트`, `–2.03% -> 마이너스 이쩜영삼-퍼센트` |
 | temperature / degree | signed temperature, signed degree, unsigned degree-like unit surfaces | signed temperature uses `영상/영하`; bare degree has separate policy; dash-like minus aliases are owner-local under full-claim signed temperature/degree conditions | yes | signed parser accepts comma where valid | optional one space for signed unit variants | malformed signed temperature preserves, e.g. `+.5℃` | ordinary decimal fractional zero uses `영`, e.g. `25.50℃ -> 이십오쩜오영도`, `+25.50℃ -> 영상 이십오쩜오영도` |
 | KRW currency | registered KRW code/symbol/suffix forms | `+`/`-` supported around registered markers | yes | yes | no space or one ASCII space | invalid comma/leading-zero forms preserve; no partial fallback | ordinary decimal fractional zero uses `영`, e.g. `KRW25.50 -> 이십오쩜오영 원` |
 | non-KRW currency | registered USD/EUR/JPY/GBP forms within current currency matrix | partial sign support by marker form | USD/EUR decimal currently allowed; JPY integer-focused | yes where amount parser accepts | no space or one ASCII space | unsupported or malformed currency tokens preserve | current decimal fractional zero is `영`, e.g. `USD 25.50 -> 이십오쩜오영 달러` |
@@ -444,8 +444,8 @@ Dash-like signed numeric alias examples:
 
 | Surface | Expected output | Policy note |
 |---|---|---|
-| `–2.03%` | `마이너스 이쩜영삼 퍼센트` | signed percent/unit owner full-claims the complete surface |
-| `1–2kg` | `일에서 이 킬로그램` | range owner remains authoritative; dash is not a sign alias here |
+| `–2.03%` | `마이너스 이쩜영삼-퍼센트` | signed percent/unit owner full-claims the complete surface |
+| `1–2kg` | `일에서 이-킬로그램` | range owner remains authoritative; dash is not a sign alias here |
 | `서울–부산` | `서울–부산` | connector dash preserve |
 | `–2.03abc` | `–2.03abc` | unsafe tail preserve; no internal partial rewrite |
 | `` `–2.03%` `` | `` `–2.03%` `` | protected preserve |
@@ -861,8 +861,9 @@ Hyphen is not a broad numeric range delimiter:
    - Not in scope: `1.`, `3..140`, `25..50`, `2,34`, `2,,345`, `2,34억`,
      `3백..4십만`; those belong to segmented reading design or other follow-ups.
 3. File-like/code-like protection prerequisite:
-   - `file-25..50.txt`, `v25..50`, `SKU25..50` remain open audit gaps and must
-     be resolved before any broad segmented malformed numeric reader expands.
+   - `file-25..50.txt`, `v25..50`, and `SKU25..50` exact-preserve via the
+     file-like malformed numeric guard before any broad segmented malformed
+     numeric reader expands.
    - `version-1.5` is no longer an open segmented-reader gap; it is a managed
      dictionary numeric-code target and reads `버전 일쩜오`.
 4. Non-KRW currency trailing zero targeted fix.
@@ -993,15 +994,15 @@ Current production-source audit:
 | `{"value":"25..50억"}` | `{"value":"25..50억"}` | JSON-like protected preserve |
 | `/path/25..50억/log` | `/path/25..50억/log` | path protected preserve |
 | `https://example.com?q=25..50억` | `https://example.com?q=25..50억` | URL protected preserve |
-| `file-25..50.txt` | `file-25..오십.txt` | current audit gap; future segmenter must treat file-like as excluded |
+| `file-25..50.txt` | `file-25..50.txt` | file-like malformed numeric preserve |
 | `version-1.5` | `버전 일쩜오` | managed dictionary numeric-code target; no longer a segmented-reader audit gap |
-| `v25..50` | `v25..오십` | current audit gap; code-like prefix exclusion must outrank segmented fallback |
-| `SKU25..50` | `SKU25..오십` | current audit gap; code-like token exclusion must outrank segmented fallback |
+| `v25..50` | `v25..50` | code-like prefix malformed numeric preserve |
+| `SKU25..50` | `SKU25..50` | code-like token malformed numeric preserve |
 
-The remaining file-like/code-like gaps are recorded only as audit findings and
-belong to the separate protection prerequisite in section 5.1. They are not
-solved by leading-zero malformed decimal cleanup. `version-1.5` is handled by
-the managed dictionary numeric-code owner, not by a broad segmented fallback.
+The file-like/code-like prerequisite in section 5.1 is implemented for the
+surfaces above. They are not solved by leading-zero malformed decimal cleanup.
+`version-1.5` is handled by the managed dictionary numeric-code owner, not by a
+broad segmented fallback.
 
 ### 11.5 Severe invalid preserve criteria
 
@@ -1183,9 +1184,9 @@ Open decisions before any implementation:
    - decide how far the existing large-unit / Korean mixed-unit parser helpers
      can be reused without duplicating numeric reading logic.
 5. Code-like audit gaps:
-   - `file-25..50.txt`, `v25..50`, and `SKU25..50` currently do not all
-     exact-preserve. A segmented fallback must not ship before these exclusion
-     boundaries are explicit and tested.
+   - `file-25..50.txt`, `v25..50`, and `SKU25..50` exact-preserve under the
+     file-like malformed numeric guard. A segmented fallback must not ship
+     before these exclusion boundaries are explicit and tested.
    - `version-1.5` is now a managed dictionary numeric-code target.
 
 ## 12. Ordinary Decimal Fractional Zero 영 Canonicalization
@@ -1514,6 +1515,6 @@ guard.
 
 | Surface | Canonical / route |
 |---|---|
-| `국토위성 1·2호기` | `국토위성 일 이호기` |
-| `3·4호기를 도입한다` | `삼 사호기를 도입한다` |
+| `국토위성 1·2호기` | `국토위성 일·이호기` |
+| `3·4호기를 도입한다` | `삼·사호기를 도입한다` |
 | `1·2호` | existing address/identifier preserve |

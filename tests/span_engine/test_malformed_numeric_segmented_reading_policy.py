@@ -55,10 +55,10 @@ def test_severe_invalid_preserve_audit(text: str, expected: str) -> None:
         ('{"value":"25..50억"}', '{"value":"25..50억"}'),
         ("/path/25..50억/log", "/path/25..50억/log"),
         ("https://example.com?q=25..50억", "https://example.com?q=25..50억"),
-        ("file-25..50.txt", "file-25..오십.txt"),
-            ("version-1.5", "버전-일쩜오"),
-        ("v25..50", "v25..오십"),
-        ("SKU25..50", "SKU25..오십"),
+        ("file-25..50.txt", "file-25..50.txt"),
+        ("version-1.5", "버전-일쩜오"),
+        ("v25..50", "v25..50"),
+        ("SKU25..50", "SKU25..50"),
     ],
 )
 def test_protected_and_code_like_exclusion_current_audit(text: str, expected: str) -> None:

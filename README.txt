@@ -32,14 +32,39 @@ macOS·Windows ZIP을 삭제하고 새 macOS ZIP을 검증·반영한 다음 서
 
 ## Linux 운영 배포
 
+권장 진입점:
+
 ```sh
 cd ~/tts-preprocessor
 source .venv/bin/activate
-PYTHONPATH=. .venv/bin/python -m pytest -m "not binary_runtime" -q
+bash scripts/deploy_with_gates.sh
+```
 
+`deploy_with_gates.sh`는 내부에서 다음을 수행한다.
+
+1. packaged path(`engine/`, `bin/`, `LLM/`, PyInstaller spec, `scripts/probes/`)
+   변경이 있으면 자동 `git commit` (`DEPLOY_COMMIT_MESSAGE`로 메시지 지정 가능)
+2. `deploy_server.sh`
+   - packaged path dirty 검사 (`deploy_with_gates.sh`가 선행 commit, 또는 `DEPLOY_ALLOW_DIRTY=1`)
+   - `pytest -m "not binary_runtime"`
+   - local / remote binary / live API core semantic probes
+   - `check_server.sh`
+2. 외부 경로 API core semantic probes (`DEPLOY_EXTERNAL_API_PROBE=0`으로 생략 가능)
+
+수동으로 단계를 나눌 때는 아래와 같다.
+
+```sh
+cd ~/tts-preprocessor
+source .venv/bin/activate
 bash scripts/deploy_server.sh
-bash scripts/check_server.sh
+```
 
+`deploy_server.sh`가 이미 `check_server.sh`와 live API core semantic probes를
+호출하므로, 배포 직후 `check_server.sh`와 `127.0.0.1` API probe를 다시 실행할
+필요는 없다. 외부 IP 경로만 추가로 검증하려면 `deploy_with_gates.sh`를 쓰거나
+아래 명령만 따로 실행한다.
+
+```sh
 .venv/bin/python scripts/probes/run_semantic_probes.py \
   --suite core \
   --runtime api \

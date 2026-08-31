@@ -41,6 +41,7 @@ DICTIONARY_READINGS: dict[str, str] = {
     "IPTV": "아이피티비",
     "JS": "제이에스",
     "JWT": "제이더블유티",
+    "KAIST": "카이스트",
     "KBL": "케이비엘",
     "KBO": "케이비오",
     "KFA": "케이에프에이",

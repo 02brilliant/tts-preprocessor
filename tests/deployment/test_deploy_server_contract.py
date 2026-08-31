@@ -56,6 +56,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/registered_unit_surface.py",
         "scripts/probes/json_like_protected_spans.py",
         "scripts/probes/contextual_number_units.py",
+        "scripts/probes/deploy_critical_surface.py",
         "tts_preprocessor.spec",
         "tts_preprocessor_simplified.spec",
         "tts_preprocessor_llm_minimal.spec",
@@ -94,6 +95,12 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         project_bin / "python",
         """
         #!/usr/bin/env bash
+        if [[ "${2:-}" == "pytest" ]]; then
+          if [[ "${FAKE_SOURCE_PYTEST_STATUS:-0}" != "0" ]]; then
+            exit "${FAKE_SOURCE_PYTEST_STATUS}"
+          fi
+          exit 0
+        fi
         if [[ "${1:-}" == *run_semantic_probes.py ]]; then
           if [[ "${FAKE_LOCAL_PROBE_STATUS:-0}" != "0" ]]; then
             printf '[semantic-probes][FAIL] fixture\\n' >&2
@@ -328,6 +335,9 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     api_semantic = deploy.index("if ! run_remote_api_semantic_probes")
     cleanup = deploy.rindex("if ! run_remote_build_action cleanup")
     local_probes = deploy.index("Validating the local worktree with core semantic probes")
+    gate_block = deploy.index("enforce_clean_packaged_tree\nrun_source_pytest")
+    enforce_clean = gate_block
+    source_pytest = gate_block + len("enforce_clean_packaged_tree\n")
     remote_preflight = deploy.index(
         "Checking the existing remote Linux build environment"
     )
@@ -336,6 +346,7 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert linux_start < first_wait
     assert macos_start < first_wait
     assert local_probes < remote_preflight < rsync_engine < linux_start
+    assert enforce_clean < source_pytest < local_probes
     assert (
         first_wait
         < stop
@@ -366,6 +377,10 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert '"$LOCAL_SEMANTIC_PROBES_DIR/run_semantic_probes.py"' in deploy
     assert "Validating the local worktree with core semantic probes" in deploy
     assert "Packaging uncommitted or untracked files from the worktree" in deploy
+    assert "DEPLOY_ALLOW_DIRTY=1" in deploy
+    assert 'pytest -m "not binary_runtime"' in deploy
+    assert "DEPLOY_SKIP_SOURCE_PYTEST" in deploy
+    assert "macOS packaged binary core semantic probes" in deploy
     assert "contextual_number_units.py" not in deploy
     assert "registered_unit_surface.py" not in deploy
 
@@ -404,6 +419,30 @@ def test_local_probe_failure_stops_before_source_sync(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "Local core semantic probes failed" in result.stderr
+    if calls.exists():
+        events = _events(calls)
+        _assert_not_run(
+            events,
+            "remote-preflight",
+            "rsync",
+            "linux-prepare-start",
+            "macos-build-start",
+            "server-stop",
+        )
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_source_pytest_failure_stops_before_local_probes(tmp_path: Path) -> None:
+    script, env, calls = _prepare_deploy_tree(tmp_path)
+    env["FAKE_SOURCE_PYTEST_STATUS"] = "39"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode != 0
+    assert "Source pytest failed" in result.stderr
     if calls.exists():
         events = _events(calls)
         _assert_not_run(
