@@ -287,6 +287,7 @@ run_integrated_asset_check() {
 
 prepare_linux_release() {
   local archive_digest
+  local simplified_smoke_actual
 
   trap cleanup_failed_prepare EXIT
   validate_build_environment
@@ -323,8 +324,11 @@ prepare_linux_release() {
   )
 
   run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"
-  if [[ "$("$BUILD_SRC_DIR/dist/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
+  simplified_smoke_actual="$("$BUILD_SRC_DIR/dist/tts-preprocessor-simplified" --text "ABC와 3kg")"
+  if [[ "$simplified_smoke_actual" != "ABC와 삼-킬로그램" ]]; then
     echo "[remote-build][ERROR] Simplified dist binary smoke failed." >&2
+    echo "expected: ABC와 삼-킬로그램" >&2
+    echo "actual: $simplified_smoke_actual" >&2
     return 1
   fi
   run_integrated_asset_check "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-minimal" "dist level 3 binary"
@@ -343,8 +347,11 @@ prepare_linux_release() {
   run_semantic_probe_set \
     "$PREPARED_PACKAGE_DIR/tts-preprocessor" \
     "staging packaged binary"
-  if [[ "$("$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
+  simplified_smoke_actual="$("$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
+  if [[ "$simplified_smoke_actual" != "ABC와 삼-킬로그램" ]]; then
     echo "[remote-build][ERROR] Staging simplified binary smoke failed." >&2
+    echo "expected: ABC와 삼-킬로그램" >&2
+    echo "actual: $simplified_smoke_actual" >&2
     return 1
   fi
   run_integrated_asset_check \
@@ -384,6 +391,7 @@ publish_linux_release() {
   validate_build_sources
   validate_prepare_marker
   verify_server_stopped
+  local simplified_smoke_actual
 
   if [[ ! -d "$PACKAGES_DIR" || ! -d "$DOWNLOADS_DIR" ]]; then
     echo "[remote-build][ERROR] Production package/download parent directory is missing." >&2
@@ -401,8 +409,11 @@ publish_linux_release() {
   mv -- "$PREPARED_ARCHIVE" "$ARCHIVE_PATH"
 
   run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor" "published packaged binary"
-  if [[ "$("$PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
+  simplified_smoke_actual="$("$PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
+  if [[ "$simplified_smoke_actual" != "ABC와 삼-킬로그램" ]]; then
     echo "[remote-build][ERROR] Published simplified binary smoke failed." >&2
+    echo "expected: ABC와 삼-킬로그램" >&2
+    echo "actual: $simplified_smoke_actual" >&2
     return 1
   fi
   run_integrated_asset_check "$PACKAGE_DIR/tts-preprocessor-llm-minimal" "published packaged level 3 binary"

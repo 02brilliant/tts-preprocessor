@@ -82,8 +82,11 @@ if [[ ! -f "$DIST_DIR/tts-preprocessor-simplified" ]]; then
   echo "Simplified binary build failed: $DIST_DIR/tts-preprocessor-simplified not found" >&2
   exit 1
 fi
-if [[ "$("$DIST_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
+SIMPLIFIED_SMOKE_ACTUAL="$("$DIST_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
+if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
   echo "Simplified dist binary smoke failed" >&2
+  echo "expected: ABC와 삼-킬로그램" >&2
+  echo "actual: $SIMPLIFIED_SMOKE_ACTUAL" >&2
   exit 1
 fi
 echo "[OK] local simplified dist binary smoke"

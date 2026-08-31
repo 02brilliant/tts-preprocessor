@@ -149,7 +149,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
           printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-natural
           chmod +x dist/tts-preprocessor-llm-natural
         elif [[ "$*" == *"tts_preprocessor_simplified.spec"* ]]; then
-          printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "ABC와 삼 킬로그램"' > dist/tts-preprocessor-simplified
+          printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "ABC와 삼-킬로그램"' > dist/tts-preprocessor-simplified
           chmod +x dist/tts-preprocessor-simplified
         else
           printf '%s\n' "new-package" > dist/tts_preprocessor

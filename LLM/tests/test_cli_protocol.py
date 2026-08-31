@@ -58,6 +58,50 @@ def test_integrated_entrypoint_lists_models(monkeypatch, capsys) -> None:
     assert payload["default_model"] in payload["models"]
 
 
+def test_integrated_entrypoint_self_check_uses_current_hyphen_policy(
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(check=True, json=True),
+    )
+    monkeypatch.setattr("LLM.stage_engine.validate_runtime_assets", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput("에이비씨와 삼-킬로그램", [], None),
+    )
+
+    assert entrypoint.run(stage_level=3, prompt_level=1) == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "ok": True,
+        "ready": True,
+        "level": 3,
+    }
+
+
+def test_integrated_entrypoint_self_check_reports_expected_and_actual(
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(check=True),
+    )
+    monkeypatch.setattr("LLM.stage_engine.validate_runtime_assets", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput("에이비씨와 삼 킬로그램", [], None),
+    )
+
+    assert entrypoint.run(stage_level=4, prompt_level=2) == 1
+    error = capsys.readouterr().err
+    assert "expected='에이비씨와 삼-킬로그램'" in error
+    assert "actual='에이비씨와 삼 킬로그램'" in error
+
+
 def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatch, capsys) -> None:
     calls = []
 

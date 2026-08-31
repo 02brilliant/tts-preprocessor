@@ -89,8 +89,12 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         if args.check:
             validate_runtime_assets(prompt_levels=(prompt_level,))
             rule_probe = transform_output("ABC와 3kg").normalized_text
-            if rule_probe != "에이비씨와 삼 킬로그램":
-                raise RuntimeError("bundled rule engine self-check failed")
+            expected_rule_probe = "에이비씨와 삼-킬로그램"
+            if rule_probe != expected_rule_probe:
+                raise RuntimeError(
+                    "bundled rule engine self-check failed: "
+                    f"expected={expected_rule_probe!r}, actual={rule_probe!r}"
+                )
             if args.json:
                 _print_json({"ok": True, "ready": True, "level": stage_level})
             else:

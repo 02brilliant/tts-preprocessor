@@ -154,8 +154,10 @@ fi
 "$MACOS_LLM_MINIMAL_BINARY" --check >/dev/null
 "$MACOS_LLM_NATURAL_BINARY" --check >/dev/null
 SIMPLIFIED_SMOKE_ACTUAL="$("$MACOS_SIMPLIFIED_BINARY" --text "ABC와 3kg")"
-if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼 킬로그램" ]]; then
-  echo "[macos-build][ERROR] Simplified executable smoke test failed: $SIMPLIFIED_SMOKE_ACTUAL" >&2
+if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
+  echo "[macos-build][ERROR] Simplified executable smoke test failed." >&2
+  echo "expected: ABC와 삼-킬로그램" >&2
+  echo "actual: $SIMPLIFIED_SMOKE_ACTUAL" >&2
   exit 1
 fi
 
@@ -212,8 +214,11 @@ if [[ "$EXTRACTED_SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
 fi
 "$EXTRACT_DIR/tts-preprocessor-llm-minimal" --check >/dev/null
 "$EXTRACT_DIR/tts-preprocessor-llm-natural" --check >/dev/null
-if [[ "$("$EXTRACT_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")" != "ABC와 삼 킬로그램" ]]; then
+EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL="$("$EXTRACT_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
+if [[ "$EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
   echo "[macos-build][ERROR] Extracted simplified executable smoke test failed." >&2
+  echo "expected: ABC와 삼-킬로그램" >&2
+  echo "actual: $EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL" >&2
   exit 1
 fi
 
