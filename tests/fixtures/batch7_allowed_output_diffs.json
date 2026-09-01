@@ -29,7 +29,7 @@
     {
       "decision_id": "typed-surface-e2e-range-and-degree",
       "input": "기온은 -1.3도까지 떨어졌지만 3~8cm 적설은 유지됐다",
-      "expected": "기온은 마이너스 일쩜삼도까지 떨어졌지만, 삼에서 팔-센티미터 적설은 유지됐다",
+      "expected": "기온은 마이너스 일-쩜-삼도까지 떨어졌지만, 삼에서 팔-센티미터 적설은 유지됐다",
       "owner_contract": "signed number and range owners remain atomic while prosody_extra inserts only the valid subordinate-clause comma"
     }
   ],

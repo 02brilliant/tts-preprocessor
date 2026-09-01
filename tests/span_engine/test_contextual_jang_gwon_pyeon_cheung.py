@@ -123,7 +123,7 @@ def test_batch5_malformed_surfaces_defer_without_partial_conversion(
     [
         ("+3권", "플러스 삼 권"),
         ("-3편", "마이너스 삼 편"),
-        ("1.5층", "일쩜오-층"),
+        ('1.5층', '일-쩜-오-층'),
     ],
 )
 def test_batch5_signed_and_decimal_use_residual_reading(

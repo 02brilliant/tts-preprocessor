@@ -34,7 +34,7 @@ PARSER_CONTEXT_CASES = (
     TextCase(
         case_id="parser-context-currency-in-korean-sentence",
         text="비용은 €1,234.56이다",
-        expected="비용은 천이백삼십사쩜오육-유로이다",
+        expected='비용은 천이백삼십사-쩜-오육-유로이다',
         rule="parser context / currency",
         reason="currency parser는 한글 predicate 문맥을 읽어도 한글 literal을 rewrite하지 않는다.",
         classification="parser",

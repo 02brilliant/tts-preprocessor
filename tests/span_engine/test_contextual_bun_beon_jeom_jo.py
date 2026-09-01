@@ -20,7 +20,7 @@ from engine.main import transform, transform_debug
         ("평점은 3점이었다", "평점은 삼-점이었다"),
         ("작품 3점을 전시했다", "작품 세-점을 전시했다"),
         ("3점이 공개됐다", "세-점이 공개됐다"),
-        ("3.5점", "삼쩜오-점"),
+        ('3.5점', '삼-쩜-오-점'),
         ("3조 원", "삼조 원"),
         ("학생을 3조로 나눴다", "학생을 세-조로 나눴다"),
         ("총 3조를 편성했다", "총 세-조를 편성했다"),
@@ -65,8 +65,8 @@ def test_contextual_core_malformed_is_atomic_defer(text: str) -> None:
     [
         ("+3번", "플러스 삼 번"),
         ("-3점", "마이너스 삼 점"),
-        ("1.5분", "일쩜오-분"),
-        ("2.5번", "이쩜오-번"),
+        ('1.5분', '일-쩜-오-분'),
+        ('2.5번', '이-쩜-오-번'),
     ],
 )
 def test_contextual_signed_and_decimal_use_residual_reading(
@@ -77,7 +77,7 @@ def test_contextual_signed_and_decimal_use_residual_reading(
 
 def test_valid_decimal_large_unit_keeps_existing_large_unit_owner() -> None:
     debug = transform_debug("1.5조")
-    assert debug["normalized_text"] == "일쩜오-조"
+    assert debug["normalized_text"] == "일-쩜-오-조"
     assert [
         claim["owner"]
         for claim in debug["debug"]["trace"]["claim_logs"]
@@ -124,6 +124,16 @@ def test_contextual_core_debug_decision_log(
     assert logs[0]["semantic_type"] == semantic_type
     assert logs[0]["reentry_blocked"] is True
     assert logs[0]["actual_final_output"] == debug["normalized_text"]
+
+
+def test_jo_with_korean_mixed_large_unit_follow_up_defers_to_large_unit_owner() -> None:
+    debug = transform_debug("6조 3천억 원")["debug"]
+    assert debug["normalized_text"] == "육조 삼천억 원"
+    assert [claim["owner"] for claim in debug["trace"]["claim_logs"]] == [
+        "large_unit_atomic",
+        "large_unit_atomic",
+    ]
+    assert debug["trace"]["contextual_decision_logs"] == []
 
 
 @pytest.mark.parametrize(

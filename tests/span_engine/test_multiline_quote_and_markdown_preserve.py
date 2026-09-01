@@ -13,7 +13,7 @@ def test_multiline_english_quote_preserves_inside_but_transforms_outside():
     assert "The temperature is 25℃. pH 7.4 was maintained for 3 hours." in out
     assert "The ratio is 1/3." in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out
     assert "삼분의 일" in out
     assert "라고 적었고" in out
 
@@ -29,7 +29,7 @@ def test_multiline_smart_quote_preserves_inside_but_transforms_outside():
     assert "The temperature is 25℃.\n\nResult: pH 7.4 was maintained" in out
     assert "Result: pH 7.4 was maintained for 3 hours." in out
     assert "이십오도" in out
-    assert "이십오쩜구구-달러" in out
+    assert "이십오-쩜-구구-달러" in out
 
 
 def test_inline_backtick_quoted_english_preserve():
@@ -41,7 +41,7 @@ def test_inline_backtick_quoted_english_preserve():
     assert out != text
     assert '`"The temperature is 25℃."`' in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out
     assert "라는 예시" in out
 
 
@@ -54,7 +54,7 @@ def test_inline_backtick_json_preserve_but_outside_transform():
     assert out != text
     assert '`{"text":"25℃"}`' in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out
 
 
 def test_markdown_code_fence_preserve_but_outside_transform():
@@ -71,8 +71,8 @@ def test_markdown_code_fence_preserve_but_outside_transform():
     assert '{"text":"25℃", "ph":"pH 7.4"}' in out
     assert "``` 하지만 본문" in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
-    assert "이십오쩜구구-달러" in out
+    assert "피에이치 칠-쩜-사" in out
+    assert "이십오-쩜-구구-달러" in out
 
 
 def test_markdown_shell_fence_preserve_but_outside_transform():
@@ -87,4 +87,4 @@ def test_markdown_shell_fence_preserve_but_outside_transform():
     assert out != text
     assert "curl -X POST http://localhost:8010/api/transform" in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out

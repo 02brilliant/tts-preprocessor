@@ -34,12 +34,12 @@ def test_number_to_korean_under_10000(value: int, reading: str) -> None:
     ("text", "expected"),
     [
         ("123", "백이십삼"),
-        ("2025", "이천이십오"),
+        ('2025', '이천이십오'),
         ("AI 123", "에이아이 백이십삼"),
         ("123입니다", "백이십삼입니다"),
         ("123.", "백이십삼."),
         ("가격 1000", "가격 천"),
-        ("1,234", "천이백삼십사"),
+        ('1,234', '천이백삼십사'),
     ],
 )
 def test_minimal_number_parser(text: str, expected: str) -> None:

@@ -17,8 +17,8 @@ from engine.span_engine.transform import transform_with_trace
         ("5번째", "다섯-번째"),
         ("39번째", "서른아홉-번째"),
         ("40번째", "사십-번째"),
-        ("2.5번째", "이쩜오-번째"),
-        ("2.5 번째", "이쩜오-번째"),
+        ('2.5번째', '이-쩜-오-번째'),
+        ('2.5 번째', '이-쩜-오-번째'),
         ("제7번째", "제-일곱-번째"),
         ("제 7번째", "제-일곱-번째"),
         ("7번째만", "일곱-번째만"),
@@ -69,10 +69,10 @@ def test_ordinal_owner_claims_only_suffix_span() -> None:
 @pytest.mark.parametrize(
     ("raw_number", "expected"),
     [
-        ("7", "일곱-번째"),
-        ("2.5", "이쩜오-번째"),
-        ("1", "첫-번째"),
-        ("40", "사십-번째"),
+        ('7', '일곱-번째'),
+        ('2.5', '이-쩜-오-번째'),
+        ('1', '첫-번째'),
+        ('40', '사십-번째'),
     ],
 )
 def test_ordinal_reading_policy(raw_number: str, expected: str) -> None:

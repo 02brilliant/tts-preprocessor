@@ -10,7 +10,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected="회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사쩜오육-유로이다",
+        expected='회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="canonical / bracket + date_time + currency",
         reason="정책 7장의 대표 복합 canonical output이다.",
         classification="canonical",
@@ -34,7 +34,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-event-currency-prosody",
         text="그리고 12.12 사태 자료와 €1,234.56 보고서를 검토한다",
-        expected="그리고, 십이십이 사태 자료와 천이백삼십사쩜오육-유로 보고서를 검토한다",
+        expected='그리고, 십이십이 사태 자료와 천이백삼십사-쩜-오육-유로 보고서를 검토한다',
         rule="canonical / event + currency + prosody",
         reason="정책 canonical table의 event/currency/prosody 복합 출력이다.",
         classification="canonical",
@@ -106,7 +106,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-temperature",
         text="-2.5℃",
-        expected="영하 이쩜오도",
+        expected='영하 이-쩜-오도',
         rule="canonical / temperature",
         reason="temperature parser는 음수와 decimal precision을 보존해야 한다.",
         classification="canonical",
@@ -114,7 +114,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-ph",
         text="pH 7.4",
-        expected="피에이치 칠쩜사",
+        expected='피에이치 칠-쩜-사',
         rule="canonical / special pH parser",
         reason="special parser canonical output이다.",
         classification="canonical",

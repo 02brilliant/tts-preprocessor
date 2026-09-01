@@ -67,10 +67,10 @@ def test_common_signed_numeric_core_rejects_invalid_full_surface(raw: str) -> No
 def test_default_and_temperature_sign_profiles_share_numeric_core() -> None:
     core = parse_signed_numeric_core("-1,000.50", require_sign=True)
     assert core is not None
-    assert render_signed_numeric(core) == "마이너스 천쩜오영"
+    assert render_signed_numeric(core) == "마이너스 천-쩜-오영"
     assert (
         render_signed_numeric(core, sign_profile=SignProfile.TEMPERATURE)
-        == "영하 천쩜오영"
+        == "영하 천-쩜-오영"
     )
 
 
@@ -92,11 +92,11 @@ def test_owner_policy_does_not_expand_compound_unit_or_counter_signs() -> None:
         ("-25", "마이너스 이십오"),
         ("+0", "플러스 영"),
         ("-0", "마이너스 영"),
-        ("+1.50", "플러스 일쩜오영"),
-        ("-0.0", "마이너스 영쩜영"),
-        ("+1,000.50", "플러스 천쩜오영"),
+        ('+1.50', '플러스 일-쩜-오영'),
+        ('-0.0', '마이너스 영-쩜-영'),
+        ('+1,000.50', '플러스 천-쩜-오영'),
         ("-12,345", "마이너스 만이천삼백사십오"),
-        ("-1,000,000.0", "마이너스 백만쩜영"),
+        ('-1,000,000.0', '마이너스 백만-쩜-영'),
     ],
 )
 def test_standalone_signed_numeric_canonical(text: str, expected: str) -> None:
@@ -106,15 +106,15 @@ def test_standalone_signed_numeric_canonical(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "owner"),
     [
-        ("+1.5kg", "플러스 일쩜오-킬로그램", "simple_unit"),
+        ('+1.5kg', '플러스 일-쩜-오-킬로그램', "simple_unit"),
         ("-45㎡", "마이너스 사십오-제곱미터", "special_unit"),
         ("+10%", "플러스 십-퍼센트", "simple_unit"),
-        ("-2.5%p", "마이너스 이쩜오-퍼센트포인트", "percent_point"),
+        ('-2.5%p', '마이너스 이-쩜-오-퍼센트포인트', "percent_point"),
         ("+1,000원", "플러스 천-원", "currency"),
-        ("-1,000.50원", "마이너스 천쩜오영-원", "currency"),
+        ('-1,000.50원', '마이너스 천-쩜-오영-원', "currency"),
         ("+$10", "플러스 십-달러", "currency"),
         ("$-10", "마이너스 십-달러", "currency"),
-        ("+25.50억", "플러스 이십오쩜오영-억", "large_unit_atomic"),
+        ('+25.50억', '플러스 이십오-쩜-오영-억', "large_unit_atomic"),
         ("-1/3", "마이너스 삼분의 일", "fraction"),
     ],
 )
@@ -160,9 +160,9 @@ def test_temperature_and_angle_sign_profiles(
     [
         ("+1:2", "플러스 일 대 이", "colon_semantic_pair"),
         ("1:-2", "일 대 마이너스 이", "colon_semantic_pair"),
-        ("+1.5:-2.0", "플러스 일쩜오 대 마이너스 이쩜영", "colon_semantic_pair"),
-        ("+2.3~4kg", "플러스 이쩜삼에서 사-킬로그램", "range_with_unit"),
-        ("2.3~-4.5kg", "이쩜삼에서 마이너스 사쩜오-킬로그램", "range_with_unit"),
+        ('+1.5:-2.0', '플러스 일-쩜-오 대 마이너스 이-쩜-영', "colon_semantic_pair"),
+        ('+2.3~4kg', '플러스 이-쩜-삼에서 사-킬로그램', "range_with_unit"),
+        ('2.3~-4.5kg', '이-쩜-삼에서 마이너스 사-쩜-오-킬로그램', "range_with_unit"),
         ("+82-10-1234-5678", "플러스 팔이 일공 일이삼사 오육칠팔", "phone"),
     ],
 )
@@ -265,8 +265,8 @@ def test_mixed_signed_numeric_e2e() -> None:
         "각도는 +30°, 경기는 +1:-2였고 차량 변화 +3대는 원문으로 기록했다."
     )
     expected = (
-        "값은 플러스 천쩜오영-원, 변화율은 마이너스 이쩜오-퍼센트포인트, "
-        "무게는 플러스 일쩜오-킬로그램, 온도는 영하 이십오도, 각도는 플러스 삼십도, "
+        "값은 플러스 천-쩜-오영-원, 변화율은 마이너스 이-쩜-오-퍼센트포인트, "
+        "무게는 플러스 일-쩜-오-킬로그램, 온도는 영하 이십오도, 각도는 플러스 삼십도, "
             "경기는 플러스 일 대 마이너스 이였고 차량 변화 플러스 삼 대는 원문으로 기록했다."
     )
     assert transform(text) == expected

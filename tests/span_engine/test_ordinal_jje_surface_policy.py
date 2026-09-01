@@ -36,7 +36,7 @@ def test_invalid_or_deferred_ordinal_jje_preserves(text: str) -> None:
 
 @pytest.mark.parametrize(
     ("raw_number", "expected"),
-    [("1", "첫째"), ("2", "둘째"), ("12", "열두째"), ("40", "사십째")],
+    [('1', '첫째'), ('2', '둘째'), ('12', '열두째'), ('40', '사십째')],
 )
 def test_ordinal_jje_reading_policy(raw_number: str, expected: str) -> None:
     assert ordinal_jje_reading(raw_number) == expected

@@ -169,5 +169,5 @@ def test_protected_numeric_delimited_spans_do_not_block_neighbors():
     out = transform(text)
     assert out != text
     assert "The meeting was at 13:05." in out
-    assert "이십오쩜구구-달러" in out
-    assert "피에이치 칠쩜사" in out
+    assert "이십오-쩜-구구-달러" in out
+    assert "피에이치 칠-쩜-사" in out

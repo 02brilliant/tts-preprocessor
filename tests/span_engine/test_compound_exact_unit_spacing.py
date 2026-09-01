@@ -28,7 +28,7 @@ from engine.span_engine.transform import transform, transform_with_trace
         ("10 ppb", "십 피피비"),
         ("9dBi", "구 디비아이"),
         ("9 dBi", "구 디비아이"),
-        ("2.35 Mbps", "이쩜삼오 메가비피에스"),
+        ('2.35 Mbps', '이-쩜-삼오 메가비피에스'),
         ("1,000 Mbps", "천 메가비피에스"),
         ("+10Mbps", "플러스 십 메가비피에스"),
         ("+10 Mbps", "플러스 십 메가비피에스"),

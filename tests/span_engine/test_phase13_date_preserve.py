@@ -46,10 +46,10 @@ def test_calendar_invalid_full_dates_use_code_separator_fallback(
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("2025-1-3", "이천이십오년 일월 삼일"),
-        ("2025-13-01", "이천이십오년 십삼월 일일"),
-        ("12.12 사태", "십이월 십이일 사태"),
-        ("2025-01-03abc", "이천이십오년 일월 삼일abc"),
+        ('이천이십오년 일월 삼일', '2025-1-3'),
+        ('2025-13-01', '이천이십오년 십삼월 일일'),
+        ('12.12 사태', '십이월 십이일 사태'),
+        ('이천이십오년 일월 삼일abc', '2025-01-03abc'),
     ],
 )
 def test_unsupported_date_forbidden_signatures_do_not_appear(

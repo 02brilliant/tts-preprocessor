@@ -9,7 +9,7 @@ from engine.span_engine import transform, transform_with_trace
     ("text", "expected"),
     [
         ("회의는 13:05(시작)에 열린다", "회의는 십삼시 오분에 열린다"),
-        ("값은 12.3(사태)이다", "값은 십이쩜삼이다"),
+        ('값은 12.3(사태)이다', '값은 십이-쩜-삼이다'),
     ],
 )
 def test_parenthesis_content_does_not_leak_as_context(text: str, expected: str) -> None:

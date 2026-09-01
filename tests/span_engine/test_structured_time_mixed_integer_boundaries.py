@@ -143,7 +143,7 @@ def test_mixed_integer_trace_full_claim_and_original_unit_provenance() -> None:
 def test_mixed_decimal_full_claim_and_provenance() -> None:
     output = transform_with_trace("값은5천830.13이다")
 
-    assert output.normalized_text == "값은오천팔백삼십쩜일삼이다"
+    assert output.normalized_text == "값은오천팔백삼십-쩜-일삼이다"
     assert [
         (claim.owner, claim.reason)
         for claim in output.trace.claim_logs
@@ -161,7 +161,7 @@ def test_mixed_decimal_full_claim_and_provenance() -> None:
         ("오", "GENERATED_READING"),
         ("천", "ORIGINAL_KOREAN"),
         ("팔백삼십", "GENERATED_READING"),
-        ("쩜일삼", "GENERATED_READING"),
+        ("-쩜-일삼", "GENERATED_READING"),
     ]
     assert all(log.passed for log in output.trace.validation_logs)
 
@@ -177,5 +177,5 @@ def test_user_reported_mixed_integer_and_decimal_sentence() -> None:
         "숫자들은 5천830, 5천830이고, 마지막은 5천830.13이다."
     ) == (
         "숫자들은 오천팔백삼십, 오천팔백삼십이고, "
-        "마지막은 오천팔백삼십쩜일삼이다."
+        "마지막은 오천팔백삼십-쩜-일삼이다."
     )

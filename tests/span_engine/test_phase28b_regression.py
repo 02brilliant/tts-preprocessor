@@ -8,9 +8,9 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("12.3-수치", "십이쩜삼-수치"),  # Not an event
+        ('12.3-수치', '십이-쩜-삼-수치'),  # Not an event
         ("12·3-수치", "일이·삼-수치"),    # Not an event
-        ("12.3 은 비상계엄", "십이쩜삼 은 비상계엄"),  # Separated by josa
+        ('12.3 은 비상계엄', '십이-쩜-삼 은 비상계엄'),  # Separated by josa
         ("12·3 은 비상계엄", "일이·삼 은 비상계엄"),    # Separated by josa
     ],
 )

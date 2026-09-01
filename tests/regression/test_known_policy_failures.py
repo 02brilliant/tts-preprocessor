@@ -43,7 +43,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-currency-eur-comma-decimal",
         text="€1,234.56",
-        expected="천이백삼십사쩜오육-유로",
+        expected='천이백삼십사-쩜-오육-유로',
         rule="regression / atomic currency parse",
         reason="The full EUR comma-decimal span must normalize atomically instead of partially consuming only the number or code.",
         classification="override",

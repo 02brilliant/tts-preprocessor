@@ -312,7 +312,7 @@ SIGNED_DEGREE_EXTENDED_CASES = [
     TextCase(
         case_id="signed-degree-plain-trailing-zero-decimal",
         text="-12.0도",
-        expected="마이너스 십이쩜영도",
+        expected='마이너스 십이-쩜-영도',
         rule="policy / signed degree quantity extended",
         reason="The signed-degree parser must preserve decimal precision when the input explicitly includes a trailing zero.",
         classification="signed_degree",

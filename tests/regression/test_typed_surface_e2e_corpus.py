@@ -51,7 +51,7 @@ PARTIAL_MATCH_GUARD_CASES = [
     TextCase(
         case_id="typed-surface-partial-signed-degree",
         text="-1.3도",
-        expected="마이너스 일쩜삼도",
+        expected='마이너스 일-쩜-삼도',
         rule="typed surface / partial match guard",
         reason="Signed degree quantities must stay on the dedicated parser route and never leak a raw minus sign.",
         classification="regression",
@@ -95,7 +95,7 @@ LONG_SENTENCE_E2E_CASES = [
     TextCase(
         case_id="typed-surface-e2e-range-and-degree",
         text="기온은 -1.3도까지 떨어졌지만 3~8cm 적설은 유지됐다",
-        expected="기온은 마이너스 일쩜삼도까지 떨어졌지만, 삼에서 팔-센티미터 적설은 유지됐다",
+        expected='기온은 마이너스 일-쩜-삼도까지 떨어졌지만, 삼에서 팔-센티미터 적설은 유지됐다',
         rule="typed surface / canonical owners plus subordinate prosody",
         reason="Signed degree and range claims remain independent before prosody_extra inserts the registered -지만 clause comma.",
         classification="canonical",
@@ -114,7 +114,7 @@ FULL_PIPELINE_E2E_CASES = [
     TextCase(
         case_id="typed-surface-full-pipeline-connector-mixed",
         text="그리고 FTA는 유지하고 AI·반도체와 K-푸드 전략은 6402억 달러 규모로 1∼11월 동안 -1.3도 환경에서도 추진한다",
-        expected="그리고, 에프티에이는 유지하고 에이아이·반도체와 케이푸드 전략은 육천사백이억 달러 규모로 일월에서 십일월 동안 마이너스 일쩜삼도 환경에서도 추진한다",
+        expected='그리고, 에프티에이는 유지하고 에이아이·반도체와 케이푸드 전략은 육천사백이억 달러 규모로 일월에서 십일월 동안 마이너스 일-쩜-삼도 환경에서도 추진한다',
         rule="typed surface / full pipeline e2e",
         reason="Normalization, typed protected surfaces, phonetic smoothing, and prosody must cooperate without reopening protected boundaries in a mixed sentence.",
         classification="regression",

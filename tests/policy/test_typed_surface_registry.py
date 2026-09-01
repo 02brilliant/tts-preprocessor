@@ -13,7 +13,7 @@ from engine.span_engine.transform import transform_with_trace
         ("K-푸드", "케이푸드", "k_hangul_lexical"),
         ("3~8cm", "삼에서 팔-센티미터", "range_with_unit"),
         ("6402억", "육천사백이억", "large_unit_atomic"),
-        ("-1.3도", "마이너스 일쩜삼도", "signed_number"),
+        ('-1.3도', '마이너스 일-쩜-삼도', "signed_number"),
         ("12·12 사태", "십이십이 사태", "event"),
     ],
 )

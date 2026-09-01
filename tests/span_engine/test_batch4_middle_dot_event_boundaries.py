@@ -99,7 +99,7 @@ def test_batch4_event_and_decimal_claims_are_independent() -> None:
     text = "12.12 사태와 12.12 수치를 함께 적었다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "십이십이 사태와 십이쩜일이 수치를 함께 적었다"
+    assert output.normalized_text == "십이십이 사태와 십이-쩜-일이 수치를 함께 적었다"
     assert [
         (claim.owner, claim.surface_type, claim.reason, claim.span.start, claim.span.end)
         for claim in output.trace.claim_logs

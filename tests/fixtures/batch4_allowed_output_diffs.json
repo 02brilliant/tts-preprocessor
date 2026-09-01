@@ -41,7 +41,7 @@
     {
       "decision_id": "scenario-event-plus-ambiguous-decimal",
       "input": "12.12 사태와 12.12 수치를 함께 적었다",
-      "expected": "십이십이 사태와 십이쩜일이 수치를 함께 적었다",
+      "expected": "십이십이 사태와 십이-쩜-일이 수치를 함께 적었다",
       "owner_contract": "event and decimal owners claim their independent dotted surfaces without sentence-wide preservation"
     }
   ],

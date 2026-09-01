@@ -69,10 +69,7 @@ def test_span_prosody_extra_avoids_false_positives(src: str) -> None:
             '{"text":"회의를 마치고 나서"} 다음 문장입니다.',
         ),
         ("/path/오늘 아침/log입니다.", "/path/오늘 아침/log입니다."),
-        (
-            "값은 1,000.5원입니다 오늘 아침 변동폭은 2.5%P였습니다.",
-            "값은 천쩜오-원입니다 오늘 아침 변동폭은 이쩜오-퍼센트포인트였습니다.",
-        ),
+        ('값은 1,000.5원입니다 오늘 아침 변동폭은 2.5%P였습니다.', '값은 천-쩜-오-원입니다 오늘 아침 변동폭은 이-쩜-오-퍼센트포인트였습니다.'),
     ],
 )
 def test_span_prosody_extra_protected_and_owner_surfaces(

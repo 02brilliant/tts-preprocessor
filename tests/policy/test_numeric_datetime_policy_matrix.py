@@ -24,7 +24,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="decimal-basic-contiguous",
         text="3.14",
-        expected="삼쩜일사",
+        expected='삼-쩜-일사',
         rule="decimal / positive",
         reason="A contiguous digit-dot-digit pattern without higher-priority context is a standard decimal.",
         classification="conflict",
@@ -32,7 +32,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="decimal-deep-fraction-within-limit",
         text="0.000125",
-        expected="영쩜영영영일이오",
+        expected='영-쩜-영영영일-이오',
         rule="decimal / boundary",
         reason="A six-digit fractional part is still within the supported decimal limit.",
         classification="conflict",
@@ -40,7 +40,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-decimal-unbounded-fraction-digits",
         text="12.0300405",
-        expected="십이쩜영삼영영사영오",
+        expected='십이-쩜-영삼영영-사영오',
         rule="decimal / no fractional length limit",
         reason="The decimal owner retains and reads every fractional digit, including interior zeros, without a system-level length limit.",
         classification="override",
@@ -48,7 +48,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="decimal-comma-normalization-before-decimal-read",
         text="1,234.56",
-        expected="천이백삼십사쩜오육",
+        expected='천이백삼십사-쩜-오육',
         rule="decimal / preprocessing",
         reason="Thousands separators are removed before decimal parsing.",
         classification="conflict",
@@ -56,7 +56,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="decimal-bare-two-block-dotted-form",
         text="12.12",
-        expected="십이쩜일이",
+        expected='십이-쩜-일이',
         rule="decimal after event gate failure",
         reason="A valid bare two-block dotted form defaults to ordinary decimal without an event keyword.",
         classification="override",
@@ -88,7 +88,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="shape-only-year-month-form-is-decimal",
         text="2025.01",
-        expected="이천이십오쩜영일",
+        expected='이천이십오-쩜-영일',
         rule="decimal / no shape-only date owner",
         reason="A four-digit first block alone is not a Korean date context gate.",
         classification="override",
@@ -168,7 +168,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="middle-dot-and-dot-difference",
         text="7.25",
-        expected="칠쩜이오",
+        expected='칠-쩜-이오',
         rule="middle dot vs decimal / contrast",
         reason="A dot decimal and a middle-dot structured pattern must normalize differently.",
         classification="conflict",

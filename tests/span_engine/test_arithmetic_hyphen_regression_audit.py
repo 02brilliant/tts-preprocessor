@@ -23,7 +23,7 @@ def test_bare_compact_two_block_hyphen_preserves_atomically(text: str) -> None:
         ("2×4-3", "이 곱하기 사 빼기 삼"),
         ("2x4-3", "이 곱하기 사 빼기 삼"),
         ("8÷2-1", "팔 나누기 이 빼기 일"),
-        ("3.2-1.1+2", "삼쩜이 빼기 일쩜일 더하기 이"),
+        ('3.2-1.1+2', '삼-쩜-이 빼기 일-쩜-일 더하기 이'),
         ("-4-3+2", "마이너스 사 빼기 삼 더하기 이"),
     ],
 )
@@ -40,7 +40,7 @@ def test_mixed_operator_expression_allows_compact_binary_minus(
         ("4-3=1", "사 빼기 삼은 일"),
         ("2×4-3=5", "이 곱하기 사 빼기 삼은 오"),
         ("10-3=7", "십 빼기 삼은 칠"),
-        ("3.2-1.1=2.1", "삼쩜이 빼기 일쩜일은 이쩜일"),
+        ('3.2-1.1=2.1', '삼-쩜-이 빼기 일-쩜-일은 이-쩜-일'),
         ("-4-3=-7", "마이너스 사 빼기 삼은 마이너스 칠"),
     ],
 )
@@ -65,9 +65,9 @@ def test_pure_compact_hyphen_chain_keeps_existing_digit_block_owner() -> None:
     ("text", "expected"),
     [
         ("3 - 4", "삼 빼기 사"),
-        ("3.2 - 5.7", "삼쩜이 빼기 오쩜칠"),
+        ('3.2 - 5.7', '삼-쩜-이 빼기 오-쩜-칠'),
         ("-3 - -4", "마이너스 삼 빼기 마이너스 사"),
-        ("+3.4 - -2.3", "플러스 삼쩜사 빼기 마이너스 이쩜삼"),
+        ('+3.4 - -2.3', '플러스 삼-쩜-사 빼기 마이너스 이-쩜-삼'),
     ],
 )
 def test_exact_spaced_subtraction_remains_arithmetic(
@@ -131,14 +131,14 @@ def test_two_block_numeric_code_separator_precedes_arithmetic(
         ("2025-13-03", "이공이오 일삼 공삼", "date"),
         ("1-2kg", "일에서 이-킬로그램", "range_with_unit"),
         ("3-5km", "삼에서 오-킬로미터", "range_with_unit"),
-        ("B-2.5", "비-이쩜오", "single_letter_alnum_code"),
-        ("A-3.14", "에이-삼쩜일사", "single_letter_alnum_code"),
+        ('B-2.5', '비-이-쩜-오', "single_letter_alnum_code"),
+        ('A-3.14', '에이-삼-쩜-일사', "single_letter_alnum_code"),
         ("x-3", "엑스-삼", "two_block_hyphen_code"),
-        ("가-3.14", "가-삼쩜일사", "two_block_hyphen_code"),
-        ("ㄱ-2.5", "기역-이쩜오", "two_block_hyphen_code"),
+        ('가-3.14', '가-삼-쩜-일사', "two_block_hyphen_code"),
+        ('ㄱ-2.5', '기역-이-쩜-오', "two_block_hyphen_code"),
         ("GPT-4", "지피티-포", "managed_acronym_numeric_code"),
-        ("version-1.5", "버전-일쩜오", "managed_acronym_numeric_code"),
-        ("K-1.5", "케이-일쩜오", "single_letter_alnum_code"),
+        ('version-1.5', '버전-일-쩜-오', "managed_acronym_numeric_code"),
+        ('K-1.5', '케이-일-쩜-오', "single_letter_alnum_code"),
     ],
 )
 def test_existing_hyphen_structured_owners_remain_authoritative(
@@ -183,12 +183,12 @@ def test_protected_hyphen_contexts_block_arithmetic_reentry(
 
 def test_hangul_code_left_keeps_original_provenance_and_shadow_validation() -> None:
     debug = transform_debug("가-3.14")["debug"]
-    assert debug["normalized_text"] == "가-삼쩜일사"
+    assert debug["normalized_text"] == "가-삼-쩜-일사"
     pieces = debug["render_pieces"]
     assert [(piece["text"], piece["provenance"]) for piece in pieces] == [
         ("가", "ORIGINAL_KOREAN"),
         ("-", "ORIGINAL_BOUNDARY"),
-        ("삼쩜일사", "GENERATED_READING"),
+        ("삼-쩜-일사", "GENERATED_READING"),
     ]
     assert all(log["passed"] for log in debug["trace"]["validation_logs"])
 

@@ -52,7 +52,7 @@ def test_contextual_dae_malformed_deferred(text: str) -> None:
     [
         ("+3대", "플러스 삼 대"),
         ("-3대", "마이너스 삼 대"),
-        ("3.5대", "삼쩜오-대"),
+        ('3.5대', '삼-쩜-오-대'),
     ],
 )
 def test_contextual_dae_signed_and_decimal_use_residual_reading(

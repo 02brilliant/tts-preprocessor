@@ -11,7 +11,7 @@ def test_phase18a_current_normalized_output_contract() -> None:
     assert transform("종로3가") == "종로 삼-가"
     assert transform("3만") == "삼만"
     assert transform("ㄱㄴㄷ") == "기역 니은 디귿"
-    assert transform("-2.5℃") == "영하 이쩜오도"
+    assert transform("-2.5℃") == '영하 이-쩜-오도'
     assert transform("123-456-7890") == "일이삼 사오육 칠팔구공"
     assert transform("2025-01-03") == "이천이십오년 일월 삼일"
     assert transform("3~8cm") == "삼에서 팔-센티미터"
@@ -37,5 +37,5 @@ def test_phase18a_trace_contract_allows_empty_prosody_logs() -> None:
 def test_phase18b_policy_example_leading_connector_comma_contract() -> None:
     assert (
         transform("그리고 12.12 사태 자료와 €1,234.56 보고서를 검토한다")
-        == "그리고, 십이십이 사태 자료와 천이백삼십사쩜오육-유로 보고서를 검토한다"
+        == "그리고, 십이십이 사태 자료와 천이백삼십사-쩜-오육-유로 보고서를 검토한다"
     )

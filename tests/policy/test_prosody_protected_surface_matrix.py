@@ -48,8 +48,8 @@ PROTECTED_SURFACE_NO_COMMA_CASES = [
     ),
     TextCase(
         case_id="prosody-protected-signed-degree-sequence",
-        text="마이너스 일쩜삼도와 마이너스 영쩜오도를 비교한다",
-        expected="마이너스 일쩜삼도와 마이너스 영쩜오도를 비교한다",
+        text="마이너스 일-쩜-삼도와 마이너스 영-쩜-오도를 비교한다",
+        expected="마이너스 일-쩜-삼도와 마이너스 영-쩜-오도를 비교한다",
         rule="prosody / protected surface negative",
         reason="Signed degree outputs must remain intact as protected surfaces in prosody.",
         classification="prosody",
@@ -149,7 +149,7 @@ FULL_PIPELINE_PROTECTED_SURFACE_CASES = [
     TextCase(
         case_id="full-pipeline-protected-signed-degree-sequence",
         text="그리고 -1.3도와 -0.5도 기록을 비교한다",
-        expected="그리고, 마이너스 일쩜삼도와 마이너스 영쩜오도 기록을 비교한다",
+        expected='그리고, 마이너스 일-쩜-삼도와 마이너스 영-쩜-오도 기록을 비교한다',
         rule="prosody / leading connector + signed degree quantity",
         reason="Prosody may add only the leading connector comma while preserving signed-degree protected outputs.",
         classification="prosody",

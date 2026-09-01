@@ -17,7 +17,7 @@ def test_josa_attachment():
 
 
 def test_longest_match():
-    assert transform("USB 3.0") == "유에스비 삼쩜영"
+    assert transform("USB 3.0") == '유에스비 삼-쩜-영'
     assert transform("USB") == "유에스비"
 
 

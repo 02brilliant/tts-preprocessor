@@ -17,7 +17,7 @@ def test_single_quoted_english_prose_preserved_but_outside_values_transform() ->
     assert_preserve_and_transform(
         text,
         preserved=["The temperature is 25℃."],
-        transformed=["이십오도", "피에이치 칠쩜사"],
+        transformed=["이십오도", "피에이치 칠-쩜-사"],
     )
 
 
@@ -26,7 +26,7 @@ def test_smart_quoted_english_prose_preserved_but_outside_values_transform() -> 
     assert_preserve_and_transform(
         text,
         preserved=["pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠쩜사", "이십오도"],
+        transformed=["피에이치 칠-쩜-사", "이십오도"],
     )
 
 
@@ -46,7 +46,7 @@ def test_semicolon_english_prose_preserved() -> None:
     assert_preserve_and_transform(
         text,
         preserved=["The temperature is 25℃; pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠쩜사"],
+        transformed=["피에이치 칠-쩜-사"],
     )
 
 
@@ -55,7 +55,7 @@ def test_colon_english_prose_preserved() -> None:
     assert_preserve_and_transform(
         text,
         preserved=["Result: pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠쩜사", "이십오쩜구구-달러"],
+        transformed=["피에이치 칠-쩜-사", "이십오-쩜-구구-달러"],
     )
 
 

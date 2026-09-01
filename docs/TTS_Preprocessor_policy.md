@@ -21,7 +21,7 @@ owner가 full claim하면 동일한 canonical 표면을 만든다.
 1차례 -> 한-차례
 5kg / 5 kg -> 오-킬로그램
 10bp -> 십-베이시스 포인트
-₩1,234.50 -> 천이백삼십사쩜오영-원
+₩1,234.50 -> 천이백삼십사-쩜-오영-원
 5번길 -> 오-번길
 1차원 -> 일-차원
 1위 -> 일-위
@@ -36,6 +36,31 @@ owner가 full claim하면 동일한 canonical 표면을 만든다.
 `분기`, 붙임형 분·초처럼 해당 owner가 붙임을 확정한 표면은 기존 형태를
 유지한다. 예: `1째→첫째`, `2025년→이천이십오년`, `25℃→이십오도`,
 `1분기→일분기`, `5분15초→오분 십오초`.
+
+### 숫자 읽기 내부 prosody break
+
+긴 정수 group과 소수부 digit block은 TTS 호흡을 위해 숫자 읽기 **내부**에
+ASCII U+002D 하이픈(`-`)을 삽입할 수 있다. 이 break는 위 절의 발화 경계
+하이픈과 다르다. 발화 경계는 숫자 읽기와 단위·counter·서수 suffix 사이에만
+적용하고, 내부 prosody break는 숫자 읽기 안쪽 chunk 경계에만 적용한다.
+
+```text
+1234.567890123 -> 천이백삼십사-쩜-오육칠팔-구영일-이삼
+123,456 -> 십이만 삼천-사백오십육
+334억 8천만 3213 -> 삼백삼십사억 팔천만 삼천-이백십삼
+1.5kg -> 일-쩜-오-킬로그램
+15.2km/L -> 리터당 십오쩜이 킬로미터  # compound unit decimal은 compact 유지
+3.5만 -> 삼-쩜-오 만
+3.5만 원 -> 삼-쩜-오 만 원
+```
+
+소수부는 source digit 순서를 유지하고, fractional chunk는 기본 4자리이며
+마지막 chunk가 1자리면 직전 4자리 block을 3+2로 재분배한다. `천`으로
+시작하는 compact group은 lower unit(`백`, `십`)이 이어질 때만 `삼천-이백…`
+형태로 split한다. `천이백…`처럼 `일·이` prefix compact group은 split하지
+않는다. 시간 suffix(`13:05`의 `십삼`, `오`)와 compound slash unit
+(`15.2km/L`)처럼 별도 owner가 compact reading을 확정한 surface에는 이
+내부 break를 적용하지 않는다.
 
 이 하이픈은 규칙 엔진의 `GENERATED_READING`/`GENERATED_PUNCT` provenance와
 locked snapshot에 포함된다. 3·4단계 LLM은 이를 공백으로 되돌리거나 삭제하지
@@ -6456,8 +6481,8 @@ KRW `원` currency noun이 붙어도 large-unit numeric core를 먼저 읽고 `�
 canonical:
 
 ```text
-3.5만 -> 삼쩜오 만
-3.5만 원 -> 삼쩜오 만 원
+3.5만 -> 삼-쩜-오 만
+3.5만 원 -> 삼-쩜-오 만 원
 1.2억 원 -> 일쩜이 억 원
 3.5만 -> 삼만 오천  # 금지: 원 currency noun 없는 bare form은 semantic expansion 대상 아님
 ```

@@ -10,7 +10,7 @@ from engine.span_engine import transform, transform_with_trace
     [
         ("OpenAI", "오픈 에이아이"),
         ("USB3", "USB3"),
-        ("3.14", "삼쩜일사"),
+        ('3.14', '삼-쩜-일사'),
         ("3~8cm", "삼에서 팔-센티미터"),
         ("50kg", "오십-킬로그램"),
         ("21명", "스물한-명"),

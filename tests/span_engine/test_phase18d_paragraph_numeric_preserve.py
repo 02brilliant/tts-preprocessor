@@ -22,6 +22,6 @@ def test_phase18d_long_numeric_paragraph_splits_without_changing_readings() -> N
     assert "\n" in output
     assert "3.5톤" not in collapsed
     assert "250m/L" not in collapsed
-    assert "삼쩜오톤" in collapsed
+    assert "삼-쩜-오톤" in collapsed
     assert "리터당" in collapsed
     assert "한편" in collapsed

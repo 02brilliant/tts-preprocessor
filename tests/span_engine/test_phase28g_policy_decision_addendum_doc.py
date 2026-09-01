@@ -14,8 +14,8 @@ def test_phase28g_policy_document_contains_decision_notes() -> None:
         "5·18 -> 오·일팔",
         "5·18 민주화운동 -> 오일팔 민주화운동",
         "bare 5·18 -> 오·일팔",
-        "3.5만 -> 삼쩜오 만",
-        "3.5만 원 -> 삼쩜오 만 원",
+        "3.5만 -> 삼-쩜-오 만",
+        "3.5만 원 -> 삼-쩜-오 만 원",
         "semantic expansion `3.5만 -> 삼만 오천`은 여전히 범위 밖",
     ]
     for phrase in required_phrases:

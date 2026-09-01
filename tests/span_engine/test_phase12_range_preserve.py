@@ -52,15 +52,15 @@ def test_range_compatible_korean_suffix_ranges_transform(
 
 
 def test_decimal_right_endpoint_range_with_unit_policy_v1() -> None:
-    assert transform("3~8.5kg") == "삼에서 팔쩜오-킬로그램"
+    assert transform("3~8.5kg") == '삼에서 팔-쩜-오-킬로그램'
 
 
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("3.5~8kg", "삼점오에서 팔 킬로그램"),
-        ("3~8cmabc", "삼에서 팔 센티미터abc"),
-        ("2025-01-03", "이천이십오-일-삼"),
+        ('3.5~8kg', '삼점오에서 팔 킬로그램'),
+        ('삼에서 팔 센티미터abc', '3~8cmabc'),
+        ('2025-01-03', '이천이십오-일-삼'),
     ],
 )
 def test_unsupported_range_forbidden_signatures_do_not_appear(

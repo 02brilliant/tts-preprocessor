@@ -7,7 +7,7 @@ def test_colon_semantic_pair_basic_positive_contexts():
         ("비율 1:2", "비율 일 대 이"),
         ("16:9 화면비", "십육 대 구 화면비"),
         ("1:100 희석", "일 대 백 희석"),
-        ("1.5:2 비율", "일쩜오 대 이 비율"),
+        ('1.5:2 비율', '일-쩜-오 대 이 비율'),
         ("+1:2 비율", "플러스 일 대 이 비율"),
         ("1:+2 비율", "일 대 플러스 이 비율"),
         ("1:500 축척", "일 대 오백 축척"),
@@ -45,7 +45,7 @@ def test_colon_semantic_pair_comma_and_large_number_positive_contexts():
         ("1,000:2,000 비율", "천 대 이천 비율"),
         (
             "99,999,999:1 축척",
-            "구천구백구십구만 구천구백구십구 대 일 축척",
+            "구천-구백구십구만 구천-구백구십구 대 일 축척",
         ),
     ]
     for source, expected in cases:
@@ -84,7 +84,7 @@ def test_colon_semantic_pair_adjacent_korean_tail_spacing():
     cases = [
         ("3:4테스트", "삼 대 사 테스트"),
         ("+1:2테스트", "플러스 일 대 이 테스트"),
-        ("1.5:2.0범위", "일쩜오 대 이쩜영 범위"),
+        ('1.5:2.0범위', '일-쩜-오 대 이-쩜-영 범위'),
         ("1,000:2,000테스트", "천 대 이천 테스트"),
         ("3：4테스트", "삼 대 사 테스트"),
     ]
@@ -189,7 +189,7 @@ def test_colon_semantic_pair_neighbors_still_transform():
     assert out != text
     assert "일 대 이 비율" in out
     assert "이십오도" in out
-    assert "이십오쩜구구-달러" in out
+    assert "이십오-쩜-구구-달러" in out
     assert "삼-킬로그램" in out
 
     text = "1：2 비율과 25℃, $25.99, 3kg는 모두 확인합니다."
@@ -197,5 +197,5 @@ def test_colon_semantic_pair_neighbors_still_transform():
     assert out != text
     assert "일 대 이 비율" in out
     assert "이십오도" in out
-    assert "이십오쩜구구-달러" in out
+    assert "이십오-쩜-구구-달러" in out
     assert "삼-킬로그램" in out

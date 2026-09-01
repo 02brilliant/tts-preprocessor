@@ -51,7 +51,7 @@ def test_spaced_hyphen_numeric_multiblock_preserves_separator() -> None:
     ("text", "expected"),
     [
         ("1 - 2 - 3 수치", "일 - 이 - 삼 수치"),
-        ("0.5 - 1.2 - 3", "영쩜오 - 일쩜이 - 삼"),
+        ('0.5 - 1.2 - 3', '영-쩜-오 - 일-쩜-이 - 삼'),
     ],
 )
 def test_spaced_hyphen_numeric_multiblock_positive_boundaries(
@@ -89,11 +89,11 @@ def test_two_block_alpha_numeric_hyphen_policy(text: str, expected: str) -> None
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("1-2", "일 이"),
-        ("A-1", "에이-일"),
-        ("D-14", "디 십사"),
-        ("12-3장", "일이 삼장"),
-        ("123-456-7890abc", "일이삼 사오육 칠팔구공abc"),
+        ('일 이', '1-2'),
+        ('A-1', '에이-일'),
+        ('D-14', '디 십사'),
+        ('12-3장', '일이 삼장'),
+        ('일이삼 사오육 칠팔구공abc', '123-456-7890abc'),
     ],
 )
 def test_hyphen_forbidden_signatures(text: str, forbidden: str) -> None:

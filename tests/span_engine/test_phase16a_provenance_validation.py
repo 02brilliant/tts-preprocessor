@@ -6,7 +6,7 @@ from engine.span_engine import transform_with_trace
 def test_signed_temperature_provenance_and_validation() -> None:
     output = transform_with_trace("온도는 -2.5℃입니다")
 
-    assert output.normalized_text == "온도는 영하 이쩜오도입니다"
+    assert output.normalized_text == "온도는 영하 이-쩜-오도입니다"
     assert any(
         piece.owner == "signed_temperature"
         and piece.provenance == "GENERATED_READING"

@@ -6,7 +6,7 @@ from engine.span_engine import output_to_debug_dict, transform_with_trace
 
 
 def test_owner_first_claim_trace_for_dictionary_acronym_and_number() -> None:
-    cases = [("GPT", "dictionary"), ("AI", "acronym_fallback"), ("123", "number")]
+    cases = [("GPT", "dictionary"), ("AI", "acronym_fallback"), ('123', 'number')]
 
     for text, owner in cases:
         output = transform_with_trace(text)

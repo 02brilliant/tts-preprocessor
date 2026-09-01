@@ -25,11 +25,11 @@ def test_decimal_fallback_does_not_invade_invalid_owner_candidates_policy_v1(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3.5명", "삼쩜오-명"),
-        ("3.5명은", "삼쩜오-명은"),
-        ("3.5명입니다", "삼쩜오-명입니다"),
-        ("참가자는 3.5명이다", "참가자는 삼쩜오-명이다"),
-        ("3.5개", "삼쩜오-개"),
+        ('3.5명', '삼-쩜-오-명'),
+        ('3.5명은', '삼-쩜-오-명은'),
+        ('3.5명입니다', '삼-쩜-오-명입니다'),
+        ('참가자는 3.5명이다', '참가자는 삼-쩜-오-명이다'),
+        ('3.5개', '삼-쩜-오-개'),
     ],
 )
 def test_decimal_registered_counter_suffixes_now_transform_policy_v1(
@@ -43,11 +43,11 @@ def test_decimal_registered_counter_suffixes_now_transform_policy_v1(
     [
         ("21명", "스물한-명"),
         ("12권", "12권"),
-        ("-2.5℃", "영하 이쩜오도"),
-        ("-2.5℉", "화씨 영하 이쩜오도"),
-        ("3.14", "삼쩜일사"),
-        ("12.3수치", "십이쩜삼수치"),
-        ("7.25자료", "칠쩜이오자료"),
+        ('-2.5℃', '영하 이-쩜-오도'),
+        ('-2.5℉', '화씨 영하 이-쩜-오도'),
+        ('3.14', '삼-쩜-일사'),
+        ('12.3수치', '십이-쩜-삼수치'),
+        ('7.25자료', '칠-쩜-이오자료'),
     ],
 )
 def test_supported_decimal_counter_and_signed_paths_remain_policy_v1(

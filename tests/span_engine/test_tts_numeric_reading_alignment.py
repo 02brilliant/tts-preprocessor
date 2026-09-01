@@ -15,12 +15,12 @@ def _debug(text: str) -> dict:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("12.12", "십이쩜일이"),
-        ("307.16", "삼백칠쩜일육"),
-        ("7443.28", "칠천사백사십삼쩜이팔"),
-        ("7443.28에", "칠천사백사십삼쩜이팔에"),
-        ("2025.01", "이천이십오쩜영일"),
-        ("2025.13", "이천이십오쩜일삼"),
+        ('12.12', '십이-쩜-일이'),
+        ('307.16', '삼백칠-쩜-일육'),
+        ('7443.28', '칠천사백사십삼-쩜-이팔'),
+        ('7443.28에', '칠천사백사십삼-쩜-이팔에'),
+        ('2025.01', '이천이십오-쩜-영일'),
+        ('2025.13', '이천이십오-쩜-일삼'),
     ],
 )
 def test_two_block_dotted_numbers_default_to_decimal(
@@ -95,7 +95,7 @@ def test_two_block_dotted_specific_owner_boundaries() -> None:
     )
 
     fallback = _debug("12.12 수치")
-    assert fallback["normalized_text"] == "십이쩜일이 수치"
+    assert fallback["normalized_text"] == "십이-쩜-일이 수치"
     assert any(claim["owner"] == "decimal" for claim in fallback["trace"]["claim_logs"])
 
 
@@ -119,12 +119,12 @@ def test_three_or_more_dotted_blocks_keep_existing_routing(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("5만1839.26", "오만천팔백삼십구쩜이육"),
-        ("5만1839.26에", "오만천팔백삼십구쩜이육에"),
-        ("2만5508.07", "이만오천오백팔쩜영칠"),
-        ("2만5508.07에", "이만오천오백팔쩜영칠에"),
+        ('5만1839.26', '오만천팔백삼십구-쩜-이육'),
+        ('5만1839.26에', '오만천팔백삼십구-쩜-이육에'),
+        ('2만5508.07', '이만오천오백팔-쩜-영칠'),
+        ('2만5508.07에', '이만오천오백팔-쩜-영칠에'),
         ("5만1839", "오만천팔백삼십구"),
-        ("3.5만", "삼쩜오-만"),
+        ('3.5만', '삼-쩜-오-만'),
     ],
 )
 def test_structured_compact_large_unit_decimal_and_regressions(
@@ -181,7 +181,7 @@ def test_structured_compact_large_unit_trace_and_provenance() -> None:
     ] == [
         ("오", "GENERATED_READING", 0, 1),
         ("만", "ORIGINAL_KOREAN", 1, 2),
-        ("천팔백삼십구쩜이육", "GENERATED_READING", 2, 9),
+        ("천팔백삼십구-쩜-이육", "GENERATED_READING", 2, 9),
         ("에", "ORIGINAL_KOREAN", 9, 10),
     ]
     assert all(
@@ -271,10 +271,10 @@ def test_full_news_numeric_regression_via_official_transform() -> None:
         "2만5508.07에 각각 마감했다. 5극3특, 5극 3특 3대 프로젝트 시작합니다."
     )
     expected = (
-        "뉴욕증시에서 다우존스삼십 산업평균지수는 전장보다 삼백칠쩜일육포인트 내린 "
-        "오만천팔백삼십구쩜이육에 거래를 마쳤다. 에스앤피 오백 지수는 전장보다 "
-        "십사쩜사일포인트 내린 칠천사백사십삼쩜이팔에, 기술주 중심의 나스닥 "
-        "종합지수는 전장보다 십이쩜일칠포인트 내린 이만오천오백팔쩜영칠에 각각 "
+        "뉴욕증시에서 다우존스삼십 산업평균지수는 전장보다 삼백칠-쩜-일육포인트 내린 "
+        "오만천팔백삼십구-쩜-이육에 거래를 마쳤다. 에스앤피 오백 지수는 전장보다 "
+        "십사-쩜-사일포인트 내린 칠천사백사십삼-쩜-이팔에, 기술주 중심의 나스닥 "
+        "종합지수는 전장보다 십이-쩜-일칠포인트 내린 이만오천오백팔-쩜-영칠에 각각 "
         "마감했다. 오극삼특, 오극 삼특 3대 프로젝트 시작합니다."
     )
     assert transform(text) == expected

@@ -10,7 +10,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected="회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사쩜오육-유로이다",
+        expected='회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="multi-rule / bracket + date + HH:MM + currency",
         reason="Bracket cleanup must happen first, then date/time parsing and atomic currency parsing must cooperate without partial rewrites.",
     ),
@@ -38,7 +38,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-independent-event-and-decimal-claims",
         text="12.12 사태와 12.12 수치를 함께 적었다",
-        expected="십이십이 사태와 십이쩜일이 수치를 함께 적었다",
+        expected='십이십이 사태와 십이-쩜-일이 수치를 함께 적었다',
         rule="multi-rule / event claim + decimal fallback",
         reason="The strong event keyword owns only the first dotted surface; the independent numeric value uses the decimal owner rather than sentence-wide preservation.",
     ),
@@ -61,7 +61,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-ph-plus-frequency",
         text="pH 7.0과 60Hz 장비를 점검했다",
-        expected="피에이치 칠쩜영과 육십-헤르츠 장비를 점검했다",
+        expected='피에이치 칠-쩜-영과 육십-헤르츠 장비를 점검했다',
         rule="multi-rule / pH + frequency",
         reason="Two partial-match-protected special formats should normalize independently and exactly.",
     ),
@@ -72,7 +72,7 @@ FULL_PIPELINE_SCENARIOS = [
     TextCase(
         case_id="scenario-full-pipeline-connector-event-currency",
         text="그리고 12.12 사태 자료와 €1,234.56 보고서를 검토한다",
-        expected="그리고, 십이십이 사태 자료와 천이백삼십사쩜오육-유로 보고서를 검토한다",
+        expected='그리고, 십이십이 사태 자료와 천이백삼십사-쩜-오육-유로 보고서를 검토한다',
         rule="multi-rule / connector + event + currency + prosody",
         reason="Prosody may add a connector comma, but the event phrase and atomic currency reading must remain intact.",
     ),

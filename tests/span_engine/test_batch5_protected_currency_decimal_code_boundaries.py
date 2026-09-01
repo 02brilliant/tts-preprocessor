@@ -67,9 +67,9 @@ def test_batch5_invalid_signed_currency_does_not_leak_numeric_fallback(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("12.030040", "십이쩜영삼영영사영"),
-        ("12.0300405", "십이쩜영삼영영사영오"),
-        ("12.03004050", "십이쩜영삼영영사영오영"),
+        ('12.030040', '십이-쩜-영삼영영-사영'),
+        ('12.0300405', '십이-쩜-영삼영영-사영오'),
+        ('12.03004050', '십이-쩜-영삼영영-사영오영'),
     ],
 )
 def test_batch5_decimal_fraction_length_is_unbounded_and_zero_exact(

@@ -25,11 +25,11 @@ def test_phase35d_unsigned_temperature_and_degree_have_no_sign_prefix(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("-2.5℃", "영하 이쩜오도"),
-        ("-2.5ºC", "영하 이쩜오도"),
-        ("-2.5℉", "화씨 영하 이쩜오도"),
-        ("-2.5ºF", "화씨 영하 이쩜오도"),
-        ("-2.5º", "영하 이쩜오도"),
+        ('-2.5℃', '영하 이-쩜-오도'),
+        ('-2.5ºC', '영하 이-쩜-오도'),
+        ('-2.5℉', '화씨 영하 이-쩜-오도'),
+        ('-2.5ºF', '화씨 영하 이-쩜-오도'),
+        ('-2.5º', '영하 이-쩜-오도'),
     ],
 )
 def test_phase35d_negative_temperature_like_degree(
@@ -41,11 +41,11 @@ def test_phase35d_negative_temperature_like_degree(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("온도-2.5℃", "온도영하 이쩜오도"),
+        ('온도-2.5℃', '온도영하 이-쩜-오도'),
         ("온도+3℃", "온도영상 삼도"),
-        ("온도-2.5℉", "온도화씨 영하 이쩜오도"),
+        ('온도-2.5℉', '온도화씨 영하 이-쩜-오도'),
         ("온도+3℉", "온도화씨 영상 삼도"),
-        ("온도-2.5º", "온도영하 이쩜오도"),
+        ('온도-2.5º', '온도영하 이-쩜-오도'),
         ("온도+3º", "온도영상 삼도"),
     ],
 )
@@ -203,8 +203,8 @@ def test_phase35d_signed_temperature_degree_baseline_safe_tails(
 @pytest.mark.parametrize(
     ("text", "owner"),
     [
-        ("+25℃보다 높다", "signed_temperature"),
-        ("+25℃테스트", "signed_temperature"),
+        ('+25℃보다 높다', 'signed_temperature'),
+        ('+25℃테스트', 'signed_temperature'),
     ],
 )
 def test_phase35d_signed_temperature_degree_hangul_tail_trace_owner(

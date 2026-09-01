@@ -408,7 +408,7 @@ SIGNED_DEGREE_QUANTITY_CASES = [
     TextCase(
         case_id="signed-degree-plain-decimal",
         text="-1.3도",
-        expected="마이너스 일쩜삼도",
+        expected='마이너스 일-쩜-삼도',
         rule="policy / signed degree quantity",
         reason="Plain signed degree quantities use 마이너스 by default.",
         classification="signed_degree",
@@ -416,7 +416,7 @@ SIGNED_DEGREE_QUANTITY_CASES = [
     TextCase(
         case_id="signed-degree-plain-decimal-zero",
         text="-0.5도",
-        expected="마이너스 영쩜오도",
+        expected='마이너스 영-쩜-오도',
         rule="policy / signed degree quantity",
         reason="Plain signed degree quantities keep the explicit minus reading even with a zero integer part.",
         classification="signed_degree",
@@ -432,7 +432,7 @@ SIGNED_DEGREE_QUANTITY_CASES = [
     TextCase(
         case_id="signed-degree-celsius",
         text="-1.3℃",
-        expected="영하 일쩜삼도",
+        expected='영하 일-쩜-삼도',
         rule="policy / signed degree quantity",
         reason="Temperature-specific negative readings still use 영하 for Celsius.",
         classification="signed_degree",
@@ -440,7 +440,7 @@ SIGNED_DEGREE_QUANTITY_CASES = [
     TextCase(
         case_id="signed-degree-fahrenheit",
         text="-0.5℉",
-        expected="화씨 영하 영쩜오도",
+        expected='화씨 영하 영-쩜-오도',
         rule="policy / signed degree quantity",
         reason="Temperature-specific negative readings still use 화씨 영하 for Fahrenheit.",
         classification="signed_degree",

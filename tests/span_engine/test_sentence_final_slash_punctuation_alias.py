@@ -43,7 +43,7 @@ def test_sentence_final_slash_alias_line_ending_uses_existing_paragraph_policy()
         ("[안녕하세요/]", "안녕하세요/"),
         ("1/3", "삼분의 일"),
         ("2026/06/01", "이천이십육년 유월 일일"),
-        ("15.2km/L", "리터당 십오쩜이 킬로미터"),
+        ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("A / B", "A / B"),
     ],
 )

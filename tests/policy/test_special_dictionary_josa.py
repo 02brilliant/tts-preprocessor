@@ -43,7 +43,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="special-ph-positive",
         text="pH 7.0",
-        expected="피에이치 칠쩜영",
+        expected='피에이치 칠-쩜-영',
         rule="special format / pH",
         reason="A valid pH surface is explicitly supported and should normalize exactly.",
     ),
@@ -78,7 +78,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="dictionary-usb-longest-match",
         text="USB 3.0",
-        expected="유에스비 삼쩜영",
+        expected='유에스비 삼-쩜-영',
         rule="dictionary / longest match first",
         reason="USB 3.0 is a longer fixed dictionary surface and must win over the shorter USB entry.",
     ),

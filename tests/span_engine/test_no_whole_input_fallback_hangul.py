@@ -26,7 +26,7 @@ def test_inline_json_shell_does_not_preserve_whole_korean_paragraph() -> None:
     assert "curl -X POST http://localhost:8010/api/transform" in out
     assert '{"text":"25℃"}' in out
     assert "이십오도" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out
 
 
 def test_prefixed_ordinal_invalid_candidates_do_not_preserve_whole_paragraph() -> None:
@@ -38,7 +38,7 @@ def test_prefixed_ordinal_invalid_candidates_do_not_preserve_whole_paragraph() -
     assert out != text
     assert "제-이문항" in out
     assert "제-십오권" in out
-    assert "제-이쩜오문항" in out
+    assert "제-이-쩜-오문항" in out
     assert "제2-문항" in out
     assert "제-이문항abc" in out
     assert "A제 두-문항" in out
@@ -52,7 +52,7 @@ def test_currency_invalid_candidates_do_not_preserve_whole_paragraph() -> None:
     out = transform(text)
     assert out != text
     assert "만 이천삼백-원" in out
-    assert "이십오쩜구구-달러" in out
+    assert "이십오-쩜-구구-달러" in out
     assert "천이백삼십사-유로" in out
     assert "삼백-유로" in out
     assert "300EURabc" in out
@@ -77,10 +77,10 @@ def test_symbol_alias_and_square_bracket_do_not_preserve_whole_paragraph() -> No
     assert "시속 구십 킬로미터" in out
     assert "리터당 십오쩜이 킬로미터" in out
     assert "이천이십오년 일월 삼일" in out
-    assert "삼십삼쩜삼-퍼센트" in out
-    assert "이쩜오-퍼센트포인트" in out
+    assert "삼십삼-쩜-삼-퍼센트" in out
+    assert "이-쩜-오-퍼센트포인트" in out
     assert "십삼시 오분" in out
-    assert "영하 이쩜오도" in out
+    assert "영하 이-쩜-오도" in out
     assert "마이너스 삼분의 일" in out
     assert "2.5％pa" in out
     assert "2.5﹪point" in out
@@ -88,7 +88,7 @@ def test_symbol_alias_and_square_bracket_do_not_preserve_whole_paragraph() -> No
     assert "3km/speed" in out
     assert "250m/Lite" in out
     assert "pH 7.4" in out
-    assert "피에이치 칠쩜사" in out
+    assert "피에이치 칠-쩜-사" in out
 
 
 def test_no_hangul_global_bypass_still_preserves_english_prose() -> None:
@@ -102,8 +102,8 @@ def test_no_hangul_global_bypass_still_preserves_english_prose() -> None:
 
 def test_no_hangul_standalone_supported_token_still_transforms() -> None:
     assert transform("25℃") == "이십오도"
-    assert transform("$25.99") == "이십오쩜구구-달러"
-    assert transform("pH 7.4") == "피에이치 칠쩜사"
+    assert transform("$25.99") == '이십오-쩜-구구-달러'
+    assert transform("pH 7.4") == '피에이치 칠-쩜-사'
     assert transform("60Hz") == "육십-헤르츠"
 
 
@@ -157,10 +157,10 @@ PROBLEM_PARAGRAPH_4 = (
 @pytest.mark.parametrize(
     ("paragraph", "expected_substrings"),
     [
-        (PROBLEM_PARAGRAPH_1, ["이십오도", "피에이치 칠쩜사", '{"text":"25℃"}']),
-        (PROBLEM_PARAGRAPH_2, ["제-이차", "제-십오권", "제-이쩜오문항"]),
-        (PROBLEM_PARAGRAPH_3, ["만 이천삼백-원", "이십오쩜구구-달러", "300EURabc"]),
-        (PROBLEM_PARAGRAPH_4, ["삼분의 일", "시속 구십 킬로미터", "피에이치 칠쩜사"]),
+        (PROBLEM_PARAGRAPH_1, ["이십오도", "피에이치 칠-쩜-사", '{"text":"25℃"}']),
+        (PROBLEM_PARAGRAPH_2, ["제-이차", "제-십오권", "제-이-쩜-오문항"]),
+        (PROBLEM_PARAGRAPH_3, ["만 이천삼백-원", "이십오-쩜-구구-달러", "300EURabc"]),
+        (PROBLEM_PARAGRAPH_4, ["삼분의 일", "시속 구십 킬로미터", "피에이치 칠-쩜-사"]),
     ],
 )
 def test_problem_paragraphs_do_not_return_raw(

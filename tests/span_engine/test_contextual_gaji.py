@@ -92,7 +92,7 @@ def test_gaji_prefixed_ordinal_uses_attached_sino_reading() -> None:
 
 def test_gaji_valid_decimal_uses_sino_decimal_reading() -> None:
     debug = transform_debug("1.5가지")
-    assert debug["normalized_text"] == "일쩜오-가지"
+    assert debug["normalized_text"] == "일-쩜-오-가지"
     assert debug["debug"]["trace"]["contextual_decision_logs"][0][
         "decision"
     ] == "confirmed"

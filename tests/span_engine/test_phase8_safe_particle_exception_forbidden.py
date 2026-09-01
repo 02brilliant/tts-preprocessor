@@ -40,9 +40,9 @@ def test_risky_particles_are_never_corrected(text: str, expected: str) -> None:
     ("text", "forbidden"),
     [
         ("AI이", "에이아이가"),
-        ("3이", "삼가"),
+        ('3이', '삼가'),
         ("AI가", "에이아이이"),
-        ("3로", "삼으로"),
+        ('3로', '삼으로'),
         ("AI과", "에이아이와"),
         ("AI와", "에이아이과"),
     ],

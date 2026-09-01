@@ -8,11 +8,11 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3.14", "삼쩜일사"),
-        ("12.03", "십이쩜영삼"),
-        ("13.3 비상계엄", "십삼쩜삼 비상계엄"),
-        ("12.32 사태", "십이쩜삼이 사태"),
-        ("12.3수치", "십이쩜삼수치"),
+        ('3.14', '삼-쩜-일사'),
+        ('12.03', '십이-쩜-영삼'),
+        ('13.3 비상계엄', '십삼-쩜-삼 비상계엄'),
+        ('12.32 사태', '십이-쩜-삼이 사태'),
+        ('12.3수치', '십이-쩜-삼수치'),
     ],
 )
 def test_phase37_event_failure_falls_back_to_decimal(
@@ -41,12 +41,12 @@ def test_phase37_event_numbers_pass_strict_event_gate(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("0.19 혁명", "영쩜일구 혁명"),
-        ("4.0 혁명", "사쩜영 혁명"),
-        ("14.35 대책", "십사쩜삼오 대책"),
-        ("3.5 대책", "삼쩜오 대책"),
-        ("12.3-비상계엄", "십이쩜삼-비상계엄"),
-        ("12.3 은 비상계엄", "십이쩜삼 은 비상계엄"),
+        ('0.19 혁명', '영-쩜-일구 혁명'),
+        ('4.0 혁명', '사-쩜-영 혁명'),
+        ('14.35 대책', '십사-쩜-삼오 대책'),
+        ('3.5 대책', '삼-쩜-오 대책'),
+        ('12.3-비상계엄', '십이-쩜-삼-비상계엄'),
+        ('12.3 은 비상계엄', '십이-쩜-삼 은 비상계엄'),
     ],
 )
 def test_phase37_event_rejects_out_of_range_or_bad_context_decimal_fallback(
@@ -78,10 +78,10 @@ def test_phase37_middle_dot_event_failure_falls_back_to_numeric_blocks(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1.2km", "일쩜이-킬로미터"),
-        ("1.2 km", "일쩜이-킬로미터"),
-        ("0.8초", "영쩜팔-초"),
-        ("2,645.35선", "이천육백사십오쩜삼오-선"),
+        ('1.2km', '일-쩜-이-킬로미터'),
+        ('1.2 km', '일-쩜-이-킬로미터'),
+        ('0.8초', '영쩜팔-초'),
+        ('2,645.35선', '이천육백사십오-쩜-삼오-선'),
         ("제15권", "제-십오권"),
     ],
 )
@@ -109,10 +109,10 @@ def test_phase37_frequency_and_data_rate_aliases(text: str, expected: str) -> No
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3.5만 원", "삼쩜오-만 원"),
-        ("1.2억 원", "일쩜이-억 원"),
-        ("2.75억 원", "이쩜칠오-억 원"),
-        ("3.5만", "삼쩜오-만"),
+        ('3.5만 원', '삼-쩜-오-만 원'),
+        ('1.2억 원', '일-쩜-이-억 원'),
+        ('2.75억 원', '이-쩜-칠오-억 원'),
+        ('3.5만', '삼-쩜-오-만'),
     ],
 )
 def test_phase37_decimal_large_unit_krw_expansion(
@@ -284,7 +284,7 @@ def test_phase37_page_document_tilde_range_and_hyphen_non_goal(
     [
         ("010 - 1234 - 5678", "공일공 - 천이백삼십사 - 오천육백칠십팔"),
         ("001 - 23 - 456", "공공일 - 이십삼 - 사백오십육"),
-        ("0.5 - 1.2 - 3", "영쩜오 - 일쩜이 - 삼"),
+        ('0.5 - 1.2 - 3', '영-쩜-오 - 일-쩜-이 - 삼'),
     ],
 )
 def test_phase37_spaced_hyphen_numeric_multiblock(
@@ -308,4 +308,4 @@ def test_phase37_mixed_alnum_code_separator_after_dictionary(
 
 
 def test_phase37_bare_korean_degree_keeps_current_signed_policy() -> None:
-    assert transform("서울 -1.3도") == "서울 마이너스 일쩜삼도"
+    assert transform("서울 -1.3도") == '서울 마이너스 일-쩜-삼도'

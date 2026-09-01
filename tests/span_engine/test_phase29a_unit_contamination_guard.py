@@ -38,7 +38,7 @@ def test_unit_like_surfaces_with_unsafe_ascii_tail_preserve(text: str) -> None:
         ("45㎥", "사십오-세제곱미터"),
         ("5Hz", "오-헤르츠"),
         ("90km/h", "시속 구십 킬로미터"),
-        ("15.2km/L", "리터당 십오쩜이 킬로미터"),
+        ('15.2km/L', '리터당 십오쩜이 킬로미터'),
     ],
 )
 def test_supported_unit_and_compound_unit_readings_remain(text: str, expected: str) -> None:

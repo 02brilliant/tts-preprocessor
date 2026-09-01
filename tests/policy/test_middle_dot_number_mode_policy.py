@@ -25,7 +25,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-middle-dot-versus-dot-decimal",
         text="7·25와 7.25는 다르다",
-        expected="칠·이오와 칠쩜이오는 다르다",
+        expected='칠·이오와 칠-쩜-이오는 다르다',
         rule="middle dot vs decimal / interaction",
         reason="Structured middle-dot output and decimal output must remain distinct inside the same sentence.",
         classification="conflict",
@@ -81,7 +81,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-middle-dot-with-date-and-decimal",
         text="2025.01.03 7·25 7.25",
-        expected="이천이십오년 일월 삼일 칠·이오 칠쩜이오",
+        expected='이천이십오년 일월 삼일 칠·이오 칠-쩜-이오',
         rule="date + middle dot + decimal / interaction",
         reason="Date, structured middle-dot, and decimal parsing must resolve in strict precedence order inside one line.",
         classification="conflict",
@@ -125,7 +125,7 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-middle-dot-vs-decimal",
         text="그리고 7·25와 7.25 수치를 비교한다",
-        expected="그리고, 칠·이오와 칠쩜이오 수치를 비교한다",
+        expected='그리고, 칠·이오와 칠-쩜-이오 수치를 비교한다',
         rule="connector + middle dot + decimal / full pipeline",
         reason="Prosody may add a connector comma, but the middle-dot and decimal readings must remain distinct.",
         classification="conflict",

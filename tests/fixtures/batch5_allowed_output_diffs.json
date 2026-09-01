@@ -17,7 +17,7 @@
     {
       "decision_id": "decimal-fraction-over-limit-skips",
       "input": "12.0300405",
-      "expected": "십이쩜영삼영영사영오",
+      "expected": "십이-쩜-영삼영영-사영오",
       "owner_contract": "ordinary decimal owner has no fractional digit length limit and retains every zero digit"
     },
     {

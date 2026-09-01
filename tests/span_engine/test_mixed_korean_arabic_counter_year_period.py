@@ -31,8 +31,8 @@ def test_mixed_counter_and_year_period_positive_production(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("6400명", "육천사백-명"),
-        ("6,400명", "육천사백-명"),
+        ('6400명', '육천-사백-명'),
+        ('6,400명', '육천-사백-명'),
         ("6천 400명", "육천 사백-명"),
         ("6천400", "육천사백"),
         ("1년", "일년"),

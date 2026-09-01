@@ -92,14 +92,14 @@ NUMERIC_SCALING_CASES = [
     TextCase(
         case_id="scaling-large-integer",
         text="1234567890123",
-        expected="일조 이천삼백사십오억 육천칠백팔십구만 백이십삼",
+        expected='일조 이천삼백-사십오억 육천-칠백팔십구만 백이십삼',
         rule="numeric scaling / large integer",
         reason="Large integers must segment by Korean large units while preserving the documented leading-1 behavior.",
     ),
     TextCase(
         case_id="scaling-large-comma-decimal",
         text="1,234,567,890,123.456",
-        expected="일조이천삼백사십오억육천칠백팔십구만백이십삼쩜사오육",
+        expected='일조이천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육',
         rule="numeric scaling / canonical compact large decimal",
         reason="The decimal owner validates comma grouping atomically and uses the compact ordinary integer reader before exact fractional digits.",
         classification="canonical",
@@ -107,7 +107,7 @@ NUMERIC_SCALING_CASES = [
     TextCase(
         case_id="scaling-compact-krw-decimal",
         text="1.5조 원",
-        expected="일쩜오-조 원",
+        expected='일-쩜-오-조 원',
         rule="numeric scaling / compact KRW",
         reason="Compact decimal big-unit currency keeps the decimal reading instead of expanding into lower large-number units.",
     ),

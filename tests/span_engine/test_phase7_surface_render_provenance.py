@@ -26,5 +26,5 @@ def test_decimal_now_has_generated_reading() -> None:
 
     # Phase 28B: Expected to fail if implementation is not yet updated,
     # but it seems engine already normalizes 3.14 as decimal.
-    assert output.normalized_text == "삼쩜일사"
+    assert output.normalized_text == "삼-쩜-일사"
     assert any(piece.provenance == "GENERATED_READING" for piece in output.render_pieces)

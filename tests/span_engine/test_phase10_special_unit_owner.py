@@ -40,7 +40,7 @@ def test_special_unit_owner_minimal_supported_patterns(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("-2.5℃", "영하 이쩜오도"),
+        ('-2.5℃', '영하 이-쩜-오도'),
         ("+3℃", "영상 삼도"),
         ("-3°", "마이너스 삼도"),
     ],

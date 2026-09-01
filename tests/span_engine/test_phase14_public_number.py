@@ -29,7 +29,7 @@ def test_public_number_context_gate(text: str, expected: str) -> None:
     [
         ("110명 참석", "백십 명 참석"),
         ("120명", "백이십 명"),
-        ("1339에 문의", "천삼백삼십구에 문의"),
+        ('1339에 문의', '천삼백삼십구에 문의'),
     ],
 )
 def test_public_number_missing_context_falls_back_to_number(

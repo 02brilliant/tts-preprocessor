@@ -24,7 +24,7 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="adversarial-bare-decimal-without-event-keyword",
         text="12.3",
-        expected="십이쩜삼",
+        expected='십이-쩜-삼',
         rule="decimal / disambiguated positive",
         reason="A standard contiguous decimal that lacks event or date context should still convert even in an adversarial matrix.",
     ),
@@ -74,7 +74,7 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="canonical-shape-only-year-month-dot-form-is-decimal",
         text="2025.01",
-        expected="이천이십오쩜영일",
+        expected='이천이십오-쩜-영일',
         rule="decimal / no shape-only date inference",
         reason="A four-digit first block alone is not an explicit Korean date context gate.",
     ),

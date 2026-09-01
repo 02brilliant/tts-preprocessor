@@ -56,7 +56,7 @@ def test_severe_invalid_preserve_audit(text: str, expected: str) -> None:
         ("/path/25..50억/log", "/path/25..50억/log"),
         ("https://example.com?q=25..50억", "https://example.com?q=25..50억"),
         ("file-25..50.txt", "file-25..50.txt"),
-        ("version-1.5", "버전-일쩜오"),
+        ('version-1.5', '버전-일-쩜-오'),
         ("v25..50", "v25..50"),
         ("SKU25..50", "SKU25..50"),
     ],
@@ -92,7 +92,7 @@ def test_structural_delimiter_colon_like_audit(text: str, expected: str) -> None
         ("12-31", "12-31"),
         ("123-456", "123-456"),
         ("file-2025-01.txt", "file-2025-01.txt"),
-            ("version-1.5", "버전-일쩜오"),
+            ('version-1.5', '버전-일-쩜-오'),
         ("+1.5-2kg", "+1.5-2kg"),
         ("-1.5-2kg", "-1.5-2kg"),
         ("1-2kg", "일에서 이-킬로그램"),
@@ -109,7 +109,7 @@ def test_structural_delimiter_hyphen_dash_like_audit(text: str, expected: str) -
     [
         ("1/3", "삼분의 일"),
         ("2026/06/17", "이천이십육년 유월 십칠일"),
-        ("15.2km/L", "리터당 십오쩜이 킬로미터"),
+        ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("/path/1/2/log", "/path/1/2/log"),
     ],
 )
@@ -120,11 +120,11 @@ def test_structural_delimiter_slash_like_audit(text: str, expected: str) -> None
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("25.50", "이십오쩜오영"),
+        ('25.50', '이십오-쩜-오영'),
         ("12.3 비상계엄", "십이삼 비상계엄"),
         ("v1.2.3", "v1.2.3"),
         ("file.txt", "file.txt"),
-        ("pH 7.4", "피에이치 칠쩜사"),
+        ('pH 7.4', '피에이치 칠-쩜-사'),
     ],
 )
 def test_structural_delimiter_dot_like_audit(text: str, expected: str) -> None:
@@ -135,7 +135,7 @@ def test_structural_delimiter_dot_like_audit(text: str, expected: str) -> None:
     ("text", "expected"),
     [
         ("1,000", "천"),
-        ("1,000.50", "천쩜오영"),
+        ('1,000.50', '천-쩜-오영'),
         ("1,00", "1,00"),
         ("2,34", "2,34"),
         ("2,,345", "2,,345"),
@@ -162,7 +162,7 @@ def test_structural_delimiter_middle_dot_like_audit(text: str, expected: str) ->
     [
         ("1~2", "일에서 이"),
         ("1~2kg", "일에서 이-킬로그램"),
-        ("+1.5~2", "플러스 일쩜오에서 이"),
+        ('+1.5~2', '플러스 일-쩜-오에서 이'),
         ("1~~2", "1~~2"),
     ],
 )

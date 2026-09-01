@@ -24,9 +24,9 @@ def test_counter_does_not_trigger_broad_particle_correction(
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("21명를 봤다", "스물한 명을 봤다"),
-        ("21명는 왔다", "스물한 명은 왔다"),
-        ("3개으로 처리", "세 개로 처리"),
+        ('21명를 봤다', '스물한 명을 봤다'),
+        ('21명는 왔다', '스물한 명은 왔다'),
+        ('3개으로 처리', '세 개로 처리'),
     ],
 )
 def test_counter_particle_forbidden_signatures_do_not_appear(

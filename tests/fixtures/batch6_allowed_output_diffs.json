@@ -29,7 +29,7 @@
     {
       "decision_id": "scaling-large-comma-decimal",
       "input": "1,234,567,890,123.456",
-      "expected": "일조이천삼백사십오억육천칠백팔십구만백이십삼쩜사오육",
+      "expected": "일조이천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육",
       "owner_contract": "ordinary decimal owner validates commas atomically and uses the compact integer reader before exact fractional digits"
     },
     {

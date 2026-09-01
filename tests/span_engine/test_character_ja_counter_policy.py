@@ -213,5 +213,5 @@ def test_character_ja_spacing_invalid_and_protected_boundaries(source: str) -> N
 
 
 def test_integer_only_special_determiner_policy_keeps_decimal_word_fallback() -> None:
-    assert transform("7.25자료") == "칠쩜이오자료"
-    assert transform("3.5말했다") == "삼쩜오말했다"
+    assert transform("7.25자료") == '칠-쩜-이오자료'
+    assert transform("3.5말했다") == '삼-쩜-오말했다'

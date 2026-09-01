@@ -31,8 +31,8 @@ def test_signed_temperature_and_degree_preserve_unsupported_forms(text: str) -> 
     [
         ("-2 °C", "영하 이도"),
         ("-2도", "마이너스 이도"),
-        ("-2.5", "마이너스 이쩜오"),
-        ("+2.5", "플러스 이쩜오"),
+        ('-2.5', '마이너스 이-쩜-오'),
+        ('+2.5', '플러스 이-쩜-오'),
     ],
 )
 def test_phase16d_signed_number_updates_former_preserve_cases(

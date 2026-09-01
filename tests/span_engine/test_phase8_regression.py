@@ -35,7 +35,7 @@ def test_phase8_strong_bare_time_like_reads_as_time() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3.14", "삼쩜일사"),
+        ('3.14', '삼-쩜-일사'),
         ("12.3 비상계엄", "십이삼 비상계엄"),
     ],
 )

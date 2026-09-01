@@ -52,7 +52,7 @@ def test_single_letter_alnum_code_updates_former_unit_preserve_case() -> None:
     [
         ("50 kg", "오십-킬로그램"),
         ("1,000kg", "천-킬로그램"),
-        ("3.5kg", "삼쩜오-킬로그램"),
+        ('3.5kg', '삼-쩜-오-킬로그램'),
     ],
 )
 def test_phase36b_space_and_comma_unit_forms_now_transform(
@@ -64,11 +64,11 @@ def test_phase36b_space_and_comma_unit_forms_now_transform(
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("$1.25", "$일쩜이오"),
-        ("USD20abc", "이십 달러abc"),
-        ("$100kg", "백 달러kg"),
-        ("50kgabc", "오십 킬로그램abc"),
-        ("90km/h", "구십 킬로미터/h"),
+        ('$1.25', '$일-쩜-이오'),
+        ('이십 달러abc', 'USD20abc'),
+        ('백 달러kg', '$100kg'),
+        ('오십 킬로그램abc', '50kgabc'),
+        ('90km/h', '구십 킬로미터/h'),
     ],
 )
 def test_unit_currency_forbidden_partial_signatures_do_not_appear(

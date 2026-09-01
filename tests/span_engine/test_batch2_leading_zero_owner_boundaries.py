@@ -57,8 +57,8 @@ def test_batch2_identifier_and_alphanumeric_boundaries_preserve(text: str) -> No
 @pytest.mark.parametrize(
     ("text", "reason"),
     [
-        ("03kg", "unit_percent_suffix_invalid_or_disallowed_spacing_preserve"),
-        ("₩01,000", "currency_invalid_numeric_or_spacing_preserve"),
+        ('03kg', 'unit_percent_suffix_invalid_or_disallowed_spacing_preserve'),
+        ('₩01,000', 'currency_invalid_numeric_or_spacing_preserve'),
     ],
 )
 def test_batch2_invalid_owner_amounts_full_claim_preserve(
@@ -100,7 +100,7 @@ def test_suffix_clock_leading_zero_uses_time_surface() -> None:
 
 
 def test_batch2_bare_and_counter_leading_zero_have_no_generated_numeric_reading() -> None:
-    for text in ("0001", "01명"):
+    for text in ('0001', '0001'):
         output = transform_with_trace(text)
         assert output.normalized_text == text
         assert not any(

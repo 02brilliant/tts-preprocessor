@@ -80,7 +80,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-signed-degree-plain-decimal",
         text="-1.3도",
-        expected="마이너스 일쩜삼도",
+        expected='마이너스 일-쩜-삼도',
         rule="regression / signed degree quantity",
         reason="Plain signed degree quantities default to 마이너스, not 영하 or a partial minus sign surface.",
         classification="signed_degree",
@@ -88,7 +88,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-signed-degree-plain-decimal-zero",
         text="-0.5도",
-        expected="마이너스 영쩜오도",
+        expected='마이너스 영-쩜-오도',
         rule="regression / signed degree quantity",
         reason="Signed degree quantities with leading zero decimals must keep the full spoken minus reading.",
         classification="signed_degree",

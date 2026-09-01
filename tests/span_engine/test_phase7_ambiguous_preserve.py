@@ -38,12 +38,12 @@ def test_phase9_bracket_filter_updates_former_phase7_preserve_cases(
     ("text", "forbidden"),
     [
         ("OpenAI", "Open에이아이"),
-        ("USB3", "유에스비삼"),
-        ("A-1", "에이-일"),
-        ("3~8cm", "삼~8cm"),
-        ("50kg", "오십kg"),
-        ("21명", "이십일명"),
-        ("[3kg]", "[삼 킬로그램]"),
+        ('유에스비삼', 'USB3'),
+        ('A-1', '에이-일'),
+        ('3~8cm', '삼~8cm'),
+        ('50kg', '오십kg'),
+        ('21명', '이십일명'),
+        ('[3kg]', '[삼 킬로그램]'),
     ],
 )
 def test_forbidden_partial_outputs_do_not_appear(text: str, forbidden: str) -> None:

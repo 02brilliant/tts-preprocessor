@@ -10,7 +10,7 @@ AMBIGUOUS_POLICY_CASES = (
     TextCase(
         case_id="decimal-bare-dotted-short-form",
         text="12.12",
-        expected="십이쩜일이",
+        expected='십이-쩜-일이',
         rule="decimal / bare two-block dotted form",
         reason="event gate가 실패한 유효 bare two-block dotted surface는 ordinary decimal이다.",
         classification="override",
@@ -18,7 +18,7 @@ AMBIGUOUS_POLICY_CASES = (
     TextCase(
         case_id="decimal-shape-only-year-month-form",
         text="2025.01",
-        expected="이천이십오쩜영일",
+        expected='이천이십오-쩜-영일',
         rule="decimal / no shape-only year-month inference",
         reason="4자리.2자리 shape만으로 date preserve owner가 선점하지 않는다.",
         classification="override",

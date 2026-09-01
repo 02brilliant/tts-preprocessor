@@ -28,7 +28,7 @@ def _claims(text: str) -> list[dict]:
         ("2대1", "이대일", (0, 3)),
         ("2대 1", "이 대 일", (0, 4)),
         ("2 대 1", "이 대 일", (0, 5)),
-        ("2.1대1.5", "이쩜일 대 일쩜오", (0, 7)),
+        ('2.1대1.5', '이-쩜-일 대 일-쩜-오', (0, 7)),
         ("1/3대2/5", "삼분의 일 대 오분의 이", (0, 7)),
         ("+2대-1", "플러스 이 대 마이너스 일", (0, 5)),
         ("차량은 2대 1입니다", "차량은 이 대 일입니다", (4, 8)),
@@ -151,12 +151,12 @@ def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
 
 def test_decimal_dae_requires_the_same_explicit_context() -> None:
     positive = _debug("장비 1.5대")
-    assert positive["normalized_text"] == "장비 일쩜오-대"
+    assert positive["normalized_text"] == "장비 일-쩜-오-대"
     decimal_claim = positive["trace"]["claim_logs"][0]
     assert decimal_claim["owner"] == "contextual_number_unit"
     assert decimal_claim["claim_type"] == "surface"
 
-    for text, expected in (("1.5대", "일쩜오-대"), ("1.5대가", "일쩜오-대가")):
+    for text, expected in (('1.5대', '일-쩜-오-대'), ('1.5대가', '일-쩜-오-대가')):
         debug = _debug(text)
         assert debug["normalized_text"] == expected
         assert [claim["owner"] for claim in debug["trace"]["claim_logs"]] == [
@@ -171,7 +171,7 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
 @pytest.mark.parametrize(
     ("text", "expected", "semantic"),
     [
-        ("장비는 3.5대가 필요하다", "장비는 삼쩜오-대가 필요하다", "machine_count"),
+        ('장비는 3.5대가 필요하다', '장비는 삼-쩜-오-대가 필요하다', "machine_count"),
         ("5대 과제", "오대 과제", "major_item"),
     ],
 )
@@ -298,7 +298,7 @@ def test_mixed_numeric_dae_owner_e2e() -> None:
         "제3대 책임자는 경기 결과 2대1을 보고했다."
     )
     expected = (
-        "차량 세-대와 장비 일쩜오-대를 확인했고, 이십-대 남성과 가족 삼-대는 별도 기록했으며 "
+        "차량 세-대와 장비 일-쩜-오-대를 확인했고, 이십-대 남성과 가족 삼-대는 별도 기록했으며 "
         "제-삼대 책임자는 경기 결과 이대일을 보고했다."
     )
     assert transform(text) == expected

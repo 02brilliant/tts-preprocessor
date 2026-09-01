@@ -87,7 +87,7 @@ def test_korean_hour_time(text: str, expected: str) -> None:
         ("23분045초", "이십삼분 사십오초"),
         ("123분545초", "백이십삼분 오백사십오초"),
         ("01.5분", "01.5분"),
-        ("01.5초", "일쩜오-초"),
+        ('01.5초', '일쩜오-초'),
     ],
 )
 def test_korean_time_compact_and_mixed_spacing(

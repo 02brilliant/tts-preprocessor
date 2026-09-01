@@ -9,8 +9,8 @@ def test_fahrenheit_label_symbol_context_deduplicates() -> None:
         ("화씨 -77°F", "화씨 영하 칠십칠도"),
         ("화씨 +77℉", "화씨 영상 칠십칠도"),
         ("화씨 -77℉", "화씨 영하 칠십칠도"),
-        ("화씨 +1.5°F", "화씨 영상 일쩜오도"),
-        ("화씨 -0.0°F", "화씨 영하 영쩜영도"),
+        ('화씨 +1.5°F', '화씨 영상 일-쩜-오도'),
+        ('화씨 -0.0°F', '화씨 영하 영-쩜-영도'),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -22,8 +22,8 @@ def test_celsius_label_symbol_context_deduplicates() -> None:
         ("섭씨 -25°C", "섭씨 영하 이십오도"),
         ("섭씨 +25℃", "섭씨 영상 이십오도"),
         ("섭씨 -25℃", "섭씨 영하 이십오도"),
-        ("섭씨 +1.5°C", "섭씨 영상 일쩜오도"),
-        ("섭씨 -0.0°C", "섭씨 영하 영쩜영도"),
+        ('섭씨 +1.5°C', '섭씨 영상 일-쩜-오도'),
+        ('섭씨 -0.0°C', '섭씨 영하 영-쩜-영도'),
     ]
     for source, expected in cases:
         assert transform(source) == expected

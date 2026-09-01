@@ -11,9 +11,9 @@ from engine.span_engine.arithmetic import parse_basic_arithmetic_expression_at
     [
         ("3+4", "삼 더하기 사"),
         ("3 - 4", "삼 빼기 사"),
-        ("4.5x3", "사쩜오 곱하기 삼"),
-        ("4.5 x 3", "사쩜오 곱하기 삼"),
-        ("4.5×3", "사쩜오 곱하기 삼"),
+        ('4.5x3', '사-쩜-오 곱하기 삼'),
+        ('4.5 x 3', '사-쩜-오 곱하기 삼'),
+        ('4.5×3', '사-쩜-오 곱하기 삼'),
         ("8÷2", "팔 나누기 이"),
         ("8 ÷ 2", "팔 나누기 이"),
     ],
@@ -39,7 +39,7 @@ def test_basic_arithmetic_rejects_other_operator_spacing(text: str) -> None:
         ("-3+4", "마이너스 삼 더하기 사"),
         ("3 + -4", "삼 더하기 마이너스 사"),
         ("-3 - -4", "마이너스 삼 빼기 마이너스 사"),
-        ("+3.4 x -2.3", "플러스 삼쩜사 곱하기 마이너스 이쩜삼"),
+        ('+3.4 x -2.3', '플러스 삼-쩜-사 곱하기 마이너스 이-쩜-삼'),
         ("-2x+3", "마이너스 이 곱하기 플러스 삼"),
     ],
 )
@@ -57,9 +57,9 @@ def test_basic_arithmetic_rejects_conflicting_signs(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1.50+2.05", "일쩜오영 더하기 이쩜영오"),
+        ('1.50+2.05', '일-쩜-오영 더하기 이-쩜-영오'),
         ("1,000+2,000", "천 더하기 이천"),
-        ("1,000.50 - 500.25", "천쩜오영 빼기 오백쩜이오"),
+        ('1,000.50 - 500.25', '천-쩜-오영 빼기 오백-쩜-이오'),
     ],
 )
 def test_basic_arithmetic_reuses_decimal_and_comma_canonical(
@@ -113,7 +113,7 @@ def test_invalid_fraction_operand_preserves_whole_expression(text: str) -> None:
     [
         ("3+4=7", "삼 더하기 사는 칠"),
         ("3+6=9", "삼 더하기 육은 구"),
-        ("1.2+3.5=4.7", "일쩜이 더하기 삼쩜오는 사쩜칠"),
+        ('1.2+3.5=4.7', '일-쩜-이 더하기 삼-쩜-오는 사-쩜-칠'),
         ("3-5=-2", "삼 빼기 오는 마이너스 이"),
         ("2+2=5", "이 더하기 이는 오"),
     ],
@@ -168,8 +168,8 @@ def test_unsupported_operators_and_operands_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "protected_raw"),
     [
-        ("식은 (3+4)×2다", "(3+4)×2"),
-        ("식은 sqrt(4)다", "sqrt(4)"),
+        ('식은 (3+4)×2다', '(3+4)×2'),
+        ('식은 sqrt(4)다', 'sqrt(4)'),
     ],
 )
 def test_unsupported_parenthesized_arithmetic_preserves_inside_korean_sentence(
@@ -220,12 +220,12 @@ def test_registered_managed_code_still_wins_over_arithmetic_negative_gate() -> N
     [
         ("+25℃", "영상 이십오도"),
         ("-25℃", "영하 이십오도"),
-        ("+3.4", "플러스 삼쩜사"),
-        ("-2.3", "마이너스 이쩜삼"),
+        ('+3.4', '플러스 삼-쩜-사'),
+        ('-2.3', '마이너스 이-쩜-삼'),
         ("1/3", "삼분의 일"),
         ("-1/3", "마이너스 삼분의 일"),
         ("2025/01/03", "이천이십오년 일월 삼일"),
-        ("15.2km/L", "리터당 십오쩜이 킬로미터"),
+        ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("/path/3+4/log", "/path/3+4/log"),
         ("https://example.com?q=3+4", "https://example.com?q=3+4"),
         ('{"expr":"3+4"}', '{"expr":"3+4"}'),
@@ -296,7 +296,7 @@ def test_basic_arithmetic_korean_sentence_e2e() -> None:
         "경로 /path/3+4/log와 코드 A+B는 보존한다."
     )
     expected = (
-        "계산식은 삼 더하기 사는 칠이고, 보정식은 플러스 삼쩜사 곱하기 마이너스 이쩜삼이며, "
+        "계산식은 삼 더하기 사는 칠이고, 보정식은 플러스 삼-쩜-사 곱하기 마이너스 이-쩜-삼이며, "
         "분수식은 삼분의 일 더하기 삼분의 이이다. 경로 /path/3+4/log와 코드 A+B는 보존한다."
     )
     assert transform(text) == expected

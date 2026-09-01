@@ -19,7 +19,7 @@ from engine.span_engine import transform
         ("연비는 15km/L입니다", "연비는 리터당 십오 킬로미터입니다"),
         ("전송률은 100MB/s까지", "전송률은 초당 백 메가바이트까지"),
         ("혈당은 120mg/dL입니다", "혈당은 데시리터당 백이십 밀리그램입니다"),
-        ("15.2km/L", "리터당 십오쩜이 킬로미터"),
+        ('15.2km/L', '리터당 십오쩜이 킬로미터'),
     ],
 )
 def test_compound_slash_unit_basic_expected_output(

@@ -1,6 +1,6 @@
 {"id": "number-and-counter", "input": "참석자는 12345명이다.", "expected": "참석자는 만 이천삼백사십오-명이다.", "tags": ["number", "counter"]}
 {"id": "simple-and-compound-unit", "input": "무게는 3kg이고 속도는 90km/h다.", "expected": "무게는 삼-킬로그램이고 속도는 시속 구십 킬로미터다.", "tags": ["unit", "compound-unit"]}
-{"id": "currency-and-large-unit", "input": "가격은 $1,000.50이고 예산은 6402억 달러다.", "expected": "가격은 천쩜오영-달러이고 예산은 육천사백이억 달러다.", "tags": ["currency", "large-unit", "decimal"]}
+{"id": "currency-and-large-unit", "input": "가격은 $1,000.50이고 예산은 6402억 달러다.", "expected": "가격은 천-쩜-오영-달러이고 예산은 육천사백이억 달러다.", "tags": ["currency", "large-unit", "decimal"]}
 {"id": "date-and-time", "input": "회의는 2025-01-03 13:05에 시작한다.", "expected": "회의는 이천이십오년 일월 삼일 십삼시 오분에 시작한다.", "tags": ["date", "time"]}
 {"id": "protected-json", "input": "{\"price\":\"KRW1000\"} 밖의 KRW1000", "expected": "{\"price\":\"KRW1000\"} 밖의 천-원", "tags": ["protected", "json", "currency"]}
 {"id": "protected-url", "input": "https://example.com?q=KRW1000", "expected": "https://example.com?q=KRW1000", "tags": ["protected", "url"]}

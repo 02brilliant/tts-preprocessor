@@ -91,7 +91,7 @@ def test_plain_counter_reading_unchanged(
         ("제2항목abc", "제-이항목abc"),
         ("제2-문항", "제2-문항"),
         ("제2G", "제2G"),
-        ("제2.5문항", "제-이쩜오문항"),
+        ('제2.5문항', '제-이-쩜-오문항'),
     ],
 )
 def test_prefixed_ordinal_unsafe_preserve(

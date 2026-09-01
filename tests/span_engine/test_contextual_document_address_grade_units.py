@@ -125,7 +125,7 @@ def test_batch4_malformed_surfaces_defer_without_partial_conversion(
     [
         ("+3동", "플러스 삼 동"),
         ("-3호", "마이너스 삼 호"),
-        ("1.5판", "일쩜오-판"),
+        ('1.5판', '일-쩜-오-판'),
     ],
 )
 def test_batch4_signed_and_decimal_use_residual_reading(

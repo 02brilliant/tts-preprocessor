@@ -21,4 +21,4 @@ def test_mixed_alnum_and_currency_contaminated_code_like_tokens_preserve(
 
 
 def test_usb_version_spacing_keeps_existing_behavior() -> None:
-    assert transform("USB 3.0") == "유에스비 삼쩜영"
+    assert transform("USB 3.0") == '유에스비 삼-쩜-영'

@@ -71,24 +71,24 @@ Current standalone valid forms:
 | `1,000` | `천` | valid comma integer |
 | `+1,000` | `플러스 천` | signed comma integer |
 | `-1,000` | `마이너스 천` | signed comma integer |
-| `1.5` | `일쩜오` | unsigned decimal |
-| `+1.5` | `플러스 일쩜오` | signed decimal |
-| `-1.5` | `마이너스 일쩜오` | signed decimal |
-| `–1.5` | `마이너스 일쩜오` | owner-local dash-like signed numeric alias; not global dash normalization |
-| `0.05` | `영쩜영오` | unsigned decimal |
-| `+0.05` | `플러스 영쩜영오` | signed decimal |
-| `-0.05` | `마이너스 영쩜영오` | signed decimal |
-| `12.12` | `십이쩜일이` | valid bare two-block dotted decimal |
-| `307.16` | `삼백칠쩜일육` | valid bare two-block dotted decimal |
-| `7443.28` | `칠천사백사십삼쩜이팔` | four-digit first block alone is not a year-month gate |
-| `2025.01` | `이천이십오쩜영일` | no shape-only short year-month preserve |
-| `2025.13` | `이천이십오쩜일삼` | ordinary decimal; month-range inference is not used |
-| `25.50` | `이십오쩜오영` | unsigned standalone decimal trailing zero uses `영` |
-| `+25.50` | `플러스 이십오쩜오영` | signed standalone decimal trailing zero uses `영` |
-| `-25.50` | `마이너스 이십오쩜오영` | signed standalone decimal trailing zero uses `영` |
-| `1,000.50` | `천쩜오영` | valid unsigned comma decimal |
-| `+1,000.50` | `플러스 천쩜오영` | signed comma decimal |
-| `-2,500.75` | `마이너스 이천오백쩜칠오` | signed comma decimal |
+| `1.5` | `일-쩜-오` | unsigned decimal |
+| `+1.5` | `플러스 일-쩜-오` | signed decimal |
+| `-1.5` | `마이너스 일-쩜-오` | signed decimal |
+| `–1.5` | `마이너스 일-쩜-오` | owner-local dash-like signed numeric alias; not global dash normalization |
+| `0.05` | `영-쩜-영오` | unsigned decimal |
+| `+0.05` | `플러스 영-쩜-영오` | signed decimal |
+| `-0.05` | `마이너스 영-쩜-영오` | signed decimal |
+| `12.12` | `십이-쩜-일이` | valid bare two-block dotted decimal |
+| `307.16` | `삼백칠-쩜-일육` | valid bare two-block dotted decimal |
+| `7443.28` | `칠천사백사십삼-쩜-이팔` | four-digit first block alone is not a year-month gate |
+| `2025.01` | `이천이십오-쩜-영일` | no shape-only short year-month preserve |
+| `2025.13` | `이천이십오-쩜-일삼` | ordinary decimal; month-range inference is not used |
+| `25.50` | `이십오-쩜-오영` | unsigned standalone decimal trailing zero uses `영` |
+| `+25.50` | `플러스 이십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
+| `-25.50` | `마이너스 이십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
+| `1,000.50` | `천-쩜-오영` | valid unsigned comma decimal |
+| `+1,000.50` | `플러스 천-쩜-오영` | signed comma decimal |
+| `-2,500.75` | `마이너스 이천오백-쩜-칠오` | signed comma decimal |
 
 ### Unified signed owner matrix
 
@@ -444,7 +444,7 @@ Dash-like signed numeric alias examples:
 
 | Surface | Expected output | Policy note |
 |---|---|---|
-| `–2.03%` | `마이너스 이쩜영삼-퍼센트` | signed percent/unit owner full-claims the complete surface |
+| `–2.03%` | `마이너스 이-쩜-영삼-퍼센트` | signed percent/unit owner full-claims the complete surface |
 | `1–2kg` | `일에서 이-킬로그램` | range owner remains authoritative; dash is not a sign alias here |
 | `서울–부산` | `서울–부산` | connector dash preserve |
 | `–2.03abc` | `–2.03abc` | unsafe tail preserve; no internal partial rewrite |

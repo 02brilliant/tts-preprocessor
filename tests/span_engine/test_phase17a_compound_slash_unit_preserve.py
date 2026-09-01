@@ -47,9 +47,9 @@ def test_phase36b_comma_compound_slash_unit_now_transforms() -> None:
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("http://x/90km/h", "http://x/시속 구십 킬로미터"),
-        ("90km/habc", "시속 구십 킬로미터abc"),
-        ("90km/h.html", "시속 구십 킬로미터.html"),
+        ('http://x/시속 구십 킬로미터', 'http://x/90km/h'),
+        ('시속 구십 킬로미터abc', '90km/habc'),
+        ('시속 구십 킬로미터.html', '90km/h.html'),
     ],
 )
 def test_compound_slash_unit_forbidden_partial_outputs(

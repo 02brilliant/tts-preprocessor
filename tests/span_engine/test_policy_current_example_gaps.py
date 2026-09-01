@@ -88,12 +88,12 @@ def test_decimal_and_middle_dot_numeric_list_fallbacks() -> None:
 
     assert (
         transform(text)
-        == "삼쩜일사, 십이쩜영삼, 영쩜일이오, 칠·이오, 일영·오, 십이 · 삼, 12. 3, 12 .3, 일·이·삼, 일이삼·사오육"
+        == "삼-쩜-일사, 십이-쩜-영삼, 영-쩜-일이오, 칠·이오, 일영·오, 십이 · 삼, 12. 3, 12 .3, 일·이·삼, 일이삼·사오육"
     )
 
 
 def test_decimal_trailing_zero_digits_are_preserved() -> None:
-    assert transform("승률 0.600, 비율 2:1") == "승률 영쩜육영영, 비율 이 대 일"
+    assert transform("승률 0.600, 비율 2:1") == '승률 영-쩜-육영영, 비율 이 대 일'
 
 
 @pytest.mark.parametrize(
@@ -102,18 +102,12 @@ def test_decimal_trailing_zero_digits_are_preserved() -> None:
         ("KTX와 KTX-이음 등 고속열차는", "케이티엑스와 케이티엑스-이음 등 고속열차는"),
         ("KBS 11시뉴스입니다.", "케이비에스 열한시뉴스입니다."),
         ("지금까지 KBS 11시뉴스였습니다.", "지금까지 케이비에스 열한시뉴스였습니다."),
-        (
-            "코스피는 전장보다 2.43% 오른 8,384.31로 출발했다.",
-            "코스피는 전장보다 이쩜사삼-퍼센트 오른 팔천삼백팔십사쩜삼일로 출발했다.",
-        ),
-        (
-            "전산업 생산지수는 117.8로 전달 대비 0.6% 줄었습니다.",
-            "전산업 생산지수는 백십칠쩜팔로 전달 대비 영쩜육-퍼센트 줄었습니다.",
-        ),
-        ("117.8으로", "백십칠쩜팔으로"),
-        ("8,384.31으로", "팔천삼백팔십사쩜삼일으로"),
-        ("0.6%로", "영쩜육-퍼센트로"),
-        ("70.5%로", "칠십쩜오-퍼센트로"),
+        ('코스피는 전장보다 2.43% 오른 8,384.31로 출발했다.', '코스피는 전장보다 이-쩜-사삼-퍼센트 오른 팔천삼백팔십사-쩜-삼일로 출발했다.'),
+        ('전산업 생산지수는 117.8로 전달 대비 0.6% 줄었습니다.', '전산업 생산지수는 백십칠-쩜-팔로 전달 대비 영-쩜-육-퍼센트 줄었습니다.'),
+        ('117.8으로', '백십칠-쩜-팔으로'),
+        ('8,384.31으로', '팔천삼백팔십사-쩜-삼일으로'),
+        ('0.6%로', '영-쩜-육-퍼센트로'),
+        ('70.5%로', '칠십-쩜-오-퍼센트로'),
         ("KTX", "케이티엑스"),
         ("KTX와", "케이티엑스와"),
         ("KTX-이음", "케이티엑스-이음"),
@@ -208,8 +202,8 @@ def test_full_news_example_attached_surface_regression_contains() -> None:
     assert "케이티엑스-이음" in output
     assert "케이비에스 열한시뉴스입니다" in output
     assert "지금까지 케이비에스 열한시뉴스였습니다" in output
-    assert "팔천삼백팔십사쩜삼일로" in output
-    assert "백십칠쩜팔로" in output
+    assert "팔천삼백팔십사-쩜-삼일로" in output
+    assert "백십칠-쩜-팔로" in output
     assert "오늘 코스피는" in output
 
 
@@ -239,18 +233,18 @@ def test_spaced_hyphen_numeric_multiblock_with_korean_suffix_full_consumes() -> 
 
 
 def test_signed_temperature_korean_boundary_full_consumes_or_preserves() -> None:
-    assert transform("온도-2.5℃") == "온도영하 이쩜오도"
-    assert transform("-2.5℃") == "영하 이쩜오도"
-    assert transform("-2.5℉") == "화씨 영하 이쩜오도"
+    assert transform("온도-2.5℃") == '온도영하 이-쩜-오도'
+    assert transform("-2.5℃") == '영하 이-쩜-오도'
+    assert transform("-2.5℉") == '화씨 영하 이-쩜-오도'
     assert transform("A-2.5℃") == "A-2.5℃"
     assert transform("x-2.5℉") == "x-2.5℉"
     assert transform("30ºCtest") == "30ºCtest"
     assert transform("40℉abc") == "40℉abc"
-    assert transform("- 2.5℃") != "영하 이쩜오도"
+    assert transform("- 2.5℃") != "영하 이-쩜-오도"
 
 
 def test_two_block_hyphen_decimal_code_policy() -> None:
-    assert transform("B-2.5") == "비-이쩜오"
+    assert transform("B-2.5") == '비-이-쩜-오'
     assert transform("x-3") == "엑스-삼"
     assert transform("A-10C") == "에이-십 씨"
     for text in ["1-1 무", "B-2.5beta", "x-2.5℉", "A-3kg"]:
@@ -332,12 +326,12 @@ def test_ph_case_sensitive_owner_and_decimal_fallback_consistency() -> None:
     text = "pH 검증 pH 7.4, pH7.4, pH 10.25, xpH 7.4, apH7.4, pH 7.4a, pH7.4test"
     assert (
         transform(text)
-        == "pH 검증 피에이치 칠쩜사, 피에이치 칠쩜사, 피에이치 십쩜이오, xpH 7.4, apH7.4, pH 7.4a, pH7.4test"
+        == "pH 검증 피에이치 칠-쩜-사, 피에이치 칠-쩜-사, 피에이치 십-쩜-이오, xpH 7.4, apH7.4, pH 7.4a, pH7.4test"
     )
 
     assert (
         transform("비교용으로 PH 7.4, ph 7.4, pH, 7.4 pH도 넣는다.")
-        == "비교용으로 피에이치 칠쩜사, ph 칠쩜사, pH, 칠쩜사 pH도 넣는다."
+        == "비교용으로 피에이치 칠-쩜-사, ph 칠-쩜-사, pH, 칠-쩜-사 pH도 넣는다."
     )
 
 
@@ -352,10 +346,7 @@ def test_ph_case_sensitive_owner_and_decimal_fallback_consistency() -> None:
             "K-POP, user@example.com, 45m3",
             "케이팝, user@example.com, 사십오-세제곱미터",
         ),
-        (
-            "docs/2025/01/02/report.md, 온도-2.5℃, pH 7.4",
-            "docs/2025/01/02/report.md, 온도영하 이쩜오도, 피에이치 칠쩜사",
-        ),
+        ('docs/2025/01/02/report.md, 온도-2.5℃, pH 7.4', 'docs/2025/01/02/report.md, 온도영하 이-쩜-오도, 피에이치 칠-쩜-사'),
         (
             "C:/Users/test/file.txt, 5Ghz 환경, K-POP",
             "C:/Users/test/file.txt, 오-기가헤르츠 환경, 케이팝",
@@ -376,7 +367,7 @@ def test_embedded_protected_token_does_not_trigger_global_bypass() -> None:
 
     assert (
         transform(text)
-        == "케이팝, 아이에스오·아이이씨, 포케이 장비, 오-기가헤르츠 환경, 사십오-세제곱미터, 온도영하 이쩜오도, 피에이치 칠쩜사, https://example.com/a/b"
+        == "케이팝, 아이에스오·아이이씨, 포케이 장비, 오-기가헤르츠 환경, 사십오-세제곱미터, 온도영하 이-쩜-오도, 피에이치 칠-쩜-사, https://example.com/a/b"
     )
 
 
@@ -402,6 +393,9 @@ def test_embedded_protected_token_change_keeps_unsafe_preserve_guards(text: str)
         ("누적 수출액이 6,402억 달러를 기록했다.", "누적 수출액이 육천사백이억 달러를 기록했다."),
         ("일반 숫자 문단에는 2조 3,400억 원을 넣었다.", "일반 숫자 문단에는 이조 삼천사백억 원을 넣었다."),
         ("3조 4,000억 원", "삼조 사천억 원"),
+        ("6조 3천억 원", "육조 삼천억 원"),
+        ("2조 8천억 원", "이조 팔천억 원"),
+        ('3개월 이상 연체된 돈이 4.1%, 6조 3천억 원입니다.', '삼개월 이상 연체된 돈이 사-쩜-일-퍼센트, 육조 삼천억 원입니다.'),
     ],
 )
 def test_comma_number_large_unit_and_currency_surfaces(
@@ -418,11 +412,11 @@ def test_comma_number_code_like_guards_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1,250", "천이백오십"),
+        ('1,250', '천이백오십'),
         ("12,345", "만 이천삼백사십오"),
-        ("6402", "육천사백이"),
+        ('6402', '육천-사백이'),
         ("10000", "만"),
-        ("1,250, 12,345, 6402, 10000", "천이백오십, 만 이천삼백사십오, 육천사백이, 만"),
+        ('1,250, 12,345, 6402, 10000', '천이백오십, 만 이천삼백사십오, 육천-사백이, 만'),
     ],
 )
 def test_bare_integer_and_comma_integer_surfaces(
@@ -536,9 +530,9 @@ def test_kiloliter_cjk_symbol_reuses_registered_volume_unit_rules() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("0.5m/s", "초속 영쩜오 미터"),
+        ('0.5m/s', '초속 영쩜오 미터'),
         ("5m/s", "초속 오 미터"),
-        ("8.5m/min", "분속 팔쩜오 미터"),
+        ('8.5m/min', '분속 팔쩜오 미터'),
         ("0.5m/sabc", "0.5m/sabc"),
     ],
 )
@@ -587,7 +581,7 @@ def test_colon_semantic_pair_with_approved_context_reads_as_dae_relation() -> No
     [
         ("제5차", "제-오차"),
         ("제5차 한미 표준협력 포럼", "제-오차 한미 표준협력 포럼"),
-        ("2025 제5차 한미 표준협력 포럼", "이천이십오 제-오차 한미 표준협력 포럼"),
+        ('2025 제5차 한미 표준협력 포럼', '이천이십오 제-오차 한미 표준협력 포럼'),
         ("제15권 안내 문구", "제-십오권 안내 문구"),
         ("제62회 무역의 날", "제-육십이회 무역의 날"),
         ("제10장", "제-십장"),

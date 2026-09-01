@@ -51,7 +51,7 @@
       "status": "applied",
       "input": "0.5 - 1.2 - 3",
       "before": "영쩜오 일쩜이 삼",
-      "after": "영쩜오 - 일쩜이 - 삼",
+      "after": "영-쩜-오 - 일-쩜-이 - 삼",
       "scope": "exact existing decimal spaced-hyphen regression; preserve source separators"
     },
     {

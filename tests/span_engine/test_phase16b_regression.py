@@ -4,7 +4,7 @@ from engine.span_engine import transform
 
 
 def test_phase16b_regression_smoke() -> None:
-    assert transform("-2.5℃") == "영하 이쩜오도"
+    assert transform("-2.5℃") == '영하 이-쩜-오도'
     assert transform("+3°") == "플러스 삼도"
     assert transform("123-456-7890") == "일이삼 사오육 칠팔구공"
     assert transform("2025-01-03") == "이천이십오년 일월 삼일"

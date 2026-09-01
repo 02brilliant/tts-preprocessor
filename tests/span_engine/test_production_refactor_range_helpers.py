@@ -16,8 +16,8 @@ from engine.span_engine.transform import transform, transform_with_trace
         ("2", None, "이"),
         ("+2", "+", "플러스 이"),
         ("-2", "-", "마이너스 이"),
-        ("+0.05", "+", "플러스 영쩜영오"),
-        ("-1,000.50", "-", "마이너스 천쩜오영"),
+        ("+0.05", "+", "플러스 영-쩜-영오"),
+        ("-1,000.50", "-", "마이너스 천-쩜-오영"),
     ],
 )
 def test_p2_numeric_sign_rendering_characterization(
@@ -34,14 +34,7 @@ def test_p2_numeric_sign_rendering_characterization(
 @pytest.mark.parametrize(
     ("text", "expected", "owner", "surface_type", "reason", "span"),
     [
-        (
-            "-2.3~+4.5kg이다",
-            "마이너스 이쩜삼에서 플러스 사쩜오-킬로그램이다",
-            "range_with_unit",
-            "RANGE_WITH_UNIT_SURFACE",
-            "numeric_delimited_hyphen_range_with_unit_gate",
-            SourceSpan(0, 11),
-        ),
+        ('-2.3~+4.5kg이다', '마이너스 이-쩜-삼에서 플러스 사-쩜-오-킬로그램이다', "range_with_unit", "RANGE_WITH_UNIT_SURFACE", "numeric_delimited_hyphen_range_with_unit_gate", SourceSpan(0, 11)),
         (
             "-1:2 비율",
             "마이너스 일 대 이 비율",

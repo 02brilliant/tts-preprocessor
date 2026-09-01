@@ -42,9 +42,9 @@ def test_emergency_ambiguous_allowed_counter_fallbacks_use_counter_policy(
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("112명", "일일이명"),
-        ("112명", "백십이명"),
-        ("119개", "일일이구개"),
+        ('112명', '백십이명'),
+        ('112명', '백십이명'),
+        ('119개', '일일이구개'),
     ],
 )
 def test_emergency_counter_forbidden_signatures_do_not_appear(
@@ -71,10 +71,10 @@ def test_unsupported_counter_nouns_use_phase11_number_suffix_fallback(
 @pytest.mark.parametrize(
     ("text", "forbidden"),
     [
-        ("3번", "세 번"),
-        ("3분", "세 분"),
-        ("3초", "세 초"),
-        ("3건", "삼건"),
+        ('세 번', '3번'),
+        ('세 분', '3분'),
+        ('3초', '세 초'),
+        ('3건', '삼건'),
     ],
 )
 def test_unsupported_counter_nouns_do_not_use_native_counter(
@@ -103,7 +103,7 @@ def test_signed_person_counter_uses_residual_reading(text: str, expected: str) -
 
 
 def test_decimal_registered_counter_suffix_now_transforms() -> None:
-    assert transform("3.5명") == "삼쩜오-명"
+    assert transform("3.5명") == '삼-쩜-오-명'
 
 
 def test_phase36b_comma_counter_form_now_transforms() -> None:

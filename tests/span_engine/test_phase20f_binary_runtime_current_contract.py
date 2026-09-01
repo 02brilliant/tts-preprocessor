@@ -176,8 +176,8 @@ def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) ->
             stdout=json.dumps(
                 {
                     "ok": True,
-                    "normalized_text": "가격은 삼쩜영오 달러입니다.",
-                    "speech_text": "가격은 삼쩜영오 달러입니다.",
+                    "normalized_text": "가격은 삼-쩜-영오 달러입니다.",
+                    "speech_text": "가격은 삼-쩜-영오 달러입니다.",
                     "model": "gemma4-31B-it (vLLM)",
                     "elapsed_ms": 1.0,
                     "rule_elapsed_ms": 1.0,
@@ -203,7 +203,7 @@ def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) ->
         binary_path=Path("/tmp/fake-level-4"),
     )
 
-    assert result["speech_text"] == "가격은 삼쩜영오 달러입니다."
+    assert result["speech_text"] == "가격은 삼-쩜-영오 달러입니다."
     assert result["rejected_speech_text"] == "가격은 삼점영오 달러입니다."
     assert result["validation_failure"]["code"] == "LOCKED_READING_MUTATION"
 

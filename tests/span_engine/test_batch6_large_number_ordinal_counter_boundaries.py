@@ -8,8 +8,8 @@ from engine.span_engine.transform import transform_with_trace
 
 def test_batch6_supported_large_number_width_ends_at_gyeong() -> None:
     assert transform("99999999999999999999") == (
-        "구천구백구십구경 구천구백구십구조 구천구백구십구억 "
-        "구천구백구십구만 구천구백구십구"
+        "구천-구백구십구경 구천-구백구십구조 구천-구백구십구억 "
+        "구천-구백구십구만 구천-구백구십구"
     )
 
 
@@ -78,7 +78,7 @@ def test_batch6_prefixed_ordinal_spacing_is_owner_generated(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("제2.5차", "제-이쩜오차"),
+        ('제2.5차', '제-이-쩜-오차'),
         ("제2-차", "제2-차"),
         ("A제5차", "A제5차"),
         ("제5차abc", "제-오차abc"),
@@ -129,7 +129,7 @@ def test_batch6_comma_decimal_is_one_compact_decimal_claim() -> None:
     text = "1,234,567,890,123.456"
     output = transform_with_trace(text)
     assert output.normalized_text == (
-        "일조이천삼백사십오억육천칠백팔십구만백이십삼쩜사오육"
+        "일조이천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육"
     )
     assert [
         (claim.owner, claim.surface_type, claim.reason, claim.span.start, claim.span.end)
