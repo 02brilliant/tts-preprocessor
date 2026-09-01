@@ -32,10 +32,8 @@ def test_industrial_electricity_article_accepts_safe_llm_output_with_ascii_space
     normalized_article,
 ) -> None:
     normalized_text, snapshot = normalized_article
-    # LLMs commonly emit an ordinary space for the source NBSP. This is a
-    # formatting-equivalent change, while `2조` is the residual reading work
-    # intentionally delegated from the rule engine to the LLM stage.
-    speech_text = normalized_text.replace("\u00a0", " ").replace("2조", "이조")
+    # LLMs commonly emit an ordinary space for the source NBSP.
+    speech_text = normalized_text.replace("\u00a0", " ")
 
     assert validate_response(
         normalized_text,
@@ -46,7 +44,26 @@ def test_industrial_electricity_article_accepts_safe_llm_output_with_ascii_space
 
 
 @pytest.mark.parametrize("prompt_level", (1, 2))
-def test_industrial_electricity_article_marks_unchanged_residual_for_ui(
+def test_industrial_electricity_article_converts_jo_korean_mixed_large_unit(
+    prompt_level: int,
+    normalized_article,
+) -> None:
+    normalized_text, snapshot = normalized_article
+
+    assert "이조 팔천억 원" in normalized_text
+    assert "2조" not in normalized_text
+
+    speech_text = normalized_text.replace("\u00a0", " ")
+    assert validate_response(
+        normalized_text,
+        speech_text,
+        prompt_level=prompt_level,
+        snapshot=snapshot,
+    ) == speech_text
+
+
+@pytest.mark.parametrize("prompt_level", (1, 2))
+def test_industrial_electricity_article_identity_without_nbsp_normalization_fails(
     prompt_level: int,
     normalized_article,
 ) -> None:
@@ -60,8 +77,5 @@ def test_industrial_electricity_article_marks_unchanged_residual_for_ui(
             snapshot=snapshot,
         )
 
-    assert exc_info.value.code == "RESIDUAL_SPEECH_SURFACE"
-    assert exc_info.value.severity == "Medium"
-    assert normalized_text[
-        exc_info.value.output_start : exc_info.value.output_end
-    ] == "2"
+    assert exc_info.value.code == "UNEXPECTED_KOREAN_REWRITE"
+    assert exc_info.value.severity == "High"

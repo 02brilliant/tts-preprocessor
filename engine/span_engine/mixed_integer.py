@@ -8,6 +8,10 @@ from engine.span_engine.large_unit import (
     parse_mixed_integer_core_at,
 )
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
+from engine.span_engine.numeric_prosody import (
+    format_decimal_prosody_suffix,
+    join_decimal_prosody,
+)
 from engine.span_engine.numeric_reading import (
     read_decimal_fraction_digits,
     read_spaced_integer_text,
@@ -66,9 +70,7 @@ def scan_mixed_integer_candidates(raw_text: str) -> list[SurfaceCandidate]:
         reason = f"mixed_integer_{core_kind}_full_consume"
         if fraction_span is not None:
             fraction_digits = raw_text[fraction_span.start : fraction_span.end]
-            reading = (
-                f"{reading}쩜{read_decimal_fraction_digits(fraction_digits)}"
-            )
+            reading = join_decimal_prosody(reading, fraction_digits)
             owner = "mixed_decimal_atomic"
             surface_type = "MIXED_DECIMAL_SURFACE"
             reason = f"mixed_integer_{core_kind}_decimal_full_consume"
@@ -165,7 +167,7 @@ def parse_mixed_integer_candidate(
         fraction_digits = raw_text[fraction_span.start : fraction_span.end]
         pieces.append(
             RenderPiece(
-                text=f"쩜{read_decimal_fraction_digits(fraction_digits)}",
+                text=format_decimal_prosody_suffix(fraction_digits),
                 provenance="GENERATED_READING",
                 source_span=SourceSpan(integer_core_end, fraction_span.end),
                 owner=candidate.owner,

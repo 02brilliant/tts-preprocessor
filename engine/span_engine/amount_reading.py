@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.numeric_prosody import join_decimal_prosody
 
 SINO_DIGIT_READINGS = {
     "0": "영",
@@ -38,8 +39,7 @@ def read_decimal_amount_text(amount: str, *, overflow_message: str) -> str:
     )
     if not decimal_part:
         return integer_reading
-    fractional = "".join(SINO_DIGIT_READINGS[digit] for digit in decimal_part)
-    return f"{integer_reading}쩜{fractional}"
+    return join_decimal_prosody(integer_reading, decimal_part)
 
 
 __all__ = [

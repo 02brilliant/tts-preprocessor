@@ -447,6 +447,8 @@ def _number_reading_variants(raw: str) -> tuple[str, ...]:
     reading = read_number_text(raw)
     if reading is not None:
         variants.append(reading)
+        if "-" in reading:
+            variants.append(reading.replace("-", ""))
     normalized_integer = raw.replace(",", "")
     if normalized_integer.isdigit() and not normalized_integer.startswith("0"):
         value = int(normalized_integer)

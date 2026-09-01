@@ -20,6 +20,7 @@ from engine.span_engine.delimiters import (
     is_tilde_like,
 )
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
+from engine.span_engine.numeric_prosody import join_decimal_prosody
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.signed_numeric import (
     SignProfile,
@@ -1803,7 +1804,7 @@ def _numeric_like_reading(raw: str) -> str:
     integer_part, dot, fraction_part = raw.partition(".")
     reading = number_to_korean_under_10000(int(integer_part))
     if dot:
-        reading += "쩜" + read_decimal_fraction_digits(fraction_part)
+        reading = join_decimal_prosody(reading, fraction_part)
     return reading
 
 

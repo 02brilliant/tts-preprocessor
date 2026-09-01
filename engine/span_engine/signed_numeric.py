@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from engine.span_engine.numeric_prosody import (
+    INTERNAL_PROSODY_BREAK,
+    join_decimal_prosody,
+    read_fractional_with_prosody,
+)
 from engine.span_engine.numeric_reading import (
     normalize_integer_text,
     read_decimal_fraction_digits,
@@ -354,8 +359,8 @@ def render_signed_numeric(
         return None
     if core.fractional_digits is None:
         return reading
-    fractional = read_decimal_fraction_digits(core.fractional_digits)
-    return f"{reading}쩜{fractional}"
+    fractional = read_fractional_with_prosody(core.fractional_digits)
+    return f"{reading}{INTERNAL_PROSODY_BREAK}쩜{INTERNAL_PROSODY_BREAK}{fractional}"
 
 
 __all__ = [

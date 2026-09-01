@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import re
 
+from engine.span_engine.numeric_prosody import (
+    apply_spaced_integer_prosody,
+    join_decimal_prosody,
+)
+
 _COMMA_INTEGER_RE = re.compile(r"\d{1,3}(?:,\d{3})+")
 _PLAIN_INTEGER_RE = re.compile(r"\d+")
 _DIGIT_READINGS = {
@@ -105,7 +110,7 @@ def read_spaced_integer_value(value: int) -> str:
             parts.append(large_unit)
         else:
             parts.append(f"{group_reading}{large_unit}")
-    return " ".join(parts)
+    return apply_spaced_integer_prosody(" ".join(parts))
 
 
 def read_decimal_text(text: str) -> str | None:
@@ -117,7 +122,7 @@ def read_decimal_text(text: str) -> str | None:
     integer_reading = read_integer_text(integer_part)
     if integer_reading is None:
         return None
-    return f"{integer_reading}쩜{read_decimal_fraction_digits(fractional_part)}"
+    return join_decimal_prosody(integer_reading, fractional_part)
 
 
 def read_decimal_fraction_digits(fractional_part: str) -> str:

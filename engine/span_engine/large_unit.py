@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from engine.span_engine.models import RenderPiece
 from engine.span_engine.models import SourceSpan, SurfaceCandidate
 from engine.span_engine.number import number_to_korean_under_10000
+from engine.span_engine.numeric_prosody import join_decimal_prosody
 from engine.span_engine.numeric_reading import read_decimal_fraction_digits
 from engine.span_engine.signed import parse_signed_numeric
 from engine.span_engine.signed_numeric import (
@@ -465,9 +466,8 @@ def _parse_structured_integer_large_unit_at(
                     )
                 ):
                     return None
-            decimal_reading = (
-                f"{group.reading}쩜"
-                f"{read_decimal_fraction_digits(raw_text[fraction_start:fraction_end])}"
+            decimal_reading = join_decimal_prosody(
+                group.reading, raw_text[fraction_start:fraction_end]
             )
             readings.append(decimal_reading)
             render_parts.extend(

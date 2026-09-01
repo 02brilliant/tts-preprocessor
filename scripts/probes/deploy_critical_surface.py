@@ -26,7 +26,7 @@ CASES = [
     ProbeCase(
         "dash_like_signed_percent_hyphen_boundary",
         "–2.03%",
-        "마이너스 이쩜영삼-퍼센트",
+        '마이너스 이-쩜-영삼-퍼센트',
     ),
     ProbeCase(
         "dash_like_range_unit_hyphen_boundary",
@@ -46,7 +46,7 @@ CASES = [
     ProbeCase(
         "managed_numeric_code_version",
         "version-1.5",
-        "버전-일쩜오",
+        '버전-일-쩜-오',
     ),
 ]
 

@@ -17,6 +17,7 @@ from engine.span_engine.numeric_reading import (
     read_decimal_fraction_digits,
     read_integer_text,
 )
+from engine.span_engine.numeric_prosody import join_decimal_prosody
 from engine.span_engine.residual_spacing import needs_residual_hangul_space
 from engine.span_engine.number import number_to_korean_under_10000
 from engine.span_engine.sign_aliases import is_signed_numeric_sign
@@ -128,7 +129,7 @@ def scan_decimal_candidates(
                 integer_reading = number_to_korean_under_10000(value)
         if integer_reading is None:
             continue
-        reading = f"{integer_reading}쩜{read_decimal_fraction_digits(right)}"
+        reading = join_decimal_prosody(integer_reading, right)
 
         candidates.append(
             SurfaceCandidate(

@@ -427,10 +427,7 @@ GROUP_9_HYPHEN_PRESERVE = (
     "1-kg",
 )
 
-GROUP_10_PHONE = (
-    "+82-10-1234-5678",
-    "+1-800-123-4567",
-)
+GROUP_10_PHONE = ('+82-10-1234-5678', '플러스 팔이 일공 일이삼사 오육칠팔')
 GROUP_10_CODE_LIKE = (
     "+82-foo",
     "C++17",
@@ -674,7 +671,7 @@ CASES = [
             "한편 마지막 설명은 다른 주제로 전환되어 후속 계획과 검토 항목을 분명하게 알립니다."
         ),
         contains=("\n", "삼쩜오톤", "리터당", "한편"),
-        not_contains=("3.5톤", "250m/L"),
+        not_contains=('3.5톤', '삼-쩜-오톤'),
         note="numeric readings preserved across paragraph split",
     ),
     ScenarioCase(

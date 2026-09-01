@@ -20,13 +20,13 @@ from scripts.probes.runtime_matrix import (
 
 PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
     "contextual-decision-contract": (
-        ProbeCase("confirmed-decimal-unit", "1.5가지", "일쩜오-가지"),
+        ProbeCase("confirmed-decimal-unit", "1.5가지", '일-쩜-오-가지'),
         ProbeCase(
             "confirmed-decimal-occurrence",
             "2.35번 확인했다",
-            "이쩜삼오-번 확인했다",
+            '이-쩜-삼오-번 확인했다',
         ),
-        ProbeCase("specific-owner-precedence", "3.5점", "삼쩜오-점"),
+        ProbeCase("specific-owner-precedence", "3.5점", '삼-쩜-오-점'),
     ),
     "gaji": (
         ProbeCase("gaji-native", "4가지", "네-가지"),
@@ -34,13 +34,13 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("gaji-large", "100가지", "백-가지"),
         ProbeCase("gaji-particle", "4가지를", "네-가지를"),
         ProbeCase("gaji-range", "3~4가지", "세-가지에서 네-가지"),
-        ProbeCase("gaji-decimal", "1.5가지", "일쩜오-가지"),
+        ProbeCase("gaji-decimal", "1.5가지", '일-쩜-오-가지'),
         ProbeCase("gaji-protected", "`4가지`", "`4가지`"),
     ),
     "quarter-suffix": (
         ProbeCase("quarter-attached-pair", "1분기 2분기", "일분기 이분기"),
         ProbeCase("quarter-year-context", "2025년 1분기", "이천이십오년 일분기"),
-        ProbeCase("quarter-decimal", "1.5분기", "일쩜오-분기"),
+        ProbeCase("quarter-decimal", "1.5분기", '일-쩜-오-분기'),
         ProbeCase("quarter-malformed", "1..5분기", "1..5분기"),
         ProbeCase("quarter-range", "1~4분기", "일에서 사-분기"),
         ProbeCase("quarter-protected", "`1분기`", "`1분기`"),
@@ -60,10 +60,10 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ),
         ProbeCase("jeom-item", "작품 3점을 전시했다", "작품 세-점을 전시했다"),
         ProbeCase("jeom-published-item", "3점이 공개됐다", "세-점이 공개됐다"),
-        ProbeCase("jeom-decimal", "3.5점", "삼쩜오-점"),
+        ProbeCase("jeom-decimal", "3.5점", '삼-쩜-오-점'),
         ProbeCase("bun-decimal-duration", "5.5분 뒤", "오쩜오-분 뒤"),
-        ProbeCase("beon-decimal-count", "총 2.35번", "총 이쩜삼오-번"),
-        ProbeCase("beon-decimal-confirm", "2.35번 확인했다", "이쩜삼오-번 확인했다"),
+        ProbeCase("beon-decimal-count", "총 2.35번", '총 이-쩜-삼오-번'),
+        ProbeCase("beon-decimal-confirm", "2.35번 확인했다", '이-쩜-삼오-번 확인했다'),
     ),
     "jo-bu": (
         ProbeCase("jo-money", "3조 원", "삼조 원"),
@@ -75,7 +75,7 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase(
             "bu-decimal-copy",
             "서류 2.35부를 복사했다",
-            "서류 이쩜삼오-부를 복사했다",
+            '서류 이-쩜-삼오-부를 복사했다',
         ),
     ),
     "dong-ho-address": (
@@ -111,12 +111,12 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("cheung-location", "3층 회의실", "삼-층 회의실"),
         ProbeCase("cheung-particle", "3층에서 만났다", "삼-층에서 만났다"),
         ProbeCase("cheung-defer", "3층을 올라갔다", "3층을 올라갔다"),
-        ProbeCase("gwon-decimal", "책 2.35권", "책 이쩜삼오-권"),
-        ProbeCase("pyeon-decimal", "영화 2.35편", "영화 이쩜삼오-편"),
+        ProbeCase("gwon-decimal", "책 2.35권", '책 이-쩜-삼오-권'),
+        ProbeCase("pyeon-decimal", "영화 2.35편", '영화 이-쩜-삼오-편'),
         ProbeCase(
             "cheung-decimal",
             "2.35층 회의실",
-            "이쩜삼오-층 회의실",
+            '이-쩜-삼오-층 회의실',
         ),
     ),
     "protected-number-unit": (
@@ -137,10 +137,7 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
             "작품 3점을 전시했고 평점은 3점이었다.\u00a0"
             "학생을 3조로 나눴고 예산은 3조 원이었다. "
             "2.35명쯤, 총 2.34번, 책 2.43권이 있다.",
-            "손님 다섯-분이 도착했고 회의는 오분 뒤 시작했다. "
-            "작품 세-점을 전시했고 평점은 삼-점이었다. "
-            "학생을 세-조로 나눴고 예산은 삼조 원이었다. "
-            "이쩜삼오-명쯤, 총 이쩜삼사-번, 책 이쩜사삼-권이 있다.",
+            '손님 다섯-분이 도착했고 회의는 오분 뒤 시작했다. 작품 세-점을 전시했고 평점은 삼-점이었다. 학생을 세-조로 나눴고 예산은 삼조 원이었다. 이-쩜-삼오-명쯤, 총 이-쩜-삼사-번, 책 이-쩜-사삼-권이 있다.',
         ),
         ProbeCase(
             "mixed-batch4-batch5",
@@ -161,13 +158,13 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("malformed-bu", "01부", "01부"),
         ProbeCase("residual-signed-dong", "+3동", "플러스 삼 동"),
         ProbeCase("residual-signed-ho", "-3호", "마이너스 삼 호"),
-        ProbeCase("residual-decimal-pan", "1.5판", "일쩜오-판"),
+        ProbeCase("residual-decimal-pan", "1.5판", '일-쩜-오-판'),
         ProbeCase("malformed-dan", "1,00단", "1,00단"),
         ProbeCase("malformed-deung", "3A등", "3A등"),
         ProbeCase("malformed-cheok", "01척", "01척"),
         ProbeCase("residual-signed-jang", "+3장", "플러스 삼 장"),
         ProbeCase("residual-signed-gwon", "-3권", "마이너스 삼 권"),
-        ProbeCase("residual-decimal-pyeon", "1.5편", "일쩜오-편"),
+        ProbeCase("residual-decimal-pyeon", "1.5편", '일-쩜-오-편'),
         ProbeCase("malformed-cheung", "01층", "01층"),
     ),
     "dae-multi-sense": (
@@ -177,11 +174,11 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
         ProbeCase("dae-age", "20대 남성", "이십-대 남성"),
         ProbeCase("dae-major-item", "3대 과제", "삼대 과제"),
         ProbeCase("dae-bare-defer", "3대가 남았다", "3대가 남았다"),
-        ProbeCase("dae-decimal-bare", "3.5대", "삼쩜오-대"),
+        ProbeCase("dae-decimal-bare", "3.5대", '삼-쩜-오-대'),
         ProbeCase(
             "dae-decimal-machine",
             "차량 +2.35대",
-            "차량 플러스 이쩜삼오 대",
+            '차량 플러스 이-쩜-삼오 대',
         ),
     ),
 }

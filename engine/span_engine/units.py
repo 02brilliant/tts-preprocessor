@@ -1304,15 +1304,10 @@ def _signed_contract_metadata(amount: str, owner: str) -> dict[str, object]:
 
 
 def _plus_decimal_amount_reading(amount: str) -> str:
-    integer_part, dot, fractional_part = amount.partition(".")
-    integer_reading = read_decimal_amount_text(
-        integer_part,
+    return read_decimal_amount_text(
+        amount,
         overflow_message="unit amount must be below 100000000",
     )
-    if not dot:
-        return integer_reading
-    fractional = read_decimal_fraction_digits(fractional_part)
-    return f"{integer_reading}쩜{fractional}"
 
 
 def _unsigned_amount(amount: str) -> str | None:

@@ -1851,12 +1851,28 @@ def _is_existing_jo_owner_context(
 def _is_followed_by_large_unit_number(
     raw_text: str, match: re.Match[str]
 ) -> bool:
+    tail = raw_text[match.end() :]
+    if re.match(r"\s+\d[\d,]*(?:\.\d+)? ?(?:만|억|조|경)", tail):
+        return True
+    index = match.end()
+    while index < len(raw_text) and raw_text[index].isspace():
+        index += 1
+    if index >= len(raw_text):
+        return False
+    from engine.span_engine.large_unit import (
+        LARGE_UNIT_ATOMIC_INVENTORY,
+        _parse_numeric_large_unit_at,
+        _parse_small_group,
+    )
+
+    if _parse_numeric_large_unit_at(raw_text, index) is not None:
+        return True
+    group = _parse_small_group(raw_text, index)
+    if group is None or not group.saw_small_unit:
+        return False
     return (
-        re.match(
-            r"\s+\d[\d,]*(?:\.\d+)? ?(?:만|억|조|경)",
-            raw_text[match.end() :],
-        )
-        is not None
+        group.end < len(raw_text)
+        and raw_text[group.end] in LARGE_UNIT_ATOMIC_INVENTORY
     )
 
 
