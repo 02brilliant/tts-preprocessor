@@ -1,38 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 
-from engine.span_engine.language_gate import is_non_korean_prose_line
-from engine.span_engine.protected import protected_literal_spans
-from LLM.pronunciation_lexicon import build_allowed_mutations
+from LLM.selection_pipeline import SelectionPlan, build_selection_plan
 
-
-_HANGUL_TOKEN_RE = re.compile(r"[가-힣]+")
-_WORD_RE = re.compile(r"[^\s]+")
-_SENTENCE_END_RE = re.compile(r"[.!?。！？]+")
-_ACTIONABLE_RESIDUE_RE = re.compile(
-    r"[A-Za-z0-9]|[%‰℃℉°₩$€£¥+×÷=<>±]"
-)
-_CLAUSE_BOUNDARY_RE = re.compile(
-    r"(?:지만|는데|으며|면서|거나|아서|어서|므로|니까|더라도|는데도|고)\s"
-)
-_KBS_NEWS_RE = re.compile(r"(?<![A-Za-z])KBS news(?![A-Za-z])")
-
-# These are grammatical tails, not a pronunciation-word registry. Removing
-# them prevents ordinary endings from looking like an internal compound
-# boundary while retaining the noun stem for phonological inspection.
-_GRAMMATICAL_TAIL_RE = re.compile(
-    r"(?:"
-    r"했습니다|하였습니다|합니다|됩니다|되었습니다|입니다|"
-    r"이었다|이었어요|이었는데|이었지만|이에요|이어서|이세요|이셨다|"
-    r"습니다|습니까|어요|아요|였다|였어요|였는데|였지만|"
-    r"이라고|이라면|이라서|이며|이고|"
-    r"으로는|에서는|에게는|까지는|부터는|"
-    r"으로|에서|에게|까지|부터|처럼|보다|"
-    r"은|는|이|가|을|를|의|에|와|과|도|만|로"
-    r")+$"
-)
 
 @dataclass(frozen=True)
 class LLMInvocationDecision:
@@ -44,100 +15,37 @@ def decide_llm_invocation(
     normalized_text: str,
     *,
     stage_level: int,
+    selection_plan: SelectionPlan | None = None,
+    stage5_work_plan: SelectionPlan | None = None,
 ) -> LLMInvocationDecision:
-    """Decide whether an integrated level-3/4 runtime needs its LLM pass.
-
-    The gate does not decide pronunciation. It uses residual/structure signals
-    plus the closed stage-specific mutation registry to decide whether one LLM
-    call can add value.
-    """
-
+    """Call a model only when the exact stage plan contains useful choices."""
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
-    if isinstance(stage_level, bool) or stage_level not in {3, 4}:
-        raise ValueError("stage_level must be 3 or 4")
-
-    visible = normalized_text.strip()
-    if not visible:
+    if isinstance(stage_level, bool) or stage_level not in {3, 4, 5}:
+        raise ValueError("stage_level must be 3, 4, or 5")
+    if selection_plan is not None and stage5_work_plan is not None:
+        raise ValueError("selection_plan and stage5_work_plan are mutually exclusive")
+    if stage5_work_plan is not None:
+        if stage_level != 5:
+            raise ValueError("stage5_work_plan is supported only for stage 5")
+        selection_plan = stage5_work_plan
+    active_plan = selection_plan or build_selection_plan(normalized_text, stage=stage_level)
+    active_plan.validate_for_text(normalized_text, stage=stage_level)
+    if not normalized_text.strip():
         return LLMInvocationDecision(False, "empty_rule_output")
-
-    actionable_text = _mask_intentional_preserves(normalized_text)
-    if _ACTIONABLE_RESIDUE_RE.search(actionable_text):
+    if not active_plan.has_candidates:
+        # Retain the published stage-3 skip reason for existing consumers.
+        return LLMInvocationDecision(False, "short_simple_rule_complete" if stage_level == 3 else f"stage{stage_level}_rule_complete")
+    kinds = {candidate.kind for candidate in active_plan.candidates}
+    if any(kind.startswith("residual_") or kind == "deferred_n_beon" for kind in kinds):
         return LLMInvocationDecision(True, "actionable_residue")
-
-    if _has_long_compound_candidate(actionable_text):
+    if any("compound_boundary" in kind for kind in kinds):
         return LLMInvocationDecision(True, "compound_boundary_candidate")
-
-    pronunciation_mutations = build_allowed_mutations(
-        actionable_text,
-        stage=stage_level,
-    )
-    if any(item.kind == "natural_speech_contraction" for item in pronunciation_mutations):
+    if kinds & {"natural_speech_contraction", "locked_natural_speech_contraction"}:
         return LLMInvocationDecision(True, "natural_speech_contraction_candidate")
-
-    if pronunciation_mutations:
+    if "contextual_standard_pronunciation" in kinds:
         return LLMInvocationDecision(True, "korean_pronunciation_candidate")
-
-    structural_text = actionable_text.strip()
-    word_count = len(_WORD_RE.findall(structural_text))
-    nonspace_count = sum(not char.isspace() for char in structural_text)
-    sentence_count = len(_SENTENCE_END_RE.findall(structural_text))
-    has_internal_newline = "\n" in structural_text or "\r" in structural_text
-    has_clause_or_list = bool(
-        _CLAUSE_BOUNDARY_RE.search(structural_text)
-        or structural_text.count(",") >= 1
-        or structural_text.count(";") >= 1
-        or structural_text.count(":") >= 1
-    )
-
-    if stage_level == 3:
-        if (
-            has_internal_newline
-            or sentence_count > 1
-            or word_count > 5
-            or nonspace_count > 24
-            or has_clause_or_list
-        ):
-            return LLMInvocationDecision(True, "prosody_or_structure_candidate")
-        return LLMInvocationDecision(False, "short_simple_rule_complete")
-
-    # Natural-speech level 4 skips only extremely short, structurally simple
-    # text. Closed pronunciation candidates are handled above.
-    if (
-        has_internal_newline
-        or sentence_count > 1
-        or word_count > 2
-        or nonspace_count > 12
-        or has_clause_or_list
-    ):
-        return LLMInvocationDecision(True, "natural_speech_candidate")
-    return LLMInvocationDecision(False, "very_short_simple_rule_complete")
-
-
-def _mask_intentional_preserves(text: str) -> str:
-    chars = list(text)
-    for span in protected_literal_spans(text):
-        for index in range(span.start, span.end):
-            chars[index] = " "
-    masked = "".join(chars)
-    masked = _KBS_NEWS_RE.sub(lambda match: " " * len(match.group()), masked)
-
-    offset = 0
-    chars = list(masked)
-    for line in masked.splitlines(keepends=True):
-        content = line.rstrip("\r\n")
-        if content.strip() and is_non_korean_prose_line(content):
-            for index in range(offset, offset + len(content)):
-                chars[index] = " "
-        offset += len(line)
-    return "".join(chars)
-
-
-def _has_long_compound_candidate(text: str) -> bool:
-    return any(
-        len(_GRAMMATICAL_TAIL_RE.sub("", match.group())) >= 6
-        for match in _HANGUL_TOKEN_RE.finditer(text)
-    )
+    return LLMInvocationDecision(True, "prosody_or_structure_candidate" if stage_level == 3 else "natural_speech_candidate")
 
 
 __all__ = ["LLMInvocationDecision", "decide_llm_invocation"]

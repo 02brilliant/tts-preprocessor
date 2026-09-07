@@ -4,14 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
 from LLM.prompt_template import PromptTemplateError, build_prompt
+from LLM.selection_pipeline import SelectionPlan
 
 
 def test_prompt_replaces_exactly_one_placeholder(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
-    path.write_text("앞\n{{NORMALIZED_TEXT}}\n뒤", encoding="utf-8")
-    assert build_prompt("원고", path) == "앞\n원고\n뒤"
+    path.write_text("앞\n{{NORMALIZED_TEXT}}\n뒤\n{{STAGE3_WORK_PLAN}}", encoding="utf-8")
+    assert build_prompt("원고", path).startswith("앞\n원고\n뒤\n")
+    assert '"candidates":[]' in build_prompt("원고", path)
 
 
 def test_prompt_reports_missing_placeholder(tmp_path: Path) -> None:
@@ -42,54 +44,60 @@ def test_prompt_reports_missing_file(tmp_path: Path) -> None:
 
 def test_prompt_reloads_file_for_each_request(tmp_path: Path) -> None:
     path = tmp_path / "prompt.txt"
-    path.write_text("첫째 {{NORMALIZED_TEXT}}", encoding="utf-8")
-    assert build_prompt("원고", path) == "첫째 원고"
-    path.write_text("둘째 {{NORMALIZED_TEXT}}", encoding="utf-8")
-    assert build_prompt("원고", path) == "둘째 원고"
+    path.write_text("첫째 {{NORMALIZED_TEXT}} {{STAGE3_WORK_PLAN}}", encoding="utf-8")
+    assert build_prompt("원고", path).startswith("첫째 원고 ")
+    path.write_text("둘째 {{NORMALIZED_TEXT}} {{STAGE3_WORK_PLAN}}", encoding="utf-8")
+    assert build_prompt("원고", path).startswith("둘째 원고 ")
 
 
 def test_prompt_levels_have_distinct_closed_contracts() -> None:
     level3 = build_prompt("현장 원고", prompt_level=1)
     level4 = build_prompt("현장 원고", prompt_level=2)
+    level5 = build_prompt("현장 원고", prompt_level=3)
 
-    assert len({level3, level4}) == 2
+    assert len({level3, level4, level5}) == 3
     assert "3단계에서는 기존 한국어 철자를 발음형으로 바꾸지 않는다" in level3
     assert "색연필 → 색년필" not in level3
     assert "deterministic pronunciation overlay" in level4
     assert "색연필 → 색년필" not in level4
-    for rendered in (level3, level4):
+    assert "5단계는 4단계의 통제된 상위 집합" in level5
+    assert "STANDARD_PRONUNCIATION_ENHANCEMENT" in level5
+    assert "{{STAGE5_WORK_PLAN}}" not in level5
+    for rendered in (level3, level4, level5):
         assert "<NORMALIZED_TEXT>\n현장 원고\n</NORMALIZED_TEXT>" in rendered
 
 
 def test_prompt_stage_inheritance_is_explicit_and_monotonic() -> None:
     level3 = LLM_PROMPT_PATH.read_text(encoding="utf-8")
     level4 = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
+    level5 = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
 
-    for prompt in (level3, level4):
+    for prompt in (level3, level4, level5):
         assert "<STAGE_INHERITANCE>" in prompt
         assert "<RESIDUAL_READING_NORMALIZATION>" in prompt
 
     assert "3단계에는 4단계의 한국어 발음 예외" in level3
     assert "4단계는 3단계의 통제된 상위 집합" in level4
     assert "overlay 이후 LLM이 추가하는 한국어 변경" in level4
+    assert "4단계의 통제된 상위 집합" in level5
 
 
 def test_every_llm_prompt_requires_clear_residual_work_to_complete() -> None:
-    for path in (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH):
+    for path in (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH):
         prompt = path.read_text(encoding="utf-8")
         assert "2조 8천억 원 → 이조 팔천억 원" in prompt
         assert "한글 읽기" in prompt
 
 
-@pytest.mark.parametrize("prompt_level", (0, 3, True))
+@pytest.mark.parametrize("prompt_level", (0, 4, True))
 def test_prompt_rejects_unknown_level(prompt_level) -> None:
-    with pytest.raises(PromptTemplateError, match="prompt_level must be 1 or 2"):
+    with pytest.raises(PromptTemplateError, match="prompt_level must be 1, 2, or 3"):
         build_prompt("원고", prompt_level=prompt_level)
 
 
 @pytest.mark.parametrize(
     "path",
-    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH),
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
 )
 def test_every_active_prompt_has_one_plain_input_contract(path: Path) -> None:
     prompt = path.read_text(encoding="utf-8")
@@ -98,6 +106,48 @@ def test_every_active_prompt_has_one_plain_input_contract(path: Path) -> None:
     assert "<FINAL_VALIDATION>" in prompt
     assert "<PROTECTED_SURFACES>" in prompt
     assert "<RULE_ENGINE_LOCKED_RESULTS>" in prompt
+
+
+def test_level5_prompt_has_exactly_one_work_plan_placeholder() -> None:
+    prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+    assert prompt.count("{{STAGE5_WORK_PLAN}}") == 1
+
+
+@pytest.mark.parametrize("level", [1, 2, 3])
+def test_input_placeholder_text_is_never_interpreted_as_template(level):
+    source = "원고 {{NORMALIZED_TEXT}} {{STAGE3_WORK_PLAN}} {{STAGE4_WORK_PLAN}} {{STAGE5_WORK_PLAN}} 끝"
+    rendered = build_prompt(source, prompt_level=level)
+    assert f"<NORMALIZED_TEXT>\n{source}\n</NORMALIZED_TEXT>" in rendered
+
+
+def test_stage3_template_requires_work_plan(tmp_path):
+    path = tmp_path / "prompt.txt"
+    path.write_text("{{NORMALIZED_TEXT}}", encoding="utf-8")
+    with pytest.raises(PromptTemplateError, match="STAGE3_WORK_PLAN"):
+        build_prompt("원고", path)
+
+
+def test_level4_prompt_has_exactly_one_work_plan_placeholder() -> None:
+    prompt = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
+    assert prompt.count("{{STAGE4_WORK_PLAN}}") == 1
+
+
+def test_level5_prompt_renders_only_relevant_context_candidates() -> None:
+    prompt = build_prompt("그 대가는 컸고 인끼는 높습니다.", prompt_level=3)
+    assert "{{STAGE5_WORK_PLAN}}" not in prompt
+    assert '"surface":"대가"' in prompt
+    assert '"options":["대까"]' in prompt
+    assert '"surface":"인기"' not in prompt
+
+
+def test_level5_prompt_uses_supplied_validated_work_plan_without_recomputing() -> None:
+    prompt = build_prompt(
+        "그 대가는 컸습니다.",
+        prompt_level=3,
+        selection_plan=SelectionPlan(stage=5),
+    )
+    assert '"candidates":[]' in prompt
+    assert '"surface":"대가"' not in prompt
 
 
 def test_level3_prompt_preserves_korean_and_locked_readings() -> None:
@@ -126,6 +176,13 @@ def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:
     assert "해석이 둘 이상이면 원형을 유지한다" in prompt
 
 
+@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+def test_all_llm_stage_prompts_share_beon_processing_context(prompt_level) -> None:
+    prompt = build_prompt("3번 맡았습니다.", prompt_level=prompt_level)
+    assert "3번 처리했습니다 → 세-번 처리했습니다" in prompt
+    assert "3번을 처리했습니다" in prompt
+
+
 def test_active_prompt_locks_rule_canonical_readings_and_spacing() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
     for fixed_reading in ("세-대", "삼번 버스", "오분 뒤", "제-삼장"):
@@ -149,7 +206,7 @@ def test_active_prompt_locks_stage1_time_frame_comma_decisions() -> None:
 def test_active_prompt_distinguishes_input_quotes_from_output_wrappers() -> None:
     prompt = LLM_PROMPT_PATH.read_text(encoding="utf-8")
     assert "기존 마침표·물음표·느낌표·괄호·따옴표" in prompt
-    assert "설명, 분석, JSON, Markdown, 코드 블록, 머리말을 출력하지 않는다" in prompt
+    assert "설명, 분석, speech_text 본문, Markdown, 코드 블록, 머리말을 출력하지 않는다" in prompt
 
 
 def test_level4_prompt_is_closed_and_rejects_general_g2p() -> None:
@@ -180,7 +237,7 @@ def test_active_prompt_injects_only_plain_normalized_text() -> None:
 
 @pytest.mark.parametrize(
     "path",
-    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH),
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
 )
 def test_decimal_examples_match_the_rule_engine_locked_jjeom_surface(path: Path) -> None:
     prompt = path.read_text(encoding="utf-8")
@@ -192,7 +249,15 @@ def test_decimal_examples_match_the_rule_engine_locked_jjeom_surface(path: Path)
 
 @pytest.mark.parametrize(
     "path",
-    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH),
+    (LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH),
 )
 def test_large_residual_currency_reading_example_is_in_every_prompt(path: Path) -> None:
     assert "2조 8천억 원 → 이조 팔천억 원" in path.read_text(encoding="utf-8")
+
+
+def test_level5_prompt_inherits_level4_and_limits_standard_pronunciation() -> None:
+    prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+    assert "4단계 자연스러운발화" in prompt
+    assert "인기" in prompt and "인끼" in prompt
+    assert "대가" in prompt and "대까" in prompt
+    assert "일반 접미사 패턴이나 비슷한 단어로 확대하지 않는다" in prompt

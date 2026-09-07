@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from LLM.standard_pronunciation import entries_for_mode
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
 
 
@@ -60,6 +61,15 @@ _GRAMMATICAL_TAIL_RE = re.compile(
     r"이시다|이세요|이셨다"
     r")$"
 )
+_STAGE5_GRAMMATICAL_TAIL_RE = re.compile(
+    r"(?:"
+    r"으로는|에서는|에게는|까지는|부터는|으로서|로서|으로써|로써|"
+    r"이라고|이라면|이라서|이며|이고|처럼|보다|으로|에서|에게|까지|부터|"
+    r"은|는|이|가|을|를|의|에|와|과|도|만|로|"
+    r"이다|입니다|이었다|이었지만|이었는데|이었어요|이었다가|이에요|이어서|"
+    r"이시다|이세요|이셨다"
+    r")+$"
+)
 _COMPOUND_GRAMMATICAL_TAIL_RE = re.compile(
     r"(?:"
     r"했습니다|하였습니다|합니다|됩니다|되었습니다|입니다|"
@@ -85,8 +95,8 @@ _CONTRACTION_TAILS = {
     "이셨다": "셨다",
 }
 def entries_for_stage(stage: int) -> tuple[PronunciationEntry, ...]:
-    if stage not in {3, 4}:
-        raise ValueError("stage must be 3 or 4")
+    if stage not in {3, 4, 5}:
+        raise ValueError("stage must be 3, 4, or 5")
     return tuple(entry for entry in PRONUNCIATION_ENTRIES if entry.stage <= stage)
 
 
@@ -96,8 +106,8 @@ def build_allowed_mutations(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> tuple[AllowedMutation, ...]:
-    if stage not in {3, 4}:
-        raise ValueError("stage must be 3 or 4")
+    if stage not in {3, 4, 5}:
+        raise ValueError("stage must be 3, 4, or 5")
 
     candidates: list[AllowedMutation] = []
     for word_match in _HANGUL_WORD_RE.finditer(normalized_text):
@@ -132,6 +142,16 @@ def build_allowed_mutations(
                 )
             )
 
+    if stage >= 5:
+        candidates.extend(
+            _entry_mutations(
+                normalized_text,
+                _stage5_entries("contextual"),
+                grammatical_tail_re=_STAGE5_GRAMMATICAL_TAIL_RE,
+            )
+        )
+        candidates = _merge_contextual_contraction_candidates(candidates)
+
     return _filter_and_resolve(candidates, snapshot)
 
 
@@ -143,8 +163,8 @@ def build_deterministic_pronunciation_mutations(
 ) -> tuple[AllowedMutation, ...]:
     """Return fixed whole-word pronunciation rewrites for the stage overlay."""
 
-    if stage not in {3, 4}:
-        raise ValueError("stage must be 3 or 4")
+    if stage not in {3, 4, 5}:
+        raise ValueError("stage must be 3, 4, or 5")
     if stage == 3:
         return ()
     return _filter_and_resolve(
@@ -152,9 +172,43 @@ def build_deterministic_pronunciation_mutations(
     )
 
 
+def build_stage5_deterministic_pronunciation_mutations(
+    normalized_text: str,
+    *,
+    snapshot: NormalizationSnapshot | None = None,
+) -> tuple[AllowedMutation, ...]:
+    """Return stage-5-only exact pronunciations applied before its LLM pass."""
+
+    if not isinstance(normalized_text, str):
+        raise TypeError("normalized_text must be str")
+    return _filter_and_resolve(
+        _entry_mutations(
+            normalized_text,
+            _stage5_entries("deterministic"),
+            grammatical_tail_re=_STAGE5_GRAMMATICAL_TAIL_RE,
+        ),
+        snapshot,
+    )
+
+
+def _stage5_entries(mode: str) -> tuple[PronunciationEntry, ...]:
+    return tuple(
+        PronunciationEntry(
+            surface=entry.surface,
+            pronunciation=entry.pronunciation,
+            category=entry.category,
+            stage=5,
+            source=entry.source,
+        )
+        for entry in entries_for_mode(mode)
+    )
+
+
 def _entry_mutations(
     normalized_text: str,
     entries: tuple[PronunciationEntry, ...],
+    *,
+    grammatical_tail_re: re.Pattern[str] = _GRAMMATICAL_TAIL_RE,
 ) -> list[AllowedMutation]:
     candidates: list[AllowedMutation] = []
 
@@ -169,7 +223,7 @@ def _entry_mutations(
             while tail_end < len(normalized_text) and "가" <= normalized_text[tail_end] <= "힣":
                 tail_end += 1
             tail = normalized_text[end:tail_end]
-            if tail and _GRAMMATICAL_TAIL_RE.fullmatch(tail) is None:
+            if tail and grammatical_tail_re.fullmatch(tail) is None:
                 continue
             candidates.append(
                 AllowedMutation(
@@ -191,7 +245,7 @@ def _entry_mutations(
             if not word.startswith(entry.surface):
                 continue
             remainder = word[len(entry.surface) :]
-            if remainder and _GRAMMATICAL_TAIL_RE.fullmatch(remainder) is None:
+            if remainder and grammatical_tail_re.fullmatch(remainder) is None:
                 continue
             start = word_match.start()
             end = start + len(entry.surface)
@@ -259,6 +313,67 @@ def _contraction_mutation(
     )
 
 
+def _merge_contextual_contraction_candidates(
+    candidates: list[AllowedMutation],
+) -> list[AllowedMutation]:
+    """Preserve contextual pronunciation when it overlaps an ``이다`` contraction."""
+
+    contextual = [
+        item
+        for item in candidates
+        if item.kind == "contextual_standard_pronunciation"
+    ]
+    consumed: set[int] = set()
+    merged: list[AllowedMutation] = []
+    for candidate in candidates:
+        if candidate.kind != "natural_speech_contraction":
+            merged.append(candidate)
+            continue
+        nested = [
+            item
+            for item in contextual
+            if candidate.start <= item.start
+            and item.end <= candidate.end
+        ]
+        if not nested:
+            merged.append(candidate)
+            continue
+
+        outputs = list(candidate.allowed_outputs)
+        rewritten_sources = [candidate.source_text]
+        for item in nested:
+            relative_start = item.start - candidate.start
+            relative_end = item.end - candidate.start
+            next_sources: list[str] = []
+            for source in rewritten_sources:
+                for replacement in item.allowed_outputs:
+                    contextual_source = (
+                        source[:relative_start]
+                        + replacement
+                        + source[relative_end:]
+                    )
+                    next_sources.append(contextual_source)
+                    outputs.append(contextual_source)
+                    contraction = _contraction_mutation(
+                        contextual_source,
+                        candidate.start,
+                    )
+                    if contraction is not None:
+                        outputs.extend(contraction.allowed_outputs)
+            rewritten_sources.extend(next_sources)
+            consumed.add(id(item))
+        merged.append(
+            AllowedMutation(
+                start=candidate.start,
+                end=candidate.end,
+                kind="contextual_standard_pronunciation",
+                source_text=candidate.source_text,
+                allowed_outputs=tuple(dict.fromkeys(outputs)),
+            )
+        )
+    return [item for item in merged if id(item) not in consumed]
+
+
 def _contract_imnida(stem: str) -> str | None:
     if not stem or _has_final_consonant(stem[-1]):
         return None
@@ -279,6 +394,7 @@ def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutatio
         "lexical_n_l": 1,
         "n_insertion": 1,
         "lexical_tensification": 1,
+        "contextual_standard_pronunciation": 1,
         "compound_boundary": 2,
     }
     # Different stage policies can legitimately target the same complete span
@@ -323,5 +439,6 @@ __all__ = [
     "PronunciationEntry",
     "build_allowed_mutations",
     "build_deterministic_pronunciation_mutations",
+    "build_stage5_deterministic_pronunciation_mutations",
     "entries_for_stage",
 ]

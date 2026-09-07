@@ -6,6 +6,8 @@ from LLM.provenance import build_normalization_snapshot
 from LLM.client import LLMResponseError
 from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.response_validation import LLMStageContractError, validate_response
+from LLM.stage4_preprocessor import preprocess_stage4
+from LLM.stage5_preprocessor import preprocess_stage5
 from engine.span_engine.transform import transform_with_trace
 
 
@@ -56,7 +58,7 @@ def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
     assert validate_response(source, output, prompt_level=1) == output
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize("prompt_level", (1, 2, 3))
 def test_every_llm_stage_accepts_closed_compound_boundary(
     prompt_level: int,
 ) -> None:
@@ -72,6 +74,60 @@ def test_level3_rejects_korean_rewrite_disguised_as_compound_boundary() -> None:
             "산업용지역-전기요금재입니다.",
             prompt_level=1,
         )
+
+
+def test_level5_accepts_only_registered_contextual_standard_pronunciation() -> None:
+    source = "인끼는 높지만 그 대가는 컸습니다. 예술의 대가도 참석했습니다."
+    output = "인끼는 높지만 그 대까는 컸습니다. 예술의 대가도 참석했습니다."
+    assert validate_response(source, output, prompt_level=3) == output
+
+
+def test_level5_inherits_level4_natural_speech_contraction() -> None:
+    source = "기자입니다."
+    output = "기잡니다."
+    assert validate_response(source, output, prompt_level=3) == output
+
+
+def test_level4_accepts_code_authorized_contraction_over_locked_overlay() -> None:
+    overlay = apply_pronunciation_overlay("상견례입니다.", stage=4)
+    prepared = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
+    output = "상견녭니다."
+
+    assert validate_response(
+        prepared.text,
+        output,
+        prompt_level=2,
+        snapshot=prepared.snapshot,
+        candidates=prepared.work_plan.to_allowed_mutations(),
+    ) == output
+
+
+def test_level5_accepts_code_authorized_contraction_over_locked_pronunciation() -> None:
+    prepared = preprocess_stage5("학교입니다.")
+    output = "학꾭니다."
+
+    assert validate_response(
+        prepared.text,
+        output,
+        prompt_level=3,
+        snapshot=prepared.snapshot,
+        candidates=prepared.work_plan.to_allowed_mutations(),
+    ) == output
+
+
+def test_level4_does_not_gain_level5_standard_pronunciation() -> None:
+    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
+        validate_response("인기가 높습니다.", "인끼가 높습니다.", prompt_level=2)
+
+
+def test_level5_llm_cannot_apply_deterministic_stage5_reading_itself() -> None:
+    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
+        validate_response("인기가 높습니다.", "인끼가 높습니다.", prompt_level=3)
+
+
+def test_level5_rejects_unregistered_general_g2p() -> None:
+    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
+        validate_response("국물은 좋습니다.", "궁무른 조씀니다.", prompt_level=3)
 
 
 def test_stage_outputs_form_a_controlled_processing_superset() -> None:

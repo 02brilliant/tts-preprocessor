@@ -26,14 +26,14 @@ def apply_pronunciation_overlay(
 ) -> PronunciationOverlayResult:
     """Apply fixed stage-4 pronunciation entries without changing stage 2.
 
-    The returned snapshot locks every generated pronunciation so the level-4
-    LLM can add only closed natural-speech and prosodic changes around it.
+    The returned snapshot locks every generated pronunciation so the level-4/5
+    LLM can add only its closed, stage-specific changes around it.
     """
 
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
-    if stage not in {3, 4}:
-        raise ValueError("stage must be 3 or 4")
+    if stage not in {3, 4, 5}:
+        raise ValueError("stage must be 3, 4, or 5")
     active_snapshot = snapshot or minimal_snapshot(normalized_text)
     if active_snapshot.normalized_text != normalized_text:
         raise ValueError("snapshot does not match normalized_text")
@@ -43,8 +43,29 @@ def apply_pronunciation_overlay(
         stage=stage,
         snapshot=active_snapshot,
     )
+    return apply_locked_pronunciation_mutations(
+        normalized_text,
+        mutations=mutations,
+        snapshot=active_snapshot,
+        owner="stage4_pronunciation_overlay",
+        provenance="GENERATED_STAGE4_PRONUNCIATION",
+    )
+
+
+def apply_locked_pronunciation_mutations(
+    normalized_text: str,
+    *,
+    mutations: tuple[AllowedMutation, ...],
+    snapshot: NormalizationSnapshot,
+    owner: str,
+    provenance: str,
+) -> PronunciationOverlayResult:
+    """Apply non-overlapping exact mutations and lock the generated spans."""
+
+    if snapshot.normalized_text != normalized_text:
+        raise ValueError("snapshot does not match normalized_text")
     if not mutations:
-        return PronunciationOverlayResult(normalized_text, active_snapshot)
+        return PronunciationOverlayResult(normalized_text, snapshot)
 
     replacements = tuple(
         (mutation, mutation.allowed_outputs[0]) for mutation in mutations
@@ -54,7 +75,7 @@ def apply_pronunciation_overlay(
         output = output[: mutation.start] + replacement + output[mutation.end :]
 
     projected_spans: list[NormalizedSpan] = []
-    for span in active_snapshot.spans:
+    for span in snapshot.spans:
         if any(
             mutation.start < span.normalized_end
             and span.normalized_start < mutation.end
@@ -82,7 +103,7 @@ def apply_pronunciation_overlay(
         source_span = next(
             (
                 span
-                for span in active_snapshot.spans
+                for span in snapshot.spans
                 if span.normalized_start == mutation.start
                 and span.normalized_end == mutation.end
             ),
@@ -95,8 +116,8 @@ def apply_pronunciation_overlay(
                 text=replacement,
                 source_start=None if source_span is None else source_span.source_start,
                 source_end=None if source_span is None else source_span.source_end,
-                owner="stage4_pronunciation_overlay",
-                provenance="GENERATED_STAGE4_PRONUNCIATION",
+                owner=owner,
+                provenance=provenance,
                 locked=True,
                 protected=False,
             )
@@ -125,4 +146,8 @@ def _project_index(
     )
 
 
-__all__ = ["PronunciationOverlayResult", "apply_pronunciation_overlay"]
+__all__ = [
+    "PronunciationOverlayResult",
+    "apply_locked_pronunciation_mutations",
+    "apply_pronunciation_overlay",
+]

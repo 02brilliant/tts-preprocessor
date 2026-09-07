@@ -1,6 +1,6 @@
 # Local, Gemini, OpenAI, and vLLM API integration
 
-> 실행 3~4단계와 prompt level의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 4단계는 deterministic pronunciation overlay와 provenance-aware validator를 사용한다.
+> 실행 3~5단계와 prompt level의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 4·5단계는 deterministic pronunciation overlay와 provenance-aware validator를 사용한다.
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
 포트에서 `/api/llm/models`와 통합 `/api/transform`을 제공한다. 공급자 URL·
@@ -8,11 +8,13 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 규칙 기반 엔진과 LLM은 다음 순서로만 연결한다.
 
-1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 호출 gate → `LLM_prompt.txt` → 검증
-2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → exact 발음 overlay/lock → 호출 gate → `LLM_prompt_lv2.txt` → 검증
+1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 확정 잔여 읽기/lock → 유한 선택 계획 → 호출 gate → `LLM_prompt.txt` → 코드 조합 → 검증
+2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → exact 발음 overlay/lock → 유한 선택 계획 → 호출 gate → `LLM_prompt_lv2.txt` → 코드 조합 → 검증
+3. 5단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 4단계 overlay/lock → 5단계 확정 표준발음 적용/lock → 4단계 후보를 포함한 유한 선택 계획 → 호출 gate → `LLM_prompt_lv3.txt` → 코드 조합 → 검증
 
-호출 gate가 후속 교정 가능성을 찾으면 LLM을 선택 모델로 한 번만 호출하고,
-명백히 불필요하면 3단계는 `speech_text=normalized_text`, 4단계는 `speech_text=stage4_base_text`로 반환한다. 외부 `normalized_text`는 항상 2단계 결과다. 규칙 기반
+호출 gate가 실제 선택 후보를 찾으면 LLM을 호출하고,
+명백히 불필요하면 3단계는 `speech_text=stage3_base_text`, 4·5단계는 각각
+`speech_text=stage4_base_text`, `speech_text=stage5_base_text`로 반환한다. 외부 `normalized_text`는 항상 2단계 결과다. 규칙 기반
 `normalized_text` 계약과 source-free binary runtime은 이 통합으로 변경되지 않는다.
 3단계는 잔여 읽기·문맥 판별, 제한적 복합명사 발화 경계와 쉼표를 허용하며
 기존 한글 글자와 순서는 바꾸지 않는다. 4단계는 코드에 등록된 exact `ㄴ` 첨가·
@@ -22,17 +24,20 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 배포하지 않는다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
 읽기를 위한 provenance snapshot은 외부 계약에 노출하지 않고 validator에만 전달한다.
 반복 안정성 측정과 자동 재시도는 사용하지 않는다. 서버는 임시 토큰 치환을 사용하지 않는다.
-3단계는 2단계 `normalized_text`를, 4단계는 locked overlay가 적용된 내부 `stage4_base_text`를 LLM에 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
+3단계는 확정 잔여 읽기를 잠근 `stage3_base_text`와 폐쇄형 선택 계획을, 4단계는 locked overlay가 적용된
+내부 `stage4_base_text`와 폐쇄형 선택 계획을 LLM에 전달한다. 5단계는 여기에 전용 exact 표준발음을
+추가 적용한 `stage5_base_text`와 4단계 후보를 모두 포함한 선택 계획을 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
 정확히 보존하도록 지시하는 1단계 확정 읽기이며, 응답 검증도 이 표면의 변경을
 성공 결과로 반환하지 않는다.
 
 규칙 엔진은 문맥형 숫자+단위의 의미를 확정하지 못하면 해당 표면을
 terminal preserve하고 raw 숫자를 남길 수 있다. 후단 LLM은
 `normalized_text` 문장 자체와 일반적인 표준 한국어 용례를 이용해 의미별
-읽기를 보완한다. 규칙 엔진의 decision log, candidate, marker는 LLM 요청에
-붙이지 않는다. 여러 의미가 가능하면 가장 자연스러운 하나를 선택하여
-값·단위·조사/접사를 유지한 한국어 읽기로 만들며, 정책상 보호 대상이
-아닌 숫자와 영문을 `speech_text`에 남기지 않는다.
+읽기를 보완한다. 원시 규칙 엔진 decision log, 내부 candidate, marker는 LLM 요청에
+붙이지 않는다. 3~5단계는 전용 전처리가 검증기와 공유하는 폐쇄형 후보
+manifest만 전달한다. LLM 응답은 후보 ID와 option 인덱스로만 구성된 JSON이며,
+최종 `speech_text`는 코드가 원문 span과 등록된 출력으로 조합한다. 여러 의미가
+가능하면 가장 자연스러운 후보를 선택하되 후보 밖 문자열은 만들 수 없다.
 
 이미 규칙 엔진이 한글 읽기로 확정한 표면과 canonical spacing은 후단
 LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼장`을
@@ -45,18 +50,26 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 - `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
   기본교정 프롬프트
 - `docs/LLM_prompt_lv2.txt`: overlay 결과를 고정하고 자연발화 예외를 추가한 4단계 프롬프트
+- `docs/LLM_prompt_lv3.txt`: 4단계 전체와 폐쇄형 문맥 표준발음 후보를 포함한 5단계 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
 - `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
 - `vllm_client.py`: vLLM OpenAI-compatible Chat Completions 호출 및 응답/오류 처리
 - `pronunciation_lexicon.py`: 4단계 exact 발음 후보와 finite 허용 출력
 - `pronunciation_overlay.py`: 4단계 exact 발음 적용과 snapshot 좌표/lock 갱신
+- `selection_pipeline.py`: 3~5단계 공통 유한 후보 생성, JSON 선택 검증 및 최종 문자열 조합
+- `residual_preprocessor.py`: 기존 엔진 파서를 재사용한 확정 읽기/lock 및 문맥형 잔여 선택지
+- `stage3_preprocessor.py`: 3단계 확정 잔여 읽기와 선택 계획 생성
+- `stage4_preprocessor.py`: 4단계 overlay 결과의 공통 선택 계획 생성
+- `standard_pronunciation.py`: 버전 고정 5단계 표준발음 사전 검증·로드
+- `stage5_preprocessor.py`: 5단계 확정 발음 적용, lock 및 LLM work plan 생성
+- `data/stage5_pronunciations.json`: 5단계 exact·문맥 표준발음 레지스트리
 - `provenance.py`: 규칙 출력의 내부 normalized-coordinate snapshot 생성
 - `response_validation.py`: 단계별 통합 LLM 출력 불변 조건 검증
-- `invocation_gate.py`: 3·4단계의 보수적인 LLM 호출 필요성 판정
+- `invocation_gate.py`: 3~5단계의 보수적인 LLM 호출 필요성 판정
 - `docs/info_Local_LLM_server.txt`: 개발 참고용 서버 정보. 런타임은 이 파일에서
   인증정보를 읽지 않는다.
 
-두 프롬프트는 3·4단계 실행모듈에 각각 하나씩 패키징된다. 공통 규칙 변경은
+세 프롬프트는 3~5단계 실행모듈에 각각 하나씩 패키징된다. 공통 규칙 변경은
 영향받는 실행모듈을 모두 다시 빌드한다. 인증정보 변경은 `llm.env`만 수정한다.
 
 ## API 계약
@@ -104,13 +117,13 @@ POST /api/transform
 생략 시에도 검증한다. 공급자 URL·인증정보는 실제 호출할 때만 필요하다.
 
 요청은 원문 `text`와 `level`을 입력으로 받는다. contextual decision metadata나
-다른 규칙 엔진 내부 정보는 요청에 허용하지 않는다. 응답은 기존 공백·줄바꿈·고정 문장부호를 보존하고,
+다른 규칙 엔진 내부 정보는 요청에 허용하지 않는다. 3~5단계 모델 응답은
+선택 계획의 ID와 option만 담은 엄격한 JSON이며 코드가 최종 문자열을 만든다.
+최종 문자열은 기존 공백·줄바꿈·고정 문장부호를 보존하고,
 운율용 쉼표와 ASCII 공백만 추가할 수 있다. 숫자 읽기에 포함된
 소수점·자릿수 쉼표·시각 쌍점은 숫자 읽기로 소비할 수 있으며 문장부호나
-파일 확장자의 마침표와 구분한다. 계약을 위반한 모델 응답은 조용히
-보정하지 않고 upstream 응답 오류로 반환한다. 모델이 비어 있지 않은 문자열을
-반환했으나 계약만 위반한 경우 오류 `detail`에는 `message`, `stage`와
-`speech_text`가 포함된다. Web 화면은 원출력을 표시하고 계약 위반 변경을
+파일 확장자의 마침표와 구분한다. 3~5단계의 잘못된 JSON·미등록 ID·범위 밖 option·후보 밖 결과는
+retry 없이 해당 후보(해석 불가능한 JSON은 해당 배치)를 각 단계의 locked base로 복원하며 검증된 변경은 유지한다. Web 화면은 원출력을 표시하고 계약 위반 변경을
 강조한다. 입력에서 삭제된 구조 문자는 취소선과 계약 위반 테두리를 함께
 표시한다.
 
@@ -145,12 +158,14 @@ OpenAI와 vLLM 호출도 기존 API 서버가 `Authorization: Bearer` 헤더를 
 `POST {VLLM_BASE_URL}/v1/chat/completions`를 사용한다. `VLLM_BASE_URL`이 이미
 `/v1` 또는 `/v1/chat/completions`로 끝나면 경로를 중복하지 않는다.
 `/api/v1/apps/...`처럼 중간에 `/v1`이 있어도 앱 base URL로 두고 뒤에
-`/v1/chat/completions`를 붙인다. 입력 `normalized_text`에 문단 구분 줄바꿈이
-있으면 문단마다 통합 프롬프트를 만들어 동시에 요청한다. 코드 펜스·JSON-like
-객체 내부 줄바꿈은 문단 경계로 나누지 않는다. 응답은 원래 줄바꿈을 그대로
-끼워 맞춘 뒤 기존 `response_validation.py` 계약을 문서 전체에 적용한다.
-문단이 하나이거나 동시 요청 한도가 1이면 기존처럼 한 번만 호출한다.
-`VLLM_MAX_PARALLEL_PARAGRAPHS`로 동시 요청 수를 조절한다. 각 요청은 chat
+`/v1/chat/completions`를 붙인다. 3~5단계 모두 전체 문맥과 전역 후보 ID를 유지한다.
+후보 96개 이하는 단일 요청이고 초과하면 후보만 배치로 나눠 호출한다.
+vLLM은 `VLLM_MAX_PARALLEL_PARAGRAPHS`로 배치 동시 요청 수를 조절한다.
+각 배치는 전체 원고를 읽되 자신에게 제공된 후보 ID만 선택할 수 있다.
+합친 선택 결과의 중복·겹침을 문서 전체에서 검사하고 문제 후보만 base로 복원한다.
+JSON 자체를 해석할 수 없는 배치는 복원하지만 다른 배치의 검증된 변경은 유지한다.
+최종 speech_text는 코드 소유 후보와 base만 조합하며 모델 JSON·토큰·설명을 포함하지 않는다.
+다른 공급자는 배치를 순차 호출한다. 각 요청은 chat
 `user` 메시지로 프롬프트를 전달하고, 응답의 첫 `choices[].message.content`를
 사용한다. 이 서비스는 요청 간 대화 상태를 사용하지 않으므로 `stream=false`로
 호출한다.

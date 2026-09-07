@@ -48,6 +48,51 @@ def test_fixed_entries_are_not_llm_mutation_candidates_after_overlay_split() -> 
     )
 
 
+def test_stage_five_adds_only_closed_contextual_pronunciation_candidates() -> None:
+    candidates = build_allowed_mutations(
+        "인기는 높지만 예술의 대가는 큰 대가를 요구했습니다.",
+        stage=5,
+    )
+    standard = [
+        item for item in candidates
+        if item.kind == "contextual_standard_pronunciation"
+    ]
+    assert [(item.source_text, item.allowed_outputs) for item in standard] == [
+        ("대가", ("대까",)),
+        ("대가", ("대까",)),
+    ]
+
+
+def test_stage_five_combines_contextual_pronunciation_and_contraction() -> None:
+    candidate = next(
+        item
+        for item in build_allowed_mutations("대가입니다.", stage=5)
+        if item.kind == "contextual_standard_pronunciation"
+    )
+
+    assert candidate.source_text == "대가입니다"
+    assert candidate.allowed_outputs == (
+        "대갑니다",
+        "대까입니다",
+        "대깝니다",
+    )
+
+def test_stage_five_does_not_match_contextual_entry_inside_longer_words() -> None:
+    candidates = build_allowed_mutations("개인기와 무인기를 확인했습니다.", stage=5)
+    assert all(
+        item.kind != "contextual_standard_pronunciation"
+        for item in candidates
+    )
+
+
+def test_levels_three_and_four_do_not_gain_stage_five_contextual_candidates() -> None:
+    for stage in (3, 4):
+        assert all(
+            item.kind != "contextual_standard_pronunciation"
+            for item in build_allowed_mutations("인기와 대가", stage=stage)
+        )
+
+
 def test_contraction_outputs_are_complete_hangul_syllables() -> None:
     candidate = build_allowed_mutations("기자입니다.", stage=4)[0]
     assert candidate.kind == "natural_speech_contraction"
@@ -62,7 +107,7 @@ def test_general_g2p_surface_is_not_a_candidate() -> None:
     assert build_allowed_mutations("국물은 같이 읽고 있습니다.", stage=4) == ()
 
 
-@pytest.mark.parametrize("stage", (3, 4))
+@pytest.mark.parametrize("stage", (3, 4, 5))
 @pytest.mark.parametrize(
     "text",
     ("확인했습니다.", "발표했습니다.", "처리되었습니다.", "검토하였습니다."),
@@ -77,7 +122,7 @@ def test_compound_boundary_does_not_split_predicate_or_ending(
     )
 
 
-@pytest.mark.parametrize("stage", (3, 4))
+@pytest.mark.parametrize("stage", (3, 4, 5))
 def test_compound_boundary_stays_inside_long_nominal_stem(stage: int) -> None:
     candidates = build_allowed_mutations("산업용지역전기요금제입니다.", stage=stage)
     expected = "산업용지역-전기요금제입니다"

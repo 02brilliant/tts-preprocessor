@@ -1,8 +1,8 @@
-"""LLM requests must not carry rule-engine decision metadata.
+"""LLM requests must not carry internal rule-engine decision metadata.
 
 Policy: the optional LLM receives only the ordinary normalized/overlay text
-string. contextual_decision_logs, candidates, and decision markers must not be
-attached to the model prompt or generate() kwargs.
+plus the closed, public stage-4/5 selection plan. Internal decision logs and
+markers must not be attached to the model prompt or generate() kwargs.
 """
 
 from __future__ import annotations
@@ -68,7 +68,8 @@ def test_stage_engine_generate_kwargs_exclude_decision_metadata(
         start = prompt.index("<NORMALIZED_TEXT>\n") + len("<NORMALIZED_TEXT>\n")
         end = prompt.index("\n</NORMALIZED_TEXT>")
         text = prompt[start:end]
-        return GenerationResult(text=text, elapsed_ms=1.0)
+        response = '{"schema_version":1,"decisions":[]}'
+        return GenerationResult(text=response, elapsed_ms=1.0)
 
     monkeypatch.setattr(stage_engine, "generate", fake_generate_safe)
 
@@ -80,6 +81,7 @@ def test_stage_engine_generate_kwargs_exclude_decision_metadata(
     )
 
     assert result.speech_text == normalized
+    assert not result.validation_fallback
     assert set(captured["kwargs"]) == {"model", "prompt", "settings"}
     for forbidden in (
         "contextual_decision_logs",
@@ -133,7 +135,7 @@ def test_integrated_cli_passes_only_overlay_text_to_llm(
     )
     monkeypatch.setattr(
         "LLM.invocation_gate.decide_llm_invocation",
-        lambda text, *, stage_level: type(
+        lambda text, *, stage_level, selection_plan=None: type(
             "Decision",
             (),
             {"call_llm": True, "reason": None},
@@ -142,11 +144,18 @@ def test_integrated_cli_passes_only_overlay_text_to_llm(
 
     captured: dict = {}
 
-    def fake_transform_llm(text, *, model=None, prompt_level=1, snapshot=None):
+    def fake_transform_llm(
+        text,
+        *,
+        model=None,
+        prompt_level=1,
+        snapshot=None,
+        selection_plan=None,
+    ):
         captured["text"] = text
         captured["model"] = model
         captured["prompt_level"] = prompt_level
-        captured["kwarg_names"] = {"text", "model", "prompt_level", "snapshot"}
+        captured["selection_plan"] = selection_plan
         return type(
             "Result",
             (),

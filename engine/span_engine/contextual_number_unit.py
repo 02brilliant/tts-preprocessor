@@ -168,6 +168,7 @@ BEON_OCCURRENCE_ACTIONS = frozenset(
         "클릭",
         "재생",
         "확인",
+        "처리",
         "우회",
     }
 )
@@ -529,6 +530,18 @@ def _evaluate_standard_match(
                 "identifier",
                 "sino",
                 f"identifier_noun:{identifier_noun}",
+            )
+        # An object-marked number immediately before `처리` normally names
+        # the numbered target ("3번을 처리했다"), while an unmarked
+        # `N번 + 처리` phrase denotes the number of executions.  Keep this
+        # narrow syntactic distinction ahead of the occurrence-action gate.
+        if tail in {"을", "를"} and _starts_with_anchor(following, {"처리"}):
+            return _confirmed(
+                raw_text,
+                match,
+                "identifier",
+                "sino",
+                f"identifier_object_action:{following}",
             )
         if (
             previous in BEON_OCCURRENCE_MARKERS

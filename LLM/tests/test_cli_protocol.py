@@ -115,7 +115,14 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
         calls.append(("rules", text))
         return TransformOutput("국물은 매우 좋습니다.", [], None)
 
-    def fake_llm(text, *, model=None, prompt_level=1, snapshot=None):
+    def fake_llm(
+        text,
+        *,
+        model=None,
+        prompt_level=1,
+        snapshot=None,
+        selection_plan=None,
+    ):
         calls.append(("llm", text, model, prompt_level))
         return FakeResult()
 
@@ -222,6 +229,66 @@ def test_level4_fixed_overlay_runs_without_llm_and_preserves_normalized_text(
     assert payload["speech_text"] == "생산냥은 늘었습니다."
     assert payload["llm_called"] is False
     assert calls == []
+
+
+def test_level5_inherits_level4_overlay_and_uses_level5_prompt(
+    monkeypatch,
+    capsys,
+) -> None:
+    calls = []
+
+    class FakeResult:
+        speech_text = "생산냥은 늘었고 인끼도 높습니다."
+        model = "gemma4:e4b"
+        elapsed_ms = 3.0
+        validation_fallback = False
+
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(
+            text="생산량은 늘었고 인기도 높습니다.",
+            model="gemma4:e4b",
+            json=True,
+        ),
+    )
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput(text, [], None),
+    )
+
+    def fake_llm(
+        text,
+        *,
+        model=None,
+        prompt_level=1,
+        snapshot=None,
+        selection_plan=None,
+    ):
+        calls.append(
+            (
+                text,
+                prompt_level,
+                snapshot.normalized_text,
+                selection_plan,
+            )
+        )
+        return FakeResult()
+
+    monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
+    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["level"] == 5
+    assert payload["normalized_text"] == "생산량은 늘었고 인기도 높습니다."
+    assert payload["speech_text"] == "생산냥은 늘었고 인끼도 높습니다."
+    assert len(calls) == 1
+    assert calls[0][:3] == (
+        "생산냥은 늘었고 인끼도 높습니다.",
+        3,
+        "생산냥은 늘었고 인끼도 높습니다.",
+    )
+    assert calls[0][3] is not None
 
 
 def test_level4_exposes_rejected_llm_output_with_safe_fallback(

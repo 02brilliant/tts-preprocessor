@@ -56,8 +56,8 @@ def _print_json(payload: dict, *, stream=None) -> None:
 
 
 def run(*, stage_level: int, prompt_level: int) -> int:
-    if (stage_level, prompt_level) not in {(3, 1), (4, 2)}:
-        raise ValueError("integrated stage mapping must be 3/1 or 4/2")
+    if (stage_level, prompt_level) not in {(3, 1), (4, 2), (5, 3)}:
+        raise ValueError("integrated stage mapping must be 3/1, 4/2, or 5/3")
 
     from LLM.cli_protocol import classify_llm_stage_error
     from LLM.config import load_model_config
@@ -108,24 +108,46 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         snapshot = build_normalization_snapshot(rule_output)
         overlay = apply_pronunciation_overlay(
             normalized_text,
-            stage=stage_level,
+            stage=4 if stage_level == 5 else stage_level,
             snapshot=snapshot,
         )
-        llm_input_text = overlay.text
-        llm_snapshot = overlay.snapshot
+        selection_plan = None
+        if stage_level == 5:
+            from LLM.stage5_preprocessor import preprocess_stage5
+
+            stage5 = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+            llm_input_text = stage5.text
+            llm_snapshot = stage5.snapshot
+            selection_plan = stage5.work_plan
+        elif stage_level == 4:
+            from LLM.stage4_preprocessor import preprocess_stage4
+
+            stage4 = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
+            llm_input_text = stage4.text
+            llm_snapshot = stage4.snapshot
+            selection_plan = stage4.work_plan
+        else:
+            from LLM.stage3_preprocessor import preprocess_stage3
+
+            stage3 = preprocess_stage3(overlay.text, snapshot=overlay.snapshot)
+            llm_input_text = stage3.text
+            llm_snapshot = stage3.snapshot
+            selection_plan = stage3.work_plan
         rule_elapsed_ms = (time.perf_counter() - rule_started_at) * 1000
-        decision = decide_llm_invocation(
-            llm_input_text,
-            stage_level=stage_level,
-        )
+        decision_kwargs = {"stage_level": stage_level}
+        if selection_plan is not None:
+            decision_kwargs["selection_plan"] = selection_plan
+        decision = decide_llm_invocation(llm_input_text, **decision_kwargs)
         if decision.call_llm:
             llm_started_at = time.perf_counter()
-            result = transform_llm(
-                llm_input_text,
-                model=args.model,
-                prompt_level=prompt_level,
-                snapshot=llm_snapshot,
-            )
+            llm_kwargs = {
+                "model": args.model,
+                "prompt_level": prompt_level,
+                "snapshot": llm_snapshot,
+            }
+            if selection_plan is not None:
+                llm_kwargs["selection_plan"] = selection_plan
+            result = transform_llm(llm_input_text, **llm_kwargs)
             llm_elapsed_ms = (time.perf_counter() - llm_started_at) * 1000
             speech_text = result.speech_text
             selected_model = result.model

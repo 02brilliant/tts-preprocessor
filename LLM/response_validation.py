@@ -96,18 +96,20 @@ def validate_response(
     *,
     prompt_level: int = 2,
     snapshot: NormalizationSnapshot | None = None,
+    candidates: tuple[AllowedMutation, ...] | None = None,
 ) -> str:
     """Validate an LLM response and raise for a Critical/High violation."""
     if not isinstance(speech_text, str) or not speech_text:
         raise LLMResponseError("LLM response is empty.")
-    if isinstance(prompt_level, bool) or prompt_level not in {1, 2}:
-        raise ValueError("prompt_level must be 1 or 2")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 2, 3}:
+        raise ValueError("prompt_level must be 1, 2, or 3")
 
     result = validate_speech_text(
         normalized_text,
         speech_text,
         stage=prompt_level + 2,
         snapshot=snapshot,
+        candidates=candidates,
     )
     if not result.ok:
         issue = result.issues[0]
@@ -133,8 +135,8 @@ def validate_speech_text(
 ) -> ValidationResult:
     if not isinstance(normalized_text, str) or not isinstance(speech_text, str):
         raise TypeError("normalized_text and speech_text must be str")
-    if stage not in {3, 4}:
-        raise ValueError("stage must be 3 or 4")
+    if stage not in {3, 4, 5}:
+        raise ValueError("stage must be 3, 4, or 5")
     if not speech_text:
         return _failure("EMPTY_RESPONSE", "Critical", "LLM response is empty.")
 
@@ -149,9 +151,13 @@ def validate_speech_text(
             snapshot=active_snapshot,
         )
 
+    policy_pattern = _compile_allowed_output_pattern(
+        normalized_text, active_snapshot, active_candidates, strict=candidates is not None,
+    )
+    approved_composition = candidates is not None and policy_pattern.fullmatch(speech_text) is not None
     source_structure = _required_structure(normalized_text)
     output_structure = _required_structure(speech_text)
-    if not _preserves_structure_with_allowed_insertions(
+    if not approved_composition and not _preserves_structure_with_allowed_insertions(
         source_structure,
         output_structure,
     ):
@@ -195,11 +201,6 @@ def validate_speech_text(
             "time-frame boundary.",
         )
 
-    policy_pattern = _compile_allowed_output_pattern(
-        normalized_text,
-        active_snapshot,
-        active_candidates,
-    )
     if policy_pattern.fullmatch(speech_text) is None:
         if speech_text == normalized_text:
             residual_span = _find_unprotected_residual_surface(
@@ -316,17 +317,31 @@ def _compile_allowed_output_pattern(
     source: str,
     snapshot: NormalizationSnapshot,
     candidates: tuple[AllowedMutation, ...],
+    *,
+    strict: bool = False,
 ) -> re.Pattern[str]:
     locked = _non_overlapping_locked_spans(snapshot)
+    protected = tuple(span for span in snapshot.spans if span.protected)
     candidate_by_start = {
         item.start: item
         for item in candidates
-        if not any(item.start < span.normalized_end and span.normalized_start < item.end for span in locked)
+        if not any(
+            item.start < span.normalized_end and span.normalized_start < item.end
+            for span in protected
+        )
     }
-    locked_by_start = {span.normalized_start: span for span in locked}
+    candidate_ranges = tuple((item.start, item.end) for item in candidate_by_start.values())
+    locked_by_start = {
+        span.normalized_start: span
+        for span in locked
+        if not any(
+            start < span.normalized_end and span.normalized_start < end
+            for start, end in candidate_ranges
+        )
+    }
     residual_by_start = {
         match.start(): match
-        for match in _RESIDUAL_RUN_RE.finditer(source)
+        for match in (() if strict else _RESIDUAL_RUN_RE.finditer(source))
         if not any(match.start() < span.normalized_end and span.normalized_start < match.end() for span in locked)
         and not any(match.start() < item.end and item.start < match.end() for item in candidates)
     }
@@ -334,16 +349,16 @@ def _compile_allowed_output_pattern(
     parts = [r"\A"]
     cursor = 0
     while cursor < len(source):
-        locked_span = locked_by_start.get(cursor)
-        if locked_span is not None:
-            parts.append(re.escape(locked_span.text))
-            cursor = locked_span.normalized_end
-            continue
         candidate = candidate_by_start.get(cursor)
         if candidate is not None:
             variants = (candidate.source_text,) + candidate.allowed_outputs
             parts.append("(?:" + "|".join(re.escape(value) for value in dict.fromkeys(variants)) + ")")
             cursor = candidate.end
+            continue
+        locked_span = locked_by_start.get(cursor)
+        if locked_span is not None:
+            parts.append(re.escape(locked_span.text))
+            cursor = locked_span.normalized_end
             continue
         residual = residual_by_start.get(cursor)
         if residual is not None:
@@ -351,7 +366,7 @@ def _compile_allowed_output_pattern(
             cursor = residual.end()
             continue
         character = source[cursor]
-        if character in " \t" or _SPECIAL_SPACE_RE.fullmatch(character):
+        if not strict and (character in " \t" or _SPECIAL_SPACE_RE.fullmatch(character)):
             parts.append(r"[ \t,]*")
         else:
             parts.append(re.escape(character))
@@ -519,6 +534,19 @@ def _adds_comma_to_stage1_leading_time_frame(
         if source_state is False and output_state is True:
             return True
     return False
+
+
+def is_safe_prosody_comma_insertion(source: str, space_index: int) -> bool:
+    """Return whether replacing one ASCII space with ``, `` keeps hard policy."""
+
+    if not isinstance(source, str):
+        raise TypeError("source must be str")
+    if isinstance(space_index, bool) or not isinstance(space_index, int):
+        raise TypeError("space_index must be int")
+    if space_index < 0 or space_index >= len(source) or source[space_index] != " ":
+        return False
+    output = source[:space_index] + ", " + source[space_index + 1 :]
+    return not _adds_comma_to_stage1_leading_time_frame(source, output)
 
 
 def _leading_time_frame_comma_states(text: str) -> list[bool | None]:
