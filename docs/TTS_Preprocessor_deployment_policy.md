@@ -171,17 +171,19 @@ Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose
 that field or any decision marker. `shadow_logs` remains the source-preservation
 validation stream and MUST NOT be repurposed for contextual decisions.
 
-The optional LLM receives only the ordinary `normalized_text` string.
-Deployment MUST NOT attach `contextual_decision_logs`, candidates, decision
-markers, or other rule-engine metadata to the model request. The integrated
-runtime may retain an internal normalized-coordinate provenance snapshot solely
-for deterministic response validation. The rule
+The level-3 LLM receives only the ordinary `normalized_text` string. Levels 4
+and 5 additionally receive a closed selection plan containing only candidate
+IDs, normalized coordinates, finite outputs, and concise guidance. Deployment
+Deployment MUST NOT attach `contextual_decision_logs`, trace markers, or other rule-engine
+metadata to the model request. The integrated runtime may retain an internal
+normalized-coordinate provenance snapshot for deterministic response validation.
+The rule
 endpoint remains independently usable as a final TTS input path.
 The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not expose rule-reading lock
-metadata, use repeated stability sampling, or automatically retry. Level 4
-falls back to its locked `stage4_base_text` after a Critical/High validation
-failure; level 3 retains its existing error contract.
+metadata, use repeated stability sampling, or automatically retry. Levels 4 and 5
+fall back to their locked `stage4_base_text` and `stage5_base_text` after a
+Critical/High validation failure; level 3 retains its existing error contract.
 
 The active prompt MUST present that `normalized_text` as the current execution
 payload, outside documentation/example code fences. Response validation MUST
@@ -190,19 +192,23 @@ JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
 This validation is a safety gate; it does not authorize rewriting protected
 surfaces or falling back to an unvalidated model response.
 
-`LLM/docs/LLM_prompt.txt` and `LLM/docs/LLM_prompt_lv2.txt` are packaged only in
-levels 3 and 4 respectively. Each integrated executable takes
+`LLM/docs/LLM_prompt.txt`, `LLM/docs/LLM_prompt_lv2.txt`, and
+`LLM/docs/LLM_prompt_lv3.txt` are packaged only in levels 3, 4, and 5 respectively. Each integrated executable takes
 original text, runs the full level-2 rule engine exactly once, then invokes and
 validates its fixed prompt. Production API MUST invoke exactly one selected
 executable through `/api/transform` instead of importing `engine.*` or `LLM.*`
 source. No standalone `tts-llm-stage` artifact is published. Provider credentials
 remain in `config/llm.env` and MUST NOT be embedded in an executable.
+The level-4 and level-5 executables package the shared closed-selection pipeline.
+The level-5 executable additionally packages `LLM/data/stage5_pronunciations.json`
+and applies its deterministic exact entries before the model call. Both models
+return only candidate IDs and option indexes; code composes the final speech text.
 
 Every OS package also includes `tts-preprocessor-simplified` beside the default
 `tts-preprocessor`. Both binaries use the same rule engine and managed dictionaries;
 the simplified executable disables only general English pronunciation fallbacks.
 The existing build and deployment commands build, validate, and publish both rule
-binaries together with the level-3 and level-4 integrated executables.
+binaries together with the level-3, level-4, and level-5 integrated executables.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

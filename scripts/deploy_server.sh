@@ -17,11 +17,13 @@ LOCAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor.spec"
 LOCAL_SIMPLIFIED_SPEC_PATH="$ROOT_DIR/tts_preprocessor_simplified.spec"
 LOCAL_LLM_MINIMAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
 LOCAL_LLM_NATURAL_SPEC_PATH="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
+LOCAL_LLM_STANDARD_SPEC_PATH="$ROOT_DIR/tts_preprocessor_llm_standard.spec"
 LOCAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_binary_entrypoint.py"
 LOCAL_SIMPLIFIED_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
 LOCAL_LLM_CLI_ENTRYPOINT_PATH="$ROOT_DIR/bin/integrated_llm_cli.py"
 LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
 LOCAL_LLM_NATURAL_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
+LOCAL_LLM_STANDARD_ENTRYPOINT_PATH="$ROOT_DIR/bin/build_llm_standard_entrypoint.py"
 LOCAL_README_TEMPLATE_PATH="$ROOT_DIR/docs/Release_Package_README.txt"
 LOCAL_MACOS_ARCHIVE="$ROOT_DIR/downloads/tts-preprocessor-macos.zip"
 
@@ -96,7 +98,7 @@ validate_local_macos_archive() (
   fi
   unzip -tq "$LOCAL_MACOS_ARCHIVE"
   contents="$(unzip -Z1 "$LOCAL_MACOS_ARCHIVE" | LC_ALL=C sort)"
-  expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-simplified'
+  expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-llm-standard\ntts-preprocessor-simplified'
   if [[ "$contents" != "$expected" ]]; then
     echo "[deploy][ERROR] Unexpected macOS ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -111,11 +113,13 @@ validate_local_macos_archive() (
     || ! -x "$extract_dir/tts-preprocessor-simplified" \
     || ! -x "$extract_dir/tts-preprocessor-llm-minimal" \
     || ! -x "$extract_dir/tts-preprocessor-llm-natural" \
+    || ! -x "$extract_dir/tts-preprocessor-llm-standard" \
     || -L "$extract_dir/README.txt" \
     || -L "$extract_dir/tts-preprocessor" \
     || -L "$extract_dir/tts-preprocessor-simplified" \
     || -L "$extract_dir/tts-preprocessor-llm-minimal" \
     || -L "$extract_dir/tts-preprocessor-llm-natural" \
+    || -L "$extract_dir/tts-preprocessor-llm-standard" \
     || -n "$(find "$extract_dir" -type l -print -quit)" ]]; then
     echo "[deploy][ERROR] macOS ZIP payload is missing, non-executable, or contains a symlink." >&2
     return 1
@@ -317,11 +321,13 @@ for required_local_file in \
   "$LOCAL_SIMPLIFIED_SPEC_PATH" \
   "$LOCAL_LLM_MINIMAL_SPEC_PATH" \
   "$LOCAL_LLM_NATURAL_SPEC_PATH" \
+  "$LOCAL_LLM_STANDARD_SPEC_PATH" \
   "$LOCAL_ENTRYPOINT_PATH" \
   "$LOCAL_SIMPLIFIED_ENTRYPOINT_PATH" \
   "$LOCAL_LLM_CLI_ENTRYPOINT_PATH" \
   "$LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH" \
   "$LOCAL_LLM_NATURAL_ENTRYPOINT_PATH" \
+  "$LOCAL_LLM_STANDARD_ENTRYPOINT_PATH" \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$REMOTE_BUILD_SCRIPT" \
   "$MACOS_BUILD_SCRIPT" \
@@ -348,10 +354,16 @@ for required_llm_file in \
   "$ROOT_DIR/LLM/prompt_template.py" \
   "$ROOT_DIR/LLM/pronunciation_lexicon.py" \
   "$ROOT_DIR/LLM/pronunciation_overlay.py" \
+  "$ROOT_DIR/LLM/selection_pipeline.py" \
+  "$ROOT_DIR/LLM/stage4_preprocessor.py" \
+  "$ROOT_DIR/LLM/standard_pronunciation.py" \
+  "$ROOT_DIR/LLM/stage5_preprocessor.py" \
   "$ROOT_DIR/LLM/provenance.py" \
   "$ROOT_DIR/LLM/response_validation.py" \
   "$ROOT_DIR/LLM/docs/LLM_prompt.txt" \
   "$ROOT_DIR/LLM/docs/LLM_prompt_lv2.txt" \
+  "$ROOT_DIR/LLM/docs/LLM_prompt_lv3.txt" \
+  "$ROOT_DIR/LLM/data/stage5_pronunciations.json" \
   "$ROOT_DIR/LLM/validation_models.py"; do
   if [[ ! -f "$required_llm_file" || ! -r "$required_llm_file" ]]; then
     echo "[deploy][ERROR] Missing local LLM runtime prerequisite: $required_llm_file" >&2
@@ -383,7 +395,8 @@ SOURCE_REVISION="$(git -C "$ROOT_DIR" rev-parse --short=7 HEAD)"
 PACKAGED_TREE_STATUS="$(
   git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- \
     engine bin LLM tts_preprocessor.spec tts_preprocessor_simplified.spec \
-    tts_preprocessor_llm_minimal.spec tts_preprocessor_llm_natural.spec scripts/probes
+    tts_preprocessor_llm_minimal.spec tts_preprocessor_llm_natural.spec \
+    tts_preprocessor_llm_standard.spec scripts/probes
 )"
 if [[ -n "$PACKAGED_TREE_STATUS" ]]; then
   SOURCE_REVISION="${SOURCE_REVISION}-dirty"
@@ -496,10 +509,12 @@ rsync -avz "$LOCAL_SIMPLIFIED_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DI
 rsync -avz "$LOCAL_LLM_CLI_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/integrated_llm_cli.py"
 rsync -avz "$LOCAL_LLM_MINIMAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_minimal_entrypoint.py"
 rsync -avz "$LOCAL_LLM_NATURAL_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_natural_entrypoint.py"
+rsync -avz "$LOCAL_LLM_STANDARD_ENTRYPOINT_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/bin/build_llm_standard_entrypoint.py"
 rsync -avz "$LOCAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor.spec"
 rsync -avz "$LOCAL_SIMPLIFIED_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_simplified.spec"
 rsync -avz "$LOCAL_LLM_MINIMAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_llm_minimal.spec"
 rsync -avz "$LOCAL_LLM_NATURAL_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_llm_natural.spec"
+rsync -avz "$LOCAL_LLM_STANDARD_SPEC_PATH" "$SSH_TARGET:$REMOTE_BUILD_SRC_DIR/tts_preprocessor_llm_standard.spec"
 rsync -avz \
   "$LOCAL_README_TEMPLATE_PATH" \
   "$SSH_TARGET:$REMOTE_BUILD_SRC_DOCS_DIR/Release_Package_README.txt"
@@ -630,7 +645,7 @@ trap cleanup_temp EXIT
 [[ "$(stat -c '%s' "$temp_path")" == "$expected_size" ]]
 unzip -tq "$temp_path"
 contents="$(unzip -Z1 "$temp_path" | LC_ALL=C sort)"
-expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-simplified'
+expected=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-llm-standard\ntts-preprocessor-simplified'
 [[ "$contents" == "$expected" ]] || {
   echo "[deploy][ERROR] Unexpected uploaded macOS ZIP contents." >&2
   exit 1

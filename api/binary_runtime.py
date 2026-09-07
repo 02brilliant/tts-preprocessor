@@ -13,9 +13,10 @@ DEFAULT_BINARY_NAME = "tts_preprocessor"
 DEFAULT_SIMPLIFIED_BINARY_NAME = "tts-preprocessor-simplified"
 DEFAULT_LLM_MINIMAL_BINARY_NAME = "tts-preprocessor-llm-minimal"
 DEFAULT_LLM_NATURAL_BINARY_NAME = "tts-preprocessor-llm-natural"
+DEFAULT_LLM_STANDARD_BINARY_NAME = "tts-preprocessor-llm-standard"
 _LOGGER = logging.getLogger(__name__)
 _FALLBACK_LOG_RE = re.compile(
-    r"level(?P<level>4)_validation_fallback code=(?P<code>[A-Z0-9_]+) "
+    r"level(?P<level>[45])_validation_fallback code=(?P<code>[A-Z0-9_]+) "
     r"severity=(?P<severity>Critical|High)"
 )
 # API production runtime resolves and executes packaged binaries instead of
@@ -93,7 +94,9 @@ def _integrated_binary_name(level: int) -> str:
         return DEFAULT_LLM_MINIMAL_BINARY_NAME
     if level == 4:
         return DEFAULT_LLM_NATURAL_BINARY_NAME
-    raise ValueError("integrated LLM level must be 3 or 4")
+    if level == 5:
+        return DEFAULT_LLM_STANDARD_BINARY_NAME
+    raise ValueError("integrated LLM level must be 3, 4, or 5")
 
 
 def _iter_integrated_binary_candidates(level: int) -> list[Path]:
@@ -101,9 +104,10 @@ def _iter_integrated_binary_candidates(level: int) -> list[Path]:
     env_name = {
         3: "TTS_PREPROCESSOR_LLM_MINIMAL_BINARY",
         4: "TTS_PREPROCESSOR_LLM_NATURAL_BINARY",
+        5: "TTS_PREPROCESSOR_LLM_STANDARD_BINARY",
     }.get(level)
     if env_name is None:
-        raise ValueError("integrated LLM level must be 3 or 4")
+        raise ValueError("integrated LLM level must be 3, 4, or 5")
     env_path = os.getenv(env_name)
     if env_path:
         candidates.append(Path(env_path).expanduser())
@@ -234,14 +238,14 @@ def run_integrated_binary(
     model: str | None = None,
     binary_path: Path | None = None,
 ) -> dict:
-    """Run one packaged level-3/4 binary from original text to final speech."""
+    """Run one packaged level-3/4/5 binary from original text to final speech."""
 
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     if model is not None and not isinstance(model, str):
         raise TypeError("model must be str or None")
-    if isinstance(level, bool) or level not in {3, 4}:
-        raise ValueError("level must be 3 or 4")
+    if isinstance(level, bool) or level not in {3, 4, 5}:
+        raise ValueError("level must be 3, 4, or 5")
 
     runtime_binary = binary_path or resolve_integrated_binary_path(level)
     command = [str(runtime_binary), "--json"]
@@ -256,7 +260,7 @@ def run_integrated_binary(
         check=False,
     )
     raw_output = result.stdout.strip() or result.stderr.strip()
-    if level == 4:
+    if level in {4, 5}:
         _log_validation_fallback(result.stderr)
     payload = _parse_llm_stage_payload(raw_output)
     if result.returncode != 0 or payload.get("ok") is False:

@@ -112,15 +112,22 @@ validate_build_sources() {
   for required_source in \
     "$BUILD_SRC_DIR/engine" \
     "$BUILD_SRC_DIR/LLM" \
+    "$BUILD_SRC_DIR/LLM/selection_pipeline.py" \
+    "$BUILD_SRC_DIR/LLM/stage4_preprocessor.py" \
+    "$BUILD_SRC_DIR/LLM/standard_pronunciation.py" \
+    "$BUILD_SRC_DIR/LLM/stage5_preprocessor.py" \
+    "$BUILD_SRC_DIR/LLM/data/stage5_pronunciations.json" \
     "$BUILD_SRC_DIR/bin/build_binary_entrypoint.py" \
     "$BUILD_SRC_DIR/bin/build_simplified_binary_entrypoint.py" \
     "$BUILD_SRC_DIR/bin/integrated_llm_cli.py" \
     "$BUILD_SRC_DIR/bin/build_llm_minimal_entrypoint.py" \
     "$BUILD_SRC_DIR/bin/build_llm_natural_entrypoint.py" \
+    "$BUILD_SRC_DIR/bin/build_llm_standard_entrypoint.py" \
     "$BUILD_SRC_DIR/tts_preprocessor.spec" \
     "$BUILD_SRC_DIR/tts_preprocessor_simplified.spec" \
     "$BUILD_SRC_DIR/tts_preprocessor_llm_minimal.spec" \
     "$BUILD_SRC_DIR/tts_preprocessor_llm_natural.spec" \
+    "$BUILD_SRC_DIR/tts_preprocessor_llm_standard.spec" \
     "$README_TEMPLATE_PATH" \
     "$SEMANTIC_PROBE_RUNNER"; do
     if [[ ! -e "$required_source" ]]; then
@@ -137,7 +144,7 @@ validate_linux_archive() {
 
   unzip -tq "$archive_path"
   contents="$(unzip -Z1 "$archive_path" | LC_ALL=C sort)"
-  expected=$'tts-preprocessor/README.txt\ntts-preprocessor/tts-preprocessor\ntts-preprocessor/tts-preprocessor-llm-minimal\ntts-preprocessor/tts-preprocessor-llm-natural\ntts-preprocessor/tts-preprocessor-simplified'
+  expected=$'tts-preprocessor/README.txt\ntts-preprocessor/tts-preprocessor\ntts-preprocessor/tts-preprocessor-llm-minimal\ntts-preprocessor/tts-preprocessor-llm-natural\ntts-preprocessor/tts-preprocessor-llm-standard\ntts-preprocessor/tts-preprocessor-simplified'
   if [[ "$contents" != "$expected" ]]; then
     echo "[remote-build][ERROR] Unexpected Linux ZIP contents:" >&2
     printf '%s\n' "$contents" >&2
@@ -194,6 +201,7 @@ validate_prepare_marker() {
     || ! -x "$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified" \
     || ! -x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-minimal" \
     || ! -x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-natural" \
+    || ! -x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-standard" \
     || ! -f "$PREPARED_ARCHIVE" ]]; then
     echo "[remote-build][ERROR] Prepared Linux artifacts are incomplete for deploy ID: $DEPLOY_ID" >&2
     return 1
@@ -233,6 +241,8 @@ report_publish_failure() {
       "$([[ -x "$PACKAGE_DIR/tts-preprocessor-llm-minimal" ]] && printf present || printf missing)" >&2
     printf '[remote-build][ERROR] Current package level 4 executable: %s\n' \
       "$([[ -x "$PACKAGE_DIR/tts-preprocessor-llm-natural" ]] && printf present || printf missing)" >&2
+    printf '[remote-build][ERROR] Current package level 5 executable: %s\n' \
+      "$([[ -x "$PACKAGE_DIR/tts-preprocessor-llm-standard" ]] && printf present || printf missing)" >&2
     printf '[remote-build][ERROR] Current Linux ZIP: %s\n' \
       "$([[ -f "$ARCHIVE_PATH" ]] && printf present || printf missing)" >&2
     echo "[remote-build][ERROR] Fix the reported issue and run the full deployment again." >&2
@@ -269,6 +279,10 @@ with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
     archive.write(
         package_dir / "tts-preprocessor-llm-natural",
         "tts-preprocessor/tts-preprocessor-llm-natural",
+    )
+    archive.write(
+        package_dir / "tts-preprocessor-llm-standard",
+        "tts-preprocessor/tts-preprocessor-llm-standard",
     )
 PY
 }
@@ -321,6 +335,11 @@ prepare_linux_release() {
         --clean \
         --noconfirm \
         "$BUILD_SRC_DIR/tts_preprocessor_llm_natural.spec"
+    TTS_PREPROCESSOR_LLM_STANDARD_EXECUTABLE_NAME="tts-preprocessor-llm-standard" \
+      "$PYINSTALLER_BIN" \
+        --clean \
+        --noconfirm \
+        "$BUILD_SRC_DIR/tts_preprocessor_llm_standard.spec"
   )
 
   run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"
@@ -333,6 +352,7 @@ prepare_linux_release() {
   fi
   run_integrated_asset_check "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-minimal" "dist level 3 binary"
   run_integrated_asset_check "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-natural" "dist level 4 binary"
+  run_integrated_asset_check "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-standard" "dist level 5 binary"
 
   mkdir -p "$PREPARED_PACKAGE_DIR"
   cp "$README_TEMPLATE_PATH" "$PREPARED_PACKAGE_DIR/README.txt"
@@ -340,10 +360,12 @@ prepare_linux_release() {
   cp "$BUILD_SRC_DIR/dist/tts-preprocessor-simplified" "$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified"
   cp "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-minimal" "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-minimal"
   cp "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-natural" "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-natural"
+  cp "$BUILD_SRC_DIR/dist/tts-preprocessor-llm-standard" "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-standard"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-minimal"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-natural"
+  chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-standard"
   run_semantic_probe_set \
     "$PREPARED_PACKAGE_DIR/tts-preprocessor" \
     "staging packaged binary"
@@ -360,6 +382,9 @@ prepare_linux_release() {
   run_integrated_asset_check \
     "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-natural" \
     "staging packaged level 4 binary"
+  run_integrated_asset_check \
+    "$PREPARED_PACKAGE_DIR/tts-preprocessor-llm-standard" \
+    "staging packaged level 5 binary"
 
   create_prepared_archive
   validate_linux_archive "$PREPARED_ARCHIVE"
@@ -418,6 +443,7 @@ publish_linux_release() {
   fi
   run_integrated_asset_check "$PACKAGE_DIR/tts-preprocessor-llm-minimal" "published packaged level 3 binary"
   run_integrated_asset_check "$PACKAGE_DIR/tts-preprocessor-llm-natural" "published packaged level 4 binary"
+  run_integrated_asset_check "$PACKAGE_DIR/tts-preprocessor-llm-standard" "published packaged level 5 binary"
   printf 'deploy_id=%s\n' "$DEPLOY_ID" > "$PUBLISHED_MARKER"
   PUBLISH_SUCCEEDED=true
   trap - EXIT

@@ -120,7 +120,7 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
     assert seen["input"] == "원문"
 
 
-@pytest.mark.parametrize("level", (4,))
+@pytest.mark.parametrize("level", (4, 5))
 def test_phase20f_natural_level_forwards_only_structured_fallback_log(
     monkeypatch,
     caplog,

@@ -84,8 +84,8 @@ def test_ordinary_level_2_includes_only_normalized_text(monkeypatch) -> None:
     _assert_no_forbidden_keys(payload)
 
 
-@pytest.mark.parametrize("level", (3, 4))
-def test_ordinary_level_3_4_response_excludes_decision_debug(
+@pytest.mark.parametrize("level", (3, 4, 5))
+def test_ordinary_llm_level_response_excludes_decision_debug(
     level: int, monkeypatch
 ) -> None:
     def fake_run(text, *, level, model=None):
@@ -141,7 +141,7 @@ def test_include_debug_level_2_may_expose_contextual_decision_logs(
     assert payload["debug"]["trace"]["contextual_decision_logs"][0]["unit"] == "번"
 
 
-@pytest.mark.parametrize("level", (3, 4))
+@pytest.mark.parametrize("level", (3, 4, 5))
 def test_include_debug_rejected_for_llm_levels(level: int) -> None:
     with pytest.raises(ValueError, match="include_debug is supported only"):
         server_module.transform_request_payload(

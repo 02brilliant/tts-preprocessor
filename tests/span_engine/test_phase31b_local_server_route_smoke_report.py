@@ -45,4 +45,5 @@ def test_phase31b_start_server_uses_packaged_binary() -> None:
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_script
     assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_script
     assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_script
+    assert 'TTS_PREPROCESSOR_LLM_STANDARD_BINARY="$LATEST_LLM_STANDARD"' in start_script
     assert '"$PYTHON_BIN" -m api.server' in start_script

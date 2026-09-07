@@ -31,6 +31,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     buildenv_bin.mkdir(parents=True)
     (buildsrc / "engine").mkdir(parents=True)
     (buildsrc / "LLM/docs").mkdir(parents=True)
+    (buildsrc / "LLM/data").mkdir(parents=True)
     (buildsrc / "bin").mkdir()
     (buildsrc / "docs").mkdir()
     (buildsrc / "scripts/probes").mkdir(parents=True)
@@ -50,6 +51,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     )
     (buildsrc / "bin/build_llm_minimal_entrypoint.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "bin/build_llm_natural_entrypoint.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "bin/build_llm_standard_entrypoint.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "tts_preprocessor.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
@@ -60,12 +62,23 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         "# fixture spec\n", encoding="utf-8"
     )
     (buildsrc / "tts_preprocessor_llm_natural.spec").write_text("# fixture spec\n", encoding="utf-8")
+    (buildsrc / "tts_preprocessor_llm_standard.spec").write_text("# fixture spec\n", encoding="utf-8")
     (buildsrc / "LLM/models.json").write_text("{}\n", encoding="utf-8")
     (buildsrc / "LLM/docs/LLM_prompt.txt").write_text(
         "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
     )
     (buildsrc / "LLM/docs/LLM_prompt_lv2.txt").write_text(
         "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
+    )
+    (buildsrc / "LLM/docs/LLM_prompt_lv3.txt").write_text(
+        "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
+    )
+    (buildsrc / "LLM/standard_pronunciation.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "LLM/selection_pipeline.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "LLM/stage4_preprocessor.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "LLM/stage5_preprocessor.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "LLM/data/stage5_pronunciations.json").write_text(
+        "{}\n", encoding="utf-8"
     )
     (buildsrc / "docs/Release_Package_README.txt").write_text(
         "new readme\n", encoding="utf-8"
@@ -83,6 +96,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     for name in (
         "tts-preprocessor-llm-minimal",
         "tts-preprocessor-llm-natural",
+        "tts-preprocessor-llm-standard",
     ):
         old_llm_binary = package_dir / name
         old_llm_binary.write_bytes(b"old-integrated-package")
@@ -148,6 +162,9 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         elif [[ "$*" == *"tts_preprocessor_llm_natural.spec"* ]]; then
           printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-natural
           chmod +x dist/tts-preprocessor-llm-natural
+        elif [[ "$*" == *"tts_preprocessor_llm_standard.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-standard
+          chmod +x dist/tts-preprocessor-llm-standard
         elif [[ "$*" == *"tts_preprocessor_simplified.spec"* ]]; then
           printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "ABC와 삼-킬로그램"' > dist/tts-preprocessor-simplified
           chmod +x dist/tts-preprocessor-simplified

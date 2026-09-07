@@ -1,6 +1,58 @@
 # TTS Preprocessor Policy Changelog
 
+## Stages 3–5 `N번` occurrence/identifier selection hardening
+
+- Added exact occurrence action `처리`, so unmarked `3번 처리했습니다` is
+  deterministically rendered as `세-번 처리했습니다` before LLM selection.
+- Kept object-marked `3번을 처리했습니다` on the identifier reading
+  `삼번을 처리했습니다`, and documented the syntactic distinction.
+- Stages 3–5 reuse confirmed production contextual-number decisions and lock
+  them in code; only unresolved `N번` meanings are offered to each stage's LLM
+  as finite candidates. Stage-specific prompts and executable tests cover the
+  same occurrence/identifier distinction.
+
 이 문서는 릴리스 로그가 아니라 현재 canonical policy로 정리된 주요 정책 변경과 결정 기록이다. 구현과 테스트 판단의 단일 원본은 `docs/TTS_Preprocessor_policy.md`이며, 이 문서는 왜 현재 정책이 그런 형태인지 추적하기 위한 보조 문서다.
+
+## Level 3 joins closed selection and shared residual preprocessing
+
+- 3단계도 `STAGE3_WORK_PLAN`의 ID/option JSON만 허용하고 코드가 최종 문자열을 만든다.
+- 3~5단계 공통 전처리는 기존 숫자·날짜·시간·단위·통화 파서를 재사용해 확정 읽기를
+  자동 적용하고 잠근다. 미등록 영문은 보존하며 문맥 후보의 선택 생략을 허용한다.
+- 유한 후보가 주어진 validator는 잔여 영문·숫자를 임의 한글로 바꾸는 넓은 정규식
+  경로를 사용하지 않는다. 좌표별 승인 출력과 정확한 공백만 허용한다.
+- 3단계 응답 계약 위반도 locked base fallback으로 통일한다. Medium 잔여 진단은
+  요청 실패로 처리하지 않는다. provider 실패는 그대로 전달한다.
+- 96개 초과 후보는 전체 문서 문맥을 유지한 배치로 처리한다. vLLM만 기존 동시성
+  설정으로 병렬화한다. 문맥 후보를 한도 때문에 누락하지 않는다.
+- 실제 로컬 LLM/TTS의 발음 품질과 latency 개선은 별도 측정 대상이며 소스 테스트
+  통과만으로 향상을 확정하지 않는다.
+
+## Levels 4 and 5 use closed selection and code composition
+
+- 4·5단계 LLM은 더 이상 최종 `speech_text` 전체를 작성하지 않는다. 규칙 모듈이
+  잔여 읽기·축약·복합명사 경계·운율과 5단계 표준발음의 유한 후보를 만든다.
+- LLM은 전체 문맥을 읽고 후보 ID와 option 인덱스만 엄격한 JSON으로 반환한다.
+  등록되지 않은 ID, 범위 밖 option, 중복 ID, 필수 후보 누락은 거절한다.
+- 최종 문자열은 코드가 원문 span과 등록된 출력만으로 조합한다. 5단계 계획은
+  같은 base text에서 4단계 계획의 모든 기능 후보를 포함한다.
+- vLLM도 4·5단계는 전역 후보 ID와 전체 문맥을 유지하기 위해 문서당 한 번 호출한다.
+  잘못된 선택 응답은 retry 없이 각 단계의 locked base로 fallback한다.
+
+## Level 5 adds closed contextual standard-pronunciation enhancement
+
+- 1~4단계의 실행 파일·프롬프트·출력 계약은 변경하지 않고, 5단계 전용
+  `tts-preprocessor-llm-standard`와 `LLM_prompt_lv3.txt`를 추가했다.
+- 5단계는 2단계 규칙 엔진을 한 번 실행한 뒤 4단계 deterministic overlay와
+  허용 변경을 상속한다. 5단계 전용 데이터 레지스트리와 규칙 모듈이 공식
+  exact 표준발음을 선적용·잠그며, 남은 문맥 후보는 `Stage5WorkPlan`으로 LLM에
+  전달한다.
+- 독립 어휘 `인기`는 확정 규칙 `인기→인끼`로 이동했고, 의미가 값·비용·보상인
+  `대가→대까`는 LLM 문맥 후보로 유지했다. 문맥 발음과 `이다` 축약이 겹치는
+  경우도 코드가 유한 조합 후보를 생성한다.
+- 5단계 gate는 확정 규칙만으로 완료된 짧은 입력을 생략하고, 미해결 발음·축약·
+  복합명사·잔여 읽기·운율 작업이 있을 때 LLM을 호출한다.
+- LLM이 후보 밖 한국어를 바꾸면 validator가 거절하고 locked overlay base로
+  fallback한다. 후보 확대에는 공식 근거와 positive/negative/contrast 검증이 필요하다.
 
 ## Generated numeric boundaries use locked ASCII hyphens
 
@@ -13,7 +65,7 @@
   `3만kg→삼만-킬로그램`, `1~3번째→첫-번째에서 세-번째`.
 - `N째`, 날짜 표지, 온도 `도`, `분기`, 붙임 분·초 등 등록된 붙임 예외와 숫자
   내부·부호·범위·날짜 구조 공백은 변경하지 않는다.
-- 생성 하이픈은 provenance-aware validator의 locked reading이다. 3·4단계 LLM이
+- 생성 하이픈은 provenance-aware validator의 locked reading이다. 3~5단계 LLM이
   이를 공백으로 되돌리거나 삭제하면 Critical `LOCKED_READING_MUTATION`으로
   거절한다. 아래 이전 항목의 공백 예시는 해당 시점의 역사 기록이며 현재 출력은
   canonical 정책 문서를 따른다.

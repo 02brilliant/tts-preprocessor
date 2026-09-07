@@ -20,12 +20,13 @@ def test_level_policy_stage_contract_phrases() -> None:
     text = LEVEL_POLICY.read_text(encoding="utf-8")
 
     for phrase in [
-        "0~4단계 책임과 단계 간 계약의 단일 기준점",
+        "0~5단계 책임과 단계 간 계약의 단일 기준점",
         "| 0 | 없음 | 없음 | 원문 passthrough |",
         "| 1 | `simplified` | 없음 |",
         "| 2 | `default` | 없음 |",
         "| 3 | `default` | level 1, `LLM_prompt.txt` |",
         "| 4 | `default` | level 2, `LLM_prompt_lv2.txt` |",
+        "| 5 | `default` | level 3, `LLM_prompt_lv3.txt` |",
         "다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다",
         "ASCII 하이픈 U+002D(`-`)",
         "1번째→첫-번째",
