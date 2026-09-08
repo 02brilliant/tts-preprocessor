@@ -1,5 +1,28 @@
 # TTS Preprocessor Policy Changelog
 
+## Stage 5 exact pronunciation registry consolidation and expansion
+
+- Moved all deterministic stage-5 pronunciations into the single packaged
+  `LLM/data/stage5_pronunciations.json` registry and removed the intermediate
+  stage-4-style pronunciation pass.
+- Registry outputs are final pronunciation spellings such as
+  `색연필→생년필`, `직행열차→지캥녈차`, and `영업용→영엄뇽`.
+- Added officially documented, exact high-confidence forms for 겹받침, 연음,
+  비음화, 구개음화, 거센소리되기, and 된소리되기. The matcher still requires
+  approved word/ending boundaries and excludes protected, locked, and longer
+  unregistered surfaces.
+- Stage 5 now locks deterministic results once with
+  `GENERATED_STAGE5_PRONUNCIATION`; stages 1–4 remain unchanged.
+- Registry schema 2 separates noun, predicate, fixed-form, and contextual
+  boundaries. Explicit `allowed_tails` replace the shared suffix matcher for
+  predicate forms, and `paradigm_id` groups verified inflections without
+  enabling general conjugation or G2P.
+- Added verified inflection families for `읽다`, `밟다`, `넓다`, `읊다`, and
+  `않다`. Clear cost/compensation uses of `대가` are applied in code, clear
+  expert uses are preserved, and only unresolved uses reach the LLM.
+- The packaged asset check now validates registry categories, HTTPS sources,
+  boundaries, duplicate surfaces, and unintended pronunciation chains.
+
 ## Stage 4 drops deterministic pronunciation overlay
 
 - 4단계는 deterministic pronunciation overlay를 더 이상 적용하지 않는다.

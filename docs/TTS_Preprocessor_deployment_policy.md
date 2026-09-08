@@ -200,9 +200,9 @@ executable through `/api/transform` instead of importing `engine.*` or `LLM.*`
 source. No standalone `tts-llm-stage` artifact is published. Provider credentials
 remain in `config/llm.env` and MUST NOT be embedded in an executable.
 The level-4 and level-5 executables package the shared closed-selection pipeline.
-The level-5 executable additionally packages the deterministic pronunciation
-overlay lexicon and `LLM/data/stage5_pronunciations.json`, and applies both
-before the model call. Both models
+The level-5 executable additionally packages the unified exact pronunciation
+registry `LLM/data/stage5_pronunciations.json`, and applies it once before the
+model call. Both models
 return only candidate IDs and option indexes; code composes the final speech text.
 
 Every OS package also includes `tts-preprocessor-simplified` beside the default

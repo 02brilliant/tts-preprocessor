@@ -15,11 +15,11 @@
 | 2 | `default` | 없음 | 전체 deterministic normalization |
 | 3 | `default` | level 1, `LLM_prompt.txt` | 잔여 숫자·영문·단위 문맥 처리, 제한적 복합명사 경계·쉼표. 기존 한글 보존 |
 | 4 | `default` | level 2, `LLM_prompt_lv2.txt` | 3단계 + 폐쇄형 `이다` 축약 |
-| 5 | `default` | level 3, `LLM_prompt_lv3.txt` | 4단계 전체 + deterministic 발음 overlay + 확정 표준발음 선적용 + 폐쇄형 문맥 표준발음 강화 |
+| 5 | `default` | level 3, `LLM_prompt_lv3.txt` | 4단계 전체 + 통합 exact 표준발음 선적용 + 폐쇄형 문맥 표준발음 강화 |
 
 3~5단계는 각각 원문을 입력받아 내부에서 2단계 규칙 엔진을 한 번 실행한다. 다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다.
 
-단계의 포함 관계는 문자열을 순차 전달한다는 뜻이 아니라 처리 책임을 상속한다는 뜻이다. 4단계는 2단계 결과에 잔여 읽기·축약·복합명사 경계·운율의 유한 후보를 만든다. LLM은 전체 문맥으로 후보 ID와 option만 선택하며 최종 문자열은 코드가 조합한다. 5단계는 4단계 후보를 상속하고, deterministic 발음 overlay와 5단계 전용 확정 표준발음을 적용·잠근 뒤 남은 문맥 표준발음 후보를 공통 선택 계획에 더한다. 추가 후보가 없더라도 하위 단계의 확정 작업을 생략하지 않는다.
+단계의 포함 관계는 문자열을 순차 전달한다는 뜻이 아니라 처리 책임을 상속한다는 뜻이다. 4단계는 2단계 결과에 잔여 읽기·축약·복합명사 경계·운율의 유한 후보를 만든다. LLM은 전체 문맥으로 후보 ID와 option만 선택하며 최종 문자열은 코드가 조합한다. 5단계는 4단계 후보를 상속하고, 단일 데이터 registry의 exact 표준발음을 한 번 적용·잠근 뒤 남은 문맥 표준발음 후보를 공통 선택 계획에 더한다. 추가 후보가 없더라도 하위 단계의 확정 작업을 생략하지 않는다.
 
 ## 규칙 엔진 숫자 발화 경계
 
@@ -96,21 +96,21 @@ speech_text 또는 stage4_base_text fallback
 
 ## Pronunciation lexicon
 
-5단계 deterministic 발음 사전은 2단계 규칙 사전과 분리한다. exact whole-word 또는 승인된 단일 조사·어미 경계, longest match, 더 긴 고유명사 내부 오적용 방지를 기본으로 한다. 복합 조사·연속 어미처럼 detector가 안전한 경계로 승인하지 않은 결합은 원형을 보존한다. protected/locked span이 아니고 exact 표면과 경계가 확인된 항목은 5단계 LLM 호출 전에 deterministic overlay로 적용하고 결과를 locked 처리한다. 각 항목은 stage, category, 공식 source를 가지며 사전 변경은 positive, negative, contrast test와 함께 이루어져야 한다.
+5단계 deterministic 발음 사전은 2단계 규칙 사전과 분리하며 `LLM/data/stage5_pronunciations.json`을 단일 원본으로 사용한다. schema 2는 항목별 `boundary_type`, `allowed_tails`, 선택적 `paradigm_id`를 제공한다. 명사, 완결 용언, 후속 어미를 허용하는 활용형, 고정 결합형, 문맥형의 경계를 분리하며 longest match와 더 긴 고유명사 내부 오적용 방지를 기본으로 한다. detector가 안전한 경계로 승인하지 않은 결합은 원형을 보존한다. protected/locked span이 아니고 exact 표면과 경계가 확인된 항목은 5단계 LLM 호출 전에 한 번 적용하고 결과를 `GENERATED_STAGE5_PRONUNCIATION`으로 locked 처리한다. 각 항목은 category와 공식 source를 가지며 사전 변경은 positive, negative, contrast test와 함께 이루어져야 한다.
 
-5단계 overlay의 `ㄴ/ㄹ` exact 목록은 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류`이며 국립국어원 표준 발음법 제20항의 예시를 따른다. `백분율[백뿐뉼]`은 제29항 근거로 별도 등록한다.
+5단계 registry의 `ㄴ/ㄹ` exact 목록은 `의견란, 임진란, 생산량, 결단력, 공권력, 동원령, 상견례, 횡단로, 이원론, 입원료, 구근류`이며 국립국어원 표준 발음법 제20항의 예시를 따른다. `백분율[백뿐뉼]`은 제29항 근거로 별도 등록한다.
 
-추가 목록 중 `한여름·직행열차·영업용`은 제29항의 ㄴ 첨가, `서울역·휘발유`는 제29항과 후속 유음화가 반영된 exact 최소 overlay다. `눈동자·신바람·강가·강줄기`는 제28항의 합성어 경음화 exact 예다. 지정된 부분만 표기하며 일반 음운 변화를 연쇄 전사하지 않는다.
+추가 목록 중 `한여름·직행열차·영업용`은 제29항의 ㄴ 첨가, `서울역·휘발유`는 제29항과 후속 유음화가 반영된 exact 항목이다. `눈동자·신바람·강가·강줄기`는 제28항의 합성어 경음화 exact 예다. registry의 출력은 중간 표기가 아니라 `색연필→생년필`, `직행열차→지캥녈차`, `영업용→영엄뇽`처럼 연쇄 음운 변화를 반영한 최종 발음형이다.
 
 ## 5단계
 
-5단계는 4단계 자연스러운발화의 독립적인 상위 집합이다. 4단계 실행 파일의 출력 문자열을 다시 입력하는 2-pass가 아니라, 원문에서 2단계 규칙 엔진을 한 번 실행하고 4단계 LLM 허용 변경을 수행한다. 그 전에 5단계 deterministic pronunciation overlay를 적용·잠그고, `LLM/stage5_preprocessor.py`가 `LLM/data/stage5_pronunciations.json`의 5단계 전용 exact 표준발음을 적용해 `GENERATED_STAGE5_PRONUNCIATION`으로 잠근다.
+5단계는 4단계 자연스러운발화의 독립적인 상위 집합이다. 4단계 실행 파일의 출력 문자열을 다시 입력하는 2-pass가 아니라, 원문에서 2단계 규칙 엔진을 한 번 실행한다. `LLM/stage5_preprocessor.py`는 `LLM/data/stage5_pronunciations.json`의 통합 exact 표준발음을 한 번 적용해 `GENERATED_STAGE5_PRONUNCIATION`으로 잠근 뒤, 4단계에서 상속한 LLM 허용 변경을 같은 선택 계획에서 처리한다.
 
-확정 레지스트리는 `인기→인끼`와 exact 경계를 안전하게 판별할 수 있는 비음화·유음화·구개음화·된소리되기·거센소리되기 항목을 포함한다. 또한 overlay가 만든 최소 발음형 `색년필·막닐·꽃닢·식용뉴·국민년금·직행녈차·영업뇽`을 5단계 완전 발음으로 교정한다. 더 긴 미등록 합성어, protected span, 규칙 엔진 locked span에는 적용하지 않는다.
+확정 레지스트리는 `인기→인끼`와 exact 경계를 안전하게 판별할 수 있는 비음화·유음화·구개음화·된소리되기·거센소리되기·겹받침·연음 항목을 포함한다. `읽다·밟다·넓다·읊다·않다`의 공식 사전 활용형은 `paradigm_id`로 묶되 각 표면과 출력은 명시적으로 등록한다. 따라서 일반 활용 계산 없이 `읽어→일거`, `밟아→발바`, `넓습니다→널씀니다`, `읊는→음는`, `않지→안치` 등을 처리한다. 더 긴 미등록 합성어, protected span, 규칙 엔진 locked span에는 적용하지 않는다.
 
-의미가 값·비용·보상인 `대가→대까`는 문맥 후보로 남긴다. 공통 `SelectionPlan`은 현재 문장의 실제 위치, 원형, 허용 출력, 의미 지침을 JSON으로 프롬프트에 주입한다. LLM은 이 후보와 4단계에서 상속한 자연발화 축약·복합명사 경계·운율·잔여 읽기를 전체 문맥으로 선택한다. `대가입니다`처럼 문맥 발음과 축약이 겹치면 코드가 미리 합성한 유한 출력만 허용한다.
+`대가를 치르다·노동의 대가`처럼 값·비용·희생 의미가 확정되는 폐쇄형 문맥은 코드가 `대까`로 선적용하고, `예술계의 대가·당대의 대가`처럼 거장 의미가 확정되는 문맥은 원형을 보존한다. 나머지 `대가`만 문맥 후보로 남긴다. 공통 `SelectionPlan`은 현재 문장의 실제 위치, 원형, 허용 출력, 의미 지침을 JSON으로 프롬프트에 주입한다. `대가입니다`처럼 문맥 발음과 축약이 겹치면 코드가 미리 합성한 유한 출력만 허용한다.
 
-후보는 exact whole-word, 승인된 단일·복합 조사와 어미 경계, protected/locked span 제외, longest match 원칙을 따른다. 등록되지 않은 일반 G2P와 사이시옷·조사 `의`를 LLM이 유추해 확대하지 않는다. 신규 후보는 공식 사전 근거, 목표 TTS 오독 증거, positive/negative/contrast test를 모두 갖춘 뒤 추가한다. Critical/High 실패 시 retry 없이 5단계 확정 발음까지 적용된 `stage5_base_text`로 fallback한다.
+후보는 exact whole-word, 항목별 승인 조사·어미 경계, protected/locked span 제외, longest match 원칙을 따른다. registry 로더는 category·경계 유형·HTTPS 출처·중복 표면·연쇄 변환 충돌을 검사하고, 패키지 `--check`도 이 검증을 실행한다. 테스트는 모든 항목의 단계 격리, 긴 표면 negative, protected 보존, idempotence와 선언된 어미 결합을 자동 생성한다. 등록되지 않은 일반 G2P와 사이시옷·조사 `의`를 LLM이 유추해 확대하지 않는다. 신규 후보는 공식 사전 근거와 positive/negative/contrast test를 갖춘 뒤 추가한다. 외부 음성 평가 자료가 없어도 이 정적 승인 절차로 보수적으로 확장할 수 있다. Critical/High 실패 시 retry 없이 5단계 확정 발음까지 적용된 `stage5_base_text`로 fallback한다.
 
 공식 근거:
 
@@ -118,10 +118,14 @@ speech_text 또는 stage4_base_text fallback
 - [국립국어원 `백분율` 발음 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=313432)
 - [국립국어원 표준 발음법 제29항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=307219)
 - [국립국어원 표준 발음법 제28항 관련 답변](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?pageIndex=1&qna_seq=313557)
+- [한국어기초사전 `읽다` 활용](https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=68752)
+- [한국어기초사전 `밟다` 활용](https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=64728&nation=eng)
+- [한국어기초사전 `넓다` 활용](https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=64511)
+- [한국어기초사전 `않다` 활용](https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=71581)
 
 ## Provenance와 locked span
 
-규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~5단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 그 내부의 ASCII 숫자 발화 경계, protected surface는 locked다. 5단계에서는 deterministic overlay가 좌표를 다시 투영하고 생성 발음 span을 `GENERATED_STAGE4_PRONUNCIATION`으로 locked 처리한다. 5단계 전용 확정 발음은 다시 좌표를 투영하여 `GENERATED_STAGE5_PRONUNCIATION`으로 잠근다. 공통 잔여 읽기는 `GENERATED_RESIDUAL_READING`으로 잠근다. metadata는 외부 API에 노출하지 않으며 LLM에는 3~5단계 모두 현재 위치의 허용 후보만 최소 JSON manifest로 제공한다.
+규칙 엔진의 `RenderPiece`를 최종 normalized 좌표로 투영한 내부 snapshot을 3~5단계 validator에 전달한다. 규칙 엔진이 생성한 숫자·단위·통화·영문·약어 읽기와 그 내부의 ASCII 숫자 발화 경계, protected surface는 locked다. 5단계 통합 exact registry가 생성한 발음 span은 좌표를 다시 투영하여 `GENERATED_STAGE5_PRONUNCIATION`으로 한 번 잠근다. 공통 잔여 읽기는 `GENERATED_RESIDUAL_READING`으로 잠근다. metadata는 외부 API에 노출하지 않으며 LLM에는 3~5단계 모두 현재 위치의 허용 후보만 최소 JSON manifest로 제공한다.
 
 ## Validator와 fallback
 
@@ -129,7 +133,7 @@ speech_text 또는 stage4_base_text fallback
 
 - 3단계: 기존 한국어 변경 금지
 - 4단계: 유한 선택 계획의 잔여 읽기·승인된 `이다` 축약·복합명사 경계·운율만 코드 조합으로 허용
-- 5단계: overlay·확정 표준발음을 locked하고 4단계 선택 계획 전체 + 현재 위치에 생성된 폐쇄형 표준발음 후보만 코드 조합으로 허용
+- 5단계: 통합 exact 표준발음을 locked하고 4단계 선택 계획 전체 + 현재 위치에 생성된 폐쇄형 문맥 표준발음 후보만 코드 조합으로 허용
 
 Critical은 의미·숫자·보호 표면·locked reading·문장 구조 훼손이다. High는 예상 밖 한국어 rewrite, lexicon 위반, 미승인 발음 전사다. Medium은 잔여 발화 표면과 운율·형식 문제다.
 
