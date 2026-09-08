@@ -54,7 +54,7 @@ Windows PowerShell 예시:
 LLM 실행 파일은 --text, --input, 표준입력, --output, --json, --model,
 --list-models, --check를 지원합니다. 공급자별 환경변수는 운영 환경에서
 설정하며 인증정보를 실행 파일이나 명령행에 포함하지 마십시오.
---json 응답의 rule_elapsed_ms는 규칙기반 처리시간(4단계의 deterministic pronunciation overlay 포함), llm_elapsed_ms는 프롬프트
+--json 응답의 rule_elapsed_ms는 규칙기반 처리시간(5단계의 deterministic pronunciation overlay 포함), llm_elapsed_ms는 프롬프트
 구성·LLM 호출·응답 검증을 포함한 LLM 처리시간입니다. elapsed_ms는 LLM 서버
 요청시간 호환 필드입니다. llm_called가 false이면 LLM을 생략한 것이며,
 3~5단계 speech_text는 확정 잔여 읽기가 반영된 각 단계의 base text이며,

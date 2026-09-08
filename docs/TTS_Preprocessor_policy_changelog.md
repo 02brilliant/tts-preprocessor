@@ -1,5 +1,12 @@
 # TTS Preprocessor Policy Changelog
 
+## Stage 4 drops deterministic pronunciation overlay
+
+- 4단계는 deterministic pronunciation overlay를 더 이상 적용하지 않는다.
+- 기존 exact overlay 목록은 5단계 LLM 호출 전에만 적용·잠근다.
+- 4단계 책임은 3단계 상속 + 폐쇄형 `이다` 축약으로 유지한다.
+- 단계 번호(0~5)와 API `level` 값은 변경하지 않는다.
+
 ## Stages 3–5 `N번` occurrence/identifier selection hardening
 
 - Added exact occurrence action `처리`, so unmarked `3번 처리했습니다` is

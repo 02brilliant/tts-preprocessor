@@ -98,8 +98,8 @@ LLM gate 전에 별도 deterministic pronunciation overlay를 적용한다. over
 복합명사 경계·운율 후보를 유한 목록으로 만들고, 4단계 gate는 이 목록이 비었는지
 평가한다. LLM은 후보 ID와 option만 선택하고 최종 문자열은 코드가 조합한다. 발음 gate는
 일반 음절쌍으로 발음을 결정하거나 whitelist를 확대하지 않는다.
-5단계는 4단계의 overlay, 잔여 읽기, 이다 계열 축약, 복합명사 경계와 운율을
-모두 상속한다. 별도 데이터 레지스트리의 exact 표준발음은 전용 규칙 모듈이
+5단계는 4단계의 잔여 읽기, 이다 계열 축약, 복합명사 경계와 운율을
+상속하고 deterministic overlay를 추가로 적용한다. 별도 데이터 레지스트리의 exact 표준발음은 전용 규칙 모듈이
 LLM 호출 전에 적용·잠그고, 의미가 값·비용·보상인 `대가→대까` 같은 문맥 후보는
 위치·허용 출력·의미 지침을 공통 selection plan으로 LLM에 제공한다. 이 plan은
 4단계의 모든 기능 후보를 포함한다. `개인기·무인기` 같은
@@ -115,9 +115,9 @@ URL·이메일·파일명·경로·JSON·코드·식별자, 전체 외국어 문
 이 구문 사전은 기본 엔진과 간소화 엔진이 동일하게 사용한다.
 
 3단계는 공통 잔여 전처리가 확정 읽기를 잠근 `stage3_base_text`와 유한 선택 계획을
-임시 토큰 없이 전달한다. 4단계는 외부 `normalized_text`를 바꾸지 않고 내부 overlay 결과인
-`stage4_base_text`를 LLM에 전달한다. 5단계는 동일한 overlay 결과를
-`stage5_base_text`로 사용하기 전에 5단계 전용 확정 발음을 추가 적용한다. 이후
+임시 토큰 없이 전달한다. 4단계는 외부 `normalized_text`를 바꾸지 않고
+`stage4_base_text`를 LLM에 전달한다. 5단계는 deterministic overlay와
+5단계 전용 확정 발음을 적용한 `stage5_base_text`를 사용한다. 이후
 4단계 허용 후보와 5단계 폐쇄형 문맥 후보를 한 번의 LLM 호출에서 선택한다.
 내부 provenance snapshot은 validator에 전달하고, LLM에는 전체 metadata 대신
 3~5단계 모두 현재 위치의 허용 후보 manifest만 전달한다. 모델의 JSON 선택을
