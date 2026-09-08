@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from LLM.pronunciation_lexicon import build_deterministic_pronunciation_mutations
+from LLM.pronunciation_lexicon import (
+    build_stage5_deterministic_pronunciation_mutations,
+)
 from LLM.provenance import minimal_snapshot
 from LLM.validation_models import (
     AllowedMutation,
@@ -26,10 +28,9 @@ def apply_pronunciation_overlay(
 ) -> PronunciationOverlayResult:
     """Apply fixed pronunciation entries for stage 5 without changing stage 2.
 
-    Stage 3/4 leave the text unchanged. Stage 5 locks every generated
-    pronunciation so its LLM pass can add only closed, stage-specific changes
-    around it. Provenance keeps the historical ``GENERATED_STAGE4_PRONUNCIATION``
-    label for validator compatibility.
+    Stage 3/4 leave the text unchanged. Stage 5 applies the unified exact
+    registry once and locks every generated pronunciation so its LLM pass can
+    add only closed, stage-specific changes around it.
     """
 
     if not isinstance(normalized_text, str):
@@ -40,17 +41,20 @@ def apply_pronunciation_overlay(
     if active_snapshot.normalized_text != normalized_text:
         raise ValueError("snapshot does not match normalized_text")
 
-    mutations = build_deterministic_pronunciation_mutations(
-        normalized_text,
-        stage=stage,
-        snapshot=active_snapshot,
+    mutations = (
+        build_stage5_deterministic_pronunciation_mutations(
+            normalized_text,
+            snapshot=active_snapshot,
+        )
+        if stage == 5
+        else ()
     )
     return apply_locked_pronunciation_mutations(
         normalized_text,
         mutations=mutations,
         snapshot=active_snapshot,
-        owner="stage5_pronunciation_overlay",
-        provenance="GENERATED_STAGE4_PRONUNCIATION",
+        owner="stage5_standard_pronunciation",
+        provenance="GENERATED_STAGE5_PRONUNCIATION",
     )
 
 

@@ -291,7 +291,7 @@ def test_level5_vllm_uses_one_full_context_selection_request(
     assert len(captured) == 1
     prompt = captured[0]
     assert "그 대가는 큽니다.\n\n노동의 대가는 작습니다." in prompt
-    assert prompt.count('"kind":"contextual_standard_pronunciation"') == 2
+    assert prompt.count('"kind":"contextual_standard_pronunciation"') == 1
 
 
 def test_stage_engine_runtime_asset_check_requires_no_llm_credentials(monkeypatch) -> None:
@@ -299,3 +299,17 @@ def test_stage_engine_runtime_asset_check_requires_no_llm_credentials(monkeypatc
     monkeypatch.delenv("LOCAL_LLM_TOKEN", raising=False)
 
     stage_engine.validate_runtime_assets()
+
+
+def test_stage_engine_runtime_asset_check_loads_stage5_registry(monkeypatch) -> None:
+    calls = []
+
+    monkeypatch.setattr(stage_engine, "build_prompt", lambda *_args, **_kwargs: "")
+    monkeypatch.setattr(
+        "LLM.standard_pronunciation.load_stage5_pronunciations",
+        lambda: calls.append(True) or (),
+    )
+
+    stage_engine.validate_runtime_assets(prompt_levels=(3,))
+
+    assert calls == [True]

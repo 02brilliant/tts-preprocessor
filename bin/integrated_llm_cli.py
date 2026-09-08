@@ -62,7 +62,6 @@ def run(*, stage_level: int, prompt_level: int) -> int:
     from LLM.cli_protocol import classify_llm_stage_error
     from LLM.config import load_model_config
     from LLM.invocation_gate import decide_llm_invocation
-    from LLM.pronunciation_overlay import apply_pronunciation_overlay
     from LLM.stage_engine import transform as transform_llm
     from LLM.stage_engine import UnsupportedLLMModelError
     from LLM.stage_engine import validate_runtime_assets
@@ -110,12 +109,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         if stage_level == 5:
             from LLM.stage5_preprocessor import preprocess_stage5
 
-            overlay = apply_pronunciation_overlay(
-                normalized_text,
-                stage=5,
-                snapshot=snapshot,
-            )
-            stage5 = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+            stage5 = preprocess_stage5(normalized_text, snapshot=snapshot)
             llm_input_text = stage5.text
             llm_snapshot = stage5.snapshot
             selection_plan = stage5.work_plan

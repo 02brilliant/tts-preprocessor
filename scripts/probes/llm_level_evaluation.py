@@ -10,7 +10,6 @@ import urllib.request
 
 from LLM.invocation_gate import decide_llm_invocation
 from LLM.paragraph_parallel import split_paragraph_units
-from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.provenance import build_normalization_snapshot
 from LLM.response_validation import LLMStageContractError, validate_speech_text
 from LLM.stage_engine import transform as transform_llm
@@ -117,14 +116,9 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
     llm_input_text = normalized_text
     llm_snapshot = snapshot
     if stage == 5:
-        overlay = apply_pronunciation_overlay(
-            normalized_text,
-            stage=5,
-            snapshot=snapshot,
-        )
         from LLM.stage5_preprocessor import preprocess_stage5
 
-        prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+        prepared = preprocess_stage5(normalized_text, snapshot=snapshot)
         llm_input_text = prepared.text
         llm_snapshot = prepared.snapshot
     elif stage == 4:

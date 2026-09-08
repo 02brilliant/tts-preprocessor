@@ -77,15 +77,16 @@ def test_level5_rule_complete_pronunciation_skips_llm() -> None:
     assert decision.reason == "stage5_rule_complete"
 
 
-def test_level5_calls_for_contextual_standard_pronunciation() -> None:
-    prepared = preprocess_stage5("그 대가를 치렀습니다.")
+def test_level5_skips_llm_for_clear_contextual_standard_pronunciation() -> None:
+    prepared = preprocess_stage5("대가를 치렀다.")
     decision = decide_llm_invocation(
         prepared.text,
         stage_level=5,
         stage5_work_plan=prepared.work_plan,
     )
-    assert decision.call_llm is True
-    assert decision.reason == "korean_pronunciation_candidate"
+    assert prepared.text == "대까를 치렀다."
+    assert decision.call_llm is False
+    assert decision.reason == "stage5_rule_complete"
 
 
 @pytest.mark.parametrize("text", ("색연필입니다.", "문고리를 잡았다.", "손등이 부었다."))

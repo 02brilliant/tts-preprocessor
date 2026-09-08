@@ -41,7 +41,7 @@ def test_stage_five_overlay_registry_contains_only_fixed_entries() -> None:
         "강줄기",
     } <= surfaces
     assert "대가" not in surfaces
-    assert "인기" not in surfaces
+    assert "인기" in surfaces
 
 
 def test_fixed_entries_are_not_llm_mutation_candidates_after_overlay_split() -> None:

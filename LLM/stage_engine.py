@@ -181,6 +181,10 @@ def validate_runtime_assets(*, prompt_levels: tuple[int, ...] = (1, 2, 3)) -> No
         raise ValueError("prompt_levels must contain only 1, 2, or 3")
     for prompt_level in prompt_levels:
         build_prompt("", prompt_level=prompt_level)
+    if 3 in prompt_levels:
+        from LLM.standard_pronunciation import load_stage5_pronunciations
+
+        load_stage5_pronunciations()
 
 
 def _generate_with_provider(

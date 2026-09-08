@@ -62,7 +62,7 @@ def test_prompt_levels_have_distinct_closed_contracts() -> None:
     assert "NATURAL_SPEECH_CONTRACTION" in level4
     assert "색연필 → 색년필" not in level4
     assert "5단계는 4단계의 통제된 상위 집합" in level5
-    assert "deterministic pronunciation overlay" in level5
+    assert "통합 exact 표준발음 registry" in level5
     assert "STANDARD_PRONUNCIATION_ENHANCEMENT" in level5
     assert "{{STAGE5_WORK_PLAN}}" not in level5
     for rendered in (level3, level4, level5):

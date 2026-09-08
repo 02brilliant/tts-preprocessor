@@ -133,12 +133,12 @@ def test_stage_outputs_form_a_controlled_processing_superset() -> None:
     source = "3.05와 색연필, 생산량을 확인했습니다."
     level3 = "삼-쩜-영오와 색연필, 생산량을 확인했습니다."
     level4 = level3
-    level5_base = apply_pronunciation_overlay(level3, stage=5)
+    level5_base = preprocess_stage5(level3)
     level5 = level5_base.text
 
     assert validate_response(source, level3, prompt_level=1) == level3
     assert validate_response(source, level4, prompt_level=2) == level4
-    assert level5 == "삼-쩜-영오와 색년필, 생산냥을 확인했습니다."
+    assert level5 == "삼-쩜-영오와 생년필, 생산냥을 확인했습니다."
     assert validate_response(level5, level5, prompt_level=3, snapshot=level5_base.snapshot) == level5
 
     with pytest.raises(LLMStageContractError):

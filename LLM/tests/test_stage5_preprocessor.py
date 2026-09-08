@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 
-from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.provenance import minimal_snapshot
 from LLM.stage5_preprocessor import (
     Stage5Candidate,
@@ -13,13 +12,10 @@ from LLM.stage5_preprocessor import (
 
 
 def test_stage5_preprocessor_applies_safe_standard_pronunciations_and_locks() -> None:
-    stage4 = apply_pronunciation_overlay(
+    result = preprocess_stage5(
         "색연필과 국물, 인기는 높고 학교는 멉니다.",
-        stage=5,
     )
-    result = preprocess_stage5(stage4.text, snapshot=stage4.snapshot)
 
-    assert stage4.text == "색년필과 국물, 인기는 높고 학교는 멉니다."
     assert result.text == "생년필과 궁물, 인끼는 높고 학꾜는 멉니다."
     locked = {
         span.text
@@ -27,6 +23,8 @@ def test_stage5_preprocessor_applies_safe_standard_pronunciations_and_locks() ->
         if span.provenance == "GENERATED_STAGE5_PRONUNCIATION" and span.locked
     }
     assert locked == {"생년필", "궁물", "인끼", "학꾜"}
+    for span in result.snapshot.spans:
+        assert result.text[span.normalized_start : span.normalized_end] == span.text
 
 
 def test_stage5_preprocessor_keeps_longer_words_and_protected_surfaces() -> None:
@@ -52,7 +50,7 @@ def test_stage5_preprocessor_accepts_compound_particle_boundaries() -> None:
 
 
 def test_stage5_work_plan_contains_only_unresolved_context_choices() -> None:
-    result = preprocess_stage5("인기는 높고 노동의 대가는 컸던 기자입니다.")
+    result = preprocess_stage5("인기는 높고 그 대가는 컸던 기자입니다.")
     payload = json.loads(result.work_plan.to_prompt_json())
 
     assert result.text.startswith("인끼는")
@@ -66,6 +64,23 @@ def test_stage5_work_plan_contains_only_unresolved_context_choices() -> None:
     )
     assert daega["options"] == ["대까"]
     assert "거장" in daega["guidance"]
+
+
+def test_stage5_preprocessor_resolves_clear_daega_context_without_llm_choice() -> None:
+    cost = preprocess_stage5("대가를 치렀다.")
+    expert = preprocess_stage5("예술계의 대가가 참석했다.")
+
+    assert cost.text == "대까를 치렀다."
+    assert [mutation.source_text for mutation in cost.applied_mutations] == ["대가"]
+    assert all(
+        candidate.kind != "contextual_standard_pronunciation"
+        for candidate in cost.work_plan.candidates
+    )
+    assert expert.text == "예술계의 대가가 참석했다."
+    assert all(
+        candidate.kind != "contextual_standard_pronunciation"
+        for candidate in expert.work_plan.candidates
+    )
 
 
 def test_stage5_work_plan_excludes_candidates_in_protected_surface() -> None:

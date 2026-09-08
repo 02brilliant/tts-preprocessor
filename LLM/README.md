@@ -1,6 +1,6 @@
 # Local, Gemini, OpenAI, and vLLM API integration
 
-> 실행 3~5단계와 prompt level의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 4·5단계는 deterministic pronunciation overlay와 provenance-aware validator를 사용한다.
+> 실행 3~5단계와 prompt level의 단일 기준은 `docs/TTS_Preprocessor_level_policy.md`다. 5단계는 통합 exact 표준발음 registry와 provenance-aware validator를 사용한다.
 
 LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `api.server`가 같은
 포트에서 `/api/llm/models`와 통합 `/api/transform`을 제공한다. 공급자 URL·
@@ -10,22 +10,22 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 
 1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 확정 잔여 읽기/lock → 유한 선택 계획 → 호출 gate → `LLM_prompt.txt` → 코드 조합 → 검증
 2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 유한 선택 계획 → 호출 gate → `LLM_prompt_lv2.txt` → 코드 조합 → 검증
-3. 5단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → deterministic 발음 overlay/lock → 5단계 확정 표준발음 적용/lock → 4단계 후보를 포함한 유한 선택 계획 → 호출 gate → `LLM_prompt_lv3.txt` → 코드 조합 → 검증
+3. 5단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 통합 exact 표준발음 적용/lock → 4단계 후보를 포함한 유한 선택 계획 → 호출 gate → `LLM_prompt_lv3.txt` → 코드 조합 → 검증
 
 호출 gate가 실제 선택 후보를 찾으면 LLM을 호출하고,
 명백히 불필요하면 3단계는 `speech_text=stage3_base_text`, 4·5단계는 각각
 `speech_text=stage4_base_text`, `speech_text=stage5_base_text`로 반환한다. 외부 `normalized_text`는 항상 2단계 결과다. 규칙 기반
 `normalized_text` 계약과 source-free binary runtime은 이 통합으로 변경되지 않는다.
 3단계는 잔여 읽기·문맥 판별, 제한적 복합명사 발화 경계와 쉼표를 허용하며
-기존 한글 글자와 순서는 바꾸지 않는다. 4단계는 제한적 `이다` 축약을 추가한다. 5단계는 코드에 등록된 exact `ㄴ` 첨가·
-비예측적 합성어 된소리·어휘 의존 `ㄴ/ㄹ` overlay와 확정 표준발음을 추가한다. 어느 단계도 일반 G2P를
+기존 한글 글자와 순서는 바꾸지 않는다. 4단계는 제한적 `이다` 축약을 추가한다. 5단계는 명사·용언 경계를 구분하는 schema 2 registry에 등록된 exact `ㄴ` 첨가·
+비예측적 합성어 된소리·어휘 의존 `ㄴ/ㄹ`과 명시적 활용형 표준발음을 추가한다. 어느 단계도 일반 G2P를
 발음식 철자로 전면 전사하지 않는다.
 운영 API는 선택 단계에 맞는 실행모듈 하나만 호출한다. 별도 `tts-llm-stage`는
 배포하지 않는다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
 읽기를 위한 provenance snapshot은 외부 계약에 노출하지 않고 validator에만 전달한다.
 반복 안정성 측정과 자동 재시도는 사용하지 않는다. 서버는 임시 토큰 치환을 사용하지 않는다.
 3단계는 확정 잔여 읽기를 잠근 `stage3_base_text`와 폐쇄형 선택 계획을, 4단계는
-내부 `stage4_base_text`와 폐쇄형 선택 계획을 LLM에 전달한다. 5단계는 deterministic overlay와 전용 exact 표준발음을
+내부 `stage4_base_text`와 폐쇄형 선택 계획을 LLM에 전달한다. 5단계는 통합 exact 표준발음을
 적용한 `stage5_base_text`와 4단계 후보를 모두 포함한 선택 계획을 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
 정확히 보존하도록 지시하는 1단계 확정 읽기이며, 응답 검증도 이 표면의 변경을
 성공 결과로 반환하지 않는다.

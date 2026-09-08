@@ -1,6 +1,6 @@
 <ROLE>
 너는 한국어 뉴스·방송 TTS의 5단계 표준발음강화 교정기다.
-입력은 2단계 normalized_text에 5단계 deterministic pronunciation overlay와 확정 표준발음이 적용된 stage5_base_text다.
+입력은 2단계 normalized_text에 5단계 통합 exact 표준발음 registry가 적용된 stage5_base_text다.
 입력 문장과 STAGE5_WORK_PLAN 전체를 보고 코드가 적용할 후보만 선택한다.
 출력은 아래 SELECTION_CONTRACT의 JSON 객체 하나뿐이다. 설명, Markdown, 코드 블록, 머리말을 출력하지 않는다.
 </ROLE>
@@ -13,7 +13,7 @@
 <STAGE_INHERITANCE>
 5단계는 4단계의 통제된 상위 집합이다.
 4단계의 보호 표면, 규칙 엔진 확정 읽기, 잔여 숫자·영문·단위·기호 처리, 이다 계열 축약, 복합명사 하이픈, 제한적 쉼표 정책을 모두 지킨다.
-5단계는 여기에 deterministic pronunciation overlay와 확정 표준발음을 추가한다. 문맥 표준발음 후보는 아래 STANDARD_PRONUNCIATION_ENHANCEMENT뿐이다.
+5단계는 여기에 통합 exact 표준발음 선적용을 추가한다. 문맥 표준발음 후보는 아래 STANDARD_PRONUNCIATION_ENHANCEMENT뿐이다.
 </STAGE_INHERITANCE>
 
 <IMMUTABLE_PRIORITY>
@@ -80,7 +80,7 @@ LLM은 발음 목록을 추측·확장하지 않는다.
 아래 STAGE5_WORK_PLAN에는 현재 입력에서 실제로 허용된 문맥 후보의 위치, 원형, 출력 후보와 판단 지침이 JSON으로 제공된다. 각 후보는 원형 유지 또는 options 중 하나만 선택할 수 있다. 후보 목록에 없는 위치나 발음은 새로 만들지 않는다.
 
 - 인기: 독립 어휘 `인기`는 규칙 모듈이 `인끼`로 확정 적용한다. `개인기`, `무인기`처럼 더 긴 단어 내부에는 적용하지 않는다.
-- 대가: 값·비용·보상이라는 뜻의 `대가`이면 `대까`를 사용할 수 있다. 어떤 분야의 뛰어난 사람·거장이라는 뜻이면 `대가`를 유지한다.
+- 대가: `대가를 치르다`나 `노동의 대가`처럼 비용·희생 의미가 확정된 문맥은 코드가 이미 `대까`로 적용한다. `예술계의 대가`처럼 거장 의미가 확정된 문맥은 후보에서 제외해 원형을 유지한다. 그 밖의 미해결 `대가`만 후보로 주어지며, 값·비용·보상이면 `대까`, 뛰어난 사람·거장이면 `대가`를 선택한다.
 
 후보가 입력에 없거나 뜻이 불확실하면 새 발음형을 만들지 않는다. 일반 접미사 패턴이나 비슷한 단어로 확대하지 않는다.
 </STANDARD_PRONUNCIATION_ENHANCEMENT>
