@@ -9,24 +9,24 @@ LLM 기능은 별도 프록시 프로세스를 실행하지 않는다. 기존 `a
 규칙 기반 엔진과 LLM은 다음 순서로만 연결한다.
 
 1. 3단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 확정 잔여 읽기/lock → 유한 선택 계획 → 호출 gate → `LLM_prompt.txt` → 코드 조합 → 검증
-2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → exact 발음 overlay/lock → 유한 선택 계획 → 호출 gate → `LLM_prompt_lv2.txt` → 코드 조합 → 검증
-3. 5단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 4단계 overlay/lock → 5단계 확정 표준발음 적용/lock → 4단계 후보를 포함한 유한 선택 계획 → 호출 gate → `LLM_prompt_lv3.txt` → 코드 조합 → 검증
+2. 4단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → 유한 선택 계획 → 호출 gate → `LLM_prompt_lv2.txt` → 코드 조합 → 검증
+3. 5단계 실행모듈: 원문 → 전체 규칙 엔진 1회 → deterministic 발음 overlay/lock → 5단계 확정 표준발음 적용/lock → 4단계 후보를 포함한 유한 선택 계획 → 호출 gate → `LLM_prompt_lv3.txt` → 코드 조합 → 검증
 
 호출 gate가 실제 선택 후보를 찾으면 LLM을 호출하고,
 명백히 불필요하면 3단계는 `speech_text=stage3_base_text`, 4·5단계는 각각
 `speech_text=stage4_base_text`, `speech_text=stage5_base_text`로 반환한다. 외부 `normalized_text`는 항상 2단계 결과다. 규칙 기반
 `normalized_text` 계약과 source-free binary runtime은 이 통합으로 변경되지 않는다.
 3단계는 잔여 읽기·문맥 판별, 제한적 복합명사 발화 경계와 쉼표를 허용하며
-기존 한글 글자와 순서는 바꾸지 않는다. 4단계는 코드에 등록된 exact `ㄴ` 첨가·
-비예측적 합성어 된소리·어휘 의존 `ㄴ/ㄹ` overlay와 제한적 `이다` 축약을 추가한다. 어느 단계도 일반 G2P를
+기존 한글 글자와 순서는 바꾸지 않는다. 4단계는 제한적 `이다` 축약을 추가한다. 5단계는 코드에 등록된 exact `ㄴ` 첨가·
+비예측적 합성어 된소리·어휘 의존 `ㄴ/ㄹ` overlay와 확정 표준발음을 추가한다. 어느 단계도 일반 G2P를
 발음식 철자로 전면 전사하지 않는다.
 운영 API는 선택 단계에 맞는 실행모듈 하나만 호출한다. 별도 `tts-llm-stage`는
 배포하지 않는다. model을 생략하면 기본 모델 `gemma4-31B-it (vLLM)`을 사용한다. 규칙 확정
 읽기를 위한 provenance snapshot은 외부 계약에 노출하지 않고 validator에만 전달한다.
 반복 안정성 측정과 자동 재시도는 사용하지 않는다. 서버는 임시 토큰 치환을 사용하지 않는다.
-3단계는 확정 잔여 읽기를 잠근 `stage3_base_text`와 폐쇄형 선택 계획을, 4단계는 locked overlay가 적용된
-내부 `stage4_base_text`와 폐쇄형 선택 계획을 LLM에 전달한다. 5단계는 여기에 전용 exact 표준발음을
-추가 적용한 `stage5_base_text`와 4단계 후보를 모두 포함한 선택 계획을 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
+3단계는 확정 잔여 읽기를 잠근 `stage3_base_text`와 폐쇄형 선택 계획을, 4단계는
+내부 `stage4_base_text`와 폐쇄형 선택 계획을 LLM에 전달한다. 5단계는 deterministic overlay와 전용 exact 표준발음을
+적용한 `stage5_base_text`와 4단계 후보를 모두 포함한 선택 계획을 전달한다. 양쪽 ASCII 공백으로 분리된 `news`는 활성 프롬프트가
 정확히 보존하도록 지시하는 1단계 확정 읽기이며, 응답 검증도 이 표면의 변경을
 성공 결과로 반환하지 않는다.
 
@@ -49,17 +49,17 @@ LLM에서 고정한다. 대표적으로 `오분 뒤`, `삼번 버스`, `제 삼�
 
 - `docs/LLM_prompt.txt`: `{{NORMALIZED_TEXT}}`를 정확히 한 번 포함하는 통합
   기본교정 프롬프트
-- `docs/LLM_prompt_lv2.txt`: overlay 결과를 고정하고 자연발화 예외를 추가한 4단계 프롬프트
+- `docs/LLM_prompt_lv2.txt`: 자연발화 축약 예외를 추가한 4단계 프롬프트
 - `docs/LLM_prompt_lv3.txt`: 4단계 전체와 폐쇄형 문맥 표준발음 후보를 포함한 5단계 프롬프트
 - `models.json`: 선택 가능한 모델, 공급자 및 기본 모델
 - `openai_client.py`: OpenAI Responses API 호출 및 응답/오류 처리
 - `vllm_client.py`: vLLM OpenAI-compatible Chat Completions 호출 및 응답/오류 처리
 - `pronunciation_lexicon.py`: 4단계 exact 발음 후보와 finite 허용 출력
-- `pronunciation_overlay.py`: 4단계 exact 발음 적용과 snapshot 좌표/lock 갱신
+- `pronunciation_overlay.py`: 5단계 exact 발음 overlay 적용과 snapshot 좌표/lock 갱신
 - `selection_pipeline.py`: 3~5단계 공통 유한 후보 생성, JSON 선택 검증 및 최종 문자열 조합
 - `residual_preprocessor.py`: 기존 엔진 파서를 재사용한 확정 읽기/lock 및 문맥형 잔여 선택지
 - `stage3_preprocessor.py`: 3단계 확정 잔여 읽기와 선택 계획 생성
-- `stage4_preprocessor.py`: 4단계 overlay 결과의 공통 선택 계획 생성
+- `stage4_preprocessor.py`: 4단계 공통 선택 계획 생성
 - `standard_pronunciation.py`: 버전 고정 5단계 표준발음 사전 검증·로드
 - `stage5_preprocessor.py`: 5단계 확정 발음 적용, lock 및 LLM work plan 생성
 - `data/stage5_pronunciations.json`: 5단계 exact·문맥 표준발음 레지스트리
@@ -109,7 +109,7 @@ POST /api/transform
 }
 ```
 
-`rule_elapsed_ms`는 통합 실행모듈에서 전체 규칙기반 교정을 수행한 시간이며 4단계에서는 deterministic pronunciation overlay 시간도 포함하고,
+`rule_elapsed_ms`는 통합 실행모듈에서 전체 규칙기반 교정을 수행한 시간이며 5단계에서는 deterministic pronunciation overlay 시간도 포함하고,
 `llm_elapsed_ms`는 프롬프트 구성·LLM 호출·응답 검증을 포함한 LLM 처리 시간이다.
 `elapsed_ms`는 기존 호환성을 위해 유지한 LLM 서버 요청 시간이다. LLM을 생략하면
 `elapsed_ms`와 `llm_elapsed_ms`는 `0.0`, `llm_called`는 `false`이며

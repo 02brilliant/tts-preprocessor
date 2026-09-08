@@ -58,9 +58,11 @@ def test_prompt_levels_have_distinct_closed_contracts() -> None:
     assert len({level3, level4, level5}) == 3
     assert "3단계에서는 기존 한국어 철자를 발음형으로 바꾸지 않는다" in level3
     assert "색연필 → 색년필" not in level3
-    assert "deterministic pronunciation overlay" in level4
+    assert "deterministic pronunciation overlay" not in level4
+    assert "NATURAL_SPEECH_CONTRACTION" in level4
     assert "색연필 → 색년필" not in level4
     assert "5단계는 4단계의 통제된 상위 집합" in level5
+    assert "deterministic pronunciation overlay" in level5
     assert "STANDARD_PRONUNCIATION_ENHANCEMENT" in level5
     assert "{{STAGE5_WORK_PLAN}}" not in level5
     for rendered in (level3, level4, level5):
@@ -76,9 +78,10 @@ def test_prompt_stage_inheritance_is_explicit_and_monotonic() -> None:
         assert "<STAGE_INHERITANCE>" in prompt
         assert "<RESIDUAL_READING_NORMALIZATION>" in prompt
 
-    assert "3단계에는 4단계의 한국어 발음 예외" in level3
+    assert "3단계에는 4단계의 이다 축약과 5단계의 한국어 발음 예외" in level3
     assert "4단계는 3단계의 통제된 상위 집합" in level4
-    assert "overlay 이후 LLM이 추가하는 한국어 변경" in level4
+    assert "LLM이 추가하는 한국어 변경은 아래 NATURAL_SPEECH_CONTRACTION뿐이다" in level4
+    assert "LLM이 추가하는 한국어 변경은 아래 NATURAL_SPEECH_CONTRACTION뿐이다" in level4
     assert "4단계의 통제된 상위 집합" in level5
 
 
@@ -212,19 +215,27 @@ def test_active_prompt_distinguishes_input_quotes_from_output_wrappers() -> None
 def test_level4_prompt_is_closed_and_rejects_general_g2p() -> None:
     prompt = LLM_PROMPT_LV2_PATH.read_text(encoding="utf-8")
     assert "<NATURAL_SPEECH_CONTRACTION>" in prompt
-    assert "<DETERMINISTIC_PRONUNCIATION_OVERLAY>" in prompt
-    assert "발음 목록을 추측·확장하지 않는다" in prompt
+    assert "<DETERMINISTIC_PRONUNCIATION_OVERLAY>" not in prompt
     assert "국물→궁물" in prompt
     assert "출력 철자에 반영하지 않는다" in prompt
     assert "복합 조사, 연속 어미" in prompt
 
 
-@pytest.mark.parametrize("path", (LLM_PROMPT_LV2_PATH,))
-def test_fixed_pronunciation_registry_is_not_duplicated_in_prompt(path: Path) -> None:
-    prompt = path.read_text(encoding="utf-8")
+def test_level5_prompt_keeps_closed_overlay_contract() -> None:
+    prompt = LLM_PROMPT_LV3_PATH.read_text(encoding="utf-8")
+    assert "<DETERMINISTIC_PRONUNCIATION_OVERLAY>" in prompt
+    assert "발음 목록을 추측·확장하지 않는다" in prompt
     assert "색연필 → 색년필" not in prompt
     assert "생산량 → 생산냥" not in prompt
     assert "exact whole-word pronunciation overlay" in prompt
+
+
+@pytest.mark.parametrize("path", (LLM_PROMPT_LV2_PATH,))
+def test_level4_prompt_does_not_mention_pronunciation_overlay_registry(path: Path) -> None:
+    prompt = path.read_text(encoding="utf-8")
+    assert "색연필 → 색년필" not in prompt
+    assert "생산량 → 생산냥" not in prompt
+    assert "exact whole-word pronunciation overlay" not in prompt
 
 
 def test_active_prompt_injects_only_plain_normalized_text() -> None:

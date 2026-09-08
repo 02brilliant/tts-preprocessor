@@ -17,39 +17,39 @@ class PronunciationEntry:
 
 
 _STAGE4_ENTRIES = (
-    PronunciationEntry("색연필", "색년필", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("솜이불", "솜니불", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("막일", "막닐", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("꽃잎", "꽃닢", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("식용유", "식용뉴", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("국민연금", "국민년금", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("국민 연금", "국민 년금", "n_insertion", 4, "existing-level-4-policy"),
-    PronunciationEntry("문고리", "문꼬리", "lexical_tensification", 4, "existing-level-4-policy"),
-    PronunciationEntry("손등", "손뜽", "lexical_tensification", 4, "existing-level-4-policy"),
-    PronunciationEntry("발바닥", "발빠닥", "lexical_tensification", 4, "existing-level-4-policy"),
-    PronunciationEntry("길가", "길까", "lexical_tensification", 4, "existing-level-4-policy"),
-    PronunciationEntry("초승달", "초승딸", "lexical_tensification", 4, "existing-level-4-policy"),
-    PronunciationEntry("의견란", "의견난", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("임진란", "임진난", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("생산량", "생산냥", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("결단력", "결딴녁", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("공권력", "공꿘녁", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("동원령", "동원녕", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("상견례", "상견녜", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("횡단로", "횡단노", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("이원론", "이원논", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("입원료", "이붠뇨", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("구근류", "구근뉴", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 20"),
-    PronunciationEntry("백분율", "백뿐뉼", "lexical_n_l", 4, "NIKL Standard Pronunciation Rule 29"),
-    PronunciationEntry("한여름", "한녀름", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
-    PronunciationEntry("직행열차", "직행녈차", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
-    PronunciationEntry("영업용", "영업뇽", "n_insertion", 4, "NIKL Standard Pronunciation Rule 29"),
-    PronunciationEntry("서울역", "서울력", "n_insertion", 4, "NIKL Standard Pronunciation Rules 29 and 20"),
-    PronunciationEntry("휘발유", "휘발류", "n_insertion", 4, "NIKL Standard Pronunciation Rules 29 and 20"),
-    PronunciationEntry("눈동자", "눈똥자", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
-    PronunciationEntry("신바람", "신빠람", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
-    PronunciationEntry("강가", "강까", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
-    PronunciationEntry("강줄기", "강쭐기", "lexical_tensification", 4, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("색연필", "색년필", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("솜이불", "솜니불", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("막일", "막닐", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("꽃잎", "꽃닢", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("식용유", "식용뉴", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("국민연금", "국민년금", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("국민 연금", "국민 년금", "n_insertion", 5, "existing-level-4-policy"),
+    PronunciationEntry("문고리", "문꼬리", "lexical_tensification", 5, "existing-level-4-policy"),
+    PronunciationEntry("손등", "손뜽", "lexical_tensification", 5, "existing-level-4-policy"),
+    PronunciationEntry("발바닥", "발빠닥", "lexical_tensification", 5, "existing-level-4-policy"),
+    PronunciationEntry("길가", "길까", "lexical_tensification", 5, "existing-level-4-policy"),
+    PronunciationEntry("초승달", "초승딸", "lexical_tensification", 5, "existing-level-4-policy"),
+    PronunciationEntry("의견란", "의견난", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("임진란", "임진난", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("생산량", "생산냥", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("결단력", "결딴녁", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("공권력", "공꿘녁", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("동원령", "동원녕", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("상견례", "상견녜", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("횡단로", "횡단노", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("이원론", "이원논", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("입원료", "이붠뇨", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("구근류", "구근뉴", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 20"),
+    PronunciationEntry("백분율", "백뿐뉼", "lexical_n_l", 5, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("한여름", "한녀름", "n_insertion", 5, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("직행열차", "직행녈차", "n_insertion", 5, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("영업용", "영업뇽", "n_insertion", 5, "NIKL Standard Pronunciation Rule 29"),
+    PronunciationEntry("서울역", "서울력", "n_insertion", 5, "NIKL Standard Pronunciation Rules 29 and 20"),
+    PronunciationEntry("휘발유", "휘발류", "n_insertion", 5, "NIKL Standard Pronunciation Rules 29 and 20"),
+    PronunciationEntry("눈동자", "눈똥자", "lexical_tensification", 5, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("신바람", "신빠람", "lexical_tensification", 5, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("강가", "강까", "lexical_tensification", 5, "NIKL Standard Pronunciation Rule 28"),
+    PronunciationEntry("강줄기", "강쭐기", "lexical_tensification", 5, "NIKL Standard Pronunciation Rule 28"),
 )
 
 PRONUNCIATION_ENTRIES = _STAGE4_ENTRIES
@@ -161,11 +161,11 @@ def build_deterministic_pronunciation_mutations(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> tuple[AllowedMutation, ...]:
-    """Return fixed whole-word pronunciation rewrites for the stage overlay."""
+    """Return fixed whole-word pronunciation rewrites for the stage-5 overlay."""
 
     if stage not in {3, 4, 5}:
         raise ValueError("stage must be 3, 4, or 5")
-    if stage == 3:
+    if stage < 5:
         return ()
     return _filter_and_resolve(
         _entry_mutations(normalized_text, entries_for_stage(stage)), snapshot

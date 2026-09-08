@@ -15,7 +15,7 @@ from LLM.stage5_preprocessor import (
 def test_stage5_preprocessor_applies_safe_standard_pronunciations_and_locks() -> None:
     stage4 = apply_pronunciation_overlay(
         "색연필과 국물, 인기는 높고 학교는 멉니다.",
-        stage=4,
+        stage=5,
     )
     result = preprocess_stage5(stage4.text, snapshot=stage4.snapshot)
 

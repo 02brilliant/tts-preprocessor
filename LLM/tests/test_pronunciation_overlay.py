@@ -9,11 +9,11 @@ from LLM.response_validation import LLMStageContractError, validate_response
 from LLM.validation_models import NormalizationSnapshot, NormalizedSpan
 
 
-STAGE4_FIXED = tuple(
+STAGE5_FIXED = tuple(
     (entry.surface, entry.pronunciation)
-    for entry in entries_for_stage(4)
+    for entry in entries_for_stage(5)
 )
-STAGE4_EXACT_CONTRASTS = (
+STAGE5_EXACT_CONTRASTS = (
     ("의견란", "의견난", "질문란"),
     ("임진란", "임진난", "전쟁란"),
     ("생산량", "생산냥", "증가량"),
@@ -37,7 +37,7 @@ STAGE4_EXACT_CONTRASTS = (
     ("강줄기", "강쭐기", "산줄기"),
 )
 
-STAGE4_APPROVED_EXPANSION = (
+STAGE5_APPROVED_EXPANSION = (
     ("한여름", "한녀름", "한여름밤"),
     ("직행열차", "직행녈차", "직행열차표"),
     ("영업용", "영업뇽", "영업용차량"),
@@ -50,12 +50,12 @@ STAGE4_APPROVED_EXPANSION = (
 )
 
 
-@pytest.mark.parametrize(("surface", "pronunciation"), STAGE4_FIXED)
-def test_stage4_fixed_entry_is_applied_before_llm_with_particle(
+@pytest.mark.parametrize(("surface", "pronunciation"), STAGE5_FIXED)
+def test_stage5_fixed_entry_is_applied_before_llm_with_particle(
     surface: str,
     pronunciation: str,
 ) -> None:
-    result = apply_pronunciation_overlay(f"{surface}은 확인했습니다.", stage=4)
+    result = apply_pronunciation_overlay(f"{surface}은 확인했습니다.", stage=5)
     assert result.text == f"{pronunciation}은 확인했습니다."
     assert any(
         span.text == pronunciation
@@ -66,47 +66,48 @@ def test_stage4_fixed_entry_is_applied_before_llm_with_particle(
     assert validate_response(
         result.text,
         result.text,
-        prompt_level=2,
+        prompt_level=3,
         snapshot=result.snapshot,
     ) == result.text
 
 
-@pytest.mark.parametrize(("surface", "pronunciation", "contrast"), STAGE4_EXACT_CONTRASTS)
-def test_stage4_fixed_entry_has_positive_negative_and_contrast_coverage(
+@pytest.mark.parametrize(("surface", "pronunciation", "contrast"), STAGE5_EXACT_CONTRASTS)
+def test_stage5_fixed_entry_has_positive_negative_and_contrast_coverage(
     surface: str,
     pronunciation: str,
     contrast: str,
 ) -> None:
-    assert apply_pronunciation_overlay(f"{surface}을 확인했다.", stage=4).text.startswith(pronunciation)
-    assert apply_pronunciation_overlay(f"신{surface}지수입니다.", stage=4).text.startswith(f"신{surface}")
-    assert apply_pronunciation_overlay(f"{contrast}은 유지한다.", stage=4).text.startswith(contrast)
+    assert apply_pronunciation_overlay(f"{surface}을 확인했다.", stage=5).text.startswith(pronunciation)
+    assert apply_pronunciation_overlay(f"신{surface}지수입니다.", stage=5).text.startswith(f"신{surface}")
+    assert apply_pronunciation_overlay(f"{contrast}은 유지한다.", stage=5).text.startswith(contrast)
 
 
-def test_overlay_is_stage_four_only() -> None:
+def test_overlay_is_stage_five_only() -> None:
     text = "생산량은 늘었습니다."
     assert apply_pronunciation_overlay(text, stage=3).text == text
-    assert apply_pronunciation_overlay(text, stage=4).text == "생산냥은 늘었습니다."
+    assert apply_pronunciation_overlay(text, stage=4).text == text
+    assert apply_pronunciation_overlay(text, stage=5).text == "생산냥은 늘었습니다."
 
 
 @pytest.mark.parametrize(
     ("surface", "pronunciation", "longer_surface"),
-    STAGE4_APPROVED_EXPANSION,
+    STAGE5_APPROVED_EXPANSION,
 )
-def test_stage4_approved_expansion_exact_boundary_and_stage_isolation(
+def test_stage5_approved_expansion_exact_boundary_and_stage_isolation(
     surface: str,
     pronunciation: str,
     longer_surface: str,
 ) -> None:
-    assert apply_pronunciation_overlay(f"{surface}에서", stage=4).text == f"{pronunciation}에서"
-    assert apply_pronunciation_overlay(longer_surface, stage=4).text == longer_surface
-    assert apply_pronunciation_overlay(f"{surface}에서", stage=3).text == f"{surface}에서"
+    assert apply_pronunciation_overlay(f"{surface}에서", stage=5).text == f"{pronunciation}에서"
+    assert apply_pronunciation_overlay(longer_surface, stage=5).text == longer_surface
+    assert apply_pronunciation_overlay(f"{surface}에서", stage=4).text == f"{surface}에서"
 
 
 @pytest.mark.parametrize(
     ("surface", "pronunciation", "_longer_surface"),
-    STAGE4_APPROVED_EXPANSION,
+    STAGE5_APPROVED_EXPANSION,
 )
-def test_stage4_approved_expansion_excludes_protected_and_locked_spans(
+def test_stage5_approved_expansion_excludes_protected_and_locked_spans(
     surface: str,
     pronunciation: str,
     _longer_surface: str,
@@ -114,7 +115,7 @@ def test_stage4_approved_expansion_excludes_protected_and_locked_spans(
     protected_text = f"https://example.com/{surface}/file"
     protected_result = apply_pronunciation_overlay(
         protected_text,
-        stage=4,
+        stage=5,
         snapshot=minimal_snapshot(protected_text),
     )
     assert protected_result.text == protected_text
@@ -137,7 +138,7 @@ def test_stage4_approved_expansion_excludes_protected_and_locked_spans(
     )
     locked_result = apply_pronunciation_overlay(
         surface,
-        stage=4,
+        stage=5,
         snapshot=locked_snapshot,
     )
     assert locked_result.text == surface
@@ -146,26 +147,26 @@ def test_stage4_approved_expansion_excludes_protected_and_locked_spans(
 
 def test_unregistered_daega_is_never_changed_by_deterministic_overlay() -> None:
     assert apply_pronunciation_overlay(
-        "노동의 대가를 지급했다.", stage=4
+        "노동의 대가를 지급했다.", stage=5
     ).text == "노동의 대가를 지급했다."
 
 
 def test_ambiguous_ingi_is_not_registered() -> None:
     text = "인기가 높고 개인기가 뛰어난 무인기 선수입니다."
-    assert apply_pronunciation_overlay(text, stage=4).text == text
+    assert apply_pronunciation_overlay(text, stage=5).text == text
 
 
 def test_overlay_does_not_touch_protected_or_longer_surface() -> None:
     protected = "https://example.com/생산량/file"
     text = f"{protected}와 신생산량지수입니다."
     snapshot = minimal_snapshot(text)
-    result = apply_pronunciation_overlay(text, stage=4, snapshot=snapshot)
+    result = apply_pronunciation_overlay(text, stage=5, snapshot=snapshot)
     assert result.text == text
 
 
 def test_overlay_is_idempotent_and_locked_against_llm_reversal() -> None:
-    first = apply_pronunciation_overlay("생산량은 늘었습니다.", stage=4)
-    second = apply_pronunciation_overlay(first.text, stage=4, snapshot=first.snapshot)
+    first = apply_pronunciation_overlay("생산량은 늘었습니다.", stage=5)
+    second = apply_pronunciation_overlay(first.text, stage=5, snapshot=first.snapshot)
     assert second.text == first.text
     assert second.applied_mutations == ()
 
@@ -173,7 +174,7 @@ def test_overlay_is_idempotent_and_locked_against_llm_reversal() -> None:
         validate_response(
             first.text,
             "생산량은 늘었습니다.",
-            prompt_level=2,
+            prompt_level=3,
             snapshot=first.snapshot,
         )
     assert exc_info.value.code == "LOCKED_READING_MUTATION"

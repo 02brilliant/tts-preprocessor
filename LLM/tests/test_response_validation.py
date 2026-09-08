@@ -6,7 +6,6 @@ from LLM.provenance import build_normalization_snapshot
 from LLM.client import LLMResponseError
 from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.response_validation import LLMStageContractError, validate_response
-from LLM.stage4_preprocessor import preprocess_stage4
 from LLM.stage5_preprocessor import preprocess_stage5
 from engine.span_engine.transform import transform_with_trace
 
@@ -88,15 +87,15 @@ def test_level5_inherits_level4_natural_speech_contraction() -> None:
     assert validate_response(source, output, prompt_level=3) == output
 
 
-def test_level4_accepts_code_authorized_contraction_over_locked_overlay() -> None:
-    overlay = apply_pronunciation_overlay("상견례입니다.", stage=4)
-    prepared = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
+def test_level5_accepts_code_authorized_contraction_over_locked_overlay() -> None:
+    overlay = apply_pronunciation_overlay("상견례입니다.", stage=5)
+    prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
     output = "상견녭니다."
 
     assert validate_response(
         prepared.text,
         output,
-        prompt_level=2,
+        prompt_level=3,
         snapshot=prepared.snapshot,
         candidates=prepared.work_plan.to_allowed_mutations(),
     ) == output
@@ -133,15 +132,19 @@ def test_level5_rejects_unregistered_general_g2p() -> None:
 def test_stage_outputs_form_a_controlled_processing_superset() -> None:
     source = "3.05와 색연필, 생산량을 확인했습니다."
     level3 = "삼-쩜-영오와 색연필, 생산량을 확인했습니다."
-    level4_base = apply_pronunciation_overlay(level3, stage=4)
-    level4 = level4_base.text
+    level4 = level3
+    level5_base = apply_pronunciation_overlay(level3, stage=5)
+    level5 = level5_base.text
 
     assert validate_response(source, level3, prompt_level=1) == level3
-    assert level4 == "삼-쩜-영오와 색년필, 생산냥을 확인했습니다."
-    assert validate_response(level4, level4, prompt_level=2, snapshot=level4_base.snapshot) == level4
+    assert validate_response(source, level4, prompt_level=2) == level4
+    assert level5 == "삼-쩜-영오와 색년필, 생산냥을 확인했습니다."
+    assert validate_response(level5, level5, prompt_level=3, snapshot=level5_base.snapshot) == level5
 
     with pytest.raises(LLMStageContractError):
-        validate_response(source, level4, prompt_level=1)
+        validate_response(source, level5, prompt_level=1)
+    with pytest.raises(LLMStageContractError):
+        validate_response(source, level5, prompt_level=2)
 
 
 @pytest.mark.parametrize(

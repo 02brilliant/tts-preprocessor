@@ -24,10 +24,12 @@ def apply_pronunciation_overlay(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> PronunciationOverlayResult:
-    """Apply fixed stage-4 pronunciation entries without changing stage 2.
+    """Apply fixed pronunciation entries for stage 5 without changing stage 2.
 
-    The returned snapshot locks every generated pronunciation so the level-4/5
-    LLM can add only its closed, stage-specific changes around it.
+    Stage 3/4 leave the text unchanged. Stage 5 locks every generated
+    pronunciation so its LLM pass can add only closed, stage-specific changes
+    around it. Provenance keeps the historical ``GENERATED_STAGE4_PRONUNCIATION``
+    label for validator compatibility.
     """
 
     if not isinstance(normalized_text, str):
@@ -47,7 +49,7 @@ def apply_pronunciation_overlay(
         normalized_text,
         mutations=mutations,
         snapshot=active_snapshot,
-        owner="stage4_pronunciation_overlay",
+        owner="stage5_pronunciation_overlay",
         provenance="GENERATED_STAGE4_PRONUNCIATION",
     )
 

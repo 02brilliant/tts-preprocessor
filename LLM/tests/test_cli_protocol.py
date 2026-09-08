@@ -195,7 +195,7 @@ def test_integrated_entrypoint_error_includes_rule_output(monkeypatch, capsys) -
     assert payload == {"ok": False, "status": 400, "detail": "Unsupported LLM model.", "normalized_text": "규칙 결과"}
 
 
-def test_level4_fixed_overlay_runs_without_llm_and_preserves_normalized_text(
+def test_level4_does_not_apply_deterministic_overlay(
     monkeypatch,
     capsys,
 ) -> None:
@@ -226,7 +226,7 @@ def test_level4_fixed_overlay_runs_without_llm_and_preserves_normalized_text(
     payload = json.loads(capsys.readouterr().out)
     assert payload["level"] == 4
     assert payload["normalized_text"] == "생산량은 늘었습니다."
-    assert payload["speech_text"] == "생산냥은 늘었습니다."
+    assert payload["speech_text"] == "생산량은 늘었습니다."
     assert payload["llm_called"] is False
     assert calls == []
 

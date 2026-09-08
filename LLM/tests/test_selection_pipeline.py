@@ -111,9 +111,22 @@ def test_selection_plan_rejects_cross_stage_use() -> None:
         plan.validate_for_text("현장에 있는 기자입니다.", stage=4)
 
 
-def test_stage4_preprocessor_preserves_overlay_and_adds_plan() -> None:
-    overlay = apply_pronunciation_overlay("상견례입니다.", stage=4)
-    prepared = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
+def test_stage4_preprocessor_does_not_apply_pronunciation_overlay() -> None:
+    prepared = preprocess_stage4("상견례입니다.")
+
+    assert prepared.text == "상견례입니다."
+    combined = next(
+        candidate
+        for candidate in prepared.work_plan.candidates
+        if "contraction" in candidate.kind
+    )
+    assert combined.kind == "natural_speech_contraction"
+    assert combined.options == ('상견롑니다',)
+
+
+def test_stage5_preprocessor_applies_overlay_then_locked_contraction() -> None:
+    overlay = apply_pronunciation_overlay("상견례입니다.", stage=5)
+    prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
 
     assert prepared.text == "상견녜입니다."
     combined = next(

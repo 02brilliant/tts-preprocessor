@@ -106,15 +106,15 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         rule_output = transform_output(original_text)
         normalized_text = rule_output.normalized_text
         snapshot = build_normalization_snapshot(rule_output)
-        overlay = apply_pronunciation_overlay(
-            normalized_text,
-            stage=4 if stage_level == 5 else stage_level,
-            snapshot=snapshot,
-        )
         selection_plan = None
         if stage_level == 5:
             from LLM.stage5_preprocessor import preprocess_stage5
 
+            overlay = apply_pronunciation_overlay(
+                normalized_text,
+                stage=5,
+                snapshot=snapshot,
+            )
             stage5 = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
             llm_input_text = stage5.text
             llm_snapshot = stage5.snapshot
@@ -122,14 +122,14 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         elif stage_level == 4:
             from LLM.stage4_preprocessor import preprocess_stage4
 
-            stage4 = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
+            stage4 = preprocess_stage4(normalized_text, snapshot=snapshot)
             llm_input_text = stage4.text
             llm_snapshot = stage4.snapshot
             selection_plan = stage4.work_plan
         else:
             from LLM.stage3_preprocessor import preprocess_stage3
 
-            stage3 = preprocess_stage3(overlay.text, snapshot=overlay.snapshot)
+            stage3 = preprocess_stage3(normalized_text, snapshot=snapshot)
             llm_input_text = stage3.text
             llm_snapshot = stage3.snapshot
             selection_plan = stage3.work_plan

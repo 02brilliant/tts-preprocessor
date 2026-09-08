@@ -114,13 +114,31 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
     rule_output = transform_output(case.text)
     normalized_text = rule_output.normalized_text
     snapshot = build_normalization_snapshot(rule_output)
-    overlay = apply_pronunciation_overlay(
-        normalized_text,
-        stage=stage,
-        snapshot=snapshot,
-    )
-    llm_input_text = overlay.text
-    llm_snapshot = overlay.snapshot
+    llm_input_text = normalized_text
+    llm_snapshot = snapshot
+    if stage == 5:
+        overlay = apply_pronunciation_overlay(
+            normalized_text,
+            stage=5,
+            snapshot=snapshot,
+        )
+        from LLM.stage5_preprocessor import preprocess_stage5
+
+        prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+        llm_input_text = prepared.text
+        llm_snapshot = prepared.snapshot
+    elif stage == 4:
+        from LLM.stage4_preprocessor import preprocess_stage4
+
+        prepared = preprocess_stage4(normalized_text, snapshot=snapshot)
+        llm_input_text = prepared.text
+        llm_snapshot = prepared.snapshot
+    elif stage == 3:
+        from LLM.stage3_preprocessor import preprocess_stage3
+
+        prepared = preprocess_stage3(normalized_text, snapshot=snapshot)
+        llm_input_text = prepared.text
+        llm_snapshot = prepared.snapshot
     decision = decide_llm_invocation(llm_input_text, stage_level=stage)
     if not decision.call_llm:
         return {
