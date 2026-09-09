@@ -81,7 +81,7 @@ class VllmSettings:
     max_parallel_paragraphs: int = 8
 
 
-def _load_positive_timeout(environment_name: str, default: str = "300") -> float:
+def _load_positive_timeout(environment_name: str, default: str = "15") -> float:
     timeout_raw = os.getenv(environment_name, default).strip()
     try:
         timeout_seconds = float(timeout_raw)

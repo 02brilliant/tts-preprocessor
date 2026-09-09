@@ -34,7 +34,9 @@ LEVEL_3_4_ALLOWED_KEYS = frozenset(
         "llm_elapsed_ms",
         "llm_called",
         "llm_skip_reason",
-        "rejected_speech_text",
+        "llm_status",
+        "fallback_used",
+        "fallback_reason",
         "validation_failure",
     }
 )

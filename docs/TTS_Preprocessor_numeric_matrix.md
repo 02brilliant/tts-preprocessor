@@ -358,9 +358,11 @@ contextual deferred surfaces regardless of value. Protected/code-like owners
 remain higher priority.
 
 Values below 40 retain the conservative contextual gate. The exact centralized
-counter-noun inventory is `자동차`, `차량`, `장비`, `버스`, `서버`, and
-`카메라`. In addition to the immediately preceding lexical noun and narrow
-adjacent continuation, the gate accepts only
+counter-noun inventory contains the baseline machine nouns `자동차`, `차량`,
+`장비`, `버스`, `서버`, and `카메라`, plus the reviewed aircraft group
+`항공기`, `비행기`, `여객기`, `전투기`, `수송기`, `정찰기`, `폭격기`,
+`헬리콥터`, `헬기`, `드론`, and `무인기`. In addition to the immediately
+preceding lexical noun and narrow adjacent continuation, the gate accepts only
 `registered noun + 은/는/이/가 + space + 모두/총 + space + N대`. It does not
 cross punctuation or infer arbitrary nouns, verbs, or distant context.
 
@@ -370,6 +372,7 @@ cross punctuation or infer arbitrary nouns, verbs, or distant context.
 | spaced relation | `2 대 1` | existing `이 대 일` |
 | ordinal | `제2대` | existing `제 이대` |
 | explicit registered counter | `차량 3대` | `차량 세 대` |
+| explicit registered aircraft counter | `항공기 8대` | `항공기 여덟 대` |
 | topic/quantity registered counter | `자동차는 모두 3대` | `자동차는 모두 세 대` |
 | decimal counter candidate | `장비 1.5대` | preserve |
 | narrow adjacent continuation | `차량 2대 1대를` | `차량 두 대 한 대를` |

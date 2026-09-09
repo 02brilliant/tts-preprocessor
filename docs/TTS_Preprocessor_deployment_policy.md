@@ -181,9 +181,26 @@ The rule
 endpoint remains independently usable as a final TTS input path.
 The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not expose rule-reading lock
-metadata, use repeated stability sampling, or automatically retry. Levels 4 and 5
-fall back to their locked `stage4_base_text` and `stage5_base_text` after a
-Critical/High validation failure; level 3 retains its existing error contract.
+metadata, use repeated stability sampling, or automatically retry. Levels 3–5
+fall back to their locked `stage3_base_text`, `stage4_base_text`, or
+`stage5_base_text` after a contract failure, provider timeout, unusable response,
+or provider outage. A failed batch does not discard independently validated
+batches.
+
+Provider deadlines default to 15 seconds. The API limits an integrated LLM
+process to 20 seconds and then invokes the same packaged executable with
+`--rules-only`, limited to 5 seconds. This preserves the selected stage's
+deterministic preprocessing without importing transformation source. Each API
+process admits at most four in-flight LLM calls per model. Three consecutive
+failures open that model's circuit for 30 seconds; circuit-open and overloaded
+requests immediately use the packaged rules-only path. These controls do not
+retry the LLM request.
+
+Only code-composed `speech_text` may reach the public API, Web display, copy
+surface, or TTS input. Raw/rejected model text, wrappers, JSON, explanations,
+and tags MUST NOT be returned through those paths. Public diagnostics are
+limited to status/reason fields and optional validation code, severity, and
+message without the rejected output.
 
 The active prompt MUST present that `normalized_text` as the current execution
 payload, outside documentation/example code fences. Response validation MUST

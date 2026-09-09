@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -18,6 +20,20 @@ _LOGGER = logging.getLogger(__name__)
 _FALLBACK_LOG_RE = re.compile(
     r"level(?P<level>[45])_validation_fallback code=(?P<code>[A-Z0-9_]+) "
     r"severity=(?P<severity>Critical|High)"
+)
+_LLM_STATUSES = frozenset(
+    {
+        "applied",
+        "partial",
+        "invalid_response",
+        "timeout",
+        "unavailable",
+        "skipped",
+        "rules_only",
+        "process_timeout",
+        "circuit_open",
+        "overloaded",
+    }
 )
 # API production runtime resolves and executes packaged binaries instead of
 # importing engine.* or LLM.* source modules from the deployed server filesystem.
@@ -237,6 +253,7 @@ def run_integrated_binary(
     level: int,
     model: str | None = None,
     binary_path: Path | None = None,
+    rules_only: bool = False,
 ) -> dict:
     """Run one packaged level-3/4/5 binary from original text to final speech."""
 
@@ -246,23 +263,75 @@ def run_integrated_binary(
         raise TypeError("model must be str or None")
     if isinstance(level, bool) or level not in {3, 4, 5}:
         raise ValueError("level must be 3, 4, or 5")
+    if not isinstance(rules_only, bool):
+        raise TypeError("rules_only must be bool")
 
     runtime_binary = binary_path or resolve_integrated_binary_path(level)
-    command = [str(runtime_binary), "--json"]
-    if model is not None:
+    command = (
+        _rules_only_command(runtime_binary, model=model)
+        if rules_only
+        else [str(runtime_binary), "--json"]
+    )
+    if model is not None and not rules_only:
         command.extend(["--model", model])
 
-    result = subprocess.run(
-        command,
-        input=text,
-        capture_output=True,
-        text=True,
-        check=False,
+    process_timeout = _positive_timeout_env(
+        "TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS"
+        if rules_only
+        else "TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS",
+        5.0 if rules_only else 20.0,
     )
+    started_at = time.perf_counter()
+    forced_fallback = False
+    try:
+        result = subprocess.run(
+            command,
+            input=text,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=process_timeout,
+        )
+    except subprocess.TimeoutExpired as initial_timeout:
+        if rules_only:
+            raise BinaryRuntimeError(
+                "Integrated rules-only runtime timed out."
+            ) from initial_timeout
+        forced_fallback = True
+        fallback_command = _rules_only_command(runtime_binary, model=model)
+        try:
+            result = subprocess.run(
+                fallback_command,
+                input=text,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=_positive_timeout_env(
+                    "TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS",
+                    5.0,
+                ),
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise BinaryRuntimeError(
+                "Integrated runtime and its rules-only fallback both timed out."
+            ) from exc
     raw_output = result.stdout.strip() or result.stderr.strip()
     if level in {4, 5}:
         _log_validation_fallback(result.stderr)
     payload = _parse_llm_stage_payload(raw_output)
+    if forced_fallback and result.returncode == 0 and payload.get("ok") is not False:
+        fallback_elapsed_ms = (time.perf_counter() - started_at) * 1000
+        payload.update(
+            {
+                "elapsed_ms": fallback_elapsed_ms,
+                "llm_elapsed_ms": fallback_elapsed_ms,
+                "llm_called": True,
+                "llm_skip_reason": None,
+                "llm_status": "process_timeout",
+                "fallback_used": True,
+                "fallback_reason": "INTEGRATED_PROCESS_TIMEOUT",
+            }
+        )
     if result.returncode != 0 or payload.get("ok") is False:
         status_code = payload.get("status")
         detail = payload.get("detail")
@@ -284,8 +353,13 @@ def run_integrated_binary(
     llm_elapsed_ms = payload.get("llm_elapsed_ms")
     llm_called = payload.get("llm_called")
     llm_skip_reason = payload.get("llm_skip_reason")
-    rejected_speech_text = payload.get("rejected_speech_text")
     validation_failure = payload.get("validation_failure")
+    llm_status = payload.get(
+        "llm_status",
+        "applied" if llm_called else "skipped",
+    )
+    fallback_used = payload.get("fallback_used", validation_failure is not None)
+    fallback_reason = payload.get("fallback_reason")
     if (
         not isinstance(normalized_text, str)
         or not normalized_text
@@ -302,9 +376,12 @@ def run_integrated_binary(
         or (not llm_called and (elapsed_ms != 0 or llm_elapsed_ms != 0))
         or (not llm_called and not isinstance(llm_skip_reason, str))
         or (llm_called and llm_skip_reason is not None)
-        or (rejected_speech_text is not None and not isinstance(rejected_speech_text, str))
         or (validation_failure is not None and not isinstance(validation_failure, dict))
-        or ((rejected_speech_text is None) != (validation_failure is None))
+        or not isinstance(llm_status, str)
+        or llm_status not in _LLM_STATUSES
+        or not isinstance(fallback_used, bool)
+        or (fallback_reason is not None and not isinstance(fallback_reason, str))
+        or (not fallback_used and fallback_reason is not None)
     ):
         raise BinaryRuntimeError("Integrated LLM binary returned an invalid transform payload.")
     response = {
@@ -316,38 +393,40 @@ def run_integrated_binary(
         "llm_elapsed_ms": float(llm_elapsed_ms),
         "llm_called": llm_called,
         "llm_skip_reason": llm_skip_reason,
+        "llm_status": llm_status,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
     }
-    if rejected_speech_text is not None:
+    if validation_failure is not None:
         code = validation_failure.get("code")
         severity = validation_failure.get("severity")
         message = validation_failure.get("message")
         if not all(isinstance(value, str) and value for value in (code, severity, message)):
             raise BinaryRuntimeError("Integrated LLM binary returned an invalid validation failure payload.")
-        output_start = validation_failure.get("output_start")
-        output_end = validation_failure.get("output_end")
-        if (output_start is None) != (output_end is None) or (
-            output_start is not None
-            and (
-                isinstance(output_start, bool)
-                or isinstance(output_end, bool)
-                or not isinstance(output_start, int)
-                or not isinstance(output_end, int)
-                or output_start < 0
-                or output_end <= output_start
-                or output_end > len(rejected_speech_text)
-            )
-        ):
-            raise BinaryRuntimeError("Integrated LLM binary returned invalid validation failure offsets.")
-        response["rejected_speech_text"] = rejected_speech_text
         response["validation_failure"] = {
             "code": code,
             "severity": severity,
             "message": message,
         }
-        if output_start is not None:
-            response["validation_failure"]["output_start"] = output_start
-            response["validation_failure"]["output_end"] = output_end
     return response
+
+
+def _rules_only_command(runtime_binary: Path, *, model: str | None) -> list[str]:
+    command = [str(runtime_binary), "--json", "--rules-only"]
+    if model is not None:
+        command.extend(["--model", model])
+    return command
+
+
+def _positive_timeout_env(name: str, default: float) -> float:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise BinaryRuntimeError(f"{name} must be a number.") from exc
+    if not math.isfinite(value) or value <= 0:
+        raise BinaryRuntimeError(f"{name} must be greater than zero.")
+    return value
 
 
 def _log_validation_fallback(stderr: str) -> None:
@@ -366,7 +445,9 @@ def _parse_llm_stage_payload(raw_output: str) -> dict:
     try:
         payload = json.loads(raw_output)
     except json.JSONDecodeError as exc:
-        raise BinaryRuntimeError(raw_output) from exc
+        raise BinaryRuntimeError(
+            "Integrated LLM binary returned invalid JSON."
+        ) from exc
     if not isinstance(payload, dict):
         raise BinaryRuntimeError("LLM stage binary returned a non-object payload.")
     return payload

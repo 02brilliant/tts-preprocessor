@@ -40,7 +40,8 @@ def test_frontend_has_five_level_control_model_control_and_outputs() -> None:
     assert "규칙 처리 텍스트 복사" in web
     assert "LLM 처리 텍스트 복사" in web
     assert "setCopyableText(1, normalizedText)" in web
-    assert "setCopyableText(2, displayedSpeechText)" in web
+    assert "setCopyableText(2, speechText)" in web
+    assert "setCopyableText(2, rejectedSpeechText)" not in web
     assert "navigator.clipboard.writeText" in web
     assert 'id="stage-3-output"' not in web
 
@@ -58,7 +59,7 @@ def test_frontend_calls_one_transform_endpoint_for_every_level() -> None:
     assert "JSON.stringify(requestBody)" in web
     assert "stage: stageName" not in web
     assert "prosody_text" not in web
-    assert "규칙 처리 결과는 유지됩니다." in web
+    assert "TTS용 복사 텍스트는 규칙 처리 결과로 복구했습니다." in web
     assert "selectedCorrectionLevel === 0" in web
     assert "setCorrectionLevel(button.dataset.correctionLevel)" in web
     assert 'data.llm_called === false' in web
@@ -88,7 +89,7 @@ def test_frontend_has_stage_colors_legend_and_provenance_rendering() -> None:
     assert "escapeHtml" in diff_source
     assert ".diff-contract-violation" in web
     assert "legend-violation" in web
-    assert "renderSpeechContractViolation" in web
+    assert "renderSpeechContractViolation" not in web
     assert "renderStage1Input" in web
     assert "speechContractParts" in diff_source
     assert "stage1InputParts" in diff_source
@@ -99,25 +100,25 @@ def test_frontend_has_stage_colors_legend_and_provenance_rendering() -> None:
     assert '"contract_violation_deleted"' in diff_source
 
 
-def test_frontend_preserves_contract_violating_llm_output() -> None:
+def test_frontend_never_copies_contract_violating_llm_output() -> None:
     web = Path("web/index.html").read_text(encoding="utf-8")
 
     assert "error.contractDetail = detail" in web
-    assert "typeof detail.speech_text" in web
-    assert "LLM 원출력을 표시했습니다." in web
-    assert "검증에 실패한 변경 또는 미처리 발화 표면" in web
-    assert "PipelineDiff.renderSpeechContractViolation" in web
-    assert "invalidStage2Ledgers" in web
-    assert "규칙 처리 결과는 유지됩니다." in web
+    assert "typeof detail.speech_text" not in web
+    assert "LLM 원출력은 표시하거나 복사하지 않습니다." in web
+    assert "PipelineDiff.renderSpeechContractViolation" not in web
+    assert "setCopyableText(2, failedNormalizedText)" in web
 
 
-def test_frontend_displays_level4_rejected_llm_output_with_failure_marking() -> None:
+def test_frontend_uses_only_safe_fallback_metadata() -> None:
     web = Path("web/index.html").read_text(encoding="utf-8")
     diff_source = Path("web/pipeline_diff.js").read_text(encoding="utf-8")
 
-    assert "rejected_speech_text" in web
-    assert "LLM 검증 실패 · 규칙 결과를 최종 출력으로 사용" in web
-    assert "거절된 변경을 주황색으로 표시했습니다." in web
+    assert "rejected_speech_text" not in web
+    assert "LLM 처리 저하 · 단계별 확정 결과를 최종 출력으로 사용" in web
+    assert "data.fallback_used === true" in web
+    assert 'typeof data.fallback_reason === "string"' in web
+    assert ': "안전 복구"' in web
     assert 'type: "contract_violation"' in diff_source
     assert 'type: "contract_violation_deleted"' in diff_source
 

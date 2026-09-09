@@ -30,6 +30,11 @@ def parse_args(*, stage_level: int) -> argparse.Namespace:
         action="store_true",
         help="Validate bundled rule, prompt, and model assets without calling an LLM.",
     )
+    parser.add_argument(
+        "--rules-only",
+        action="store_true",
+        help="Apply the selected stage's deterministic preprocessing without calling an LLM.",
+    )
     return parser.parse_args()
 
 
@@ -73,8 +78,10 @@ def run(*, stage_level: int, prompt_level: int) -> int:
     rule_elapsed_ms = 0.0
     llm_elapsed_ms = 0.0
     upstream_elapsed_ms = 0.0
-    rejected_speech_text: str | None = None
     validation_issue = None
+    llm_status = "skipped"
+    fallback_used = False
+    fallback_reason: str | None = None
     try:
         if args.list_models:
             model_config = load_model_config()
@@ -132,7 +139,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         if selection_plan is not None:
             decision_kwargs["selection_plan"] = selection_plan
         decision = decide_llm_invocation(llm_input_text, **decision_kwargs)
-        if decision.call_llm:
+        rules_only = bool(getattr(args, "rules_only", False))
+        llm_called = decision.call_llm and not rules_only
+        if llm_called:
             llm_started_at = time.perf_counter()
             llm_kwargs = {
                 "model": args.model,
@@ -146,8 +155,10 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             speech_text = result.speech_text
             selected_model = result.model
             upstream_elapsed_ms = result.elapsed_ms
+            llm_status = getattr(result, "llm_status", "applied")
+            fallback_used = result.validation_fallback
+            fallback_reason = getattr(result, "fallback_reason", None)
             if result.validation_fallback:
-                rejected_speech_text = result.rejected_speech_text
                 validation_issue = result.validation_issues[0]
         else:
             model_config = load_model_config()
@@ -155,6 +166,9 @@ def run(*, stage_level: int, prompt_level: int) -> int:
             if model_config.get(selected_model) is None:
                 raise UnsupportedLLMModelError("Unsupported LLM model.")
             speech_text = llm_input_text
+            llm_status = "rules_only" if rules_only else "skipped"
+            fallback_used = rules_only
+            fallback_reason = "RULES_ONLY_REQUESTED" if rules_only else None
     except Exception as exc:
         status, detail = classify_llm_stage_error(exc)
         if args.json or args.list_models:
@@ -171,30 +185,35 @@ def run(*, stage_level: int, prompt_level: int) -> int:
 
     if args.json:
         response_payload = {
-                "ok": True,
-                "level": stage_level,
-                "normalized_text": normalized_text,
-                "speech_text": speech_text,
-                "model": selected_model,
-                # elapsed_ms is retained for clients that already use the
-                # provider request duration. The two explicit fields are the
-                # integrated runtime timings shown by the web UI.
-                "elapsed_ms": round(upstream_elapsed_ms, 3),
-                "rule_elapsed_ms": round(rule_elapsed_ms, 3),
-                "llm_elapsed_ms": round(llm_elapsed_ms, 3),
-                "llm_called": decision.call_llm,
-                "llm_skip_reason": None if decision.call_llm else decision.reason,
+            "ok": True,
+            "level": stage_level,
+            "normalized_text": normalized_text,
+            "speech_text": speech_text,
+            "model": selected_model,
+            # elapsed_ms is retained for clients that already use the
+            # provider request duration. The two explicit fields are the
+            # integrated runtime timings shown by the web UI.
+            "elapsed_ms": round(upstream_elapsed_ms, 3),
+            "rule_elapsed_ms": round(rule_elapsed_ms, 3),
+            "llm_elapsed_ms": round(llm_elapsed_ms, 3),
+            "llm_called": llm_called,
+            "llm_skip_reason": (
+                None
+                if llm_called
+                else "rules_only_requested"
+                if rules_only
+                else decision.reason
+            ),
+            "llm_status": llm_status,
+            "fallback_used": fallback_used,
+            "fallback_reason": fallback_reason,
         }
-        if rejected_speech_text is not None and validation_issue is not None:
-            response_payload["rejected_speech_text"] = rejected_speech_text
+        if validation_issue is not None:
             response_payload["validation_failure"] = {
                 "code": validation_issue.code,
                 "severity": validation_issue.severity,
                 "message": validation_issue.message,
             }
-            if validation_issue.output_start is not None and validation_issue.output_end is not None:
-                response_payload["validation_failure"]["output_start"] = validation_issue.output_start
-                response_payload["validation_failure"]["output_end"] = validation_issue.output_end
         _print_json(response_payload)
         return 0
 

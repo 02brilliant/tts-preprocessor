@@ -224,8 +224,29 @@ def test_openai_settings_load_defaults(monkeypatch) -> None:
     settings = load_openai_settings()
 
     assert settings.api_key == "dummy-openai-test-key"
-    assert settings.timeout_seconds == 300
+    assert settings.timeout_seconds == 15
     assert settings.reasoning_effort == "medium"
+
+
+def test_all_provider_timeout_defaults_are_fifteen_seconds(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-local-test-token")
+    monkeypatch.setenv("GEMINI_API_KEY", "dummy-gemini-test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-openai-test-key")
+    monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
+    monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
+    for name in (
+        "LOCAL_LLM_TIMEOUT_SECONDS",
+        "GEMINI_TIMEOUT_SECONDS",
+        "OPENAI_TIMEOUT_SECONDS",
+        "VLLM_TIMEOUT_SECONDS",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    assert load_runtime_settings().timeout_seconds == 15
+    assert load_gemini_settings().timeout_seconds == 15
+    assert load_openai_settings().timeout_seconds == 15
+    assert load_vllm_settings().timeout_seconds == 15
 
 
 def test_openai_settings_load_timeout_and_reasoning_effort(monkeypatch) -> None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -31,8 +33,20 @@ from api.binary_runtime import (
 
 app = FastAPI()
 
-# Production transform requests call exactly one packaged binary for levels 1-4.
+# Production transform requests call packaged binaries for levels 1-5.
 # LLM provider credentials stay in process environment from llm.env.
+
+_LLM_RESILIENCE_LOCK = threading.Lock()
+_LLM_ACTIVE_CALLS: dict[str, int] = {}
+_LLM_CIRCUIT_FAILURES: dict[str, int] = {}
+_LLM_CIRCUIT_OPEN_UNTIL: dict[str, float] = {}
+_LLM_CIRCUIT_FAILURE_THRESHOLD = 3
+_LLM_CIRCUIT_COOLDOWN_SECONDS = 30.0
+_LLM_MAX_INFLIGHT_PER_MODEL = 4
+_LLM_FAILURE_STATUSES = frozenset(
+    {"timeout", "unavailable", "invalid_response", "process_timeout"}
+)
+_LLM_LEGACY_DEGRADE_STATUS_CODES = frozenset({429, 502, 503, 504})
 
 # ✅ web과 downloads를 함께 공개
 app.mount("/web", StaticFiles(directory="web", html=True), name="web")
@@ -162,8 +176,32 @@ def transform_request_payload(payload: dict) -> dict:
     if level in {3, 4, 5}:
         if include_debug:
             raise ValueError("include_debug is supported only for levels 1 and 2")
-        result = run_integrated_binary(text, level=level, model=model)
-        return result
+        resilience_key = model or "__default__"
+        degrade_status = _acquire_llm_slot(resilience_key)
+        if degrade_status is not None:
+            return _run_rules_only_degrade(
+                text,
+                level=level,
+                model=model,
+                status=degrade_status,
+            )
+        try:
+            try:
+                result = run_integrated_binary(text, level=level, model=model)
+            except LLMStageRuntimeError as exc:
+                if exc.status_code not in _LLM_LEGACY_DEGRADE_STATUS_CODES:
+                    raise
+                _record_llm_failure(resilience_key)
+                return _run_rules_only_degrade(
+                    text,
+                    level=level,
+                    model=model,
+                    status="unavailable",
+                )
+            _record_llm_result(resilience_key, result)
+            return result
+        finally:
+            _release_llm_slot(resilience_key)
 
     if model is not None:
         raise ValueError("model is supported only for levels 3, 4, and 5")
@@ -183,6 +221,93 @@ def transform_request_payload(payload: dict) -> dict:
             else run_transform_binary(text)
         ),
     }
+
+
+def _acquire_llm_slot(key: str) -> str | None:
+    now = time.monotonic()
+    with _LLM_RESILIENCE_LOCK:
+        open_until = _LLM_CIRCUIT_OPEN_UNTIL.get(key, 0.0)
+        if open_until > now:
+            return "circuit_open"
+        if open_until:
+            _LLM_CIRCUIT_OPEN_UNTIL.pop(key, None)
+            _LLM_CIRCUIT_FAILURES[key] = 0
+        active = _LLM_ACTIVE_CALLS.get(key, 0)
+        if active >= _LLM_MAX_INFLIGHT_PER_MODEL:
+            return "overloaded"
+        _LLM_ACTIVE_CALLS[key] = active + 1
+    return None
+
+
+def _release_llm_slot(key: str) -> None:
+    with _LLM_RESILIENCE_LOCK:
+        active = _LLM_ACTIVE_CALLS.get(key, 0)
+        if active <= 1:
+            _LLM_ACTIVE_CALLS.pop(key, None)
+        else:
+            _LLM_ACTIVE_CALLS[key] = active - 1
+
+
+def _record_llm_failure(key: str) -> None:
+    with _LLM_RESILIENCE_LOCK:
+        failures = _LLM_CIRCUIT_FAILURES.get(key, 0) + 1
+        _LLM_CIRCUIT_FAILURES[key] = failures
+        if failures >= _LLM_CIRCUIT_FAILURE_THRESHOLD:
+            _LLM_CIRCUIT_OPEN_UNTIL[key] = (
+                time.monotonic() + _LLM_CIRCUIT_COOLDOWN_SECONDS
+            )
+
+
+def _record_llm_result(key: str, result: dict) -> None:
+    status = result.get("llm_status")
+    fallback_reason = result.get("fallback_reason")
+    provider_partial = status == "partial" and isinstance(
+        fallback_reason, str
+    ) and fallback_reason.startswith("LLM_UPSTREAM_")
+    if status in _LLM_FAILURE_STATUSES or provider_partial:
+        _record_llm_failure(key)
+        return
+    if status == "applied":
+        with _LLM_RESILIENCE_LOCK:
+            _LLM_CIRCUIT_FAILURES.pop(key, None)
+            _LLM_CIRCUIT_OPEN_UNTIL.pop(key, None)
+
+
+def _run_rules_only_degrade(
+    text: str,
+    *,
+    level: int,
+    model: str | None,
+    status: str,
+) -> dict:
+    result = run_integrated_binary(
+        text,
+        level=level,
+        model=model,
+        rules_only=True,
+    )
+    reason = {
+        "circuit_open": "LLM_CIRCUIT_OPEN",
+        "overloaded": "LLM_CONCURRENCY_LIMIT",
+        "unavailable": "LLM_UPSTREAM_UNAVAILABLE",
+    }[status]
+    result.update(
+        {
+            "llm_status": status,
+            "fallback_used": True,
+            "fallback_reason": reason,
+            "llm_called": False,
+            "llm_skip_reason": status,
+        }
+    )
+    return result
+
+
+def _reset_llm_resilience_state_for_tests() -> None:
+    with _LLM_RESILIENCE_LOCK:
+        _LLM_ACTIVE_CALLS.clear()
+        _LLM_CIRCUIT_FAILURES.clear()
+        _LLM_CIRCUIT_OPEN_UNTIL.clear()
 
 
 def main() -> None:

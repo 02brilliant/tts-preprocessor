@@ -6,7 +6,13 @@ import json
 import logging
 import time
 
-from LLM.client import GenerationResult, generate
+from LLM.client import (
+    GenerationResult,
+    LLMClientError,
+    LLMResponseError,
+    LLMTimeoutError,
+    generate,
+)
 from LLM.config import (
     ConfigurationError,
     ModelConfig,
@@ -16,8 +22,18 @@ from LLM.config import (
     load_runtime_settings,
     load_vllm_settings,
 )
-from LLM.gemini_client import generate_gemini
-from LLM.openai_client import generate_openai
+from LLM.gemini_client import (
+    GeminiClientError,
+    GeminiResponseError,
+    GeminiTimeoutError,
+    generate_gemini,
+)
+from LLM.openai_client import (
+    OpenAIClientError,
+    OpenAIResponseError,
+    OpenAITimeoutError,
+    generate_openai,
+)
 from LLM.prompt_template import build_prompt
 from LLM.response_validation import LLMStageContractError, validate_response
 from LLM.selection_pipeline import (
@@ -27,7 +43,12 @@ from LLM.selection_pipeline import (
     compose_selection,
 )
 from LLM.validation_models import NormalizationSnapshot, ValidationIssue
-from LLM.vllm_client import generate_vllm
+from LLM.vllm_client import (
+    VllmClientError,
+    VllmResponseError,
+    VllmTimeoutError,
+    generate_vllm,
+)
 
 
 class UnsupportedLLMModelError(ValueError):
@@ -44,6 +65,8 @@ class LLMStageResult:
     rejected_speech_text: str | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    llm_status: str = "applied"
+    fallback_reason: str | None = None
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,6 +76,28 @@ Stage5WorkPlan = SelectionPlan
 @dataclass(frozen=True)
 class _BatchGenerationResult(GenerationResult):
     batches: tuple[tuple[SelectionPlan, str], ...] = ()
+    provider_failures: tuple[ValidationIssue, ...] = ()
+
+
+_RECOVERABLE_PROVIDER_ERRORS = (
+    ConfigurationError,
+    LLMClientError,
+    GeminiClientError,
+    OpenAIClientError,
+    VllmClientError,
+)
+_PROVIDER_TIMEOUT_ERRORS = (
+    LLMTimeoutError,
+    GeminiTimeoutError,
+    OpenAITimeoutError,
+    VllmTimeoutError,
+)
+_PROVIDER_RESPONSE_ERRORS = (
+    LLMResponseError,
+    GeminiResponseError,
+    OpenAIResponseError,
+    VllmResponseError,
+)
 
 
 def transform(
@@ -101,17 +146,30 @@ def transform(
     if definition is None:
         raise UnsupportedLLMModelError("Unsupported LLM model.")
 
-    result = _generate_with_provider(
-        model_config,
-        selected_model,
-        normalized_text,
-        prompt_level=prompt_level,
-        selection_plan=selection_plan,
-    )
+    provider_started = time.perf_counter()
+    try:
+        result = _generate_with_provider(
+            model_config,
+            selected_model,
+            normalized_text,
+            prompt_level=prompt_level,
+            selection_plan=selection_plan,
+        )
+    except _RECOVERABLE_PROVIDER_ERRORS as exc:
+        status, issue = _provider_failure(exc)
+        return LLMStageResult(
+            speech_text=normalized_text,
+            model=selected_model,
+            elapsed_ms=(time.perf_counter() - provider_started) * 1000,
+            validation_fallback=True,
+            validation_issues=(issue,),
+            llm_status=status,
+            fallback_reason=issue.code,
+        )
     batches = getattr(result, "batches", ()) or ((selection_plan, result.text),)
     accepted = []
-    issues = []
-    rejected = False
+    issues = list(getattr(result, "provider_failures", ()))
+    rejected = bool(issues)
     for batch_plan, response in batches:
         decisions, invalid = recover_selection_response(response, plan=batch_plan)
         accepted.extend(decisions)
@@ -163,6 +221,14 @@ def transform(
         if exc.severity != "Medium":
             speech_text = normalized_text
             rejected = True
+    llm_status = (
+        "partial"
+        if rejected and retained
+        else "invalid_response"
+        if rejected
+        else "applied"
+    )
+    fallback_reason = issues[0].code if rejected and issues else None
     return LLMStageResult(
         speech_text=speech_text, model=selected_model,
         elapsed_ms=result.elapsed_ms, validation_fallback=rejected,
@@ -170,6 +236,8 @@ def transform(
         rejected_speech_text=result.text if rejected else None,
         prompt_tokens=result.prompt_tokens,
         completion_tokens=result.completion_tokens,
+        llm_status=llm_status,
+        fallback_reason=fallback_reason,
     )
 
 
@@ -214,13 +282,16 @@ def _generate_with_provider(
     started = time.perf_counter()
 
     def run(plan):
-        return _generate_single(
-            model_config,
-            selected_model,
-            normalized_text,
-            prompt_level=prompt_level,
-            selection_plan=plan,
-        )
+        try:
+            return plan, _generate_single(
+                model_config,
+                selected_model,
+                normalized_text,
+                prompt_level=prompt_level,
+                selection_plan=plan,
+            ), None
+        except _RECOVERABLE_PROVIDER_ERRORS as exc:
+            return plan, None, exc
 
     definition = model_config.get(selected_model)
     if definition is not None and definition.provider == "vllm":
@@ -229,16 +300,26 @@ def _generate_with_provider(
             len(plans),
         )
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            results = list(executor.map(run, plans))
+            outcomes = list(executor.map(run, plans))
     else:
-        results = [run(plan) for plan in plans]
+        outcomes = [run(plan) for plan in plans]
+    results = [result for _plan, result, _exc in outcomes if result is not None]
+    failures = [exc for _plan, _result, exc in outcomes if exc is not None]
+    if not results:
+        raise failures[0]
+
     def total(field):
         values = [getattr(result, field) for result in results]
         return None if any(value is None for value in values) else sum(values)
 
     return _BatchGenerationResult(
         text=json.dumps([result.text for result in results], ensure_ascii=False),
-        batches=tuple((plan, result.text) for plan, result in zip(plans, results)),
+        batches=tuple(
+            (plan, result.text)
+            for plan, result, _exc in outcomes
+            if result is not None
+        ),
+        provider_failures=tuple(_provider_failure(exc)[1] for exc in failures),
         elapsed_ms=(time.perf_counter() - started) * 1000,
         prompt_tokens=total("prompt_tokens"),
         completion_tokens=total("completion_tokens"),
@@ -300,6 +381,24 @@ def _generate_single(
     raise ConfigurationError("Configured LLM provider is unsupported.")
 
 
+def _provider_failure(exc: BaseException) -> tuple[str, ValidationIssue]:
+    if isinstance(exc, _PROVIDER_TIMEOUT_ERRORS):
+        return "timeout", ValidationIssue(
+            "LLM_UPSTREAM_TIMEOUT",
+            "Medium",
+            "LLM response exceeded the configured deadline; the pre-LLM stage base was used.",
+        )
+    if isinstance(exc, _PROVIDER_RESPONSE_ERRORS):
+        return "invalid_response", ValidationIssue(
+            "LLM_UPSTREAM_INVALID_RESPONSE",
+            "Medium",
+            "LLM returned no usable response; the pre-LLM stage base was used.",
+        )
+    return "unavailable", ValidationIssue(
+        "LLM_UPSTREAM_UNAVAILABLE",
+        "Medium",
+        "LLM service was unavailable; the pre-LLM stage base was used.",
+    )
 
 __all__ = [
     "LLMStageResult",

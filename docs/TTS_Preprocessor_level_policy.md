@@ -137,11 +137,13 @@ speech_text 또는 stage4_base_text fallback
 
 Critical은 의미·숫자·보호 표면·locked reading·문장 구조 훼손이다. High는 예상 밖 한국어 rewrite, lexicon 위반, 미승인 발음 전사다. Medium은 잔여 발화 표면과 운율·형식 문제다.
 
-3~5단계의 잘못된 선택 또는 Critical/High 검증 실패는 retry 없이 문제가 있는 후보만 각 단계의 LLM 입력인 `stage3_base_text`, `stage4_base_text`, `stage5_base_text`로 fallback한다. 독립적으로 검증된 변경과 확정 잔여 읽기·overlay 발음은 보존된다. 중복 ID와 겹치는 후보는 충돌하는 변경을 모두 취소한다. JSON 자체가 깨져 안전하게 해석할 수 없으면 해당 배치를 복원하며 다른 배치의 정상 변경은 유지한다. 출력은 코드가 보유한 후보 문자열과 LLM 이전 문자열만 조합한다. 모델 응답의 JSON·토큰·설명은 speech_text에 삽입하지 않는다. 선택적 `rejected_speech_text`와 `validation_failure`는 거절된 응답과 실패 사유를 전달한다. 미해결 잔여 표면은 Medium 진단으로 기록하고 보존된 문자열을 반환한다. 공급자/네트워크 오류는 기존 오류 계약을 유지한다. 허용 후보 중 의미 선택의 정답 여부를 기계 검증만으로 모두 보장하는 것은 아니다.
+3~5단계의 잘못된 선택 또는 Critical/High 검증 실패는 retry 없이 문제가 있는 후보만 각 단계의 LLM 입력인 `stage3_base_text`, `stage4_base_text`, `stage5_base_text`로 fallback한다. 독립적으로 검증된 변경과 확정 잔여 읽기·overlay 발음은 보존된다. 중복 ID와 겹치는 후보는 충돌하는 변경을 모두 취소한다. JSON 자체가 깨져 안전하게 해석할 수 없으면 해당 배치를 복원하며 다른 배치의 정상 변경은 유지한다. 배치 공급자 실패도 해당 배치만 복원하고 다른 배치의 정상 변경을 유지한다. 출력은 코드가 보유한 후보 문자열과 LLM 이전 문자열만 조합한다. 모델 응답의 JSON·토큰·설명·태그는 `speech_text`에 삽입하지 않는다.
+
+공급자 timeout·연결 실패·사용 불가·해석할 수 없는 응답은 요청 자체를 실패시키지 않고 해당 단계의 LLM 이전 base를 반환한다. 공급자 기본 제한시간은 15초이고, API의 통합 실행모듈 제한시간은 20초다. 실행모듈이 제한시간을 넘으면 동일한 실행모듈을 `--rules-only`로 최대 5초 재실행한다. API는 model별 최대 4개 LLM 요청만 동시에 허용하고, 연속 3회 실패한 model은 30초 동안 회로를 열어 새 요청을 규칙 전용 경로로 즉시 보낸다. 미해결 잔여 표면은 Medium 진단으로 기록하고 보존된 문자열을 반환한다. 허용 후보 중 의미 선택의 정답 여부를 기계 검증만으로 모두 보장하는 것은 아니다.
 
 ## 외부 인터페이스
 
-API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 3~5단계 fallback 응답에는 UI 표시용 선택 필드 `rejected_speech_text`와 `validation_failure`를 추가할 수 있으며, 이때도 `speech_text`는 안전한 fallback 값이다.
+API는 level 0~5를 받는다. model 선택은 3~5단계에서만 허용한다. 외부 응답의 `normalized_text → speech_text` 계약과 기존 timing/gate 필드를 유지한다. 3~5단계 응답은 `llm_status`, `fallback_used`, `fallback_reason`으로 적용·부분 적용·timeout·사용 불가·무효 응답·회로 개방·과부하 상태를 구분한다. fallback 응답은 원시 모델 출력이나 `rejected_speech_text`를 외부에 노출하지 않고 실패 코드·심각도·설명만 담은 선택적 `validation_failure`를 제공한다. `speech_text`는 항상 TTS에 직접 전달 가능한 안전한 값이다.
 
 ## 품질 승인 기준
 

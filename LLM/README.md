@@ -105,7 +105,10 @@ POST /api/transform
   "rule_elapsed_ms": 4.321,
   "llm_elapsed_ms": 124.789,
   "llm_called": true,
-  "llm_skip_reason": null
+  "llm_skip_reason": null,
+  "llm_status": "applied",
+  "fallback_used": false,
+  "fallback_reason": null
 }
 ```
 
@@ -123,9 +126,11 @@ POST /api/transform
 운율용 쉼표와 ASCII 공백만 추가할 수 있다. 숫자 읽기에 포함된
 소수점·자릿수 쉼표·시각 쌍점은 숫자 읽기로 소비할 수 있으며 문장부호나
 파일 확장자의 마침표와 구분한다. 3~5단계의 잘못된 JSON·미등록 ID·범위 밖 option·후보 밖 결과는
-retry 없이 해당 후보(해석 불가능한 JSON은 해당 배치)를 각 단계의 locked base로 복원하며 검증된 변경은 유지한다. Web 화면은 원출력을 표시하고 계약 위반 변경을
-강조한다. 입력에서 삭제된 구조 문자는 취소선과 계약 위반 테두리를 함께
-표시한다.
+retry 없이 해당 후보(해석 불가능한 JSON은 해당 배치)를 각 단계의 locked base로 복원하며 검증된 변경은 유지한다.
+공급자 timeout·연결 실패·잘못된 응답도 요청 실패 대신 선택 단계의 LLM 이전
+base로 복원한다. Web과 외부 API는 모델 원출력을 표시·복사·반환하지 않으며,
+TTS에는 코드가 조합한 `speech_text`만 전달한다. 진단에는 원문 없이
+`validation_failure`, `llm_status`, `fallback_used`, `fallback_reason`만 사용한다.
 
 ## 환경변수
 
@@ -133,17 +138,26 @@ retry 없이 해당 후보(해석 불가능한 JSON은 해당 배치)를 각 단
 
 - `LOCAL_LLM_BASE_URL`: 로컬 LLM 애플리케이션 base URL
 - `LOCAL_LLM_TOKEN`: 로컬 LLM bearer token
-- `LOCAL_LLM_TIMEOUT_SECONDS`: upstream 제한시간(초), 기본값 `300`
+- `LOCAL_LLM_TIMEOUT_SECONDS`: upstream 제한시간(초), 기본값 `15`
 - `GEMINI_API_KEY`: Gemini API 전용 키
-- `GEMINI_TIMEOUT_SECONDS`: Gemini API 제한시간(초), 기본값 `300`
+- `GEMINI_TIMEOUT_SECONDS`: Gemini API 제한시간(초), 기본값 `15`
 - `OPENAI_API_KEY`: OpenAI API 전용 키
-- `OPENAI_TIMEOUT_SECONDS`: OpenAI API 제한시간(초), 기본값 `300`
+- `OPENAI_TIMEOUT_SECONDS`: OpenAI API 제한시간(초), 기본값 `15`
 - `OPENAI_REASONING_EFFORT`: GPT-5.6 추론 강도. `none`, `low`, `medium`,
   `high`, `xhigh`, `max` 중 하나이며 기본값은 `medium`
 - `VLLM_BASE_URL`: vLLM OpenAI-compatible base URL
 - `VLLM_TOKEN`: vLLM bearer token
-- `VLLM_TIMEOUT_SECONDS`: vLLM 제한시간(초), 기본값 `300`
+- `VLLM_TIMEOUT_SECONDS`: vLLM 제한시간(초), 기본값 `15`
 - `VLLM_MAX_PARALLEL_PARAGRAPHS`: vLLM 문단 동시 요청 수, 기본값 `8`
+- `TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS`: 통합 LLM 실행모듈 전체 제한시간,
+  기본값 `20`. 초과하면 같은 실행모듈의 규칙 전용 경로로 재실행한다.
+- `TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS`: 규칙 전용 복구 실행 제한시간,
+  기본값 `5`
+
+API 프로세스는 model별 동시 LLM 실행을 4개로 제한한다. 연속 3회
+timeout·연결 실패·무효 응답이면 30초 동안 회로를 열어 LLM을 호출하지 않고
+규칙 전용 결과를 반환한다. 동시 실행 한도를 넘은 요청도 기다리지 않고 같은
+안전 경로를 사용한다. 성공 응답은 해당 model의 연속 실패 횟수를 초기화한다.
 
 토큰과 API 키를 소스, 명령행 인자, Git 또는 브라우저에 넣지 않는다. Gemini
 호출은 기존 API 서버가 `x-goog-api-key` 헤더를 사용해 서버 측에서만 수행한다.
@@ -221,7 +235,7 @@ OpenAI만 사용할 때의 예시는 다음과 같다. 실제 키 값은 운영 
 ```sh
 OPENAI_API_KEY=실제_키
 OPENAI_REASONING_EFFORT=medium
-OPENAI_TIMEOUT_SECONDS=300
+OPENAI_TIMEOUT_SECONDS=15
 ```
 
 ## 확인

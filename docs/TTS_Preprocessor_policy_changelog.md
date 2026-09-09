@@ -1,5 +1,35 @@
 # TTS Preprocessor Policy Changelog
 
+## LLM outage-safe stage fallback and output isolation
+
+- Reduced provider request deadlines from 300 seconds to 15 seconds and added
+  a 20-second integrated-process deadline with a 5-second packaged
+  `--rules-only` recovery path.
+- Levels 3–5 now return their deterministic stage base after provider timeout,
+  outage, or unusable response. For batched selection, valid batches remain
+  applied while only failed batches are restored.
+- Added a per-process, per-model four-call concurrency limit and a 30-second
+  circuit that opens after three consecutive failures. Requests degraded by
+  overload or an open circuit immediately use the rules-only packaged runtime.
+- Removed rejected model text and response offsets from public CLI, API, Web,
+  copy, and TTS paths. Only code-composed `speech_text` is consumable; compact
+  status and validation metadata report degradation without exposing wrappers,
+  explanations, or tags.
+
+## Contextual aircraft `대` counter expansion
+
+- Added a separately auditable exact aircraft noun group to the centralized
+  `REGISTERED_DAE_COUNTER_NOUNS` policy. `항공기 8대` and the approved direct,
+  topic, quantity-marker, and adjacent-continuation forms now use the native
+  counter reading `여덟-대`.
+- The exact group is limited to `항공기`, `비행기`, `여객기`, `전투기`,
+  `수송기`, `정찰기`, `폭격기`, `헬리콥터`, `헬기`, `드론`, and `무인기`.
+  It does not enable arbitrary Hangul nouns or suffix inference.
+- Score relations, generations, age bands, prefixed ordinals, protected text,
+  malformed numeric cores, and unregistered nouns retain their existing owners
+  and outputs. Registry-derived tests cover every aircraft noun plus boundary
+  contrasts.
+
 ## Stage 5 exact pronunciation registry consolidation and expansion
 
 - Moved all deterministic stage-5 pronunciations into the single packaged
@@ -51,7 +81,7 @@
 - 유한 후보가 주어진 validator는 잔여 영문·숫자를 임의 한글로 바꾸는 넓은 정규식
   경로를 사용하지 않는다. 좌표별 승인 출력과 정확한 공백만 허용한다.
 - 3단계 응답 계약 위반도 locked base fallback으로 통일한다. Medium 잔여 진단은
-  요청 실패로 처리하지 않는다. provider 실패는 그대로 전달한다.
+  요청 실패로 처리하지 않는다. 현재 provider 실패도 단계별 확정 base로 복원한다.
 - 96개 초과 후보는 전체 문서 문맥을 유지한 배치로 처리한다. vLLM만 기존 동시성
   설정으로 병렬화한다. 문맥 후보를 한도 때문에 누락하지 않는다.
 - 실제 로컬 LLM/TTS의 발음 품질과 latency 개선은 별도 측정 대상이며 소스 테스트

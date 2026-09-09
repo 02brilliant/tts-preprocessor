@@ -356,6 +356,34 @@ API core semantic probe:
   --api http://10.20.10.162:8010
 ```
 
+### 5.1 LLM 장애 시 안전 복구 확인
+
+`config/llm.env`에서 공급자별 timeout을 생략하면 15초가 적용된다. 운영 특성에
+맞춰 아래 값을 명시할 수 있다. API 프로세스 전체 제한은 공급자 제한보다 길게
+유지한다.
+
+```sh
+LOCAL_LLM_TIMEOUT_SECONDS=15
+GEMINI_TIMEOUT_SECONDS=15
+OPENAI_TIMEOUT_SECONDS=15
+VLLM_TIMEOUT_SECONDS=15
+TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS=20
+TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS=5
+```
+
+LLM 공급자가 응답하지 않거나 무효 응답을 반환해도 3~5단계 API는 HTTP 오류나
+원시 모델 출력을 TTS 경로에 전달하지 않고 안전한 `speech_text`를 반환해야 한다.
+응답의 `fallback_used=true`와 `llm_status`(`timeout`, `unavailable`,
+`invalid_response`, `process_timeout`, `circuit_open`, `overloaded`)로 저하 상태를
+확인한다. 모델별 연속 3회 실패 후 30초 회로 개방과 동시 실행 4개 초과 요청은
+같은 패키지 실행모듈의 규칙 전용 경로로 즉시 처리된다. 회로 상태는 API
+프로세스 메모리에만 있으므로 서버 재시작 시 초기화된다.
+
+장애 점검에서 `speech_text`에 `<SPEECH_TEXT>`, JSON wrapper, 모델 설명이 없는지,
+그리고 Web 결과 상자와 복사 텍스트가 `speech_text`만 사용하는지 확인한다.
+`validation_failure`에는 코드·심각도·설명만 허용하며 거절된 원문이나 출력
+좌표를 운영 응답에 포함하지 않는다.
+
 ## 6. 다운로드 URL
 
 | OS | URL |

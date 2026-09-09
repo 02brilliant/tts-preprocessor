@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 from engine.main import transform, transform_debug
-from engine.span_engine.numeric_dae import REGISTERED_DAE_COUNTER_NOUNS
+from engine.span_engine.numeric_dae import (
+    AIRCRAFT_DAE_COUNTER_NOUNS,
+    BASE_REGISTERED_DAE_COUNTER_NOUNS,
+    REGISTERED_DAE_COUNTER_NOUNS,
+)
 
 
 @pytest.mark.parametrize(
@@ -27,11 +31,52 @@ def test_contextual_dae_canonical(text: str, expected: str) -> None:
 
 
 def test_dae_machine_registry_remains_exact_and_central() -> None:
-    assert REGISTERED_DAE_COUNTER_NOUNS == frozenset(
+    assert BASE_REGISTERED_DAE_COUNTER_NOUNS == frozenset(
         {"자동차", "차량", "장비", "버스", "서버", "카메라"}
     )
-    assert transform("드론 3대") == "드론 3대"
+    assert REGISTERED_DAE_COUNTER_NOUNS == (
+        BASE_REGISTERED_DAE_COUNTER_NOUNS | AIRCRAFT_DAE_COUNTER_NOUNS
+    )
     assert transform("노트북 3대") == "노트북 3대"
+
+
+@pytest.mark.parametrize(
+    "noun",
+    sorted(AIRCRAFT_DAE_COUNTER_NOUNS),
+)
+def test_registered_aircraft_nouns_use_native_dae_count(noun: str) -> None:
+    assert transform(f"{noun} 8대") == f"{noun} 여덟-대"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("항공기 8대", "항공기 여덟-대"),
+        ("항공기 8대를 도입했다", "항공기 여덟-대를 도입했다"),
+        ("항공기는 8대", "항공기는 여덟-대"),
+        ("항공기는 총 8대", "항공기는 총 여덟-대"),
+        ("항공기 8대 1대를 점검했다", "항공기 여덟-대 한-대를 점검했다"),
+    ],
+)
+def test_aircraft_dae_supported_contexts(text: str, expected: str) -> None:
+    assert transform(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("제8대 항공기", "제-팔대 항공기"),
+        ("8대 과제", "팔대 과제"),
+        ("8대 항공기", "8대 항공기"),
+        ("항공기8대", "항공기8대"),
+        ("항공기 성능은 8대 1", "항공기 성능은 팔 대 일"),
+        ("item_항공기_8대", "item_항공기_8대"),
+    ],
+)
+def test_aircraft_dae_does_not_expand_other_dae_meanings(
+    text: str, expected: str
+) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

@@ -8,7 +8,9 @@ import pytest
 
 from LLM import stage_engine
 from LLM.client import GenerationResult
+from LLM.client import LLMConnectionError, LLMTimeoutError
 from LLM.response_validation import LLMStageContractError
+from LLM.selection_pipeline import SelectionCandidate, SelectionPlan
 from LLM.stage5_preprocessor import build_stage5_work_plan
 
 
@@ -51,6 +53,26 @@ def test_stage_engine_runs_only_from_normalized_text(monkeypatch) -> None:
         "prompt"
     ]
     assert captured["model"] == "gemma4:e4b"
+
+
+def test_medium_diagnostic_is_not_reported_as_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    monkeypatch.setattr(
+        stage_engine,
+        "generate",
+        lambda **_kwargs: GenerationResult(
+            text='{"schema_version":1,"decisions":[]}',
+            elapsed_ms=1.0,
+        ),
+    )
+
+    result = stage_engine.transform("AI는 좋습니다.", model="gemma4:e4b")
+
+    assert result.validation_fallback is False
+    assert result.llm_status == "applied"
+    assert result.fallback_reason is None
+    assert any(issue.severity == "Medium" for issue in result.validation_issues)
 
 
 def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> None:
@@ -144,6 +166,100 @@ def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None
     assert result.speech_text == "국물은 좋습니다."
     assert result.validation_fallback is True
     assert result.rejected_speech_text == "궁무른 조씀니다."
+    assert result.llm_status == "invalid_response"
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (LLMTimeoutError("safe timeout"), "timeout", "LLM_UPSTREAM_TIMEOUT"),
+        (
+            LLMConnectionError("safe unavailable"),
+            "unavailable",
+            "LLM_UPSTREAM_UNAVAILABLE",
+        ),
+    ],
+)
+def test_provider_failure_returns_pre_llm_base(
+    monkeypatch,
+    error,
+    status: str,
+    code: str,
+) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    monkeypatch.setattr(
+        stage_engine,
+        "generate",
+        lambda **_kwargs: (_ for _ in ()).throw(error),
+    )
+
+    result = stage_engine.transform(
+        "그 대가는 상당했습니다.",
+        model="gemma4:e4b",
+        prompt_level=3,
+    )
+
+    assert result.speech_text == "그 대가는 상당했습니다."
+    assert result.validation_fallback is True
+    assert result.llm_status == status
+    assert result.fallback_reason == code
+    assert result.validation_issues[0].code == code
+    assert result.rejected_speech_text is None
+
+
+def test_provider_batch_failure_keeps_successful_batch(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
+    monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
+    source = " ".join(["XQZ"] * 97)
+    plan = SelectionPlan(
+        tuple(
+            SelectionCandidate(
+                f"S3-{index + 1:04d}",
+                index * 4,
+                index * 4 + 3,
+                "residual_acronym",
+                "XQZ",
+                ("엑스큐지",),
+                "",
+            )
+            for index in range(97)
+        ),
+        stage=3,
+    )
+    responses = iter(
+        (
+            GenerationResult(
+                text=json.dumps(
+                    {
+                        "schema_version": 1,
+                        "decisions": [{"id": "S3-0001", "option": 0}],
+                    }
+                ),
+                elapsed_ms=1.0,
+            ),
+            LLMTimeoutError("second batch timed out"),
+        )
+    )
+
+    def fake_generate(**_kwargs):
+        outcome = next(responses)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(stage_engine, "generate", fake_generate)
+    result = stage_engine.transform(
+        source,
+        model="gemma4:e4b",
+        prompt_level=1,
+        selection_plan=plan,
+    )
+
+    assert result.speech_text == "엑스큐지" + source[3:]
+    assert result.llm_status == "partial"
+    assert result.validation_fallback is True
+    assert result.validation_issues[0].code == "LLM_UPSTREAM_TIMEOUT"
 
 
 def test_level5_validator_uses_the_exact_supplied_work_plan(monkeypatch) -> None:

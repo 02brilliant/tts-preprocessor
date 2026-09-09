@@ -5,6 +5,8 @@ import pytest
 from engine.main import transform, transform_debug
 from engine.span_engine.models import SourceSpan
 from engine.span_engine.numeric_dae import (
+    AIRCRAFT_DAE_COUNTER_NOUNS,
+    BASE_REGISTERED_DAE_COUNTER_NOUNS,
     REGISTERED_DAE_COUNTER_NOUNS,
     evaluate_numeric_dae_counter_context,
     is_registered_dae_counter_noun,
@@ -74,8 +76,29 @@ def test_existing_prefixed_ordinal_dae_owner_is_unchanged(
 
 
 def test_dae_counter_noun_inventory_is_central_and_minimal() -> None:
-    assert REGISTERED_DAE_COUNTER_NOUNS == frozenset(
+    assert BASE_REGISTERED_DAE_COUNTER_NOUNS == frozenset(
         {"차량", "자동차", "장비", "버스", "서버", "카메라"}
+    )
+    assert AIRCRAFT_DAE_COUNTER_NOUNS == frozenset(
+        {
+            "항공기",
+            "비행기",
+            "여객기",
+            "전투기",
+            "수송기",
+            "정찰기",
+            "폭격기",
+            "헬리콥터",
+            "헬기",
+            "드론",
+            "무인기",
+        }
+    )
+    assert BASE_REGISTERED_DAE_COUNTER_NOUNS.isdisjoint(
+        AIRCRAFT_DAE_COUNTER_NOUNS
+    )
+    assert REGISTERED_DAE_COUNTER_NOUNS == (
+        BASE_REGISTERED_DAE_COUNTER_NOUNS | AIRCRAFT_DAE_COUNTER_NOUNS
     )
     assert all(
         is_registered_dae_counter_noun(noun)

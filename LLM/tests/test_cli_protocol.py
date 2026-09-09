@@ -22,13 +22,21 @@ def test_classify_supported_failures() -> None:
     assert classify_llm_stage_error(VllmTimeoutError("timed out")) == (504, "timed out")
 
 
-def test_classify_contract_violation_preserves_output() -> None:
+def test_classify_contract_violation_does_not_expose_output() -> None:
     status, detail = classify_llm_stage_error(LLMStageContractError("invalid", stage="speech", output_text="원출력"))
     assert status == 502
-    assert detail == {"message": "invalid", "stage": "speech", "speech_text": "원출력"}
+    assert detail == {
+        "message": "invalid",
+        "stage": "speech",
+        "validation_failure": {
+            "code": "LLM_STAGE_CONTRACT",
+            "severity": "High",
+            "message": "invalid",
+        },
+    }
 
 
-def test_classify_residual_contract_violation_includes_output_range() -> None:
+def test_classify_residual_contract_violation_drops_raw_output_range() -> None:
     status, detail = classify_llm_stage_error(
         LLMStageContractError(
             "residual",
@@ -41,12 +49,22 @@ def test_classify_residual_contract_violation_includes_output_range() -> None:
         )
     )
     assert status == 502
-    assert detail["validation_failure"]["output_start"] == 2
-    assert detail["validation_failure"]["output_end"] == 3
+    assert "speech_text" not in detail
+    assert "output_start" not in detail["validation_failure"]
+    assert "output_end" not in detail["validation_failure"]
 
 
 def _args(**overrides) -> Namespace:
-    values = dict(input=None, output=None, text=None, model=None, json=False, list_models=False, check=False)
+    values = dict(
+        input=None,
+        output=None,
+        text=None,
+        model=None,
+        json=False,
+        list_models=False,
+        check=False,
+        rules_only=False,
+    )
     values.update(overrides)
     return Namespace(**values)
 
@@ -145,6 +163,9 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
         "llm_elapsed_ms": 15.0,
         "llm_called": True,
         "llm_skip_reason": None,
+        "llm_status": "applied",
+        "fallback_used": False,
+        "fallback_reason": None,
     }
 
 
@@ -183,6 +204,9 @@ def test_integrated_entrypoint_skips_llm_after_rules_once(monkeypatch, capsys) -
         "llm_elapsed_ms": 0.0,
         "llm_called": False,
         "llm_skip_reason": "short_simple_rule_complete",
+        "llm_status": "skipped",
+        "fallback_used": False,
+        "fallback_reason": None,
     }
 
 
@@ -291,7 +315,7 @@ def test_level5_inherits_level4_overlay_and_uses_level5_prompt(
     assert calls[0][3] is not None
 
 
-def test_level4_exposes_rejected_llm_output_with_safe_fallback(
+def test_level4_never_exposes_rejected_llm_output_with_safe_fallback(
     monkeypatch,
     capsys,
 ) -> None:
@@ -301,6 +325,8 @@ def test_level4_exposes_rejected_llm_output_with_safe_fallback(
         elapsed_ms = 3.0
         validation_fallback = True
         rejected_speech_text = "가격은 삼점영오 달러입니다."
+        llm_status = "invalid_response"
+        fallback_reason = "LOCKED_READING_MUTATION"
 
         validation_issues = (
             ValidationIssue(
@@ -326,9 +352,42 @@ def test_level4_exposes_rejected_llm_output_with_safe_fallback(
     assert entrypoint.run(stage_level=4, prompt_level=2) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["speech_text"] == "가격은 삼쩜영오 달러입니다."
-    assert payload["rejected_speech_text"] == "가격은 삼점영오 달러입니다."
+    assert "rejected_speech_text" not in payload
+    assert payload["llm_status"] == "invalid_response"
+    assert payload["fallback_used"] is True
     assert payload["validation_failure"] == {
         "code": "LOCKED_READING_MUTATION",
         "severity": "Critical",
         "message": "LLM response changed a rule-engine locked reading.",
     }
+
+
+def test_rules_only_returns_stage_base_without_calling_llm(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        entrypoint,
+        "parse_args",
+        lambda *, stage_level: _args(
+            text="생산량은 늘었습니다.",
+            model="gemma4:e4b",
+            json=True,
+            rules_only=True,
+        ),
+    )
+    monkeypatch.setattr(
+        "engine.main.transform_output",
+        lambda text: TransformOutput(text, [], None),
+    )
+    monkeypatch.setattr(
+        "LLM.stage_engine.transform",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("rules-only mode must not call an LLM")
+        ),
+    )
+
+    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["speech_text"] == "생산냥은 늘었습니다."
+    assert payload["llm_called"] is False
+    assert payload["llm_status"] == "rules_only"
+    assert payload["fallback_used"] is True
+    assert payload["fallback_reason"] == "RULES_ONLY_REQUESTED"

@@ -17,7 +17,7 @@ def test_phase20f_binary_runtime_run_transform_binary_uses_subprocess_result(mon
 
     seen: dict[str, object] = {}
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         seen["cmd"] = cmd
         seen["input"] = input
         seen["capture_output"] = capture_output
@@ -43,7 +43,7 @@ def test_phase20f_binary_runtime_selects_simplified_binary(monkeypatch) -> None:
 
     seen: dict[str, object] = {}
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         seen["cmd"] = cmd
         return SimpleNamespace(returncode=0, stdout="간소화 결과\n", stderr="")
 
@@ -67,9 +67,10 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
 
     seen: dict[str, object] = {}
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         seen["cmd"] = cmd
         seen["input"] = input
+        seen["timeout"] = timeout
         return SimpleNamespace(
             returncode=0,
             stdout=json.dumps(
@@ -110,6 +111,9 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
         "llm_elapsed_ms": 13.0,
         "llm_called": True,
         "llm_skip_reason": None,
+        "llm_status": "applied",
+        "fallback_used": False,
+        "fallback_reason": None,
     }
     assert seen["cmd"] == [
         "/tmp/fake-level-4",
@@ -118,6 +122,7 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
         "gemma4:e4b",
     ]
     assert seen["input"] == "원문"
+    assert seen["timeout"] == 20.0
 
 
 @pytest.mark.parametrize("level", (4, 5))
@@ -129,7 +134,7 @@ def test_phase20f_natural_level_forwards_only_structured_fallback_log(
     import api.binary_runtime as binary_runtime
     import json
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         return SimpleNamespace(
             returncode=0,
             stdout=json.dumps(
@@ -166,11 +171,11 @@ def test_phase20f_natural_level_forwards_only_structured_fallback_log(
     assert "원문은 기록하지 않는다" not in caplog.text
 
 
-def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) -> None:
+def test_phase20f_level4_drops_rejected_output_from_public_contract(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         return SimpleNamespace(
             returncode=0,
             stdout=json.dumps(
@@ -184,7 +189,7 @@ def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) ->
                     "llm_elapsed_ms": 2.0,
                     "llm_called": True,
                     "llm_skip_reason": None,
-                    "rejected_speech_text": "가격은 삼점영오 달러입니다.",
+                    "rejected_speech_text": "<SPEECH_TEXT>가격은 삼점영오 달러입니다.</SPEECH_TEXT>",
                     "validation_failure": {
                         "code": "LOCKED_READING_MUTATION",
                         "severity": "Critical",
@@ -204,15 +209,168 @@ def test_phase20f_level4_returns_rejected_output_for_web_display(monkeypatch) ->
     )
 
     assert result["speech_text"] == "가격은 삼-쩜-영오 달러입니다."
-    assert result["rejected_speech_text"] == "가격은 삼점영오 달러입니다."
+    assert "rejected_speech_text" not in result
+    assert "<SPEECH_TEXT>" not in str(result)
     assert result["validation_failure"]["code"] == "LOCKED_READING_MUTATION"
+
+
+def test_phase20f_integrated_process_timeout_uses_rules_only_fallback(
+    monkeypatch,
+) -> None:
+    import api.binary_runtime as binary_runtime
+    import json
+
+    calls = []
+
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
+        calls.append((cmd, timeout))
+        if len(calls) == 1:
+            raise binary_runtime.subprocess.TimeoutExpired(cmd, timeout)
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "normalized_text": "규칙 결과",
+                    "speech_text": "오단계 확정 결과",
+                    "model": "gemma4:e4b",
+                    "elapsed_ms": 0.0,
+                    "rule_elapsed_ms": 2.0,
+                    "llm_elapsed_ms": 0.0,
+                    "llm_called": False,
+                    "llm_skip_reason": "rules_only_requested",
+                    "llm_status": "rules_only",
+                    "fallback_used": True,
+                    "fallback_reason": "RULES_ONLY_REQUESTED",
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    result = binary_runtime.run_integrated_binary(
+        "원고",
+        level=5,
+        model="gemma4:e4b",
+        binary_path=Path("/tmp/fake-level-5"),
+    )
+
+    assert calls == [
+        (["/tmp/fake-level-5", "--json", "--model", "gemma4:e4b"], 20.0),
+        (
+            [
+                "/tmp/fake-level-5",
+                "--json",
+                "--rules-only",
+                "--model",
+                "gemma4:e4b",
+            ],
+            5.0,
+        ),
+    ]
+    assert result["speech_text"] == "오단계 확정 결과"
+    assert result["llm_called"] is True
+    assert result["llm_status"] == "process_timeout"
+    assert result["fallback_used"] is True
+    assert result["fallback_reason"] == "INTEGRATED_PROCESS_TIMEOUT"
+
+
+def test_phase20f_explicit_rules_only_uses_short_deadline(monkeypatch) -> None:
+    import api.binary_runtime as binary_runtime
+    import json
+
+    seen = {}
+
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
+        seen.update({"cmd": cmd, "timeout": timeout})
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "normalized_text": "규칙 결과",
+                    "speech_text": "오단계 확정 결과",
+                    "model": "gemma4:e4b",
+                    "elapsed_ms": 0.0,
+                    "rule_elapsed_ms": 2.0,
+                    "llm_elapsed_ms": 0.0,
+                    "llm_called": False,
+                    "llm_skip_reason": "rules_only_requested",
+                    "llm_status": "rules_only",
+                    "fallback_used": True,
+                    "fallback_reason": "RULES_ONLY_REQUESTED",
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    result = binary_runtime.run_integrated_binary(
+        "원고",
+        level=5,
+        model="gemma4:e4b",
+        binary_path=Path("/tmp/fake-level-5"),
+        rules_only=True,
+    )
+
+    assert seen == {
+        "cmd": [
+            "/tmp/fake-level-5",
+            "--json",
+            "--rules-only",
+            "--model",
+            "gemma4:e4b",
+        ],
+        "timeout": 5.0,
+    }
+    assert result["speech_text"] == "오단계 확정 결과"
+    assert result["llm_called"] is False
+
+
+@pytest.mark.parametrize("raw", ("0", "nan", "not-a-number"))
+def test_phase20f_integrated_rejects_invalid_process_timeout(
+    monkeypatch,
+    raw: str,
+) -> None:
+    import api.binary_runtime as binary_runtime
+
+    monkeypatch.setenv("TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS", raw)
+    with pytest.raises(binary_runtime.BinaryRuntimeError, match="TIMEOUT_SECONDS"):
+        binary_runtime.run_integrated_binary(
+            "원고",
+            level=5,
+            binary_path=Path("/tmp/fake-level-5"),
+        )
+
+
+def test_phase20f_invalid_binary_output_does_not_expose_raw_tags(monkeypatch) -> None:
+    import api.binary_runtime as binary_runtime
+
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
+        return SimpleNamespace(
+            returncode=0,
+            stdout="<SPEECH_TEXT>모델 원출력</SPEECH_TEXT>",
+            stderr="",
+        )
+
+    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    with pytest.raises(binary_runtime.BinaryRuntimeError) as raised:
+        binary_runtime.run_integrated_binary(
+            "원고",
+            level=5,
+            binary_path=Path("/tmp/fake-level-5"),
+        )
+
+    assert str(raised.value) == "Integrated LLM binary returned invalid JSON."
+    assert "SPEECH_TEXT" not in str(raised.value)
+    assert "모델 원출력" not in str(raised.value)
 
 
 def test_phase20f_binary_runtime_maps_integrated_json_error(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json
 
-    def fake_run(cmd, *, input, capture_output, text, check):
+    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
         return SimpleNamespace(
             returncode=1,
             stdout="",

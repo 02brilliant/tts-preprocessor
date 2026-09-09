@@ -84,16 +84,12 @@ def classify_llm_stage_error(exc: BaseException) -> tuple[int, Any]:
         detail = {
             "message": str(exc),
             "stage": exc.stage,
-            f"{exc.stage}_text": exc.output_text,
         }
-        if exc.output_start is not None and exc.output_end is not None:
-            detail["validation_failure"] = {
-                "code": exc.code,
-                "severity": exc.severity,
-                "message": str(exc),
-                "output_start": exc.output_start,
-                "output_end": exc.output_end,
-            }
+        detail["validation_failure"] = {
+            "code": exc.code,
+            "severity": exc.severity,
+            "message": str(exc),
+        }
         return 502, detail
     if isinstance(
         exc,

@@ -32,9 +32,10 @@ def test_level_policy_stage_contract_phrases() -> None:
         "1번째→첫-번째",
         "5kg/5 kg→오-킬로그램",
         "stage4_base_text",
-        "rejected_speech_text",
+        "원시 모델 출력이나 `rejected_speech_text`를 외부에 노출하지 않고",
         "validation_failure",
         "Critical/High 검증 실패는 retry 없이",
+        "연속 3회 실패한 model은 30초 동안 회로를 열어",
         "## 품질 승인 기준",
         "2단계 기존 출력 byte-exact 100% 동일",
         "prompt placeholder 정확히 한 개",
@@ -60,6 +61,8 @@ def test_deployment_policy_must_phrases() -> None:
         "Deployment MUST NOT attach `contextual_decision_logs`",
         "`1㎘당`, `1만㎡`, `수 km`, `지상 3층`, `3.5만kg`, and `45~50만kg`",
         "gemma4-31B-it (vLLM)",
+        "Only code-composed `speech_text` may reach the public API",
+        "`--rules-only`",
         "scripts/probes/",
     ]:
         assert phrase in text, phrase

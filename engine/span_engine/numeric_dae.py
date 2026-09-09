@@ -7,11 +7,30 @@ from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceC
 from engine.span_engine.signed_numeric import parse_signed_numeric_core
 
 
-# Minimal canonical inventory for nouns that directly license the `대` quantity
+# Exact canonical inventories for nouns that directly license the `대` quantity
 # counter. Keep this metadata centralized; scanners must not carry local keyword
-# lists or infer counter semantics from arbitrary Hangul nouns.
-REGISTERED_DAE_COUNTER_NOUNS = frozenset(
+# lists, match arbitrary suffixes, or infer counter semantics from arbitrary
+# Hangul nouns. New semantic groups can be reviewed and extended independently.
+BASE_REGISTERED_DAE_COUNTER_NOUNS = frozenset(
     {"자동차", "차량", "장비", "버스", "서버", "카메라"}
+)
+AIRCRAFT_DAE_COUNTER_NOUNS = frozenset(
+    {
+        "항공기",
+        "비행기",
+        "여객기",
+        "전투기",
+        "수송기",
+        "정찰기",
+        "폭격기",
+        "헬리콥터",
+        "헬기",
+        "드론",
+        "무인기",
+    }
+)
+REGISTERED_DAE_COUNTER_NOUNS = (
+    BASE_REGISTERED_DAE_COUNTER_NOUNS | AIRCRAFT_DAE_COUNTER_NOUNS
 )
 REGISTERED_DAE_TOPIC_PARTICLES = frozenset({"은", "는", "이", "가"})
 REGISTERED_DAE_QUANTITY_MARKERS = frozenset({"모두", "총"})
@@ -309,6 +328,8 @@ def _is_identifier_neighbor(char: str) -> bool:
 
 
 __all__ = [
+    "AIRCRAFT_DAE_COUNTER_NOUNS",
+    "BASE_REGISTERED_DAE_COUNTER_NOUNS",
     "NumericDaeDecision",
     "REGISTERED_DAE_COUNTER_NOUNS",
     "REGISTERED_DAE_QUANTITY_MARKERS",

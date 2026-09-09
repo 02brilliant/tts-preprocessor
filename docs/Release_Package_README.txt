@@ -41,6 +41,7 @@ Linux/macOS 예시:
   ./tts-preprocessor-llm-minimal --check
   ./tts-preprocessor-llm-natural --check
   ./tts-preprocessor-llm-standard --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
+  ./tts-preprocessor-llm-standard --text "항공기 8대가 대기합니다" --rules-only
   ./tts-preprocessor-llm-standard --check
 
 Windows PowerShell 예시:
@@ -50,9 +51,11 @@ Windows PowerShell 예시:
   .\tts-preprocessor-llm-minimal.exe --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
   .\tts-preprocessor-llm-natural.exe --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
   .\tts-preprocessor-llm-standard.exe --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
+  .\tts-preprocessor-llm-standard.exe --text "항공기 8대가 대기합니다" --rules-only
 
 LLM 실행 파일은 --text, --input, 표준입력, --output, --json, --model,
---list-models, --check를 지원합니다. 공급자별 환경변수는 운영 환경에서
+--list-models, --check, --rules-only를 지원합니다. --rules-only는 선택 단계의
+전체 규칙 처리와 확정 발음 처리를 적용하되 LLM을 호출하지 않습니다. 공급자별 환경변수는 운영 환경에서
 설정하며 인증정보를 실행 파일이나 명령행에 포함하지 마십시오.
 --json 응답의 rule_elapsed_ms는 규칙기반 처리시간(5단계의 deterministic pronunciation overlay 포함), llm_elapsed_ms는 프롬프트
 구성·LLM 호출·응답 검증을 포함한 LLM 처리시간입니다. elapsed_ms는 LLM 서버
@@ -60,6 +63,10 @@ LLM 실행 파일은 --text, --input, 표준입력, --output, --json, --model,
 3~5단계 speech_text는 확정 잔여 읽기가 반영된 각 단계의 base text이며,
 5단계는 exact 표준발음 결과도 포함합니다. elapsed_ms·llm_elapsed_ms는 0.0입니다.
 llm_skip_reason에는 생략 사유 코드가 들어갑니다.
+JSON의 llm_status, fallback_used, fallback_reason은 정상 적용, 부분 적용,
+timeout, 공급자 사용 불가, 무효 응답 또는 규칙 전용 복구 상태를 구분합니다.
+공급자 오류와 검증 실패 때도 speech_text는 단계별 확정 결과를 반환합니다.
+모델 원출력과 태그는 JSON 및 TTS 출력에 포함하지 않습니다.
 
 - 로컬 모델: LOCAL_LLM_BASE_URL, LOCAL_LLM_TOKEN
 - Gemini: GEMINI_API_KEY
@@ -68,7 +75,7 @@ llm_skip_reason에는 생략 사유 코드가 들어갑니다.
 
 ## 패키지 실행모듈의 LLM 서버
 
-웹페이지는 모델 선택을 제공하지만, ZIP으로 배포되는 3단계·4단계 실행모듈은
+웹페이지는 모델 선택을 제공하지만, ZIP으로 배포되는 3~5단계 실행모듈은
 `gemma4-31B-it (vLLM)` 모델을 고정해 사용합니다. 이 모델의 vLLM upstream ID는
 `google/gemma-4-31B-it`이며, 웹페이지에서 선택한 다른 모델 설정은 패키지
 실행모듈에 전달되지 않습니다. `--model`을 생략해도 이 모델이 기본값으로
@@ -91,6 +98,11 @@ llm_skip_reason에는 생략 사유 코드가 들어갑니다.
 stage3_base_text, stage4_base_text, stage5_base_text로 fallback하며 retry하지 않습니다. 외부 normalized_text는
 2단계 결과를 유지합니다. 내부 provenance는 검증에만 사용하고 외부
 응답 계약이나 LLM 본문에 노출하지 않습니다.
+
+공급자 기본 제한시간은 15초입니다. API 서비스는 통합 실행모듈을 최대 20초
+기다린 뒤 같은 실행모듈의 --rules-only 경로를 최대 5초 실행합니다. model별
+동시 LLM 실행은 4개까지이며, 연속 3회 실패하면 30초 동안 새 요청을 규칙
+전용 경로로 즉시 처리합니다. 이 값은 API 프로세스별로 관리됩니다.
 
 운영체제별 ZIP:
 
