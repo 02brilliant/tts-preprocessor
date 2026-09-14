@@ -125,7 +125,7 @@ def test_phase20f_binary_runtime_runs_integrated_json_contract(monkeypatch) -> N
     assert seen["timeout"] == 20.0
 
 
-@pytest.mark.parametrize("level", (4, 5))
+@pytest.mark.parametrize("level", (4,))
 def test_phase20f_natural_level_forwards_only_structured_fallback_log(
     monkeypatch,
     caplog,
@@ -171,7 +171,18 @@ def test_phase20f_natural_level_forwards_only_structured_fallback_log(
     assert "원문은 기록하지 않는다" not in caplog.text
 
 
-def test_phase20f_level4_drops_rejected_output_from_public_contract(monkeypatch) -> None:
+def test_phase20f_rejects_removed_level_five(monkeypatch) -> None:
+    import api.binary_runtime as binary_runtime
+
+    with pytest.raises(ValueError, match="level must be 3 or 4"):
+        binary_runtime.run_integrated_binary(
+            "원고",
+            level=5,
+            binary_path=Path("/tmp/fake-level-5"),
+        )
+
+
+def test_phase20f_level5_drops_rejected_output_from_public_contract(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json
 
@@ -232,7 +243,7 @@ def test_phase20f_integrated_process_timeout_uses_rules_only_fallback(
                 {
                     "ok": True,
                     "normalized_text": "규칙 결과",
-                    "speech_text": "오단계 확정 결과",
+                    "speech_text": "4단계 확정 결과",
                     "model": "gemma4:e4b",
                     "elapsed_ms": 0.0,
                     "rule_elapsed_ms": 2.0,
@@ -250,16 +261,16 @@ def test_phase20f_integrated_process_timeout_uses_rules_only_fallback(
     monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
     result = binary_runtime.run_integrated_binary(
         "원고",
-        level=5,
+        level=4,
         model="gemma4:e4b",
-        binary_path=Path("/tmp/fake-level-5"),
+        binary_path=Path("/tmp/fake-level-4"),
     )
 
     assert calls == [
-        (["/tmp/fake-level-5", "--json", "--model", "gemma4:e4b"], 20.0),
+        (["/tmp/fake-level-4", "--json", "--model", "gemma4:e4b"], 20.0),
         (
             [
-                "/tmp/fake-level-5",
+                "/tmp/fake-level-4",
                 "--json",
                 "--rules-only",
                 "--model",
@@ -268,7 +279,7 @@ def test_phase20f_integrated_process_timeout_uses_rules_only_fallback(
             5.0,
         ),
     ]
-    assert result["speech_text"] == "오단계 확정 결과"
+    assert result["speech_text"] == "4단계 확정 결과"
     assert result["llm_called"] is True
     assert result["llm_status"] == "process_timeout"
     assert result["fallback_used"] is True
@@ -289,7 +300,7 @@ def test_phase20f_explicit_rules_only_uses_short_deadline(monkeypatch) -> None:
                 {
                     "ok": True,
                     "normalized_text": "규칙 결과",
-                    "speech_text": "오단계 확정 결과",
+                    "speech_text": "4단계 확정 결과",
                     "model": "gemma4:e4b",
                     "elapsed_ms": 0.0,
                     "rule_elapsed_ms": 2.0,
@@ -307,15 +318,15 @@ def test_phase20f_explicit_rules_only_uses_short_deadline(monkeypatch) -> None:
     monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
     result = binary_runtime.run_integrated_binary(
         "원고",
-        level=5,
+        level=4,
         model="gemma4:e4b",
-        binary_path=Path("/tmp/fake-level-5"),
+        binary_path=Path("/tmp/fake-level-4"),
         rules_only=True,
     )
 
     assert seen == {
         "cmd": [
-            "/tmp/fake-level-5",
+            "/tmp/fake-level-4",
             "--json",
             "--rules-only",
             "--model",
@@ -323,7 +334,7 @@ def test_phase20f_explicit_rules_only_uses_short_deadline(monkeypatch) -> None:
         ],
         "timeout": 5.0,
     }
-    assert result["speech_text"] == "오단계 확정 결과"
+    assert result["speech_text"] == "4단계 확정 결과"
     assert result["llm_called"] is False
 
 
@@ -338,8 +349,8 @@ def test_phase20f_integrated_rejects_invalid_process_timeout(
     with pytest.raises(binary_runtime.BinaryRuntimeError, match="TIMEOUT_SECONDS"):
         binary_runtime.run_integrated_binary(
             "원고",
-            level=5,
-            binary_path=Path("/tmp/fake-level-5"),
+            level=4,
+            binary_path=Path("/tmp/fake-level-4"),
         )
 
 
@@ -357,8 +368,8 @@ def test_phase20f_invalid_binary_output_does_not_expose_raw_tags(monkeypatch) ->
     with pytest.raises(binary_runtime.BinaryRuntimeError) as raised:
         binary_runtime.run_integrated_binary(
             "원고",
-            level=5,
-            binary_path=Path("/tmp/fake-level-5"),
+            level=4,
+            binary_path=Path("/tmp/fake-level-4"),
         )
 
     assert str(raised.value) == "Integrated LLM binary returned invalid JSON."

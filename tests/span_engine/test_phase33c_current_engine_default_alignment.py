@@ -67,7 +67,7 @@ def test_phase33c_start_server_allows_binary_override_without_breaking_packaged_
 
     assert "TTS_PREPROCESSOR_BINARY:-" in text
     assert "LATEST_BINARY=" in text
-    assert "packages/tts-preprocessor/tts-preprocessor" in text
+    assert "packages/tts-preprocessor/tts-preprocessor-standard" in text
     assert "TTS_PREPROCESSOR_BINARY=" in text
 
 

@@ -9,17 +9,15 @@ PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
 REQUIRED_PYTHON_SERIES="3.13"
 DIST_DIR="$ROOT_DIR/dist"
 BUILD_DIR="$ROOT_DIR/build"
-STAGE1_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
+STANDARD_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SIMPLIFIED_SPEC_FILE="$ROOT_DIR/tts_preprocessor_simplified.spec"
-LLM_MINIMAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
-LLM_NATURAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
-LLM_STANDARD_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_standard.spec"
-STAGE1_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
+STANDARD_LLM_SPEC_FILE="$ROOT_DIR/tts_preprocessor_standard_llm.spec"
+NATURAL_LLM_SPEC_FILE="$ROOT_DIR/tts_preprocessor_natural_llm.spec"
+STANDARD_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 SIMPLIFIED_ENTRYPOINT="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
 LLM_CLI_ENTRYPOINT="$ROOT_DIR/bin/integrated_llm_cli.py"
-LLM_MINIMAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
-LLM_NATURAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
-LLM_STANDARD_ENTRYPOINT="$ROOT_DIR/bin/build_llm_standard_entrypoint.py"
+STANDARD_LLM_ENTRYPOINT="$ROOT_DIR/bin/build_standard_llm_entrypoint.py"
+NATURAL_LLM_ENTRYPOINT="$ROOT_DIR/bin/build_natural_llm_entrypoint.py"
 SMOKE_TEXT="2천8백28억, 2천8백28억테스트"
 SMOKE_EXPECTED="이천팔백이십팔억, 이천팔백이십팔억 테스트"
 
@@ -45,7 +43,7 @@ if [[ "$PYTHON_RUNTIME" != "$REQUIRED_PYTHON_SERIES:0" ]]; then
   exit 1
 fi
 
-for required_file in "$STAGE1_SPEC_FILE" "$SIMPLIFIED_SPEC_FILE" "$LLM_MINIMAL_SPEC_FILE" "$LLM_NATURAL_SPEC_FILE" "$LLM_STANDARD_SPEC_FILE" "$STAGE1_ENTRYPOINT" "$SIMPLIFIED_ENTRYPOINT" "$LLM_CLI_ENTRYPOINT" "$LLM_MINIMAL_ENTRYPOINT" "$LLM_NATURAL_ENTRYPOINT" "$LLM_STANDARD_ENTRYPOINT"; do
+for required_file in "$STANDARD_SPEC_FILE" "$SIMPLIFIED_SPEC_FILE" "$STANDARD_LLM_SPEC_FILE" "$NATURAL_LLM_SPEC_FILE" "$STANDARD_ENTRYPOINT" "$SIMPLIFIED_ENTRYPOINT" "$LLM_CLI_ENTRYPOINT" "$STANDARD_LLM_ENTRYPOINT" "$NATURAL_LLM_ENTRYPOINT"; do
   if [[ ! -f "$required_file" ]]; then
     echo "Missing build file: $required_file" >&2
     exit 1
@@ -55,17 +53,18 @@ done
 cd "$ROOT_DIR"
 rm -rf "$DIST_DIR" "$BUILD_DIR"
 
-"$PYINSTALLER_BIN" \
-  --clean \
-  --noconfirm \
-  "$STAGE1_SPEC_FILE"
-if [[ ! -f "$DIST_DIR/tts_preprocessor" ]]; then
-  echo "Binary build failed: $DIST_DIR/tts_preprocessor not found" >&2
+TTS_PREPROCESSOR_EXECUTABLE_NAME="tts-preprocessor-standard" \
+  "$PYINSTALLER_BIN" \
+    --clean \
+    --noconfirm \
+    "$STANDARD_SPEC_FILE"
+if [[ ! -f "$DIST_DIR/tts-preprocessor-standard" ]]; then
+  echo "Binary build failed: $DIST_DIR/tts-preprocessor-standard not found" >&2
   exit 1
 fi
 
 echo "[build-binary] Running dist binary smoke..."
-SMOKE_ACTUAL="$("$DIST_DIR/tts_preprocessor" --text "$SMOKE_TEXT")"
+SMOKE_ACTUAL="$("$DIST_DIR/tts-preprocessor-standard" --text "$SMOKE_TEXT")"
 if [[ "$SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
   echo "[build-binary][ERROR] dist binary smoke failed" >&2
   echo "input: $SMOKE_TEXT" >&2
@@ -93,40 +92,29 @@ if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
 fi
 echo "[OK] local simplified dist binary smoke"
 
-TTS_PREPROCESSOR_LLM_MINIMAL_EXECUTABLE_NAME="tts-preprocessor-llm-minimal" \
+TTS_PREPROCESSOR_STANDARD_LLM_EXECUTABLE_NAME="tts-preprocessor-standard-llm" \
   "$PYINSTALLER_BIN" \
     --clean \
     --noconfirm \
-    "$LLM_MINIMAL_SPEC_FILE"
-if [[ ! -f "$DIST_DIR/tts-preprocessor-llm-minimal" || ! -x "$DIST_DIR/tts-preprocessor-llm-minimal" ]]; then
-  echo "Level 3 binary build failed" >&2
+    "$STANDARD_LLM_SPEC_FILE"
+if [[ ! -f "$DIST_DIR/tts-preprocessor-standard-llm" || ! -x "$DIST_DIR/tts-preprocessor-standard-llm" ]]; then
+  echo "Stage 3 binary build failed" >&2
   exit 1
 fi
-TTS_PREPROCESSOR_LLM_NATURAL_EXECUTABLE_NAME="tts-preprocessor-llm-natural" \
+TTS_PREPROCESSOR_NATURAL_LLM_EXECUTABLE_NAME="tts-preprocessor-natural-llm" \
   "$PYINSTALLER_BIN" \
     --clean \
     --noconfirm \
-    "$LLM_NATURAL_SPEC_FILE"
-if [[ ! -f "$DIST_DIR/tts-preprocessor-llm-natural" || ! -x "$DIST_DIR/tts-preprocessor-llm-natural" ]]; then
-  echo "Level 4 binary build failed" >&2
+    "$NATURAL_LLM_SPEC_FILE"
+if [[ ! -f "$DIST_DIR/tts-preprocessor-natural-llm" || ! -x "$DIST_DIR/tts-preprocessor-natural-llm" ]]; then
+  echo "Stage 4 binary build failed" >&2
   exit 1
 fi
-TTS_PREPROCESSOR_LLM_STANDARD_EXECUTABLE_NAME="tts-preprocessor-llm-standard" \
-  "$PYINSTALLER_BIN" \
-    --clean \
-    --noconfirm \
-    "$LLM_STANDARD_SPEC_FILE"
-if [[ ! -f "$DIST_DIR/tts-preprocessor-llm-standard" || ! -x "$DIST_DIR/tts-preprocessor-llm-standard" ]]; then
-  echo "Level 5 binary build failed" >&2
-  exit 1
-fi
-"$DIST_DIR/tts-preprocessor-llm-minimal" --check >/dev/null
-"$DIST_DIR/tts-preprocessor-llm-natural" --check >/dev/null
-"$DIST_DIR/tts-preprocessor-llm-standard" --check >/dev/null
+"$DIST_DIR/tts-preprocessor-standard-llm" --check >/dev/null
+"$DIST_DIR/tts-preprocessor-natural-llm" --check >/dev/null
 echo "[OK] Integrated LLM runtime asset checks"
 
-echo "Built stage 1 binary: $DIST_DIR/tts_preprocessor"
-echo "Built simplified binary: $DIST_DIR/tts-preprocessor-simplified"
-echo "Built level 3 binary: $DIST_DIR/tts-preprocessor-llm-minimal"
-echo "Built level 4 binary: $DIST_DIR/tts-preprocessor-llm-natural"
-echo "Built level 5 binary: $DIST_DIR/tts-preprocessor-llm-standard"
+echo "Built stage 1 binary: $DIST_DIR/tts-preprocessor-simplified"
+echo "Built stage 2 binary: $DIST_DIR/tts-preprocessor-standard"
+echo "Built stage 3 binary: $DIST_DIR/tts-preprocessor-standard-llm"
+echo "Built stage 4 binary: $DIST_DIR/tts-preprocessor-natural-llm"

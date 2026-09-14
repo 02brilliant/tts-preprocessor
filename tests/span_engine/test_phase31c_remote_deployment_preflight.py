@@ -34,7 +34,7 @@ def test_phase31c_deploy_script_target_and_remote_build_cleanup_contract() -> No
     assert (
         remote_build.index('mv -- "$PREPARED_ARCHIVE" "$ARCHIVE_PATH"')
         < remote_build.index(
-            'run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor" '
+            'run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor-standard" '
             '"published packaged binary"'
         )
     )

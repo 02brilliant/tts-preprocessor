@@ -39,9 +39,8 @@ PACKAGED_PATHSPEC = (
     "LLM",
     "tts_preprocessor.spec",
     "tts_preprocessor_simplified.spec",
-    "tts_preprocessor_llm_minimal.spec",
-    "tts_preprocessor_llm_natural.spec",
-    "tts_preprocessor_llm_standard.spec",
+    "tts_preprocessor_standard_llm.spec",
+    "tts_preprocessor_natural_llm.spec",
     "scripts/probes",
 )
 

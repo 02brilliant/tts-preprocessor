@@ -57,11 +57,10 @@ def _valid_windows_zip(downloads_dir: Path) -> Path:
     _write_zip(
         archive,
         {
-            "tts-preprocessor.exe": b"windows-binary",
+            "tts-preprocessor-standard.exe": b"windows-binary",
             "tts-preprocessor-simplified.exe": b"windows-simplified-binary",
-            "tts-preprocessor-llm-minimal.exe": b"windows-llm-minimal-binary",
-            "tts-preprocessor-llm-natural.exe": b"windows-llm-natural-binary",
-            "tts-preprocessor-llm-standard.exe": b"windows-llm-standard-binary",
+            "tts-preprocessor-standard-llm.exe": b"windows-llm-minimal-binary",
+            "tts-preprocessor-natural-llm.exe": b"windows-llm-standard-binary",
             "README.txt": b"readme",
         },
     )
@@ -108,11 +107,10 @@ def test_windows_validation_rejects_extra_source_and_symlink(
     _write_zip(
         source_downloads / "tts-preprocessor-windows.zip",
         {
-            "tts-preprocessor.exe": b"binary",
+            "tts-preprocessor-standard.exe": b"binary",
             "tts-preprocessor-simplified.exe": b"binary",
-            "tts-preprocessor-llm-minimal.exe": b"binary",
-            "tts-preprocessor-llm-natural.exe": b"binary",
-            "tts-preprocessor-llm-standard.exe": b"binary",
+            "tts-preprocessor-standard-llm.exe": b"binary",
+            "tts-preprocessor-natural-llm.exe": b"binary",
             "README.txt": b"readme",
             "engine/main.py": b"source",
         },
@@ -126,14 +124,13 @@ def test_windows_validation_rejects_extra_source_and_symlink(
     with zipfile.ZipFile(
         symlink_downloads / "tts-preprocessor-windows.zip", "w"
     ) as archive:
-        link = zipfile.ZipInfo("tts-preprocessor.exe")
+        link = zipfile.ZipInfo("tts-preprocessor-standard.exe")
         link.create_system = 3
         link.external_attr = (stat.S_IFLNK | 0o777) << 16
         archive.writestr(link, "README.txt")
         archive.writestr("tts-preprocessor-simplified.exe", "simplified")
-        archive.writestr("tts-preprocessor-llm-minimal.exe", "level3")
-        archive.writestr("tts-preprocessor-llm-natural.exe", "level4")
-        archive.writestr("tts-preprocessor-llm-standard.exe", "level5")
+        archive.writestr("tts-preprocessor-standard-llm.exe", "level3")
+        archive.writestr("tts-preprocessor-natural-llm.exe", "level5")
         archive.writestr("README.txt", "readme")
     symlink_result = _run(
         symlink_script, "--platform", "windows", "--validate-only"

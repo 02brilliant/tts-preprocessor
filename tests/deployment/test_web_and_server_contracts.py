@@ -126,9 +126,9 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert "from LLM" not in api_server
     assert 'app.mount("/downloads"' in api_server
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_server
-    assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_server
-    assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_server
-    assert 'TTS_PREPROCESSOR_LLM_STANDARD_BINARY="$LATEST_LLM_STANDARD"' in start_server
+    assert 'TTS_PREPROCESSOR_STANDARD_LLM_BINARY="$LATEST_STANDARD_LLM"' in start_server
+    assert 'TTS_PREPROCESSOR_NATURAL_LLM_BINARY="$LATEST_NATURAL_LLM"' in start_server
+    assert "TTS_PREPROCESSOR_LLM_NATURAL_BINARY" not in start_server
     assert "LATEST_LLM_STAGE" not in start_server
     assert 'LLM_ENV_FILE="${TTS_LLM_ENV_FILE:-$BASE_DIR/config/llm.env}"' in start_server
     assert 'LOCAL_LLM_CONFIGURED=false' in start_server
@@ -140,17 +140,17 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
     assert 'VLLM_BASE_URL' in start_server
     assert 'VLLM_TOKEN' in start_server
     assert (
-        'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts_preprocessor" "dist binary"'
+        'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts-preprocessor-standard" "dist binary"'
         in remote_build
     )
     assert (
         'run_semantic_probe_set \\\n'
-        '    "$PREPARED_PACKAGE_DIR/tts-preprocessor" \\\n'
+        '    "$PREPARED_PACKAGE_DIR/tts-preprocessor-standard" \\\n'
         '    "staging packaged binary"'
         in remote_build
     )
     assert (
-        'run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor" '
+        'run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor-standard" '
         '"published packaged binary"'
         in remote_build
     )

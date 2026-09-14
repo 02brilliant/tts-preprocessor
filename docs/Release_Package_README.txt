@@ -1,13 +1,12 @@
 [TTS 전처리 실행모듈 사용 안내]
 
-각 OS ZIP은 아래 다섯 실행 파일과 README.txt를 제공합니다. 사용자가 선택한
+각 OS 다운로드 ZIP은 아래 실행 파일과 README.txt를 제공합니다. 사용자가 선택한
 단계에 해당하는 실행 파일 하나만 호출하십시오.
 
-- 1단계 규칙간소화: tts-preprocessor-simplified
-- 2단계 규칙기반교정: tts-preprocessor
-- 3단계 LLM최소: tts-preprocessor-llm-minimal
-- 4단계 LLM자연스러운발화: tts-preprocessor-llm-natural
-- 5단계 표준발음강화: tts-preprocessor-llm-standard
+- 1단계 최소교정: tts-preprocessor-simplified
+- 2단계 기본교정(AI미적용): tts-preprocessor-standard
+- 3단계 AI 기본교정: tts-preprocessor-standard-llm
+- 4단계 AI 자연스러운 발화: tts-preprocessor-natural-llm
 
 Windows에서는 각 파일명 끝에 .exe가 붙습니다. 0단계는 실행 파일을 호출하지
 않고 원문을 그대로 사용합니다.
@@ -16,52 +15,45 @@ Windows에서는 각 파일명 끝에 .exe가 붙습니다. 0단계는 실행 �
 단위 규칙을 공유하되 일반 영문 발음 fallback만 제외한 프로필입니다. 2단계가
 1단계를 먼저 실행하는 구조는 아닙니다.
 
-3~5단계는 원문을 직접 입력받습니다. 각 실행 파일 내부에서 2단계 전체
+3·4단계는 원문을 직접 입력받습니다. 각 실행 파일 내부에서 2단계 전체
 규칙 엔진을 정확히 한 번 실행한 다음, 3단계는 LLM_prompt.txt, 4단계는
-LLM_prompt_lv2.txt, 5단계는 LLM_prompt_lv3.txt를 사용합니다. 호출 gate가 후속 교정 가능성을 찾으면 LLM을
+LLM_prompt_lv3.txt를 사용합니다. 호출 gate가 후속 교정 가능성을 찾으면 LLM을
 한 번 호출하고 응답을 검증하며, 명백히 불필요하면 규칙 결과를 그대로 최종
 출력합니다. 3단계는 일반 한국어 철자를 발음형으로 바꾸지 않고 잔여 읽기,
-제한적인 복합명사 발화 경계와 쉼표를 처리합니다. 4단계는 발음형 전사를 하지 않고
-축약·복합명사 경계·운율·잔여 읽기의 폐쇄형
-후보를 만들고, LLM은 문맥으로 후보 ID와 option만 선택하며 최종 문자열은 코드가
-조합합니다. 4단계는 3단계보다 생략
-조건이 엄격하여 더 많은 입력에서 LLM을 호출합니다. 5단계는 이 처리 전체에
-통합 exact 표준발음 registry를 한 번 선적용하고 잠근 뒤, 4단계 전체 후보와 남은 폐쇄형 문맥 후보를
-위치·허용 출력·의미 지침이 포함된 work plan으로 LLM에 제공합니다. 규칙만으로 완료된 짧은
+제한적인 복합명사 발화 경계와 쉼표를 처리합니다. 4단계는 통합 exact 표준발음 registry를
+한 번 선적용하고 잠근 뒤, 3단계 잔여 읽기·복합명사 경계·운율 후보와 폐쇄형 `이다` 축약·
+문맥 표준발음 후보를 위치·허용 출력·의미 지침이 포함된 work plan으로 LLM에 제공합니다. 규칙만으로 완료된 짧은
 입력은 LLM을 생략하며 후보 밖 발음 전사는 거절합니다. 별도
 tts-llm-stage 실행 파일이나 --prompt-level 선택은 제공하지 않습니다.
-5단계 registry는 명사·용언별 허용 경계를 분리하며, `--check`는 중복·충돌·출처·경계 metadata까지 검증합니다.
+4단계 registry는 명사·용언별 허용 경계를 분리하며, `--check`는 중복·충돌·출처·경계 metadata까지 검증합니다.
 
 Linux/macOS 예시:
 
   ./tts-preprocessor-simplified --text "ABC와 KOSPI, 3kg"
-  ./tts-preprocessor --text "KBS 뉴스입니다"
-  ./tts-preprocessor-llm-minimal --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
-  ./tts-preprocessor-llm-natural --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
-  ./tts-preprocessor-llm-minimal --check
-  ./tts-preprocessor-llm-natural --check
-  ./tts-preprocessor-llm-standard --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
-  ./tts-preprocessor-llm-standard --text "항공기 8대가 대기합니다" --rules-only
-  ./tts-preprocessor-llm-standard --check
+  ./tts-preprocessor-standard --text "KBS 뉴스입니다"
+  ./tts-preprocessor-standard-llm --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
+  ./tts-preprocessor-standard-llm --check
+  ./tts-preprocessor-natural-llm --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
+  ./tts-preprocessor-natural-llm --text "항공기 8대가 대기합니다" --rules-only
+  ./tts-preprocessor-natural-llm --check
 
 Windows PowerShell 예시:
 
   .\tts-preprocessor-simplified.exe --text "ABC와 KOSPI, 3kg"
-  .\tts-preprocessor.exe --text "KBS 뉴스입니다"
-  .\tts-preprocessor-llm-minimal.exe --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
-  .\tts-preprocessor-llm-natural.exe --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
-  .\tts-preprocessor-llm-standard.exe --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
-  .\tts-preprocessor-llm-standard.exe --text "항공기 8대가 대기합니다" --rules-only
+  .\tts-preprocessor-standard.exe --text "KBS 뉴스입니다"
+  .\tts-preprocessor-standard-llm.exe --text "KBS 뉴스입니다" --model "gemma4-31B-it (vLLM)"
+  .\tts-preprocessor-natural-llm.exe --text "인기 상승의 대가를 분석했습니다" --model "gemma4-31B-it (vLLM)"
+  .\tts-preprocessor-natural-llm.exe --text "항공기 8대가 대기합니다" --rules-only
 
 LLM 실행 파일은 --text, --input, 표준입력, --output, --json, --model,
 --list-models, --check, --rules-only를 지원합니다. --rules-only는 선택 단계의
 전체 규칙 처리와 확정 발음 처리를 적용하되 LLM을 호출하지 않습니다. 공급자별 환경변수는 운영 환경에서
 설정하며 인증정보를 실행 파일이나 명령행에 포함하지 마십시오.
---json 응답의 rule_elapsed_ms는 규칙기반 처리시간(5단계의 deterministic pronunciation overlay 포함), llm_elapsed_ms는 프롬프트
+--json 응답의 rule_elapsed_ms는 규칙기반 처리시간(4단계의 deterministic pronunciation overlay 포함), llm_elapsed_ms는 프롬프트
 구성·LLM 호출·응답 검증을 포함한 LLM 처리시간입니다. elapsed_ms는 LLM 서버
 요청시간 호환 필드입니다. llm_called가 false이면 LLM을 생략한 것이며,
-3~5단계 speech_text는 확정 잔여 읽기가 반영된 각 단계의 base text이며,
-5단계는 exact 표준발음 결과도 포함합니다. elapsed_ms·llm_elapsed_ms는 0.0입니다.
+3·4단계 speech_text는 확정 잔여 읽기가 반영된 각 단계의 base text이며,
+4단계는 exact 표준발음 결과도 포함합니다. elapsed_ms·llm_elapsed_ms는 0.0입니다.
 llm_skip_reason에는 생략 사유 코드가 들어갑니다.
 JSON의 llm_status, fallback_used, fallback_reason은 정상 적용, 부분 적용,
 timeout, 공급자 사용 불가, 무효 응답 또는 규칙 전용 복구 상태를 구분합니다.
@@ -75,7 +67,7 @@ timeout, 공급자 사용 불가, 무효 응답 또는 규칙 전용 복구 상�
 
 ## 패키지 실행모듈의 LLM 서버
 
-웹페이지는 모델 선택을 제공하지만, ZIP으로 배포되는 3~5단계 실행모듈은
+웹페이지는 모델 선택을 제공하지만, ZIP으로 배포되는 3·4단계 실행모듈은
 `gemma4-31B-it (vLLM)` 모델을 고정해 사용합니다. 이 모델의 vLLM upstream ID는
 `google/gemma-4-31B-it`이며, 웹페이지에서 선택한 다른 모델 설정은 패키지
 실행모듈에 전달되지 않습니다. `--model`을 생략해도 이 모델이 기본값으로
@@ -93,9 +85,9 @@ timeout, 공급자 사용 불가, 무효 응답 또는 규칙 전용 복구 상�
 환경변수로만 관리하십시오. `--check`는 패키지 자산을 확인하며 vLLM 연결 확인은
 실제 LLM 실행 시 수행됩니다.
 
-3~5단계 LLM은 후보 ID/option JSON만 반환하며 최종 문자열은 코드가 조립합니다.
+3·4단계 LLM은 후보 ID/option JSON만 반환하며 최종 문자열은 코드가 조립합니다.
 잘못된 JSON 또는 Critical/High 검증 실패 시 확정 읽기가 잠긴 내부
-stage3_base_text, stage4_base_text, stage5_base_text로 fallback하며 retry하지 않습니다. 외부 normalized_text는
+stage3_base_text, stage4_base_text로 fallback하며 retry하지 않습니다. 외부 normalized_text는
 2단계 결과를 유지합니다. 내부 provenance는 검증에만 사용하고 외부
 응답 계약이나 LLM 본문에 노출하지 않습니다.
 

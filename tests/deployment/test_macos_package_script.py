@@ -57,15 +57,13 @@ def test_macos_script_rejects_non_python313_project_environment(
     for relative in (
             "tts_preprocessor.spec",
             "tts_preprocessor_simplified.spec",
-            "tts_preprocessor_llm_minimal.spec",
-            "tts_preprocessor_llm_natural.spec",
-            "tts_preprocessor_llm_standard.spec",
+            "tts_preprocessor_standard_llm.spec",
+            "tts_preprocessor_natural_llm.spec",
             "bin/build_binary_entrypoint.py",
             "bin/build_simplified_binary_entrypoint.py",
             "bin/integrated_llm_cli.py",
-            "bin/build_llm_minimal_entrypoint.py",
-            "bin/build_llm_natural_entrypoint.py",
-            "bin/build_llm_standard_entrypoint.py",
+            "bin/build_standard_llm_entrypoint.py",
+            "bin/build_natural_llm_entrypoint.py",
         "docs/Release_Package_README.txt",
     ):
         target = project_root / relative
@@ -133,16 +131,22 @@ def test_macos_script_uses_project_tools_and_flat_archive_contract() -> None:
     assert 'ARCHIVE_NAME="tts-preprocessor-macos.zip"' in script
     assert "tts_preprocessor.spec" in script
     assert "tts_preprocessor_simplified.spec" in script
-    assert "tts_preprocessor_llm_minimal.spec" in script
-    assert "tts_preprocessor_llm_natural.spec" in script
-    assert "tts_preprocessor_llm_standard.spec" in script
+    assert "tts_preprocessor_standard_llm.spec" in script
+    assert "tts_preprocessor_natural_llm.spec" in script
     assert "bin/build_binary_entrypoint.py" in script
     assert "bin/build_simplified_binary_entrypoint.py" in script
     assert "bin/integrated_llm_cli.py" in script
-    assert "bin/build_llm_minimal_entrypoint.py" in script
-    assert "bin/build_llm_natural_entrypoint.py" in script
-    assert "bin/build_llm_standard_entrypoint.py" in script
+    assert "bin/build_standard_llm_entrypoint.py" in script
+    assert "bin/build_natural_llm_entrypoint.py" in script
+    assert "tts_preprocessor_llm_natural.spec" not in script
+    assert "build_llm_natural_entrypoint.py" not in script
     assert "pyinstaller_runtime_hooks" not in script
-    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor\\ntts-preprocessor-llm-minimal\\ntts-preprocessor-llm-natural\\ntts-preprocessor-llm-standard\\ntts-preprocessor-simplified'" in script
+    assert "EXPECTED_CONTENTS=$'README.txt\\ntts-preprocessor-natural-llm\\ntts-preprocessor-simplified\\ntts-preprocessor-standard\\ntts-preprocessor-standard-llm'" in script
+    assert "tts-preprocessor-llm-natural" not in script
+    assert 'zip -q "$TEMP_ARCHIVE"' in script
+    assert '"tts-preprocessor-standard"' in script
+    assert '"tts-preprocessor-simplified"' in script
+    assert '"tts-preprocessor-standard-llm"' in script
+    assert '"tts-preprocessor-natural-llm"' in script
     assert 'find "$EXTRACT_DIR" -type l' in script
     assert 'mv -f -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"' in script

@@ -37,26 +37,21 @@ mkdir -p "$LOG_DIR" "$RUN_DIR"
 if [[ -n "${TTS_PREPROCESSOR_BINARY:-}" ]]; then
   LATEST_BINARY="$TTS_PREPROCESSOR_BINARY"
 else
-  LATEST_BINARY="$APP_DIR/packages/tts-preprocessor/tts-preprocessor"
+  LATEST_BINARY="$APP_DIR/packages/tts-preprocessor/tts-preprocessor-standard"
   if [[ ! -f "$LATEST_BINARY" ]]; then
     echo "No packaged binary found at $LATEST_BINARY" >&2
     exit 1
   fi
 fi
-if [[ -n "${TTS_PREPROCESSOR_LLM_MINIMAL_BINARY:-}" ]]; then
-  LATEST_LLM_MINIMAL="$TTS_PREPROCESSOR_LLM_MINIMAL_BINARY"
+if [[ -n "${TTS_PREPROCESSOR_STANDARD_LLM_BINARY:-}" ]]; then
+  LATEST_STANDARD_LLM="$TTS_PREPROCESSOR_STANDARD_LLM_BINARY"
 else
-  LATEST_LLM_MINIMAL="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-llm-minimal"
+  LATEST_STANDARD_LLM="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-standard-llm"
 fi
-if [[ -n "${TTS_PREPROCESSOR_LLM_NATURAL_BINARY:-}" ]]; then
-  LATEST_LLM_NATURAL="$TTS_PREPROCESSOR_LLM_NATURAL_BINARY"
+if [[ -n "${TTS_PREPROCESSOR_NATURAL_LLM_BINARY:-}" ]]; then
+  LATEST_NATURAL_LLM="$TTS_PREPROCESSOR_NATURAL_LLM_BINARY"
 else
-  LATEST_LLM_NATURAL="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-llm-natural"
-fi
-if [[ -n "${TTS_PREPROCESSOR_LLM_STANDARD_BINARY:-}" ]]; then
-  LATEST_LLM_STANDARD="$TTS_PREPROCESSOR_LLM_STANDARD_BINARY"
-else
-  LATEST_LLM_STANDARD="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-llm-standard"
+  LATEST_NATURAL_LLM="$(cd "$(dirname "$LATEST_BINARY")" && pwd)/tts-preprocessor-natural-llm"
 fi
 if [[ -n "${TTS_PREPROCESSOR_SIMPLIFIED_BINARY:-}" ]]; then
   LATEST_SIMPLIFIED_BINARY="$TTS_PREPROCESSOR_SIMPLIFIED_BINARY"
@@ -67,16 +62,12 @@ if [[ ! -f "$LATEST_SIMPLIFIED_BINARY" || ! -x "$LATEST_SIMPLIFIED_BINARY" ]]; t
   echo "No packaged simplified binary found at $LATEST_SIMPLIFIED_BINARY" >&2
   exit 1
 fi
-if [[ ! -f "$LATEST_LLM_MINIMAL" || ! -x "$LATEST_LLM_MINIMAL" ]]; then
-  echo "No packaged level 3 binary found at $LATEST_LLM_MINIMAL" >&2
+if [[ ! -f "$LATEST_STANDARD_LLM" || ! -x "$LATEST_STANDARD_LLM" ]]; then
+  echo "No packaged stage 3 binary found at $LATEST_STANDARD_LLM" >&2
   exit 1
 fi
-if [[ ! -f "$LATEST_LLM_NATURAL" || ! -x "$LATEST_LLM_NATURAL" ]]; then
-  echo "No packaged level 4 binary found at $LATEST_LLM_NATURAL" >&2
-  exit 1
-fi
-if [[ ! -f "$LATEST_LLM_STANDARD" || ! -x "$LATEST_LLM_STANDARD" ]]; then
-  echo "No packaged level 5 binary found at $LATEST_LLM_STANDARD" >&2
+if [[ ! -f "$LATEST_NATURAL_LLM" || ! -x "$LATEST_NATURAL_LLM" ]]; then
+  echo "No packaged stage 4 binary found at $LATEST_NATURAL_LLM" >&2
   exit 1
 fi
 
@@ -131,16 +122,15 @@ nohup env \
   TTS_PREPROCESSOR_PORT="$PORT" \
   TTS_PREPROCESSOR_BINARY="$LATEST_BINARY" \
   TTS_PREPROCESSOR_SIMPLIFIED_BINARY="$LATEST_SIMPLIFIED_BINARY" \
-  TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL" \
-  TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL" \
-  TTS_PREPROCESSOR_LLM_STANDARD_BINARY="$LATEST_LLM_STANDARD" \
+  TTS_PREPROCESSOR_STANDARD_LLM_BINARY="$LATEST_STANDARD_LLM" \
+  TTS_PREPROCESSOR_NATURAL_LLM_BINARY="$LATEST_NATURAL_LLM" \
   "$PYTHON_BIN" -m api.server >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 
 for _ in $(seq 1 20); do
   if curl -fsS "http://127.0.0.1:${PORT}/web/" >/dev/null 2>&1; then
-    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY SIMPLIFIED=$LATEST_SIMPLIFIED_BINARY LLM_MINIMAL=$LATEST_LLM_MINIMAL LLM_NATURAL=$LATEST_LLM_NATURAL LLM_STANDARD=$LATEST_LLM_STANDARD"
+    echo "Server started: PID=$SERVER_PID PORT=$PORT BINARY=$LATEST_BINARY SIMPLIFIED=$LATEST_SIMPLIFIED_BINARY STANDARD_LLM=$LATEST_STANDARD_LLM NATURAL_LLM=$LATEST_NATURAL_LLM"
     exit 0
   fi
   sleep 1

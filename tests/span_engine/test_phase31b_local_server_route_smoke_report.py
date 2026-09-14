@@ -41,9 +41,9 @@ def test_phase31b_api_server_route_contract_still_binary_backed() -> None:
 def test_phase31b_start_server_uses_packaged_binary() -> None:
     start_script = Path("scripts/start_server.sh").read_text(encoding="utf-8")
 
-    assert "packages/tts-preprocessor/tts-preprocessor" in start_script
+    assert "packages/tts-preprocessor/tts-preprocessor-standard" in start_script
     assert 'TTS_PREPROCESSOR_BINARY="$LATEST_BINARY"' in start_script
-    assert 'TTS_PREPROCESSOR_LLM_MINIMAL_BINARY="$LATEST_LLM_MINIMAL"' in start_script
-    assert 'TTS_PREPROCESSOR_LLM_NATURAL_BINARY="$LATEST_LLM_NATURAL"' in start_script
-    assert 'TTS_PREPROCESSOR_LLM_STANDARD_BINARY="$LATEST_LLM_STANDARD"' in start_script
+    assert 'TTS_PREPROCESSOR_STANDARD_LLM_BINARY="$LATEST_STANDARD_LLM"' in start_script
+    assert "TTS_PREPROCESSOR_LLM_NATURAL_BINARY" not in start_script
+    assert 'TTS_PREPROCESSOR_NATURAL_LLM_BINARY="$LATEST_NATURAL_LLM"' in start_script
     assert '"$PYTHON_BIN" -m api.server' in start_script

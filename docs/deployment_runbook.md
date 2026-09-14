@@ -11,7 +11,7 @@
 `TTS_PREPROCESSOR_BINARY`로 실행한다.
 
 ```text
-~/tts-preprocessor/app/packages/tts-preprocessor/tts-preprocessor
+~/tts-preprocessor/app/packages/tts-preprocessor/tts-preprocessor-standard
 ```
 
 공식 빌드 entrypoint는 `bin/build_binary_entrypoint.py`이며
@@ -206,14 +206,13 @@ bash scripts/build_remote_package.sh cleanup <deploy-id>
 5. staging Linux ZIP 생성 및 구조 검증
 6. ZIP SHA-256이 포함된 prepare marker 생성 및 재검증
 
-Linux ZIP 내부는 다음 다섯 파일뿐이다.
+Linux 다운로드 ZIP과 서버 `packages/tts-preprocessor/`는 다음 파일만 포함한다.
 
 ```text
 tts-preprocessor/README.txt
-tts-preprocessor/tts-preprocessor
-tts-preprocessor/tts-preprocessor-llm-minimal
-tts-preprocessor/tts-preprocessor-llm-natural
-tts-preprocessor/tts-preprocessor-llm-standard
+tts-preprocessor/tts-preprocessor-standard
+tts-preprocessor/tts-preprocessor-standard-llm
+tts-preprocessor/tts-preprocessor-natural-llm
 tts-preprocessor/tts-preprocessor-simplified
 ```
 
@@ -275,11 +274,10 @@ bash scripts/build_macos_package.sh
 - Darwin arm64와 `.venv` Python arm64만 허용
 - 일반 GIL Python 3.13 계열만 허용
 - `.venv/bin/python`, `.venv/bin/pyinstaller`, 공용 spec/hook 사용
-- 실행 파일: `build/macos/dist/tts-preprocessor`, `tts-preprocessor-simplified`,
-  `tts-preprocessor-llm-minimal`, `tts-preprocessor-llm-natural`,
-  `tts-preprocessor-llm-standard`
+- 실행 파일: `build/macos/dist/tts-preprocessor-standard`, `tts-preprocessor-simplified`,
+  `tts-preprocessor-standard-llm`, `tts-preprocessor-natural-llm`
 - ZIP: `downloads/tts-preprocessor-macos.zip`
-- ZIP 최상위: 다섯 실행 파일과 `README.txt`
+- ZIP 최상위: 1·2·3·4단계 실행 파일과 `README.txt`
 - 원본과 압축 해제 실행 파일 smoke test
 - 임시 ZIP 검증 후 기존 ZIP 원자 교체
 
@@ -314,9 +312,9 @@ Gatekeeper 경고가 발생할 수 있다.
      --platform windows
    ```
 
-Windows ZIP은 최상위에 `tts-preprocessor.exe`, `tts-preprocessor-simplified.exe`,
-`tts-preprocessor-llm-minimal.exe`, `tts-preprocessor-llm-natural.exe`,
-`tts-preprocessor-llm-standard.exe`,
+Windows ZIP은 최상위에 `tts-preprocessor-standard.exe`, `tts-preprocessor-simplified.exe`,
+`tts-preprocessor-standard-llm.exe`,
+`tts-preprocessor-natural-llm.exe`,
 `README.txt`만 포함한다.
 업로드 스크립트는 Linux/macOS ZIP, 운영 package, 서버 프로세스를 변경하지
 않는다.
@@ -371,7 +369,7 @@ TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS=20
 TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS=5
 ```
 
-LLM 공급자가 응답하지 않거나 무효 응답을 반환해도 3~5단계 API는 HTTP 오류나
+LLM 공급자가 응답하지 않거나 무효 응답을 반환해도 3~4단계 API는 HTTP 오류나
 원시 모델 출력을 TTS 경로에 전달하지 않고 안전한 `speech_text`를 반환해야 한다.
 응답의 `fallback_used=true`와 `llm_status`(`timeout`, `unavailable`,
 `invalid_response`, `process_timeout`, `circuit_open`, `overloaded`)로 저하 상태를
@@ -424,7 +422,7 @@ fallback하지 않는다. 현재 binary contract와 semantic probe를 통과하�
 로컬 Linux package 경로:
 
 ```text
-packages/tts-preprocessor/tts-preprocessor
+packages/tts-preprocessor/tts-preprocessor-standard
 downloads/tts-preprocessor-linux.zip
 ```
 

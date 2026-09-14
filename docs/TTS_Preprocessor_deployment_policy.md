@@ -10,7 +10,7 @@ The production API MUST run the packaged PyInstaller executable through
 `TTS_PREPROCESSOR_BINARY`:
 
 ```text
-app/packages/tts-preprocessor/tts-preprocessor
+app/packages/tts-preprocessor/tts-preprocessor-standard
 ```
 
 The API MUST NOT import `engine.*` to serve production transformations. The
@@ -171,21 +171,19 @@ Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose
 that field or any decision marker. `shadow_logs` remains the source-preservation
 validation stream and MUST NOT be repurposed for contextual decisions.
 
-The level-3 LLM receives only the ordinary `normalized_text` string. Levels 4
-and 5 additionally receive a closed selection plan containing only candidate
-IDs, normalized coordinates, finite outputs, and concise guidance. Deployment
-Deployment MUST NOT attach `contextual_decision_logs`, trace markers, or other rule-engine
+The level-3 LLM receives only the ordinary `normalized_text` string. Level 4
+additionally receives a closed selection plan containing only candidate IDs,
+normalized coordinates, finite outputs, and concise guidance. Deployment MUST
+NOT attach `contextual_decision_logs`, trace markers, or other rule-engine
 metadata to the model request. The integrated runtime may retain an internal
 normalized-coordinate provenance snapshot for deterministic response validation.
-The rule
-endpoint remains independently usable as a final TTS input path.
+The rule endpoint remains independently usable as a final TTS input path.
 The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not expose rule-reading lock
-metadata, use repeated stability sampling, or automatically retry. Levels 3–5
-fall back to their locked `stage3_base_text`, `stage4_base_text`, or
-`stage5_base_text` after a contract failure, provider timeout, unusable response,
-or provider outage. A failed batch does not discard independently validated
-batches.
+metadata, use repeated stability sampling, or automatically retry. Levels 3 and 4
+fall back to their locked `stage3_base_text` or `stage4_base_text` after a
+contract failure, provider timeout, unusable response, or provider outage. A
+failed batch does not discard independently validated batches.
 
 Provider deadlines default to 15 seconds. The API limits an integrated LLM
 process to 20 seconds and then invokes the same packaged executable with
@@ -209,24 +207,24 @@ JSON-like block, Markdown inline-code span, SKU-like identifier, or lock token.
 This validation is a safety gate; it does not authorize rewriting protected
 surfaces or falling back to an unvalidated model response.
 
-`LLM/docs/LLM_prompt.txt`, `LLM/docs/LLM_prompt_lv2.txt`, and
-`LLM/docs/LLM_prompt_lv3.txt` are packaged only in levels 3, 4, and 5 respectively. Each integrated executable takes
-original text, runs the full level-2 rule engine exactly once, then invokes and
-validates its fixed prompt. Production API MUST invoke exactly one selected
-executable through `/api/transform` instead of importing `engine.*` or `LLM.*`
-source. No standalone `tts-llm-stage` artifact is published. Provider credentials
-remain in `config/llm.env` and MUST NOT be embedded in an executable.
-The level-4 and level-5 executables package the shared closed-selection pipeline.
-The level-5 executable additionally packages the unified exact pronunciation
-registry `LLM/data/stage5_pronunciations.json`, and applies it once before the
-model call. Both models
-return only candidate IDs and option indexes; code composes the final speech text.
+`LLM/docs/LLM_prompt.txt` and `LLM/docs/LLM_prompt_lv3.txt` are packaged only in
+levels 3 and 4 respectively. Each integrated executable takes original text, runs
+the full level-2 rule engine exactly once, then invokes and validates its fixed
+prompt. Production API MUST invoke exactly one selected executable through
+`/api/transform` instead of importing `engine.*` or `LLM.*` source. No standalone
+`tts-llm-stage` artifact is published. Provider credentials remain in
+`config/llm.env` and MUST NOT be embedded in an executable. Public levels are 0,
+1, 2, 3, and 4. The level-4 executable packages the shared closed-selection
+pipeline and the
+unified exact pronunciation registry `LLM/data/stage4_pronunciations.json`, and
+applies it once before the model call. Both LLM executables return only
+candidate IDs and option indexes; code composes the final speech text.
 
-Every OS package also includes `tts-preprocessor-simplified` beside the default
-`tts-preprocessor`. Both binaries use the same rule engine and managed dictionaries;
+Every OS package also includes `tts-preprocessor-simplified` beside
+`tts-preprocessor-standard`. Both binaries use the same rule engine and managed dictionaries;
 the simplified executable disables only general English pronunciation fallbacks.
-The existing build and deployment commands build, validate, and publish both rule
-binaries together with the level-3, level-4, and level-5 integrated executables.
+The existing build and deployment commands build and validate both rule binaries
+together with the level-3 and level-4 integrated executables.
 
 `check_server.sh` is a health/sanity check. Linux and macOS downloads, Web, API
 docs, and an API transform sanity response are required. Windows download is

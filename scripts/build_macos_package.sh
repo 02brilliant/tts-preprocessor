@@ -7,26 +7,23 @@ VENV_DIR="$ROOT_DIR/.venv"
 PYTHON_BIN="$VENV_DIR/bin/python"
 PYINSTALLER_BIN="$VENV_DIR/bin/pyinstaller"
 REQUIRED_PYTHON_SERIES="3.13"
-STAGE1_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
+STANDARD_SPEC_FILE="$ROOT_DIR/tts_preprocessor.spec"
 SIMPLIFIED_SPEC_FILE="$ROOT_DIR/tts_preprocessor_simplified.spec"
-LLM_MINIMAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_minimal.spec"
-LLM_NATURAL_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_natural.spec"
-LLM_STANDARD_SPEC_FILE="$ROOT_DIR/tts_preprocessor_llm_standard.spec"
-STAGE1_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
+STANDARD_LLM_SPEC_FILE="$ROOT_DIR/tts_preprocessor_standard_llm.spec"
+NATURAL_LLM_SPEC_FILE="$ROOT_DIR/tts_preprocessor_natural_llm.spec"
+STANDARD_ENTRYPOINT="$ROOT_DIR/bin/build_binary_entrypoint.py"
 SIMPLIFIED_ENTRYPOINT="$ROOT_DIR/bin/build_simplified_binary_entrypoint.py"
 LLM_CLI_ENTRYPOINT="$ROOT_DIR/bin/integrated_llm_cli.py"
-LLM_MINIMAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_minimal_entrypoint.py"
-LLM_NATURAL_ENTRYPOINT="$ROOT_DIR/bin/build_llm_natural_entrypoint.py"
-LLM_STANDARD_ENTRYPOINT="$ROOT_DIR/bin/build_llm_standard_entrypoint.py"
+STANDARD_LLM_ENTRYPOINT="$ROOT_DIR/bin/build_standard_llm_entrypoint.py"
+NATURAL_LLM_ENTRYPOINT="$ROOT_DIR/bin/build_natural_llm_entrypoint.py"
 README_TEMPLATE="$ROOT_DIR/docs/Release_Package_README.txt"
 MACOS_BUILD_DIR="$ROOT_DIR/build/macos"
 MACOS_DIST_DIR="$MACOS_BUILD_DIR/dist"
 MACOS_WORK_DIR="$MACOS_BUILD_DIR/work"
-MACOS_STAGE1_BINARY="$MACOS_DIST_DIR/tts-preprocessor"
+MACOS_STANDARD_BINARY="$MACOS_DIST_DIR/tts-preprocessor-standard"
 MACOS_SIMPLIFIED_BINARY="$MACOS_DIST_DIR/tts-preprocessor-simplified"
-MACOS_LLM_MINIMAL_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-minimal"
-MACOS_LLM_NATURAL_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-natural"
-MACOS_LLM_STANDARD_BINARY="$MACOS_DIST_DIR/tts-preprocessor-llm-standard"
+MACOS_STANDARD_LLM_BINARY="$MACOS_DIST_DIR/tts-preprocessor-standard-llm"
+MACOS_NATURAL_LLM_BINARY="$MACOS_DIST_DIR/tts-preprocessor-natural-llm"
 DOWNLOADS_DIR="$ROOT_DIR/downloads"
 ARCHIVE_NAME="tts-preprocessor-macos.zip"
 ARCHIVE_PATH="$DOWNLOADS_DIR/$ARCHIVE_NAME"
@@ -51,17 +48,15 @@ fi
 for required_file in \
   "$PYTHON_BIN" \
   "$PYINSTALLER_BIN" \
-  "$STAGE1_SPEC_FILE" \
+  "$STANDARD_SPEC_FILE" \
   "$SIMPLIFIED_SPEC_FILE" \
-  "$LLM_MINIMAL_SPEC_FILE" \
-  "$LLM_NATURAL_SPEC_FILE" \
-  "$LLM_STANDARD_SPEC_FILE" \
-  "$STAGE1_ENTRYPOINT" \
+  "$STANDARD_LLM_SPEC_FILE" \
+  "$NATURAL_LLM_SPEC_FILE" \
+  "$STANDARD_ENTRYPOINT" \
   "$SIMPLIFIED_ENTRYPOINT" \
   "$LLM_CLI_ENTRYPOINT" \
-  "$LLM_MINIMAL_ENTRYPOINT" \
-  "$LLM_NATURAL_ENTRYPOINT" \
-  "$LLM_STANDARD_ENTRYPOINT" \
+  "$STANDARD_LLM_ENTRYPOINT" \
+  "$NATURAL_LLM_ENTRYPOINT" \
   "$README_TEMPLATE"; do
   if [[ ! -e "$required_file" ]]; then
     echo "[macos-build][ERROR] Missing required file: $required_file" >&2
@@ -102,13 +97,13 @@ mkdir -p "$MACOS_DIST_DIR" "$MACOS_WORK_DIR" "$DOWNLOADS_DIR"
 (
   cd "$ROOT_DIR"
   PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
-    TTS_PREPROCESSOR_EXECUTABLE_NAME="tts-preprocessor" \
+    TTS_PREPROCESSOR_EXECUTABLE_NAME="tts-preprocessor-standard" \
     "$PYINSTALLER_BIN" \
       --clean \
       --noconfirm \
       --distpath "$MACOS_DIST_DIR" \
       --workpath "$MACOS_WORK_DIR" \
-      "$STAGE1_SPEC_FILE"
+      "$STANDARD_SPEC_FILE"
   PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
     TTS_PREPROCESSOR_SIMPLIFIED_EXECUTABLE_NAME="tts-preprocessor-simplified" \
     "$PYINSTALLER_BIN" \
@@ -118,32 +113,24 @@ mkdir -p "$MACOS_DIST_DIR" "$MACOS_WORK_DIR" "$DOWNLOADS_DIR"
       --workpath "$MACOS_WORK_DIR" \
       "$SIMPLIFIED_SPEC_FILE"
   PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
-    TTS_PREPROCESSOR_LLM_MINIMAL_EXECUTABLE_NAME="tts-preprocessor-llm-minimal" \
+    TTS_PREPROCESSOR_STANDARD_LLM_EXECUTABLE_NAME="tts-preprocessor-standard-llm" \
     "$PYINSTALLER_BIN" \
       --clean \
       --noconfirm \
       --distpath "$MACOS_DIST_DIR" \
       --workpath "$MACOS_WORK_DIR" \
-      "$LLM_MINIMAL_SPEC_FILE"
+      "$STANDARD_LLM_SPEC_FILE"
   PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
-    TTS_PREPROCESSOR_LLM_NATURAL_EXECUTABLE_NAME="tts-preprocessor-llm-natural" \
+    TTS_PREPROCESSOR_NATURAL_LLM_EXECUTABLE_NAME="tts-preprocessor-natural-llm" \
     "$PYINSTALLER_BIN" \
       --clean \
       --noconfirm \
       --distpath "$MACOS_DIST_DIR" \
       --workpath "$MACOS_WORK_DIR" \
-      "$LLM_NATURAL_SPEC_FILE"
-  PYINSTALLER_CONFIG_DIR="$MACOS_BUILD_DIR/pyinstaller-config" \
-    TTS_PREPROCESSOR_LLM_STANDARD_EXECUTABLE_NAME="tts-preprocessor-llm-standard" \
-    "$PYINSTALLER_BIN" \
-      --clean \
-      --noconfirm \
-      --distpath "$MACOS_DIST_DIR" \
-      --workpath "$MACOS_WORK_DIR" \
-      "$LLM_STANDARD_SPEC_FILE"
+      "$NATURAL_LLM_SPEC_FILE"
 )
 
-for binary_path in "$MACOS_STAGE1_BINARY" "$MACOS_SIMPLIFIED_BINARY" "$MACOS_LLM_MINIMAL_BINARY" "$MACOS_LLM_NATURAL_BINARY" "$MACOS_LLM_STANDARD_BINARY"; do
+for binary_path in "$MACOS_STANDARD_BINARY" "$MACOS_SIMPLIFIED_BINARY" "$MACOS_STANDARD_LLM_BINARY" "$MACOS_NATURAL_LLM_BINARY"; do
   if [[ ! -f "$binary_path" || ! -x "$binary_path" ]]; then
     echo "[macos-build][ERROR] Missing or non-executable built file: $binary_path" >&2
     exit 1
@@ -156,7 +143,7 @@ for binary_path in "$MACOS_STAGE1_BINARY" "$MACOS_SIMPLIFIED_BINARY" "$MACOS_LLM
   fi
 done
 
-SMOKE_ACTUAL="$("$MACOS_STAGE1_BINARY" --text "$SMOKE_TEXT")"
+SMOKE_ACTUAL="$("$MACOS_STANDARD_BINARY" --text "$SMOKE_TEXT")"
 if [[ "$SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
   echo "[macos-build][ERROR] Built executable smoke test failed." >&2
   echo "expected: $SMOKE_EXPECTED" >&2
@@ -164,9 +151,8 @@ if [[ "$SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
   exit 1
 fi
 
-"$MACOS_LLM_MINIMAL_BINARY" --check >/dev/null
-"$MACOS_LLM_NATURAL_BINARY" --check >/dev/null
-"$MACOS_LLM_STANDARD_BINARY" --check >/dev/null
+"$MACOS_STANDARD_LLM_BINARY" --check >/dev/null
+"$MACOS_NATURAL_LLM_BINARY" --check >/dev/null
 SIMPLIFIED_SMOKE_ACTUAL="$("$MACOS_SIMPLIFIED_BINARY" --text "ABC와 3kg")"
 if [[ "$SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
   echo "[macos-build][ERROR] Simplified executable smoke test failed." >&2
@@ -182,26 +168,29 @@ EXTRACT_DIR="$STAGING_DIR/extracted"
 TEMP_ARCHIVE="$STAGING_DIR/$ARCHIVE_NAME"
 mkdir -p "$PACKAGE_DIR" "$EXTRACT_DIR"
 
-cp "$MACOS_STAGE1_BINARY" "$PACKAGE_DIR/tts-preprocessor"
+cp "$MACOS_STANDARD_BINARY" "$PACKAGE_DIR/tts-preprocessor-standard"
 cp "$MACOS_SIMPLIFIED_BINARY" "$PACKAGE_DIR/tts-preprocessor-simplified"
-cp "$MACOS_LLM_MINIMAL_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-minimal"
-cp "$MACOS_LLM_NATURAL_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-natural"
-cp "$MACOS_LLM_STANDARD_BINARY" "$PACKAGE_DIR/tts-preprocessor-llm-standard"
+cp "$MACOS_STANDARD_LLM_BINARY" "$PACKAGE_DIR/tts-preprocessor-standard-llm"
+cp "$MACOS_NATURAL_LLM_BINARY" "$PACKAGE_DIR/tts-preprocessor-natural-llm"
 cp "$README_TEMPLATE" "$PACKAGE_DIR/README.txt"
-chmod +x "$PACKAGE_DIR/tts-preprocessor"
+chmod +x "$PACKAGE_DIR/tts-preprocessor-standard"
 chmod +x "$PACKAGE_DIR/tts-preprocessor-simplified"
-chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-minimal"
-chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-natural"
-chmod +x "$PACKAGE_DIR/tts-preprocessor-llm-standard"
+chmod +x "$PACKAGE_DIR/tts-preprocessor-standard-llm"
+chmod +x "$PACKAGE_DIR/tts-preprocessor-natural-llm"
 
 (
   cd "$PACKAGE_DIR"
-  zip -q "$TEMP_ARCHIVE" "tts-preprocessor" "tts-preprocessor-simplified" "tts-preprocessor-llm-minimal" "tts-preprocessor-llm-natural" "tts-preprocessor-llm-standard" "README.txt"
+  zip -q "$TEMP_ARCHIVE" \
+    "tts-preprocessor-standard" \
+    "tts-preprocessor-simplified" \
+    "tts-preprocessor-standard-llm" \
+    "tts-preprocessor-natural-llm" \
+    "README.txt"
 )
 
 unzip -tq "$TEMP_ARCHIVE"
 ARCHIVE_CONTENTS="$(unzip -Z1 "$TEMP_ARCHIVE" | LC_ALL=C sort)"
-EXPECTED_CONTENTS=$'README.txt\ntts-preprocessor\ntts-preprocessor-llm-minimal\ntts-preprocessor-llm-natural\ntts-preprocessor-llm-standard\ntts-preprocessor-simplified'
+EXPECTED_CONTENTS=$'README.txt\ntts-preprocessor-natural-llm\ntts-preprocessor-simplified\ntts-preprocessor-standard\ntts-preprocessor-standard-llm'
 if [[ "$ARCHIVE_CONTENTS" != "$EXPECTED_CONTENTS" ]]; then
   echo "[macos-build][ERROR] Unexpected macOS ZIP contents:" >&2
   printf '%s\n' "$ARCHIVE_CONTENTS" >&2
@@ -218,19 +207,21 @@ if find "$EXTRACT_DIR" -type l -print -quit | grep -q .; then
   echo "[macos-build][ERROR] Symbolic links are not allowed in the macOS ZIP." >&2
   exit 1
 fi
-if [[ ! -x "$EXTRACT_DIR/tts-preprocessor" || ! -x "$EXTRACT_DIR/tts-preprocessor-simplified" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-minimal" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-natural" || ! -x "$EXTRACT_DIR/tts-preprocessor-llm-standard" ]]; then
+if [[ ! -x "$EXTRACT_DIR/tts-preprocessor-standard" \
+  || ! -x "$EXTRACT_DIR/tts-preprocessor-simplified" \
+  || ! -x "$EXTRACT_DIR/tts-preprocessor-standard-llm" \
+  || ! -x "$EXTRACT_DIR/tts-preprocessor-natural-llm" ]]; then
   echo "[macos-build][ERROR] Extracted stage executable is not executable." >&2
   exit 1
 fi
 
-EXTRACTED_SMOKE_ACTUAL="$("$EXTRACT_DIR/tts-preprocessor" --text "$SMOKE_TEXT")"
+EXTRACTED_SMOKE_ACTUAL="$("$EXTRACT_DIR/tts-preprocessor-standard" --text "$SMOKE_TEXT")"
 if [[ "$EXTRACTED_SMOKE_ACTUAL" != "$SMOKE_EXPECTED" ]]; then
   echo "[macos-build][ERROR] Extracted executable smoke test failed." >&2
   exit 1
 fi
-"$EXTRACT_DIR/tts-preprocessor-llm-minimal" --check >/dev/null
-"$EXTRACT_DIR/tts-preprocessor-llm-natural" --check >/dev/null
-"$EXTRACT_DIR/tts-preprocessor-llm-standard" --check >/dev/null
+"$EXTRACT_DIR/tts-preprocessor-standard-llm" --check >/dev/null
+"$EXTRACT_DIR/tts-preprocessor-natural-llm" --check >/dev/null
 EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL="$("$EXTRACT_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
 if [[ "$EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
   echo "[macos-build][ERROR] Extracted simplified executable smoke test failed." >&2
@@ -240,9 +231,8 @@ if [[ "$EXTRACTED_SIMPLIFIED_SMOKE_ACTUAL" != "ABC와 삼-킬로그램" ]]; then
 fi
 
 mv -f -- "$TEMP_ARCHIVE" "$ARCHIVE_PATH"
-echo "[macos-build][OK] Stage 1 executable: $MACOS_STAGE1_BINARY"
-echo "[macos-build][OK] Simplified executable: $MACOS_SIMPLIFIED_BINARY"
-echo "[macos-build][OK] Level 3 executable: $MACOS_LLM_MINIMAL_BINARY"
-echo "[macos-build][OK] Level 4 executable: $MACOS_LLM_NATURAL_BINARY"
-echo "[macos-build][OK] Level 5 executable: $MACOS_LLM_STANDARD_BINARY"
+echo "[macos-build][OK] Stage 1 executable: $MACOS_SIMPLIFIED_BINARY"
+echo "[macos-build][OK] Stage 2 executable: $MACOS_STANDARD_BINARY"
+echo "[macos-build][OK] Stage 3 executable: $MACOS_STANDARD_LLM_BINARY"
+echo "[macos-build][OK] Stage 4 executable: $MACOS_NATURAL_LLM_BINARY"
 echo "[macos-build][OK] Package: $ARCHIVE_PATH"

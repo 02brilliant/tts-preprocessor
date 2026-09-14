@@ -25,8 +25,8 @@ def test_phase31a_required_scripts_and_artifacts_exist() -> None:
         assert path.exists(), path
 
     for path in (
-        Path("dist/tts_preprocessor"),
-        Path("packages/tts-preprocessor/tts-preprocessor"),
+        Path("dist/tts-preprocessor-standard"),
+        Path("packages/tts-preprocessor/tts-preprocessor-standard"),
     ):
         if path.exists():
             assert path.is_file(), path
@@ -43,7 +43,7 @@ def test_phase31a_release_zip_contains_only_runtime_payload() -> None:
     with zipfile.ZipFile(release_zip) as archive:
         names = archive.namelist()
 
-    assert "tts-preprocessor/tts-preprocessor" in names
+    assert "tts-preprocessor/tts-preprocessor-standard" in names
     forbidden = [
         name
         for name in names
@@ -102,7 +102,7 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     binary_runtime = Path("api/binary_runtime.py").read_text(encoding="utf-8")
 
     assert "TTS_PREPROCESSOR_BINARY=\"$LATEST_BINARY\"" in start_script
-    assert "packages/tts-preprocessor/tts-preprocessor" in start_script
+    assert "packages/tts-preprocessor/tts-preprocessor-standard" in start_script
     assert "REMOTE_HOST=\"10.20.10.162\"" in deploy_script
     assert "$REMOTE_BUILD_SRC_DIR/engine/" in deploy_script
     assert '"$remote_base_dir/app/engine"' in deploy_script
@@ -125,9 +125,9 @@ def test_phase31a_scripts_preserve_remote_runtime_source_absence_contract() -> N
     assert '"$downloads_dir/tts-preprocessor-windows.zip"' in deploy_script
     assert "subprocess.run" in binary_runtime
     assert "TTS_PREPROCESSOR_BINARY" in binary_runtime
-    assert "TTS_PREPROCESSOR_LLM_MINIMAL_BINARY" in binary_runtime
-    assert "TTS_PREPROCESSOR_LLM_NATURAL_BINARY" in binary_runtime
-    assert "TTS_PREPROCESSOR_LLM_STANDARD_BINARY" in binary_runtime
+    assert "TTS_PREPROCESSOR_STANDARD_LLM_BINARY" in binary_runtime
+    assert "TTS_PREPROCESSOR_NATURAL_LLM_BINARY" in binary_runtime
+    assert "TTS_PREPROCESSOR_LLM_NATURAL_BINARY" not in binary_runtime
 
 
 def test_phase31a_build_package_is_packaging_only() -> None:
@@ -139,14 +139,14 @@ def test_phase31a_build_package_is_packaging_only() -> None:
     assert "def build_binary" not in build_package_script
     assert "--binary" in build_package_script
     assert "ignored_version" not in build_package_script
-    assert "dist/tts_preprocessor" in build_package_script
+    assert "dist/tts-preprocessor-standard" in build_package_script
     assert 'ARCHIVE_NAME = "tts-preprocessor-linux.zip"' in build_package_script
     assert "DOWNLOADS_DIR.iterdir()" not in build_package_script
 
     assert "build_binary.sh" in release_script
     assert "\"scripts/build_package.py\"" in release_script
     assert "\"--binary\"" in release_script
-    assert "\"dist/tts_preprocessor\"" in release_script
+    assert "\"dist/tts-preprocessor-standard\"" in release_script
     assert "ignored-version" not in release_script
 
 

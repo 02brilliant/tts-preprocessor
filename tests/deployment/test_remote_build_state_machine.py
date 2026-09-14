@@ -49,25 +49,20 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (buildsrc / "bin/integrated_llm_cli.py").write_text(
         "raise SystemExit('fixture only')\n", encoding="utf-8"
     )
-    (buildsrc / "bin/build_llm_minimal_entrypoint.py").write_text("fixture\n", encoding="utf-8")
-    (buildsrc / "bin/build_llm_natural_entrypoint.py").write_text("fixture\n", encoding="utf-8")
-    (buildsrc / "bin/build_llm_standard_entrypoint.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "bin/build_standard_llm_entrypoint.py").write_text("fixture\n", encoding="utf-8")
+    (buildsrc / "bin/build_natural_llm_entrypoint.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "tts_preprocessor.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
     (buildsrc / "tts_preprocessor_simplified.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
-    (buildsrc / "tts_preprocessor_llm_minimal.spec").write_text(
+    (buildsrc / "tts_preprocessor_standard_llm.spec").write_text(
         "# fixture spec\n", encoding="utf-8"
     )
-    (buildsrc / "tts_preprocessor_llm_natural.spec").write_text("# fixture spec\n", encoding="utf-8")
-    (buildsrc / "tts_preprocessor_llm_standard.spec").write_text("# fixture spec\n", encoding="utf-8")
+    (buildsrc / "tts_preprocessor_natural_llm.spec").write_text("# fixture spec\n", encoding="utf-8")
     (buildsrc / "LLM/models.json").write_text("{}\n", encoding="utf-8")
     (buildsrc / "LLM/docs/LLM_prompt.txt").write_text(
-        "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
-    )
-    (buildsrc / "LLM/docs/LLM_prompt_lv2.txt").write_text(
         "{{NORMALIZED_TEXT}}\n", encoding="utf-8"
     )
     (buildsrc / "LLM/docs/LLM_prompt_lv3.txt").write_text(
@@ -76,8 +71,7 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (buildsrc / "LLM/standard_pronunciation.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "LLM/selection_pipeline.py").write_text("fixture\n", encoding="utf-8")
     (buildsrc / "LLM/stage4_preprocessor.py").write_text("fixture\n", encoding="utf-8")
-    (buildsrc / "LLM/stage5_preprocessor.py").write_text("fixture\n", encoding="utf-8")
-    (buildsrc / "LLM/data/stage5_pronunciations.json").write_text(
+    (buildsrc / "LLM/data/stage4_pronunciations.json").write_text(
         "{}\n", encoding="utf-8"
     )
     (buildsrc / "docs/Release_Package_README.txt").write_text(
@@ -87,16 +81,15 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         "# intercepted by fake buildenv python\n", encoding="utf-8"
     )
 
-    old_binary = package_dir / "tts-preprocessor"
+    old_binary = package_dir / "tts-preprocessor-standard"
     old_binary.write_bytes(b"old-package")
     old_binary.chmod(0o755)
     old_simplified_binary = package_dir / "tts-preprocessor-simplified"
     old_simplified_binary.write_bytes(b"old-simplified-package")
     old_simplified_binary.chmod(0o755)
     for name in (
-        "tts-preprocessor-llm-minimal",
-        "tts-preprocessor-llm-natural",
-        "tts-preprocessor-llm-standard",
+        "tts-preprocessor-standard-llm",
+        "tts-preprocessor-natural-llm",
     ):
         old_llm_binary = package_dir / name
         old_llm_binary.write_bytes(b"old-integrated-package")
@@ -134,13 +127,13 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         done
         case "${{FAKE_PROBE_FAILURE:-none}}" in
           dist)
-            [[ "$binary_path" == */dist/tts_preprocessor ]] && exit 31
+            [[ "$binary_path" == */dist/tts-preprocessor-standard ]] && exit 31
             ;;
           prepared)
             [[ "$binary_path" == *".tts-preprocessor.prepare."* ]] && exit 32
             ;;
           published)
-            [[ "$binary_path" == */app/packages/tts-preprocessor/tts-preprocessor ]] && exit 33
+            [[ "$binary_path" == */app/packages/tts-preprocessor/tts-preprocessor-standard ]] && exit 33
             ;;
         esac
         exit 0
@@ -156,21 +149,18 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
           exit 0
         fi
         mkdir -p dist
-        if [[ "$*" == *"tts_preprocessor_llm_minimal.spec"* ]]; then
-          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-minimal
-          chmod +x dist/tts-preprocessor-llm-minimal
-        elif [[ "$*" == *"tts_preprocessor_llm_natural.spec"* ]]; then
-          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-natural
-          chmod +x dist/tts-preprocessor-llm-natural
-        elif [[ "$*" == *"tts_preprocessor_llm_standard.spec"* ]]; then
-          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-llm-standard
-          chmod +x dist/tts-preprocessor-llm-standard
+        if [[ "$*" == *"tts_preprocessor_standard_llm.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-standard-llm
+          chmod +x dist/tts-preprocessor-standard-llm
+        elif [[ "$*" == *"tts_preprocessor_natural_llm.spec"* ]]; then
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > dist/tts-preprocessor-natural-llm
+          chmod +x dist/tts-preprocessor-natural-llm
         elif [[ "$*" == *"tts_preprocessor_simplified.spec"* ]]; then
           printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "ABC와 삼-킬로그램"' > dist/tts-preprocessor-simplified
           chmod +x dist/tts-preprocessor-simplified
         else
-          printf '%s\n' "new-package" > dist/tts_preprocessor
-          chmod +x dist/tts_preprocessor
+          printf '%s\n' "new-package" > dist/tts-preprocessor-standard
+          chmod +x dist/tts-preprocessor-standard
         fi
         """,
     )
@@ -219,7 +209,7 @@ def _run_remote_build(
 
 def _assert_old_release_preserved(root: Path) -> None:
     assert (
-        root / "app/packages/tts-preprocessor/tts-preprocessor"
+        root / "app/packages/tts-preprocessor/tts-preprocessor-standard"
     ).read_bytes() == b"old-package"
     assert (
         root / "app/downloads/tts-preprocessor-linux.zip"
@@ -305,7 +295,7 @@ def test_prepare_success_leaves_verified_deploy_specific_staging(
     prepare_parent = (
         root / f"app/packages/.tts-preprocessor.prepare.{DEPLOY_ID}"
     )
-    assert (prepare_parent / "tts-preprocessor/tts-preprocessor").is_file()
+    assert (prepare_parent / "tts-preprocessor/tts-preprocessor-standard").is_file()
     marker = (prepare_parent / "prepare.marker").read_text(encoding="utf-8")
     assert f"deploy_id={DEPLOY_ID}" in marker
     assert "archive_sha256=" in marker
@@ -365,7 +355,7 @@ def test_publish_switches_only_linux_artifacts_without_rollback(
 
     assert result.returncode == 0, result.stderr
     assert (
-        root / "app/packages/tts-preprocessor/tts-preprocessor"
+        root / "app/packages/tts-preprocessor/tts-preprocessor-standard"
     ).read_text(encoding="utf-8") == "new-package\n"
     assert (root / "app/downloads/tts-preprocessor-linux.zip").is_file()
     assert (
@@ -389,7 +379,7 @@ def test_publish_failure_does_not_attempt_automatic_restore(tmp_path: Path) -> N
     assert result.returncode != 0
     assert not (root / "app/downloads/tts-preprocessor-linux.zip").exists()
     assert (
-        root / "app/packages/tts-preprocessor/tts-preprocessor"
+        root / "app/packages/tts-preprocessor/tts-preprocessor-standard"
     ).read_text(encoding="utf-8") == "new-package\n"
     assert "may be partially updated" in result.stderr
     assert "run the full deployment again" in result.stderr
@@ -409,7 +399,7 @@ def test_published_probe_failure_keeps_partial_publish_and_reports_it(
 
     assert result.returncode != 0
     assert (
-        root / "app/packages/tts-preprocessor/tts-preprocessor"
+        root / "app/packages/tts-preprocessor/tts-preprocessor-standard"
     ).read_text(encoding="utf-8") == "new-package\n"
     assert (root / "app/downloads/tts-preprocessor-linux.zip").is_file()
     assert "published packaged binary semantic probes failed" in result.stderr

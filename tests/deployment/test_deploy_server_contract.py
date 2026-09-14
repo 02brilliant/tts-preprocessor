@@ -60,15 +60,13 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "scripts/probes/deploy_critical_surface.py",
         "tts_preprocessor.spec",
         "tts_preprocessor_simplified.spec",
-        "tts_preprocessor_llm_minimal.spec",
-        "tts_preprocessor_llm_natural.spec",
-        "tts_preprocessor_llm_standard.spec",
+        "tts_preprocessor_standard_llm.spec",
+        "tts_preprocessor_natural_llm.spec",
         "bin/build_binary_entrypoint.py",
         "bin/build_simplified_binary_entrypoint.py",
         "bin/integrated_llm_cli.py",
-        "bin/build_llm_minimal_entrypoint.py",
-        "bin/build_llm_natural_entrypoint.py",
-        "bin/build_llm_standard_entrypoint.py",
+        "bin/build_standard_llm_entrypoint.py",
+        "bin/build_natural_llm_entrypoint.py",
         "docs/Release_Package_README.txt",
         "LLM/__init__.py",
         "LLM/client.py",
@@ -83,17 +81,15 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "LLM/pronunciation_lexicon.py",
         "LLM/pronunciation_overlay.py",
         "LLM/selection_pipeline.py",
-        "LLM/stage4_preprocessor.py",
         "LLM/standard_pronunciation.py",
-        "LLM/stage5_preprocessor.py",
+        "LLM/stage4_preprocessor.py",
         "LLM/provenance.py",
         "LLM/response_validation.py",
         "LLM/stage_engine.py",
         "LLM/validation_models.py",
         "LLM/docs/LLM_prompt.txt",
-        "LLM/docs/LLM_prompt_lv2.txt",
         "LLM/docs/LLM_prompt_lv3.txt",
-        "LLM/data/stage5_pronunciations.json",
+        "LLM/data/stage4_pronunciations.json",
     ):
         target = tmp_path / relative
         if not target.exists():
@@ -133,7 +129,7 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 
     archive_path = tmp_path / "downloads/tts-preprocessor-macos.zip"
     with zipfile.ZipFile(archive_path, "w") as archive:
-        executable = zipfile.ZipInfo("tts-preprocessor")
+        executable = zipfile.ZipInfo("tts-preprocessor-standard")
         executable.create_system = 3
         executable.external_attr = (stat.S_IFREG | 0o755) << 16
         archive.writestr(executable, b"mac-binary")
@@ -142,9 +138,8 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         simplified_executable.external_attr = (stat.S_IFREG | 0o755) << 16
         archive.writestr(simplified_executable, b"mac-simplified-binary")
         for name in (
-            "tts-preprocessor-llm-minimal",
-            "tts-preprocessor-llm-natural",
-            "tts-preprocessor-llm-standard",
+            "tts-preprocessor-standard-llm",
+            "tts-preprocessor-natural-llm",
         ):
             llm_executable = zipfile.ZipInfo(name)
             llm_executable.create_system = 3
@@ -320,13 +315,14 @@ def test_deploy_includes_all_selectable_prompts() -> None:
     source = SOURCE_DEPLOY.read_text(encoding="utf-8")
 
     assert "LLM/docs/LLM_prompt.txt" in source
-    assert "LLM/docs/LLM_prompt_lv2.txt" in source
     assert "LLM/docs/LLM_prompt_lv3.txt" in source
+    assert "LLM/docs/LLM_prompt_lv2.txt" not in source
     assert "LLM/selection_pipeline.py" in source
     assert "LLM/stage4_preprocessor.py" in source
-    assert "LLM/stage5_preprocessor.py" in source
+    assert "tts_preprocessor_llm_natural.spec" not in source
+    assert "build_llm_natural_entrypoint.py" not in source
     assert "LLM/standard_pronunciation.py" in source
-    assert "LLM/data/stage5_pronunciations.json" in source
+    assert "LLM/data/stage4_pronunciations.json" in source
     assert "LLM/docs/LLM_prompt_prosody.txt" not in source
     assert "LLM/docs/LLM_prompt_speech.txt" not in source
     assert '--exclude="docs/LLM_prompt.txt"' not in source

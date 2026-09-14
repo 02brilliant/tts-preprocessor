@@ -20,18 +20,17 @@ def test_level_policy_stage_contract_phrases() -> None:
     text = LEVEL_POLICY.read_text(encoding="utf-8")
 
     for phrase in [
-        "0~5단계 책임과 단계 간 계약의 단일 기준점",
+        "0, 1, 2, 3, 4단계 책임과 단계 간 계약의 단일 기준점",
         "| 0 | 없음 | 없음 | 원문 passthrough |",
         "| 1 | `simplified` | 없음 |",
         "| 2 | `default` | 없음 |",
         "| 3 | `default` | level 1, `LLM_prompt.txt` |",
-        "| 4 | `default` | level 2, `LLM_prompt_lv2.txt` |",
-        "| 5 | `default` | level 3, `LLM_prompt_lv3.txt` |",
+        "| 4 | `default` | level 3, `LLM_prompt_lv3.txt` |",
         "다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다",
         "ASCII 하이픈 U+002D(`-`)",
         "1번째→첫-번째",
         "5kg/5 kg→오-킬로그램",
-        "stage4_base_text",
+        "stage3_base_text` 또는 `stage4_base_text",
         "원시 모델 출력이나 `rejected_speech_text`를 외부에 노출하지 않고",
         "validation_failure",
         "Critical/High 검증 실패는 retry 없이",
@@ -40,6 +39,7 @@ def test_level_policy_stage_contract_phrases() -> None:
         "2단계 기존 출력 byte-exact 100% 동일",
         "prompt placeholder 정확히 한 개",
         "이번 구현에서는 어느 항목도 1·2단계 출력에 적용하지 않았다",
+        "공개 단계는 0, 1, 2, 3, 4이다",
     ]:
         assert phrase in text, phrase
 
@@ -58,11 +58,14 @@ def test_deployment_policy_must_phrases() -> None:
         "source debug fallback for packaged binaries without `--include-debug`",
         "`include_debug=true` payload may expose `trace.contextual_decision_logs`",
         "Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose",
-        "Deployment MUST NOT attach `contextual_decision_logs`",
+        "NOT attach `contextual_decision_logs`",
         "`1㎘당`, `1만㎡`, `수 km`, `지상 3층`, `3.5만kg`, and `45~50만kg`",
         "gemma4-31B-it (vLLM)",
         "Only code-composed `speech_text` may reach the public API",
         "`--rules-only`",
         "scripts/probes/",
+        "Public levels are 0",
+        "1, 2, 3, and 4",
+        "LLM/docs/LLM_prompt.txt` and `LLM/docs/LLM_prompt_lv3.txt`",
     ]:
         assert phrase in text, phrase

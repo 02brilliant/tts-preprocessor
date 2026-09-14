@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PYTHON_BIN = ROOT_DIR / ".venv" / "bin" / "python"
 BUILD_BINARY_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
-PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "tts-preprocessor"
+PACKAGE_BINARY_PATH = ROOT_DIR / "packages" / "tts-preprocessor" / "tts-preprocessor-standard"
 SEMANTIC_PROBE_RUNNER = ROOT_DIR / "scripts" / "probes" / "run_semantic_probes.py"
 REQUIRED_PYTHON_SERIES = (3, 13)
 
@@ -70,7 +70,7 @@ def run_build() -> subprocess.CompletedProcess[str]:
             str(PYTHON_BIN),
             "scripts/build_package.py",
             "--binary",
-            "dist/tts_preprocessor",
+            "dist/tts-preprocessor-standard",
         ],
         cwd=ROOT_DIR,
         capture_output=True,

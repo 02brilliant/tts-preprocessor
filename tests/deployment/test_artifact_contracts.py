@@ -14,11 +14,10 @@ def test_linux_package_name_and_payload_preserve_desktop_archives(
     packages_dir = tmp_path / "packages"
     downloads_dir = tmp_path / "downloads"
     readme = tmp_path / "Release_Package_README.txt"
-    binary = tmp_path / "tts_preprocessor"
+    binary = tmp_path / "tts-preprocessor-standard"
     simplified_binary = tmp_path / "tts-preprocessor-simplified"
-    llm_minimal_binary = tmp_path / "tts-preprocessor-llm-minimal"
-    llm_natural_binary = tmp_path / "tts-preprocessor-llm-natural"
-    llm_standard_binary = tmp_path / "tts-preprocessor-llm-standard"
+    standard_llm_binary = tmp_path / "tts-preprocessor-standard-llm"
+    natural_llm_binary = tmp_path / "tts-preprocessor-natural-llm"
     packages_dir.mkdir()
     downloads_dir.mkdir()
     readme.write_text("release readme\n", encoding="utf-8")
@@ -26,12 +25,10 @@ def test_linux_package_name_and_payload_preserve_desktop_archives(
     binary.chmod(0o755)
     simplified_binary.write_bytes(b"prepared-simplified-binary")
     simplified_binary.chmod(0o755)
-    llm_minimal_binary.write_bytes(b"prepared-llm-minimal-binary")
-    llm_minimal_binary.chmod(0o755)
-    llm_natural_binary.write_bytes(b"prepared-llm-natural-binary")
-    llm_natural_binary.chmod(0o755)
-    llm_standard_binary.write_bytes(b"prepared-llm-standard-binary")
-    llm_standard_binary.chmod(0o755)
+    standard_llm_binary.write_bytes(b"prepared-standard-llm-binary")
+    standard_llm_binary.chmod(0o755)
+    natural_llm_binary.write_bytes(b"prepared-natural-llm-binary")
+    natural_llm_binary.chmod(0o755)
 
     macos_archive = downloads_dir / "tts-preprocessor-macos.zip"
     windows_archive = downloads_dir / "tts-preprocessor-windows.zip"
@@ -46,8 +43,10 @@ def test_linux_package_name_and_payload_preserve_desktop_archives(
     monkeypatch.setattr(build_package, "README_TEMPLATE_PATH", readme)
 
     archive_path = build_package.build_package(
-        binary, simplified_binary, llm_minimal_binary, llm_natural_binary,
-        llm_standard_binary,
+        binary,
+        simplified_binary,
+        standard_llm_binary,
+        natural_llm_binary,
     )
 
     assert archive_path == downloads_dir / "tts-preprocessor-linux.zip"
@@ -58,11 +57,10 @@ def test_linux_package_name_and_payload_preserve_desktop_archives(
     with zipfile.ZipFile(archive_path) as archive:
         assert sorted(archive.namelist()) == [
             "tts-preprocessor/README.txt",
-            "tts-preprocessor/tts-preprocessor",
-            "tts-preprocessor/tts-preprocessor-llm-minimal",
-            "tts-preprocessor/tts-preprocessor-llm-natural",
-            "tts-preprocessor/tts-preprocessor-llm-standard",
+            "tts-preprocessor/tts-preprocessor-natural-llm",
             "tts-preprocessor/tts-preprocessor-simplified",
+            "tts-preprocessor/tts-preprocessor-standard",
+            "tts-preprocessor/tts-preprocessor-standard-llm",
         ]
         assert archive.testzip() is None
 
@@ -71,22 +69,19 @@ def test_linux_package_contains_no_source_payload(tmp_path: Path, monkeypatch) -
     packages_dir = tmp_path / "packages"
     downloads_dir = tmp_path / "downloads"
     readme = tmp_path / "Release_Package_README.txt"
-    binary = tmp_path / "tts_preprocessor"
+    binary = tmp_path / "tts-preprocessor-standard"
     simplified_binary = tmp_path / "tts-preprocessor-simplified"
-    llm_minimal_binary = tmp_path / "tts-preprocessor-llm-minimal"
-    llm_natural_binary = tmp_path / "tts-preprocessor-llm-natural"
-    llm_standard_binary = tmp_path / "tts-preprocessor-llm-standard"
+    standard_llm_binary = tmp_path / "tts-preprocessor-standard-llm"
+    natural_llm_binary = tmp_path / "tts-preprocessor-natural-llm"
     readme.write_text("release readme\n", encoding="utf-8")
     binary.write_bytes(b"prepared-binary")
     binary.chmod(0o755)
     simplified_binary.write_bytes(b"prepared-simplified-binary")
     simplified_binary.chmod(0o755)
-    llm_minimal_binary.write_bytes(b"prepared-llm-minimal-binary")
-    llm_minimal_binary.chmod(0o755)
-    llm_natural_binary.write_bytes(b"prepared-llm-natural-binary")
-    llm_natural_binary.chmod(0o755)
-    llm_standard_binary.write_bytes(b"prepared-llm-standard-binary")
-    llm_standard_binary.chmod(0o755)
+    standard_llm_binary.write_bytes(b"prepared-standard-llm-binary")
+    standard_llm_binary.chmod(0o755)
+    natural_llm_binary.write_bytes(b"prepared-natural-llm-binary")
+    natural_llm_binary.chmod(0o755)
 
     monkeypatch.setattr(build_package, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(build_package, "PACKAGES_DIR", packages_dir)
@@ -94,17 +89,18 @@ def test_linux_package_contains_no_source_payload(tmp_path: Path, monkeypatch) -
     monkeypatch.setattr(build_package, "README_TEMPLATE_PATH", readme)
 
     archive_path = build_package.build_package(
-        binary, simplified_binary, llm_minimal_binary, llm_natural_binary,
-        llm_standard_binary,
+        binary,
+        simplified_binary,
+        standard_llm_binary,
+        natural_llm_binary,
     )
     with zipfile.ZipFile(archive_path) as archive:
         names = archive.namelist()
 
-    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor", os.X_OK)
+    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-standard", os.X_OK)
     assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-simplified", os.X_OK)
-    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-llm-minimal", os.X_OK)
-    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-llm-natural", os.X_OK)
-    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-llm-standard", os.X_OK)
+    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-standard-llm", os.X_OK)
+    assert os.access(packages_dir / "tts-preprocessor/tts-preprocessor-natural-llm", os.X_OK)
     assert not any(
         name.endswith((".py", ".pyc"))
         or any(part in {"engine", "docs", "tests", ".venv"} for part in Path(name).parts)

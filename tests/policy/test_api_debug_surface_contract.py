@@ -24,7 +24,7 @@ FORBIDDEN_ORDINARY_KEYS = frozenset(
     }
 )
 
-LEVEL_3_4_ALLOWED_KEYS = frozenset(
+LEVEL_3_5_ALLOWED_KEYS = frozenset(
     {
         "normalized_text",
         "speech_text",
@@ -86,7 +86,7 @@ def test_ordinary_level_2_includes_only_normalized_text(monkeypatch) -> None:
     _assert_no_forbidden_keys(payload)
 
 
-@pytest.mark.parametrize("level", (3, 4, 5))
+@pytest.mark.parametrize("level", (3, 4))
 def test_ordinary_llm_level_response_excludes_decision_debug(
     level: int, monkeypatch
 ) -> None:
@@ -111,7 +111,7 @@ def test_ordinary_llm_level_response_excludes_decision_debug(
         {"text": "원문", "level": level, "model": "m"}
     )
 
-    assert set(payload.keys()) <= LEVEL_3_4_ALLOWED_KEYS
+    assert set(payload.keys()) <= LEVEL_3_5_ALLOWED_KEYS
     _assert_no_forbidden_keys(payload)
 
 
@@ -143,7 +143,7 @@ def test_include_debug_level_2_may_expose_contextual_decision_logs(
     assert payload["debug"]["trace"]["contextual_decision_logs"][0]["unit"] == "번"
 
 
-@pytest.mark.parametrize("level", (3, 4, 5))
+@pytest.mark.parametrize("level", (3, 4))
 def test_include_debug_rejected_for_llm_levels(level: int) -> None:
     with pytest.raises(ValueError, match="include_debug is supported only"):
         server_module.transform_request_payload(
