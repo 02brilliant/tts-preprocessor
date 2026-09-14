@@ -1,21 +1,24 @@
 from pathlib import Path
 
 
-def test_frontend_has_five_level_control_model_control_and_outputs() -> None:
+def test_frontend_has_public_level_control_for_levels_zero_through_four() -> None:
     web = Path("web/index.html").read_text(encoding="utf-8")
 
     assert 'id="llm-model"' in web
     assert 'id="correction-level"' in web
-    for level in range(6):
+    for level in (0, 1, 2, 3, 4):
         assert f'data-correction-level="{level}"' in web
     assert "0단계<br>교정안함" in web
-    assert "1단계<br>규칙간소화" in web
-    assert "2단계<br>규칙기반교정" in web
-    assert "3단계<br>LLM최소" in web
-    assert "4단계<br>LLM자연스러운발화" in web
-    assert "5단계<br>표준발음강화" in web
+    assert "1단계<br>최소교정" in web
+    assert "2단계<br>기본교정(AI미적용)" in web
+    assert "3단계<br>AI 기본교정" in web
+    assert "4단계<br>AI 자연스러운 발화" in web
+    assert "5단계<br>AI 자연스러운 발화" not in web
+    assert "PUBLIC_CORRECTION_LEVELS" in web
+    assert "normalizePublicCorrectionLevel" in web
+    assert 'data-correction-level="5"' not in web
     assert 'data-correction-level="6"' not in web
-    assert 'max="5"' in web
+    assert 'max="4"' in web
     assert 'aria-pressed="true"' in web
     assert 'class="pipeline-controls"' in web
     for model in (

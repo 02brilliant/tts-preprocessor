@@ -109,19 +109,13 @@ def _baseline_call(
 
 
 def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
-    prompt_level = stage - 2
+    prompt_level = 1 if stage == 3 else 3
     rule_output = transform_output(case.text)
     normalized_text = rule_output.normalized_text
     snapshot = build_normalization_snapshot(rule_output)
     llm_input_text = normalized_text
     llm_snapshot = snapshot
-    if stage == 5:
-        from LLM.stage5_preprocessor import preprocess_stage5
-
-        prepared = preprocess_stage5(normalized_text, snapshot=snapshot)
-        llm_input_text = prepared.text
-        llm_snapshot = prepared.snapshot
-    elif stage == 4:
+    if stage == 4:
         from LLM.stage4_preprocessor import preprocess_stage4
 
         prepared = preprocess_stage4(normalized_text, snapshot=snapshot)
@@ -133,6 +127,8 @@ def _current_call(case: EvaluationCase, *, stage: int, model: str) -> dict:
         prepared = preprocess_stage3(normalized_text, snapshot=snapshot)
         llm_input_text = prepared.text
         llm_snapshot = prepared.snapshot
+    else:
+        raise ValueError("evaluation stage must be 3 or 4")
     decision = decide_llm_invocation(llm_input_text, stage_level=stage)
     if not decision.call_llm:
         return {

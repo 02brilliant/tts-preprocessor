@@ -11,12 +11,12 @@ from LLM.client import GenerationResult
 from LLM.client import LLMConnectionError, LLMTimeoutError
 from LLM.response_validation import LLMStageContractError
 from LLM.selection_pipeline import SelectionCandidate, SelectionPlan
-from LLM.stage5_preprocessor import build_stage5_work_plan
+from LLM.stage4_preprocessor import build_stage4_work_plan
 
 
 def _select_kind(prompt: str, kind: str) -> str:
     match = re.search(
-        r"<STAGE[345]_WORK_PLAN>\n(?P<plan>.*?)\n</STAGE[345]_WORK_PLAN>",
+        r"<STAGE[34]_WORK_PLAN>\n(?P<plan>.*?)\n</STAGE[34]_WORK_PLAN>",
         prompt,
         re.DOTALL,
     )
@@ -75,7 +75,7 @@ def test_medium_diagnostic_is_not_reported_as_fallback(monkeypatch) -> None:
     assert any(issue.severity == "Medium" for issue in result.validation_issues)
 
 
-def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> None:
+def test_stage_engine_uses_natural_speech_prompt_for_level_five(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     captured = {}
@@ -92,7 +92,7 @@ def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> N
     result = stage_engine.transform(
         "현장에 있는 기자입니다.",
         model="gemma4:e4b",
-        prompt_level=2,
+        prompt_level=3,
     )
 
     assert result.speech_text == "현장에 있는 기잡니다."
@@ -100,7 +100,7 @@ def test_stage_engine_uses_natural_speech_prompt_for_level_two(monkeypatch) -> N
     assert "<STAGE4_WORK_PLAN>" in captured["prompt"]
 
 
-def test_level4_validation_failure_falls_back_without_retry(monkeypatch) -> None:
+def test_level4_contraction_validation_failure_falls_back_without_retry(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     calls = 0
@@ -114,7 +114,7 @@ def test_level4_validation_failure_falls_back_without_retry(monkeypatch) -> None
     result = stage_engine.transform(
         "국물은 같이 있습니다.",
         model="gemma4:e4b",
-        prompt_level=2,
+        prompt_level=3,
     )
     assert result.speech_text == "국물은 같이 있습니다."
     assert result.validation_fallback is True
@@ -123,7 +123,7 @@ def test_level4_validation_failure_falls_back_without_retry(monkeypatch) -> None
     assert calls == 1
 
 
-def test_level5_uses_standard_prompt_and_accepts_closed_candidate(monkeypatch) -> None:
+def test_level4_uses_standard_prompt_and_accepts_closed_candidate(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     captured = {}
@@ -148,7 +148,7 @@ def test_level5_uses_standard_prompt_and_accepts_closed_candidate(monkeypatch) -
     assert '"options":["대까"]' in captured["prompt"]
 
 
-def test_level5_validation_failure_falls_back_without_retry(monkeypatch) -> None:
+def test_level4_validation_failure_falls_back_without_retry(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     monkeypatch.setattr(
@@ -262,7 +262,7 @@ def test_provider_batch_failure_keeps_successful_batch(monkeypatch) -> None:
     assert result.validation_issues[0].code == "LLM_UPSTREAM_TIMEOUT"
 
 
-def test_level5_validator_uses_the_exact_supplied_work_plan(monkeypatch) -> None:
+def test_level4_validator_uses_the_exact_supplied_work_plan(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     monkeypatch.setattr(
@@ -275,7 +275,7 @@ def test_level5_validator_uses_the_exact_supplied_work_plan(monkeypatch) -> None
         "그 대가는 컸습니다.",
         model="gemma4:e4b",
         prompt_level=3,
-        stage5_work_plan=stage_engine.Stage5WorkPlan(),
+        stage4_work_plan=stage_engine.Stage4WorkPlan(),
     )
 
     assert result.speech_text == "그 대가는 컸습니다."
@@ -379,14 +379,14 @@ def test_stage_engine_runs_vllm_candidate_batches_concurrently(monkeypatch) -> N
     assert all(source in prompt for prompt in captured["prompts"])
 
 
-def test_level5_vllm_uses_one_full_context_selection_request(
+def test_level4_vllm_uses_one_full_context_selection_request(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("VLLM_BASE_URL", "http://vllm.invalid/v1")
     monkeypatch.setenv("VLLM_TOKEN", "dummy-vllm-test-token")
     captured = []
     source = "그 대가는 큽니다.\n\n노동의 대가는 작습니다."
-    work_plan = build_stage5_work_plan(source)
+    work_plan = build_stage4_work_plan(source)
 
     def fake_generate_vllm(*, model, prompt, settings):
         captured.append(prompt)
@@ -400,7 +400,7 @@ def test_level5_vllm_uses_one_full_context_selection_request(
         source,
         model="gemma4-31B-it (vLLM)",
         prompt_level=3,
-        stage5_work_plan=work_plan,
+        stage4_work_plan=work_plan,
     )
 
     assert result.speech_text == source
@@ -414,7 +414,7 @@ def test_stage_engine_runtime_asset_check_requires_no_llm_credentials(monkeypatc
     monkeypatch.delenv("LOCAL_LLM_BASE_URL", raising=False)
     monkeypatch.delenv("LOCAL_LLM_TOKEN", raising=False)
 
-    stage_engine.validate_runtime_assets()
+    stage_engine.validate_runtime_assets(prompt_levels=(1,))
 
 
 def test_stage_engine_runtime_asset_check_loads_stage5_registry(monkeypatch) -> None:
@@ -422,7 +422,7 @@ def test_stage_engine_runtime_asset_check_loads_stage5_registry(monkeypatch) -> 
 
     monkeypatch.setattr(stage_engine, "build_prompt", lambda *_args, **_kwargs: "")
     monkeypatch.setattr(
-        "LLM.standard_pronunciation.load_stage5_pronunciations",
+        "LLM.standard_pronunciation.load_stage4_pronunciations",
         lambda: calls.append(True) or (),
     )
 

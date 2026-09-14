@@ -1,7 +1,7 @@
 """LLM requests must not carry internal rule-engine decision metadata.
 
 Policy: the optional LLM receives only the ordinary normalized/overlay text
-plus the closed, public stage-4/5 selection plan. Internal decision logs and
+plus the closed, public stage-5 selection plan. Internal decision logs and
 markers must not be attached to the model prompt or generate() kwargs.
 """
 
@@ -39,7 +39,7 @@ def _assert_prompt_has_no_decision_metadata(prompt: str) -> None:
     assert "<DECISION_CANDIDATES>" not in prompt
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize("prompt_level", (1, 3))
 def test_build_prompt_rejects_decision_metadata_tags(prompt_level: int) -> None:
     normalized_text = "3번 확인했고 5분이 남았다."
     rendered = build_prompt(normalized_text, prompt_level=prompt_level)
@@ -55,7 +55,7 @@ def test_build_prompt_from_rule_output_stays_plain_reading() -> None:
     assert "contextual_decision_logs" not in normalized
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize("prompt_level", (1, 3))
 def test_stage_engine_generate_kwargs_exclude_decision_metadata(
     prompt_level: int, monkeypatch
 ) -> None:
@@ -112,7 +112,7 @@ def _cli_args(**overrides) -> Namespace:
     return Namespace(**values)
 
 
-@pytest.mark.parametrize(("stage_level", "prompt_level"), ((3, 1), (4, 2)))
+@pytest.mark.parametrize(("stage_level", "prompt_level"), ((3, 1), (4, 3)))
 def test_integrated_cli_passes_only_overlay_text_to_llm(
     stage_level: int, prompt_level: int, monkeypatch, capsys
 ) -> None:
@@ -125,13 +125,26 @@ def test_integrated_cli_passes_only_overlay_text_to_llm(
         "engine.main.transform_output",
         lambda text: TransformOutput("국물은 좋습니다.", [], None),
     )
-    monkeypatch.setattr(
-        "LLM.pronunciation_overlay.apply_pronunciation_overlay",
-        lambda text, *, stage, snapshot: type(
-            "Overlay",
+
+    def fake_preprocess_stage4(text, *, snapshot=None):
+        from LLM.provenance import minimal_snapshot
+        from LLM.selection_pipeline import SelectionPlan
+
+        llm_text = "궁물은 조씀니다."
+        return type(
+            "Prepared",
             (),
-            {"text": text, "snapshot": snapshot},
-        )(),
+            {
+                "text": llm_text,
+                "snapshot": minimal_snapshot(llm_text),
+                "work_plan": SelectionPlan(stage=4),
+                "applied_mutations": (),
+            },
+        )()
+
+    monkeypatch.setattr(
+        "LLM.stage4_preprocessor.preprocess_stage4",
+        fake_preprocess_stage4,
     )
     monkeypatch.setattr(
         "LLM.invocation_gate.decide_llm_invocation",
@@ -174,11 +187,14 @@ def test_integrated_cli_passes_only_overlay_text_to_llm(
     assert entrypoint.run(stage_level=stage_level, prompt_level=prompt_level) == 0
     payload = json.loads(capsys.readouterr().out)
 
-    assert captured["text"] == "국물은 좋습니다."
+    expected_llm_input = (
+        "궁물은 조씀니다." if stage_level == 4 else "국물은 좋습니다."
+    )
+    assert captured["text"] == expected_llm_input
     assert captured["prompt_level"] == prompt_level
     assert "contextual_decision_logs" not in captured
     assert payload["normalized_text"] == "국물은 좋습니다."
-    assert payload["speech_text"] == "국물은 좋습니다."
+    assert payload["speech_text"] == expected_llm_input
     for marker in FORBIDDEN_METADATA_MARKERS:
         assert marker not in json.dumps(payload, ensure_ascii=False)
 

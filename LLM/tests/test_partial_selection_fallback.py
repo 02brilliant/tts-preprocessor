@@ -7,8 +7,10 @@ from LLM.client import GenerationResult
 from LLM.selection_pipeline import SelectionCandidate, SelectionPlan
 from LLM.selection_pipeline import recover_selection_response
 
+_STAGE_PROMPT_LEVELS = {3: 1, 4: 3}
 
-@pytest.mark.parametrize("stage", (3, 4, 5))
+
+@pytest.mark.parametrize("stage", (3, 4))
 @pytest.mark.parametrize("bad", ("index", "duplicate", "unknown", "extra"))
 def test_valid_edit_survives_invalid_independent_decision(monkeypatch, stage, bad):
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
@@ -25,20 +27,24 @@ def test_valid_edit_survives_invalid_independent_decision(monkeypatch, stage, ba
     if bad == "unknown":
         invalid["id"] = "<LOCK_0001>"
     if bad == "extra":
-        invalid["text"] = "<STAGE5_WORK_PLAN>"
+        invalid["text"] = "<STAGE4_WORK_PLAN>"
     decisions = [{"id": f"S{stage}-1", "option": 0}, invalid]
     if bad == "duplicate":
         decisions.append(dict(invalid))
     monkeypatch.setattr(stage_engine, "generate", lambda **kw: GenerationResult(
         json.dumps({"schema_version": 1, "decisions": decisions}), 1,
     ))
-    result = stage_engine.transform(source, model="gemma4:e4b", prompt_level=stage-2,
-                                    selection_plan=plan)
+    result = stage_engine.transform(
+        source,
+        model="gemma4:e4b",
+        prompt_level=_STAGE_PROMPT_LEVELS[stage],
+        selection_plan=plan,
+    )
     assert result.speech_text == "엑스큐지 ABC"
     assert result.validation_fallback
 
 
-@pytest.mark.parametrize("stage", (3, 4, 5))
+@pytest.mark.parametrize("stage", (3, 4))
 def test_malformed_batch_does_not_discard_other_batch(monkeypatch, stage):
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy")
@@ -51,8 +57,12 @@ def test_malformed_batch_does_not_discard_other_batch(monkeypatch, stage):
         {"id": f"S{stage}-0", "option": 0}
     ]}), '```json\n{"schema_version":1,"decisions":['))
     monkeypatch.setattr(stage_engine, "generate", lambda **kw: GenerationResult(next(responses), 1))
-    result = stage_engine.transform(source, model="gemma4:e4b", prompt_level=stage-2,
-                                    selection_plan=plan)
+    result = stage_engine.transform(
+        source,
+        model="gemma4:e4b",
+        prompt_level=_STAGE_PROMPT_LEVELS[stage],
+        selection_plan=plan,
+    )
     assert result.speech_text == "엑스큐지" + source[3:]
     assert result.validation_fallback
 
@@ -69,7 +79,7 @@ def test_overlapping_edits_are_both_removed_and_independent_edit_survives():
     assert [d.candidate_id for d in decisions] == ["S3-3"]
 
 
-@pytest.mark.parametrize("stage", (3, 4, 5))
+@pytest.mark.parametrize("stage", (3, 4))
 def test_output_validation_failure_restores_only_failing_edit(monkeypatch, stage):
     from LLM.response_validation import LLMStageContractError
 
@@ -94,7 +104,11 @@ def test_output_validation_failure_restores_only_failing_edit(monkeypatch, stage
     monkeypatch.setattr(stage_engine, "generate", lambda **kw: GenerationResult(json.dumps({
         "schema_version": 1, "decisions": [{"id": f"S{stage}-{i}", "option": 0} for i in (1, 2)],
     }), 1))
-    result = stage_engine.transform(source, model="gemma4:e4b", prompt_level=stage-2,
-                                    selection_plan=plan)
+    result = stage_engine.transform(
+        source,
+        model="gemma4:e4b",
+        prompt_level=_STAGE_PROMPT_LEVELS[stage],
+        selection_plan=plan,
+    )
     assert result.speech_text == "엑스큐지 ABC"
     assert result.validation_fallback

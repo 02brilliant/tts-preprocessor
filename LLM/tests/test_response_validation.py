@@ -6,7 +6,7 @@ from LLM.provenance import build_normalization_snapshot
 from LLM.client import LLMResponseError
 from LLM.pronunciation_overlay import apply_pronunciation_overlay
 from LLM.response_validation import LLMStageContractError, validate_response
-from LLM.stage5_preprocessor import preprocess_stage5
+from LLM.stage4_preprocessor import preprocess_stage4
 from engine.span_engine.transform import transform_with_trace
 
 
@@ -15,7 +15,7 @@ def test_level4_rejects_general_phonetic_rewrite() -> None:
     output = "궁무른, 가치 일꼬 읻씀니다."
 
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
-        validate_response(source, output, prompt_level=2)
+        validate_response(source, output, prompt_level=3)
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,7 @@ def test_level4_rejects_fixed_pronunciation_when_overlay_was_not_applied(
     output: str,
 ) -> None:
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
-        validate_response(source, output, prompt_level=2)
+        validate_response(source, output, prompt_level=3)
 
 
 def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
@@ -57,7 +57,7 @@ def test_level3_allows_new_hangul_for_residual_english_reading() -> None:
     assert validate_response(source, output, prompt_level=1) == output
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2, 3))
+@pytest.mark.parametrize("prompt_level", (1, 3))
 def test_every_llm_stage_accepts_closed_compound_boundary(
     prompt_level: int,
 ) -> None:
@@ -75,21 +75,21 @@ def test_level3_rejects_korean_rewrite_disguised_as_compound_boundary() -> None:
         )
 
 
-def test_level5_accepts_only_registered_contextual_standard_pronunciation() -> None:
+def test_level4_accepts_only_registered_contextual_standard_pronunciation() -> None:
     source = "인끼는 높지만 그 대가는 컸습니다. 예술의 대가도 참석했습니다."
     output = "인끼는 높지만 그 대까는 컸습니다. 예술의 대가도 참석했습니다."
     assert validate_response(source, output, prompt_level=3) == output
 
 
-def test_level5_inherits_level4_natural_speech_contraction() -> None:
+def test_level4_accepts_natural_speech_contraction() -> None:
     source = "기자입니다."
     output = "기잡니다."
     assert validate_response(source, output, prompt_level=3) == output
 
 
-def test_level5_accepts_code_authorized_contraction_over_locked_overlay() -> None:
-    overlay = apply_pronunciation_overlay("상견례입니다.", stage=5)
-    prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+def test_level4_accepts_code_authorized_contraction_over_locked_overlay() -> None:
+    overlay = apply_pronunciation_overlay("상견례입니다.", stage=4)
+    prepared = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
     output = "상견녭니다."
 
     assert validate_response(
@@ -101,8 +101,8 @@ def test_level5_accepts_code_authorized_contraction_over_locked_overlay() -> Non
     ) == output
 
 
-def test_level5_accepts_code_authorized_contraction_over_locked_pronunciation() -> None:
-    prepared = preprocess_stage5("학교입니다.")
+def test_level4_accepts_code_authorized_contraction_over_locked_pronunciation() -> None:
+    prepared = preprocess_stage4("학교입니다.")
     output = "학꾭니다."
 
     assert validate_response(
@@ -114,17 +114,12 @@ def test_level5_accepts_code_authorized_contraction_over_locked_pronunciation() 
     ) == output
 
 
-def test_level4_does_not_gain_level5_standard_pronunciation() -> None:
-    with pytest.raises(LLMStageContractError, match="outside its whitelist"):
-        validate_response("인기가 높습니다.", "인끼가 높습니다.", prompt_level=2)
-
-
-def test_level5_llm_cannot_apply_deterministic_stage5_reading_itself() -> None:
+def test_level4_llm_cannot_apply_deterministic_stage5_reading_itself() -> None:
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
         validate_response("인기가 높습니다.", "인끼가 높습니다.", prompt_level=3)
 
 
-def test_level5_rejects_unregistered_general_g2p() -> None:
+def test_level4_rejects_unregistered_general_g2p() -> None:
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
         validate_response("국물은 좋습니다.", "궁무른 조씀니다.", prompt_level=3)
 
@@ -132,19 +127,15 @@ def test_level5_rejects_unregistered_general_g2p() -> None:
 def test_stage_outputs_form_a_controlled_processing_superset() -> None:
     source = "3.05와 색연필, 생산량을 확인했습니다."
     level3 = "삼-쩜-영오와 색연필, 생산량을 확인했습니다."
-    level4 = level3
-    level5_base = preprocess_stage5(level3)
+    level5_base = preprocess_stage4(level3)
     level5 = level5_base.text
 
     assert validate_response(source, level3, prompt_level=1) == level3
-    assert validate_response(source, level4, prompt_level=2) == level4
     assert level5 == "삼-쩜-영오와 생년필, 생산냥을 확인했습니다."
     assert validate_response(level5, level5, prompt_level=3, snapshot=level5_base.snapshot) == level5
 
     with pytest.raises(LLMStageContractError):
         validate_response(source, level5, prompt_level=1)
-    with pytest.raises(LLMStageContractError):
-        validate_response(source, level5, prompt_level=2)
 
 
 @pytest.mark.parametrize(
@@ -161,7 +152,7 @@ def test_integrated_response_rejects_structure_or_wrapper_changes(
     output: str,
 ) -> None:
     with pytest.raises(LLMStageContractError) as exc_info:
-        validate_response("국물은 같이 읽고 있습니다.", output)
+        validate_response("국물은 같이 읽고 있습니다.", output, prompt_level=1)
 
     assert exc_info.value.stage == "speech"
     assert exc_info.value.output_text == output
@@ -173,12 +164,16 @@ def test_level4_rejects_unapproved_rewrite_even_when_structure_is_preserved() ->
     output = "첟 문장, \n둘째 문장."
 
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
-        validate_response(source, output)
+        validate_response(source, output, prompt_level=3)
 
 
 def test_semantic_negation_mutation_is_critical() -> None:
     with pytest.raises(LLMStageContractError) as exc_info:
-        validate_response("정부는 승인하지않았습니다.", "정부는 승인했습니다.")
+        validate_response(
+            "정부는 승인하지않았습니다.",
+            "정부는 승인했습니다.",
+            prompt_level=1,
+        )
     assert exc_info.value.code == "SEMANTIC_MUTATION"
     assert exc_info.value.severity == "Critical"
 
@@ -187,7 +182,7 @@ def test_integrated_response_accepts_insertions_before_existing_spaces() -> None
     source = "첫 문장이고 둘째 문장이다."
     output = "첫 문장이고, 둘째 문장이다."
 
-    assert validate_response(source, output) == output
+    assert validate_response(source, output, prompt_level=1) == output
 
 
 @pytest.mark.parametrize(
@@ -224,7 +219,7 @@ def test_integrated_response_rejects_new_stage1_time_frame_comma(
     output: str,
 ) -> None:
     with pytest.raises(LLMStageContractError, match="time-frame") as exc_info:
-        validate_response(source, output)
+        validate_response(source, output, prompt_level=1)
 
     assert exc_info.value.output_text == output
 
@@ -233,7 +228,7 @@ def test_integrated_response_preserves_existing_stage1_time_frame_comma() -> Non
     source = "올해 상반기, 국내 주요 시장의 매출이 크게 늘었습니다."
     output = source
 
-    assert validate_response(source, output) == output
+    assert validate_response(source, output, prompt_level=1) == output
 
 
 def test_integrated_response_rejects_new_time_frame_comma_after_other_sentence() -> None:
@@ -241,12 +236,16 @@ def test_integrated_response_rejects_new_time_frame_comma_after_other_sentence()
     output = "첟 문장입니다. 내년 이월, 서비스를 출시합니다."
 
     with pytest.raises(LLMStageContractError, match="time-frame"):
-        validate_response(source, output)
+        validate_response(source, output, prompt_level=1)
 
 
 def test_integrated_response_preserves_stage1_confirmed_kbs_news_reading() -> None:
     with pytest.raises(LLMStageContractError, match="confirmed KBS news") as exc_info:
-        validate_response("KBS news 보도입니다.", "KBS 뉴스 보도입니다.")
+        validate_response(
+            "KBS news 보도입니다.",
+            "KBS 뉴스 보도입니다.",
+            prompt_level=1,
+        )
 
     assert exc_info.value.output_text == "KBS 뉴스 보도입니다."
 
@@ -265,7 +264,7 @@ def test_rule_generated_reading_mutation_is_critical_with_snapshot() -> None:
     assert exc_info.value.severity == "Critical"
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize("prompt_level", (1, 3))
 def test_every_llm_stage_rejects_decimal_jjeom_rewrite(prompt_level: int) -> None:
     output = transform_with_trace("가격은 3.05달러입니다.")
     snapshot = build_normalization_snapshot(output)
@@ -283,7 +282,7 @@ def test_every_llm_stage_rejects_decimal_jjeom_rewrite(prompt_level: int) -> Non
     assert exc_info.value.severity == "Critical"
 
 
-@pytest.mark.parametrize("prompt_level", (1, 2))
+@pytest.mark.parametrize("prompt_level", (1, 3))
 @pytest.mark.parametrize(
     ("source", "wrong_output"),
     (
@@ -329,7 +328,7 @@ def test_unprocessed_speech_surface_is_medium() -> None:
 
 def test_integrated_response_rejects_deleted_space_hidden_by_comma() -> None:
     with pytest.raises(LLMStageContractError):
-        validate_response("첫 문장.", "첫,문장.")
+        validate_response("첫 문장.", "첫,문장.", prompt_level=1)
 
 
 from engine.main import transform
@@ -349,7 +348,7 @@ def test_integrated_response_allows_consumed_numeric_separators(
 ) -> None:
     normalized = transform(source)
     assert normalized == output
-    assert validate_response(normalized, output) == output
+    assert validate_response(normalized, output, prompt_level=1) == output
 
 
 @pytest.mark.parametrize(
@@ -367,7 +366,7 @@ def test_integrated_response_rejects_numeric_meaning_mutation(
 ) -> None:
     normalized = transform(source)
     with pytest.raises(LLMStageContractError) as exc_info:
-        validate_response(normalized, wrong_output)
+        validate_response(normalized, wrong_output, prompt_level=1)
     assert exc_info.value.code in {
         "NUMERIC_MEANING_MUTATION",
         "UNEXPECTED_KOREAN_REWRITE",
@@ -380,6 +379,7 @@ def test_integrated_response_still_requires_filename_and_sentence_periods() -> N
         validate_response(
             "report_v2.json을 읽었다.",
             "report_v2json을 읽었다.",
+            prompt_level=1,
         )
 
 
@@ -407,7 +407,7 @@ def test_integrated_response_rejects_changed_protected_literals(
     output: str,
 ) -> None:
     with pytest.raises(LLMStageContractError, match="protected") as exc_info:
-        validate_response(source, output)
+        validate_response(source, output, prompt_level=1)
 
     assert exc_info.value.output_text == output
 
@@ -422,4 +422,4 @@ def test_integrated_response_accepts_exact_protected_literals() -> None:
         "/tmp/3권/file에 있다."
     )
 
-    assert validate_response(source, output) == output
+    assert validate_response(source, output, prompt_level=1) == output

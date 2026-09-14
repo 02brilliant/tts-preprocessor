@@ -4,22 +4,25 @@ from functools import lru_cache
 from pathlib import Path
 import re
 
-from LLM.config import LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
+from LLM.config import LLM_PROMPT_LV3_PATH, LLM_PROMPT_PATH
 from LLM.selection_pipeline import SelectionPlan, build_selection_plan
+from LLM.stage_mapping import stage_for_prompt_level
 
 
 INPUT_PLACEHOLDER = "{{NORMALIZED_TEXT}}"
 STAGE3_WORK_PLAN_PLACEHOLDER = "{{STAGE3_WORK_PLAN}}"
 STAGE4_WORK_PLAN_PLACEHOLDER = "{{STAGE4_WORK_PLAN}}"
-STAGE5_WORK_PLAN_PLACEHOLDER = "{{STAGE5_WORK_PLAN}}"
 PROMPT_FILE_LABEL = "LLM/docs/LLM_prompt.txt"
-PROMPT_LV2_FILE_LABEL = "LLM/docs/LLM_prompt_lv2.txt"
 PROMPT_LV3_FILE_LABEL = "LLM/docs/LLM_prompt_lv3.txt"
 PROMPT_PATHS = {
     1: (LLM_PROMPT_PATH, PROMPT_FILE_LABEL),
-    2: (LLM_PROMPT_LV2_PATH, PROMPT_LV2_FILE_LABEL),
     3: (LLM_PROMPT_LV3_PATH, PROMPT_LV3_FILE_LABEL),
 }
+WORK_PLAN_PLACEHOLDERS = {
+    1: STAGE3_WORK_PLAN_PLACEHOLDER,
+    3: STAGE4_WORK_PLAN_PLACEHOLDER,
+}
+
 
 
 class PromptTemplateError(ValueError):
@@ -37,7 +40,7 @@ def build_prompt(
         raise TypeError("normalized_text must be a string")
 
     if isinstance(prompt_level, bool) or prompt_level not in PROMPT_PATHS:
-        raise PromptTemplateError("LLM prompt_level must be 1, 2, or 3.")
+        raise PromptTemplateError("LLM prompt_level must be 1 or 3.")
 
     configured_path, configured_label = PROMPT_PATHS[prompt_level]
     selected_path = path if path is not None else configured_path
@@ -73,14 +76,9 @@ def build_prompt(
             f"{INPUT_PLACEHOLDER} 자리표시자가 {placeholder_count}개 있습니다. "
             "하나만 남긴 뒤 다시 실행하세요."
         )
-    placeholders = (
-        STAGE3_WORK_PLAN_PLACEHOLDER,
-        STAGE4_WORK_PLAN_PLACEHOLDER,
-        STAGE5_WORK_PLAN_PLACEHOLDER,
-    )
-    placeholder = placeholders[prompt_level - 1]
+    placeholder = WORK_PLAN_PLACEHOLDERS[prompt_level]
     if template.count(placeholder) != 1 or any(
-        other in template for other in placeholders if other != placeholder
+        other in template for other in WORK_PLAN_PLACEHOLDERS.values() if other != placeholder
     ):
         raise PromptTemplateError(
             f"AI LLM 프롬프트 파일({file_label})에 "
@@ -88,9 +86,9 @@ def build_prompt(
         )
     plan = selection_plan or build_selection_plan(
         normalized_text,
-        stage=prompt_level + 2,
+        stage=stage_for_prompt_level(prompt_level),
     )
-    plan.validate_for_text(normalized_text, stage=prompt_level + 2)
+    plan.validate_for_text(normalized_text, stage=stage_for_prompt_level(prompt_level))
     return _render_template(template, normalized_text, placeholder, plan)
 
 
@@ -102,7 +100,7 @@ def _render_template(
 ) -> str:
     values = {INPUT_PLACEHOLDER: text, placeholder: plan.to_prompt_json()}
     return re.sub(
-        r"\{\{(?:NORMALIZED_TEXT|STAGE[345]_WORK_PLAN)\}\}",
+        r"\{\{(?:NORMALIZED_TEXT|STAGE[34]_WORK_PLAN)\}\}",
         lambda match: values[match.group()],
         template,
     )

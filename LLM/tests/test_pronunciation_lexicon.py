@@ -22,12 +22,12 @@ STAGE4_EXACT_CONTRASTS = (
 )
 
 
-def test_stage_four_has_no_deterministic_pronunciation_registry() -> None:
-    assert entries_for_stage(4) == ()
+def test_stage_three_has_no_deterministic_pronunciation_registry() -> None:
+    assert entries_for_stage(3) == ()
 
 
 def test_stage_five_overlay_registry_contains_only_fixed_entries() -> None:
-    surfaces = {entry.surface for entry in entries_for_stage(5)}
+    surfaces = {entry.surface for entry in entries_for_stage(4)}
     assert {"색연필", "문고리", "생산량", "입원료", "백분율"} <= surfaces
     assert {
         "한여름",
@@ -48,18 +48,18 @@ def test_fixed_entries_are_not_llm_mutation_candidates_after_overlay_split() -> 
     text = "색연필과 문고리를 확인했습니다. 생산량과 입원료를 발표했습니다."
     assert all(
         item.kind not in {"n_insertion", "lexical_tensification", "lexical_n_l"}
-        for item in build_allowed_mutations(text, stage=4)
+        for item in build_allowed_mutations(text, stage=3)
     )
     assert all(
         item.kind not in {"n_insertion", "lexical_tensification", "lexical_n_l"}
-        for item in build_allowed_mutations(text, stage=5)
+        for item in build_allowed_mutations(text, stage=4)
     )
 
 
 def test_stage_five_adds_only_closed_contextual_pronunciation_candidates() -> None:
     candidates = build_allowed_mutations(
         "인기는 높지만 예술의 대가는 큰 대가를 요구했습니다.",
-        stage=5,
+        stage=4,
     )
     standard = [
         item for item in candidates
@@ -74,7 +74,7 @@ def test_stage_five_adds_only_closed_contextual_pronunciation_candidates() -> No
 def test_stage_five_combines_contextual_pronunciation_and_contraction() -> None:
     candidate = next(
         item
-        for item in build_allowed_mutations("대가입니다.", stage=5)
+        for item in build_allowed_mutations("대가입니다.", stage=4)
         if item.kind == "contextual_standard_pronunciation"
     )
 
@@ -86,19 +86,18 @@ def test_stage_five_combines_contextual_pronunciation_and_contraction() -> None:
     )
 
 def test_stage_five_does_not_match_contextual_entry_inside_longer_words() -> None:
-    candidates = build_allowed_mutations("개인기와 무인기를 확인했습니다.", stage=5)
+    candidates = build_allowed_mutations("개인기와 무인기를 확인했습니다.", stage=4)
     assert all(
         item.kind != "contextual_standard_pronunciation"
         for item in candidates
     )
 
 
-def test_levels_three_and_four_do_not_gain_stage_five_contextual_candidates() -> None:
-    for stage in (3, 4):
-        assert all(
-            item.kind != "contextual_standard_pronunciation"
-            for item in build_allowed_mutations("인기와 대가", stage=stage)
-        )
+def test_level_three_does_not_gain_stage_five_contextual_candidates() -> None:
+    assert all(
+        item.kind != "contextual_standard_pronunciation"
+        for item in build_allowed_mutations("인기와 대가", stage=3)
+    )
 
 
 def test_contraction_outputs_are_complete_hangul_syllables() -> None:
@@ -115,7 +114,7 @@ def test_general_g2p_surface_is_not_a_candidate() -> None:
     assert build_allowed_mutations("국물은 같이 읽고 있습니다.", stage=4) == ()
 
 
-@pytest.mark.parametrize("stage", (3, 4, 5))
+@pytest.mark.parametrize("stage", (3, 4))
 @pytest.mark.parametrize(
     "text",
     ("확인했습니다.", "발표했습니다.", "처리되었습니다.", "검토하였습니다."),
@@ -130,7 +129,7 @@ def test_compound_boundary_does_not_split_predicate_or_ending(
     )
 
 
-@pytest.mark.parametrize("stage", (3, 4, 5))
+@pytest.mark.parametrize("stage", (3, 4))
 def test_compound_boundary_stays_inside_long_nominal_stem(stage: int) -> None:
     candidates = build_allowed_mutations("산업용지역전기요금제입니다.", stage=stage)
     expected = "산업용지역-전기요금제입니다"

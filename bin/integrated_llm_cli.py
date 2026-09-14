@@ -61,8 +61,8 @@ def _print_json(payload: dict, *, stream=None) -> None:
 
 
 def run(*, stage_level: int, prompt_level: int) -> int:
-    if (stage_level, prompt_level) not in {(3, 1), (4, 2), (5, 3)}:
-        raise ValueError("integrated stage mapping must be 3/1, 4/2, or 5/3")
+    if (stage_level, prompt_level) not in {(3, 1), (4, 3)}:
+        raise ValueError("integrated stage mapping must be 3/1 or 4/3")
 
     from LLM.cli_protocol import classify_llm_stage_error
     from LLM.config import load_model_config
@@ -113,14 +113,7 @@ def run(*, stage_level: int, prompt_level: int) -> int:
         normalized_text = rule_output.normalized_text
         snapshot = build_normalization_snapshot(rule_output)
         selection_plan = None
-        if stage_level == 5:
-            from LLM.stage5_preprocessor import preprocess_stage5
-
-            stage5 = preprocess_stage5(normalized_text, snapshot=snapshot)
-            llm_input_text = stage5.text
-            llm_snapshot = stage5.snapshot
-            selection_plan = stage5.work_plan
-        elif stage_level == 4:
+        if stage_level == 4:
             from LLM.stage4_preprocessor import preprocess_stage4
 
             stage4 = preprocess_stage4(normalized_text, snapshot=snapshot)

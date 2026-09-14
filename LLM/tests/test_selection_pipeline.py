@@ -16,7 +16,6 @@ from LLM.selection_pipeline import (
     render_selection_response,
 )
 from LLM.stage4_preprocessor import preprocess_stage4
-from LLM.stage5_preprocessor import preprocess_stage5
 
 
 def test_stage4_plan_contains_code_renderable_natural_speech_choices() -> None:
@@ -106,27 +105,19 @@ def test_code_composer_rejects_overlapping_selected_candidates() -> None:
 
 
 def test_selection_plan_rejects_cross_stage_use() -> None:
-    plan = build_selection_plan("현장에 있는 기자입니다.", stage=5)
+    plan = build_selection_plan("현장에 있는 기자입니다.", stage=4)
     with pytest.raises(ValueError, match="another stage"):
-        plan.validate_for_text("현장에 있는 기자입니다.", stage=4)
+        plan.validate_for_text("현장에 있는 기자입니다.", stage=3)
 
 
-def test_stage4_preprocessor_does_not_apply_pronunciation_overlay() -> None:
-    prepared = preprocess_stage4("상견례입니다.")
-
-    assert prepared.text == "상견례입니다."
-    combined = next(
-        candidate
-        for candidate in prepared.work_plan.candidates
-        if "contraction" in candidate.kind
-    )
-    assert combined.kind == "natural_speech_contraction"
-    assert combined.options == ('상견롑니다',)
+def test_stage3_plan_does_not_offer_contraction_candidates() -> None:
+    plan = build_selection_plan("상견례입니다.", stage=3)
+    assert not any("contraction" in candidate.kind for candidate in plan.candidates)
 
 
-def test_stage5_preprocessor_applies_overlay_then_locked_contraction() -> None:
-    overlay = apply_pronunciation_overlay("상견례입니다.", stage=5)
-    prepared = preprocess_stage5(overlay.text, snapshot=overlay.snapshot)
+def test_stage4_preprocessor_applies_overlay_then_locked_contraction() -> None:
+    overlay = apply_pronunciation_overlay("상견례입니다.", stage=4)
+    prepared = preprocess_stage4(overlay.text, snapshot=overlay.snapshot)
 
     assert prepared.text == "상견녜입니다."
     combined = next(
@@ -138,8 +129,8 @@ def test_stage5_preprocessor_applies_overlay_then_locked_contraction() -> None:
     assert combined.options == ("상견녭니다",)
 
 
-def test_stage5_combines_locked_standard_pronunciation_and_contraction() -> None:
-    prepared = preprocess_stage5("학교입니다.")
+def test_stage4_combines_locked_standard_pronunciation_and_contraction() -> None:
+    prepared = preprocess_stage4("학교입니다.")
 
     assert prepared.text == "학꾜입니다."
     combined = next(
@@ -161,10 +152,10 @@ def test_stage5_combines_locked_standard_pronunciation_and_contraction() -> None
     assert output == "학꾭니다."
 
 
-def test_stage5_plan_is_stage4_plan_superset_when_base_text_is_unchanged() -> None:
+def test_stage4_plan_is_stage3_plan_superset_when_base_text_is_unchanged() -> None:
     text = "정부는 오늘 새로운 정책을 발표했습니다."
+    level3 = build_selection_plan(text, stage=3)
     level4 = build_selection_plan(text, stage=4)
-    level5 = build_selection_plan(text, stage=5)
 
     signature = lambda candidate: (
         candidate.start,
@@ -173,19 +164,18 @@ def test_stage5_plan_is_stage4_plan_superset_when_base_text_is_unchanged() -> No
         candidate.surface,
         candidate.options,
     )
-    assert {signature(item) for item in level4.candidates} <= {
-        signature(item) for item in level5.candidates
+    assert {signature(item) for item in level3.candidates} <= {
+        signature(item) for item in level4.candidates
     }
 
 
-@pytest.mark.parametrize("prepare", (preprocess_stage4, preprocess_stage5))
 @pytest.mark.parametrize(("source", "expected"), (
     ("3번 처리했습니다.", "세-번 처리했습니다."),
     ("3번 항목을 처리했습니다.", "삼번 항목을 처리했습니다."),
     ("3번을 처리했습니다.", "삼번을 처리했습니다."),
 ))
-def test_levels4_and5_inherit_locked_beon_context(prepare, source, expected) -> None:
-    prepared = prepare(source)
+def test_stage4_inherits_locked_beon_context(source, expected) -> None:
+    prepared = preprocess_stage4(source)
     assert prepared.text == expected
     assert not any(
         candidate.kind == "deferred_n_beon"
@@ -197,17 +187,13 @@ def test_levels4_and5_inherit_locked_beon_context(prepare, source, expected) -> 
     )
 
 
-@pytest.mark.parametrize(("stage", "prepare"), (
-    (4, preprocess_stage4),
-    (5, preprocess_stage5),
-))
-def test_levels4_and5_keep_only_ambiguous_beon_for_llm(stage, prepare) -> None:
-    prepared = prepare("3번 맡았습니다.")
+def test_stage4_keep_only_ambiguous_beon_for_llm() -> None:
+    prepared = preprocess_stage4("3번 맡았습니다.")
     candidate = next(
         item for item in prepared.work_plan.candidates
         if item.kind == "deferred_n_beon"
     )
-    assert candidate.candidate_id.startswith(f"S{stage}-")
+    assert candidate.candidate_id.startswith("S4-")
     assert candidate.options == ("삼번", "세-번")
     assert "동작 서술어" in candidate.guidance
 

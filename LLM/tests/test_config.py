@@ -7,10 +7,9 @@ import pytest
 
 from LLM.config import (
     ConfigurationError,
-    LLM_PROMPT_LV2_PATH,
     LLM_PROMPT_LV3_PATH,
     LLM_PROMPT_PATH,
-    STAGE5_PRONUNCIATION_PATH,
+    STAGE4_PRONUNCIATION_PATH,
     load_gemini_settings,
     load_model_config,
     load_openai_settings,
@@ -48,11 +47,10 @@ def test_model_config_has_fixed_models_and_default() -> None:
 
 def test_prompt_paths_are_distinct_runtime_assets() -> None:
     assert LLM_PROMPT_PATH.name == "LLM_prompt.txt"
-    assert LLM_PROMPT_LV2_PATH.name == "LLM_prompt_lv2.txt"
     assert LLM_PROMPT_LV3_PATH.name == "LLM_prompt_lv3.txt"
-    assert STAGE5_PRONUNCIATION_PATH.name == "stage5_pronunciations.json"
-    assert STAGE5_PRONUNCIATION_PATH.is_file()
-    assert len({LLM_PROMPT_PATH, LLM_PROMPT_LV2_PATH, LLM_PROMPT_LV3_PATH}) == 3
+    assert STAGE4_PRONUNCIATION_PATH.name == "stage4_pronunciations.json"
+    assert STAGE4_PRONUNCIATION_PATH.is_file()
+    assert len({LLM_PROMPT_PATH, LLM_PROMPT_LV3_PATH}) == 2
 
 
 def test_invalid_default_model_is_rejected(tmp_path: Path) -> None:

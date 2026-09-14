@@ -15,6 +15,7 @@ from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.date_time import is_valid_time, time_number_reading
 from engine.span_engine.language_gate import is_non_korean_prose_line
 from engine.span_engine.numeric_reading import read_number_text
+from LLM.stage_mapping import stage_for_prompt_level
 
 
 _STRUCTURE_CHARACTER_RE = re.compile(
@@ -94,20 +95,20 @@ def validate_response(
     normalized_text: str,
     speech_text: str,
     *,
-    prompt_level: int = 2,
+    prompt_level: int = 1,
     snapshot: NormalizationSnapshot | None = None,
     candidates: tuple[AllowedMutation, ...] | None = None,
 ) -> str:
     """Validate an LLM response and raise for a Critical/High violation."""
     if not isinstance(speech_text, str) or not speech_text:
         raise LLMResponseError("LLM response is empty.")
-    if isinstance(prompt_level, bool) or prompt_level not in {1, 2, 3}:
-        raise ValueError("prompt_level must be 1, 2, or 3")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 3}:
+        raise ValueError("prompt_level must be 1 or 3")
 
     result = validate_speech_text(
         normalized_text,
         speech_text,
-        stage=prompt_level + 2,
+        stage=stage_for_prompt_level(prompt_level),
         snapshot=snapshot,
         candidates=candidates,
     )
@@ -135,8 +136,8 @@ def validate_speech_text(
 ) -> ValidationResult:
     if not isinstance(normalized_text, str) or not isinstance(speech_text, str):
         raise TypeError("normalized_text and speech_text must be str")
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
     if not speech_text:
         return _failure("EMPTY_RESPONSE", "Critical", "LLM response is empty.")
 

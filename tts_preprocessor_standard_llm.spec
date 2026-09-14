@@ -5,15 +5,18 @@ from pathlib import Path
 
 ROOT_DIR = Path(SPECPATH).resolve()
 EXECUTABLE_NAME = os.environ.get(
-    "TTS_PREPROCESSOR_EXECUTABLE_NAME",
-    "tts-preprocessor-standard",
+    "TTS_PREPROCESSOR_STANDARD_LLM_EXECUTABLE_NAME",
+    "tts-preprocessor-standard-llm",
 )
 
 a = Analysis(
-    [str(ROOT_DIR / "bin" / "build_binary_entrypoint.py")],
+    [str(ROOT_DIR / "bin" / "build_standard_llm_entrypoint.py")],
     pathex=[str(ROOT_DIR)],
     binaries=[],
-    datas=[],
+    datas=[
+        (str(ROOT_DIR / "LLM" / "models.json"), "LLM"),
+        (str(ROOT_DIR / "LLM" / "docs" / "LLM_prompt.txt"), "LLM/docs"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -25,11 +28,7 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
+    pyz, a.scripts, a.binaries, a.datas, [],
     name=EXECUTABLE_NAME,
     debug=False,
     bootloader_ignore_signals=False,

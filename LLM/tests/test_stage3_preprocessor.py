@@ -11,7 +11,6 @@ from LLM.provenance import build_normalization_snapshot
 from LLM.selection_pipeline import build_selection_plan, render_selection_response, parse_selection_response, SelectionResponseError
 from LLM.stage3_preprocessor import preprocess_stage3
 from LLM.stage4_preprocessor import preprocess_stage4
-from LLM.stage5_preprocessor import preprocess_stage5
 from LLM.response_validation import validate_speech_text
 from engine.main import transform_output
 
@@ -112,11 +111,17 @@ def test_stage3_prosody_candidates_only_follow_safe_clause_endings():
 
 def test_stage_hierarchy_inherits_all_base_choices():
     source = "3번 확인했고 새 장비 XQZ를 다시 점검했습니다."
-    signatures = [{(c.start, c.end, c.kind, c.options) for c in build_selection_plan(source, stage=stage).candidates} for stage in (3, 4, 5)]
-    assert signatures[0] <= signatures[1] <= signatures[2]
+    signatures = [
+        {
+            (c.start, c.end, c.kind, c.options)
+            for c in build_selection_plan(source, stage=stage).candidates
+        }
+        for stage in (3, 4)
+    ]
+    assert signatures[0] <= signatures[1]
 
 
-@pytest.mark.parametrize("prepare", [preprocess_stage3, preprocess_stage4, preprocess_stage5])
+@pytest.mark.parametrize("prepare", [preprocess_stage3, preprocess_stage4])
 def test_existing_engine_locks_survive_shared_residual_preprocessing(prepare):
     output = transform_output("3번 버스와 3kg입니다.")
     snapshot = build_normalization_snapshot(output)

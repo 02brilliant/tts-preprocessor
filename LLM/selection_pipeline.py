@@ -136,8 +136,8 @@ class SelectionPlan:
         return tuple(candidate.to_allowed_mutation() for candidate in self.candidates)
 
     def validate_for_text(self, text: str, *, stage: int) -> None:
-        if stage not in {3, 4, 5}:
-            raise ValueError("selection stage must be 3, 4, or 5")
+        if stage not in {3, 4}:
+            raise ValueError("selection stage must be 3 or 4")
         if self.stage is not None and self.stage != stage:
             raise ValueError("selection plan belongs to another stage")
         expected_prefix = f"S{stage}-"
@@ -200,12 +200,12 @@ def build_selection_plan(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> SelectionPlan:
-    """Build finite, code-renderable choices for levels 3–5."""
+    """Build finite, code-renderable choices for levels 3 and 4."""
 
     if not isinstance(text, str):
         raise TypeError("text must be str")
-    if stage not in {3, 4, 5}:
-        raise ValueError("selection stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("selection stage must be 3 or 4")
     active_snapshot = snapshot or minimal_snapshot(text)
     if active_snapshot.normalized_text != text:
         raise ValueError("snapshot does not match selection text")
@@ -213,7 +213,7 @@ def build_selection_plan(
     mutations = list(
         build_allowed_mutations(text, stage=stage, snapshot=active_snapshot)
     )
-    if stage >= 4:
+    if stage == 4:
         mutations.extend(_locked_contraction_mutations(text, active_snapshot, mutations))
     from LLM.residual_preprocessor import residual_choices
 
@@ -221,7 +221,7 @@ def build_selection_plan(
     mutations.extend(residual)
 
     candidates: list[SelectionCandidate] = []
-    contextual = _stage5_contextual_entries() if stage == 5 else {}
+    contextual = _stage4_contextual_entries() if stage == 4 else {}
     for mutation in sorted(mutations, key=lambda item: (item.start, item.end)):
         entry = contextual.get(mutation.source_text)
         if entry is None and mutation.kind == "contextual_standard_pronunciation":
@@ -500,10 +500,9 @@ def _locked_contraction_mutations(
     return results
 
 
-def _stage5_contextual_entries() -> dict[str, object]:
-    # Keep level 4 independent from the level-5 data asset. Importing the
-    # registry at module load would make the level-4 frozen executable require
-    # stage5_pronunciations.json even though it never uses those entries.
+def _stage4_contextual_entries() -> dict[str, object]:
+    # Lazy-import so level-3 frozen executables do not require the stage-5
+    # pronunciation registry asset.
     from LLM.standard_pronunciation import entries_for_mode
 
     return {entry.surface: entry for entry in entries_for_mode("contextual")}

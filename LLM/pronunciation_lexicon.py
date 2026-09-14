@@ -27,7 +27,7 @@ _GRAMMATICAL_TAIL_RE = re.compile(
     r"이시다|이세요|이셨다"
     r")$"
 )
-_STAGE5_NOUN_TAIL_RE = re.compile(
+_STAGE4_NOUN_TAIL_RE = re.compile(
     r"(?:"
     r"으로는|에서는|에게는|까지는|부터는|으로서|로서|으로써|로써|"
     r"이라고|이라면|이라서|이며|이고|처럼|보다|으로|에서|에게|까지|부터|"
@@ -89,11 +89,11 @@ _CONTRACTION_TAILS = {
 
 
 def entries_for_stage(stage: int) -> tuple[PronunciationEntry, ...]:
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
-    if stage < 5:
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
+    if stage < 4:
         return ()
-    return _stage5_entries("deterministic")
+    return _stage4_entries("deterministic")
 
 
 def build_allowed_mutations(
@@ -102,14 +102,14 @@ def build_allowed_mutations(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> tuple[AllowedMutation, ...]:
-    if stage not in {3, 4, 5}:
-        raise ValueError("stage must be 3, 4, or 5")
+    if stage not in {3, 4}:
+        raise ValueError("stage must be 3 or 4")
 
     candidates: list[AllowedMutation] = []
     for word_match in _HANGUL_WORD_RE.finditer(normalized_text):
         word = word_match.group(0)
 
-        if stage >= 4:
+        if stage == 4:
             contraction = _contraction_mutation(
                 word,
                 word_match.start(),
@@ -138,11 +138,11 @@ def build_allowed_mutations(
                 )
             )
 
-    if stage >= 5:
+    if stage >= 4:
         contextual = _entry_mutations(
             normalized_text,
-            _stage5_entries("contextual"),
-            grammatical_tail_re=_STAGE5_NOUN_TAIL_RE,
+            _stage4_entries("contextual"),
+            grammatical_tail_re=_STAGE4_NOUN_TAIL_RE,
         )
         candidates.extend(
             item
@@ -154,24 +154,24 @@ def build_allowed_mutations(
     return _filter_and_resolve(candidates, snapshot)
 
 
-def build_stage5_deterministic_pronunciation_mutations(
+def build_stage4_deterministic_pronunciation_mutations(
     normalized_text: str,
     *,
     snapshot: NormalizationSnapshot | None = None,
 ) -> tuple[AllowedMutation, ...]:
-    """Return stage-5-only exact pronunciations applied before its LLM pass."""
+    """Return stage-4-only exact pronunciations applied before its LLM pass."""
 
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
     deterministic = _entry_mutations(
         normalized_text,
-        _stage5_entries("deterministic"),
-        grammatical_tail_re=_STAGE5_NOUN_TAIL_RE,
+        _stage4_entries("deterministic"),
+        grammatical_tail_re=_STAGE4_NOUN_TAIL_RE,
     )
     contextual = _entry_mutations(
         normalized_text,
-        _stage5_entries("contextual"),
-        grammatical_tail_re=_STAGE5_NOUN_TAIL_RE,
+        _stage4_entries("contextual"),
+        grammatical_tail_re=_STAGE4_NOUN_TAIL_RE,
     )
     deterministic.extend(
         item
@@ -182,13 +182,13 @@ def build_stage5_deterministic_pronunciation_mutations(
 
 
 @lru_cache(maxsize=2)
-def _stage5_entries(mode: str) -> tuple[PronunciationEntry, ...]:
+def _stage4_entries(mode: str) -> tuple[PronunciationEntry, ...]:
     return tuple(
         PronunciationEntry(
             surface=entry.surface,
             pronunciation=entry.pronunciation,
             category=entry.category,
-            stage=5,
+            stage=4,
             source=entry.source,
             boundary_type=entry.boundary_type,
             allowed_tails=entry.allowed_tails,
@@ -514,6 +514,6 @@ def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutatio
 __all__ = [
     "PronunciationEntry",
     "build_allowed_mutations",
-    "build_stage5_deterministic_pronunciation_mutations",
+    "build_stage4_deterministic_pronunciation_mutations",
     "entries_for_stage",
 ]

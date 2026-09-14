@@ -16,19 +16,19 @@ def decide_llm_invocation(
     *,
     stage_level: int,
     selection_plan: SelectionPlan | None = None,
-    stage5_work_plan: SelectionPlan | None = None,
+    stage4_work_plan: SelectionPlan | None = None,
 ) -> LLMInvocationDecision:
     """Call a model only when the exact stage plan contains useful choices."""
     if not isinstance(normalized_text, str):
         raise TypeError("normalized_text must be str")
-    if isinstance(stage_level, bool) or stage_level not in {3, 4, 5}:
-        raise ValueError("stage_level must be 3, 4, or 5")
-    if selection_plan is not None and stage5_work_plan is not None:
-        raise ValueError("selection_plan and stage5_work_plan are mutually exclusive")
-    if stage5_work_plan is not None:
-        if stage_level != 5:
-            raise ValueError("stage5_work_plan is supported only for stage 5")
-        selection_plan = stage5_work_plan
+    if isinstance(stage_level, bool) or stage_level not in {3, 4}:
+        raise ValueError("stage_level must be 3 or 4")
+    if selection_plan is not None and stage4_work_plan is not None:
+        raise ValueError("selection_plan and stage4_work_plan are mutually exclusive")
+    if stage4_work_plan is not None:
+        if stage_level != 4:
+            raise ValueError("stage4_work_plan is supported only for stage 4")
+        selection_plan = stage4_work_plan
     active_plan = selection_plan or build_selection_plan(normalized_text, stage=stage_level)
     active_plan.validate_for_text(normalized_text, stage=stage_level)
     if not normalized_text.strip():

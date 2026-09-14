@@ -30,7 +30,7 @@ def test_public_routes_expose_one_transform_endpoint(monkeypatch) -> None:
         get_endpoint("/api/llm/transform", "POST")
 
 
-@pytest.mark.parametrize("level", (False, "3", -1, 6))
+@pytest.mark.parametrize("level", (False, "3", -1, 5, 6))
 def test_request_rejects_invalid_levels(level) -> None:
     with pytest.raises(ValidationError):
         TransformRequest.model_validate({"text": "원고", "level": level})
@@ -41,7 +41,7 @@ def test_request_limits_model_to_llm_levels() -> None:
         TransformRequest(text="원고", level=2, model="m")
 
 
-@pytest.mark.parametrize("level", (3, 4, 5))
+@pytest.mark.parametrize("level", (3, 4))
 def test_transform_uses_one_integrated_binary(level, monkeypatch) -> None:
     calls = []
 
@@ -98,7 +98,7 @@ def test_circuit_breaker_skips_llm_after_repeated_failures(monkeypatch) -> None:
         calls.append(rules_only)
         return {
             "normalized_text": "규칙 결과",
-            "speech_text": "오단계 확정 결과",
+            "speech_text": "4단계 확정 결과",
             "model": model or "m",
             "elapsed_ms": 1.0 if not rules_only else 0.0,
             "rule_elapsed_ms": 2.0,
@@ -115,14 +115,14 @@ def test_circuit_breaker_skips_llm_after_repeated_failures(monkeypatch) -> None:
     monkeypatch.setattr(server_module, "run_integrated_binary", fake_run)
     results = [
         server_module.transform_request_payload(
-            {"text": "원문", "level": 5, "model": "m"}
+            {"text": "원문", "level": 4, "model": "m"}
         )
         for _ in range(4)
     ]
 
     assert calls == [False, False, False, True]
     assert results[-1]["llm_status"] == "circuit_open"
-    assert results[-1]["speech_text"] == "오단계 확정 결과"
+    assert results[-1]["speech_text"] == "4단계 확정 결과"
 
 
 def test_overload_uses_rules_only_without_waiting(monkeypatch) -> None:
@@ -133,7 +133,7 @@ def test_overload_uses_rules_only_without_waiting(monkeypatch) -> None:
         calls.append(rules_only)
         return {
             "normalized_text": "규칙 결과",
-            "speech_text": "사단계 확정 결과",
+            "speech_text": "4단계 확정 결과",
             "model": model or "m",
             "elapsed_ms": 0.0,
             "rule_elapsed_ms": 2.0,
@@ -153,6 +153,11 @@ def test_overload_uses_rules_only_without_waiting(monkeypatch) -> None:
     assert calls == [True]
     assert result["llm_status"] == "overloaded"
     assert result["fallback_reason"] == "LLM_CONCURRENCY_LIMIT"
+
+
+def test_transform_rejects_removed_level_five() -> None:
+    with pytest.raises(ValidationError):
+        TransformRequest.model_validate({"text": "원문", "level": 5, "model": "m"})
 
 
 def test_levels_zero_to_two_do_not_use_integrated_binary(monkeypatch) -> None:

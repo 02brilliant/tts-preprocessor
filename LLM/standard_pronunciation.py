@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-from LLM.config import STAGE5_PRONUNCIATION_PATH
+from LLM.config import STAGE4_PRONUNCIATION_PATH
 
 
 class StandardPronunciationDataError(ValueError):
@@ -52,14 +52,14 @@ _HANGUL_SURFACE_RE = re.compile(r"[가-힣]+(?: [가-힣]+)*")
 _HANGUL_TAIL_RE = re.compile(r"[가-힣]+")
 
 
-def load_stage5_pronunciations(
-    path: Path = STAGE5_PRONUNCIATION_PATH,
+def load_stage4_pronunciations(
+    path: Path = STAGE4_PRONUNCIATION_PATH,
 ) -> tuple[StandardPronunciationEntry, ...]:
-    return _load_stage5_pronunciations(path)
+    return _load_stage4_pronunciations(path)
 
 
 @lru_cache(maxsize=4)
-def _load_stage5_pronunciations(
+def _load_stage4_pronunciations(
     path: Path,
 ) -> tuple[StandardPronunciationEntry, ...]:
     try:
@@ -191,12 +191,12 @@ def _load_stage5_pronunciations(
 def entries_for_mode(mode: str) -> tuple[StandardPronunciationEntry, ...]:
     if mode not in {"deterministic", "contextual"}:
         raise ValueError("mode must be deterministic or contextual")
-    return tuple(entry for entry in load_stage5_pronunciations() if entry.mode == mode)
+    return tuple(entry for entry in load_stage4_pronunciations() if entry.mode == mode)
 
 
 __all__ = [
     "StandardPronunciationDataError",
     "StandardPronunciationEntry",
     "entries_for_mode",
-    "load_stage5_pronunciations",
+    "load_stage4_pronunciations",
 ]

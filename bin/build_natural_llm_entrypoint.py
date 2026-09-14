@@ -12,4 +12,4 @@ from bin.integrated_llm_cli import run
 
 
 if __name__ == "__main__":
-    raise SystemExit(run(stage_level=5, prompt_level=3))
+    raise SystemExit(run(stage_level=4, prompt_level=3))

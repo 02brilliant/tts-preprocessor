@@ -76,6 +76,13 @@ def test_integrated_entrypoint_lists_models(monkeypatch, capsys) -> None:
     assert payload["default_model"] in payload["models"]
 
 
+def test_integrated_entrypoint_rejects_invalid_stage_prompt_mapping() -> None:
+    with pytest.raises(ValueError, match="integrated stage mapping must be 3/1 or 4/3"):
+        entrypoint.run(stage_level=4, prompt_level=2)
+    with pytest.raises(ValueError, match="integrated stage mapping must be 3/1 or 4/3"):
+        entrypoint.run(stage_level=5, prompt_level=3)
+
+
 def test_integrated_entrypoint_self_check_uses_current_hyphen_policy(
     monkeypatch,
     capsys,
@@ -114,7 +121,7 @@ def test_integrated_entrypoint_self_check_reports_expected_and_actual(
         lambda text: TransformOutput("에이비씨와 삼 킬로그램", [], None),
     )
 
-    assert entrypoint.run(stage_level=4, prompt_level=2) == 1
+    assert entrypoint.run(stage_level=4, prompt_level=3) == 1
     error = capsys.readouterr().err
     assert "expected='에이비씨와 삼-킬로그램'" in error
     assert "actual='에이비씨와 삼 킬로그램'" in error
@@ -131,7 +138,7 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
 
     def fake_rules(text):
         calls.append(("rules", text))
-        return TransformOutput("국물은 매우 좋습니다.", [], None)
+        return TransformOutput("새 장비 XQZ를 도입했습니다.", [], None)
 
     def fake_llm(
         text,
@@ -150,12 +157,15 @@ def test_integrated_entrypoint_runs_full_rules_once_then_fixed_prompt(monkeypatc
     timings = iter((1.0, 1.004, 2.0, 2.015))
     monkeypatch.setattr(entrypoint.time, "perf_counter", lambda: next(timings))
 
-    assert entrypoint.run(stage_level=4, prompt_level=2) == 0
-    assert calls == [("rules", "원문"), ("llm", "국물은 매우 좋습니다.", "gemma4:e4b", 2)]
+    assert entrypoint.run(stage_level=3, prompt_level=1) == 0
+    assert calls == [
+        ("rules", "원문"),
+        ("llm", "새 장비 XQZ를 도입했습니다.", "gemma4:e4b", 1),
+    ]
     assert json.loads(capsys.readouterr().out) == {
         "ok": True,
-        "level": 4,
-        "normalized_text": "국물은 매우 좋습니다.",
+        "level": 3,
+        "normalized_text": "새 장비 XQZ를 도입했습니다.",
         "speech_text": "궁무른, 조씀니다.",
         "model": "gemma4:e4b",
         "elapsed_ms": 12.346,
@@ -219,7 +229,7 @@ def test_integrated_entrypoint_error_includes_rule_output(monkeypatch, capsys) -
     assert payload == {"ok": False, "status": 400, "detail": "Unsupported LLM model.", "normalized_text": "규칙 결과"}
 
 
-def test_level4_does_not_apply_deterministic_overlay(
+def test_level4_applies_deterministic_overlay_before_llm(
     monkeypatch,
     capsys,
 ) -> None:
@@ -241,21 +251,21 @@ def test_level4_does_not_apply_deterministic_overlay(
         lambda text: TransformOutput(text, [], None),
     )
 
-    def fake_llm(text, *, model=None, prompt_level=1, snapshot=None):
+    def fake_llm(text, *, model=None, prompt_level=1, snapshot=None, selection_plan=None):
         calls.append((text, prompt_level, snapshot.normalized_text))
         return FakeResult()
 
     monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
-    assert entrypoint.run(stage_level=4, prompt_level=2) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=3) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["level"] == 4
     assert payload["normalized_text"] == "생산량은 늘었습니다."
-    assert payload["speech_text"] == "생산량은 늘었습니다."
+    assert payload["speech_text"] == "생산냥은 늘었습니다."
     assert payload["llm_called"] is False
     assert calls == []
 
 
-def test_level5_inherits_level4_overlay_and_uses_level5_prompt(
+def test_level4_inherits_overlay_and_uses_level5_prompt(
     monkeypatch,
     capsys,
 ) -> None:
@@ -300,10 +310,10 @@ def test_level5_inherits_level4_overlay_and_uses_level5_prompt(
         return FakeResult()
 
     monkeypatch.setattr("LLM.stage_engine.transform", fake_llm)
-    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=3) == 0
     payload = json.loads(capsys.readouterr().out)
 
-    assert payload["level"] == 5
+    assert payload["level"] == 4
     assert payload["normalized_text"] == "생산량은 늘었고 인기도 높습니다."
     assert payload["speech_text"] == "생산냥은 늘었고 인끼도 높습니다."
     assert len(calls) == 1
@@ -349,7 +359,7 @@ def test_level4_never_exposes_rejected_llm_output_with_safe_fallback(
     )
     monkeypatch.setattr("LLM.stage_engine.transform", lambda *_args, **_kwargs: FakeResult())
 
-    assert entrypoint.run(stage_level=4, prompt_level=2) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=3) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["speech_text"] == "가격은 삼쩜영오 달러입니다."
     assert "rejected_speech_text" not in payload
@@ -384,7 +394,7 @@ def test_rules_only_returns_stage_base_without_calling_llm(monkeypatch, capsys) 
         ),
     )
 
-    assert entrypoint.run(stage_level=5, prompt_level=3) == 0
+    assert entrypoint.run(stage_level=4, prompt_level=3) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["speech_text"] == "생산냥은 늘었습니다."
     assert payload["llm_called"] is False

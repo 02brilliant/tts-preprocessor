@@ -14,9 +14,8 @@ import pytest
 
 @pytest.mark.binary_runtime
 @pytest.mark.parametrize(("executable", "level"), (
-    ("tts-preprocessor-llm-minimal", 3),
-    ("tts-preprocessor-llm-natural", 4),
-    ("tts-preprocessor-llm-standard", 5),
+    ("tts-preprocessor-standard-llm", 3),
+    ("tts-preprocessor-natural-llm", 5),
 ))
 def test_frozen_llm_stages_resolve_processing_occurrence_without_llm(executable, level):
     binary = Path(__file__).resolve().parents[2] / "build/macos/dist" / executable
@@ -45,9 +44,8 @@ def test_frozen_llm_stages_resolve_processing_occurrence_without_llm(executable,
 @pytest.mark.binary_runtime
 @pytest.mark.parametrize("invalid", [False, True, "partial"])
 @pytest.mark.parametrize(("executable", "stage"), (
-    ("tts-preprocessor-llm-minimal", 3),
-    ("tts-preprocessor-llm-natural", 4),
-    ("tts-preprocessor-llm-standard", 5),
+    ("tts-preprocessor-standard-llm", 3),
+    ("tts-preprocessor-natural-llm", 5),
 ))
 def test_frozen_stage3_composes_selection_or_falls_back(invalid, executable, stage):
     binary = Path(__file__).resolve().parents[2] / "build/macos/dist" / executable

@@ -8,7 +8,7 @@ import pytest
 from LLM.standard_pronunciation import (
     StandardPronunciationDataError,
     entries_for_mode,
-    load_stage5_pronunciations,
+    load_stage4_pronunciations,
 )
 
 
@@ -49,7 +49,7 @@ def test_packaged_stage5_registry_separates_deterministic_and_contextual() -> No
     }
 
 
-def test_stage5_registry_rejects_duplicate_mode_surface(tmp_path: Path) -> None:
+def test_stage4_registry_rejects_duplicate_mode_surface(tmp_path: Path) -> None:
     path = tmp_path / "stage5.json"
     entry = {
         "surface": "국물",
@@ -65,11 +65,11 @@ def test_stage5_registry_rejects_duplicate_mode_surface(tmp_path: Path) -> None:
     )
 
     with pytest.raises(StandardPronunciationDataError, match="중복 표면"):
-        load_stage5_pronunciations(path)
+        load_stage4_pronunciations(path)
 
 
 @pytest.mark.parametrize("mode", ("", "automatic", True))
-def test_stage5_registry_rejects_invalid_mode(tmp_path: Path, mode) -> None:
+def test_stage4_registry_rejects_invalid_mode(tmp_path: Path, mode) -> None:
     path = tmp_path / f"stage5-{mode!s}.json"
     path.write_text(
         json.dumps(
@@ -91,7 +91,7 @@ def test_stage5_registry_rejects_invalid_mode(tmp_path: Path, mode) -> None:
     )
 
     with pytest.raises(StandardPronunciationDataError):
-        load_stage5_pronunciations(path)
+        load_stage4_pronunciations(path)
 
 
 def _write_registry(tmp_path: Path, entry: dict) -> Path:
@@ -131,16 +131,16 @@ def _valid_entry(**overrides) -> dict:
         {"paradigm_id": ""},
     ),
 )
-def test_stage5_registry_rejects_invalid_schema2_metadata(
+def test_stage4_registry_rejects_invalid_schema2_metadata(
     tmp_path: Path,
     overrides: dict,
 ) -> None:
     path = _write_registry(tmp_path, _valid_entry(**overrides))
     with pytest.raises(StandardPronunciationDataError):
-        load_stage5_pronunciations(path)
+        load_stage4_pronunciations(path)
 
 
-def test_stage5_registry_rejects_cross_mode_duplicate_surface(tmp_path: Path) -> None:
+def test_stage4_registry_rejects_cross_mode_duplicate_surface(tmp_path: Path) -> None:
     deterministic = _valid_entry()
     contextual = _valid_entry(
         mode="contextual",
@@ -153,10 +153,10 @@ def test_stage5_registry_rejects_cross_mode_duplicate_surface(tmp_path: Path) ->
         encoding="utf-8",
     )
     with pytest.raises(StandardPronunciationDataError, match="중복 표면"):
-        load_stage5_pronunciations(path)
+        load_stage4_pronunciations(path)
 
 
-def test_stage5_registry_rejects_pronunciation_chain(tmp_path: Path) -> None:
+def test_stage4_registry_rejects_pronunciation_chain(tmp_path: Path) -> None:
     first = _valid_entry(surface="읽고", pronunciation="일꼬")
     second = _valid_entry(surface="일꼬", pronunciation="일꼬요")
     path = tmp_path / "stage5-chain.json"
@@ -165,4 +165,4 @@ def test_stage5_registry_rejects_pronunciation_chain(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(StandardPronunciationDataError, match="연쇄 변환"):
-        load_stage5_pronunciations(path)
+        load_stage4_pronunciations(path)

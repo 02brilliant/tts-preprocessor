@@ -43,6 +43,7 @@ from LLM.selection_pipeline import (
     compose_selection,
 )
 from LLM.validation_models import NormalizationSnapshot, ValidationIssue
+from LLM.stage_mapping import stage_for_prompt_level
 from LLM.vllm_client import (
     VllmClientError,
     VllmResponseError,
@@ -70,7 +71,7 @@ class LLMStageResult:
 
 
 _LOGGER = logging.getLogger(__name__)
-Stage5WorkPlan = SelectionPlan
+Stage4WorkPlan = SelectionPlan
 
 
 @dataclass(frozen=True)
@@ -107,7 +108,7 @@ def transform(
     prompt_level: int = 1,
     snapshot: NormalizationSnapshot | None = None,
     selection_plan: SelectionPlan | None = None,
-    stage5_work_plan: SelectionPlan | None = None,
+    stage4_work_plan: SelectionPlan | None = None,
 ) -> LLMStageResult:
     """Run one LLM stage from the level-2 normalized string.
 
@@ -119,25 +120,25 @@ def transform(
         raise TypeError("normalized_text must be str")
     if model is not None and not isinstance(model, str):
         raise TypeError("model must be str or None")
-    if isinstance(prompt_level, bool) or prompt_level not in {1, 2, 3}:
-        raise ValueError("prompt_level must be 1, 2, or 3")
-    if selection_plan is not None and stage5_work_plan is not None:
-        raise ValueError("selection_plan and stage5_work_plan are mutually exclusive")
-    if stage5_work_plan is not None:
-        selection_plan = stage5_work_plan
-    if stage5_work_plan is not None and prompt_level != 3:
-        raise ValueError("stage5_work_plan requires prompt_level=3")
+    if isinstance(prompt_level, bool) or prompt_level not in {1, 3}:
+        raise ValueError("prompt_level must be 1 or 3")
+    if selection_plan is not None and stage4_work_plan is not None:
+        raise ValueError("selection_plan and stage4_work_plan are mutually exclusive")
+    if stage4_work_plan is not None:
+        selection_plan = stage4_work_plan
+    if stage4_work_plan is not None and prompt_level != 3:
+        raise ValueError("stage4_work_plan requires prompt_level=3")
 
     if selection_plan is None:
         selection_plan = build_selection_plan(
             normalized_text,
-            stage=prompt_level + 2,
+            stage=stage_for_prompt_level(prompt_level),
             snapshot=snapshot,
         )
     if selection_plan is not None:
         selection_plan.validate_for_text(
             normalized_text,
-            stage=prompt_level + 2,
+            stage=stage_for_prompt_level(prompt_level),
         )
 
     model_config = load_model_config()
@@ -241,18 +242,18 @@ def transform(
     )
 
 
-def validate_runtime_assets(*, prompt_levels: tuple[int, ...] = (1, 2, 3)) -> None:
+def validate_runtime_assets(*, prompt_levels: tuple[int, ...] = (1, 3)) -> None:
     """Verify the requested bundled prompt and model assets without an LLM call."""
 
     load_model_config()
-    if not prompt_levels or any(level not in {1, 2, 3} for level in prompt_levels):
-        raise ValueError("prompt_levels must contain only 1, 2, or 3")
+    if not prompt_levels or any(level not in {1, 3} for level in prompt_levels):
+        raise ValueError("prompt_levels must contain only 1 or 3")
     for prompt_level in prompt_levels:
         build_prompt("", prompt_level=prompt_level)
     if 3 in prompt_levels:
-        from LLM.standard_pronunciation import load_stage5_pronunciations
+        from LLM.standard_pronunciation import load_stage4_pronunciations
 
-        load_stage5_pronunciations()
+        load_stage4_pronunciations()
 
 
 def _generate_with_provider(
@@ -402,6 +403,7 @@ def _provider_failure(exc: BaseException) -> tuple[str, ValidationIssue]:
 
 __all__ = [
     "LLMStageResult",
+    "Stage4WorkPlan",
     "UnsupportedLLMModelError",
     "transform",
     "validate_runtime_assets",
