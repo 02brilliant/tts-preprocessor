@@ -15,12 +15,12 @@ import pytest
 @pytest.mark.binary_runtime
 @pytest.mark.parametrize(("executable", "level"), (
     ("tts-preprocessor-standard-llm", 3),
-    ("tts-preprocessor-natural-llm", 5),
+    ("tts-preprocessor-natural-llm", 4),
 ))
 def test_frozen_llm_stages_resolve_processing_occurrence_without_llm(executable, level):
     binary = Path(__file__).resolve().parents[2] / "build/macos/dist" / executable
     if not binary.is_file():
-        pytest.skip("macOS stage-3 executable has not been built")
+        pytest.skip(f"macOS stage-{level} executable has not been built")
     environment = dict(os.environ)
     environment.update(
         LOCAL_LLM_BASE_URL="http://127.0.0.1:1",
@@ -45,12 +45,12 @@ def test_frozen_llm_stages_resolve_processing_occurrence_without_llm(executable,
 @pytest.mark.parametrize("invalid", [False, True, "partial"])
 @pytest.mark.parametrize(("executable", "stage"), (
     ("tts-preprocessor-standard-llm", 3),
-    ("tts-preprocessor-natural-llm", 5),
+    ("tts-preprocessor-natural-llm", 4),
 ))
-def test_frozen_stage3_composes_selection_or_falls_back(invalid, executable, stage):
+def test_frozen_llm_stage_composes_selection_or_falls_back(invalid, executable, stage):
     binary = Path(__file__).resolve().parents[2] / "build/macos/dist" / executable
     if not binary.is_file():
-        pytest.skip("macOS stage-3 executable has not been built")
+        pytest.skip(f"macOS stage-{stage} executable has not been built")
     captured = []
 
     class Handler(BaseHTTPRequestHandler):

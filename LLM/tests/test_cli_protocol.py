@@ -265,7 +265,7 @@ def test_level4_applies_deterministic_overlay_before_llm(
     assert calls == []
 
 
-def test_level4_inherits_overlay_and_uses_level5_prompt(
+def test_level4_inherits_overlay_and_uses_level4_prompt(
     monkeypatch,
     capsys,
 ) -> None:

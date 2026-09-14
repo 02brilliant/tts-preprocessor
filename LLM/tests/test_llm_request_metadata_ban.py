@@ -1,7 +1,7 @@
 """LLM requests must not carry internal rule-engine decision metadata.
 
 Policy: the optional LLM receives only the ordinary normalized/overlay text
-plus the closed, public stage-5 selection plan. Internal decision logs and
+plus the closed, public stage-4 selection plan. Internal decision logs and
 markers must not be attached to the model prompt or generate() kwargs.
 """
 

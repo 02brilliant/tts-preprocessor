@@ -59,7 +59,7 @@ def test_prompt_levels_have_distinct_closed_contracts() -> None:
     assert "3단계에서는 기존 한국어 철자를 발음형으로 바꾸지 않는다" in level3
     assert "색연필 → 색년필" not in level3
     assert "NATURAL_SPEECH_CONTRACTION" not in level3
-    assert "4단계는 4단계의 통제된 상위 집합" in level4
+    assert "4단계는 3단계의 통제된 상위 집합" in level4
     assert "통합 exact 표준발음 registry" in level4
     assert "STANDARD_PRONUNCIATION_ENHANCEMENT" in level4
     assert "NATURAL_SPEECH_CONTRACTION" in level4
@@ -76,8 +76,10 @@ def test_prompt_stage_inheritance_is_explicit_and_monotonic() -> None:
         assert "<STAGE_INHERITANCE>" in prompt
         assert "<RESIDUAL_READING_NORMALIZATION>" in prompt
 
-    assert "3단계에는 4단계의 이다 축약과 5단계의 한국어 발음 예외" in level3
-    assert "4단계는 4단계의 통제된 상위 집합" in level4
+    assert "3단계에는 4단계의 이다 축약·표준발음 예외" in level3
+    assert "4단계는 3단계의 통제된 상위 집합" in level4
+    assert '"id":"S4-0001"' in level4
+    assert '"id":"S5-0001"' not in level4
     assert "LLM이 추가하는 한국어 변경은 아래 NATURAL_SPEECH_CONTRACTION뿐이다" not in level3
 
 
@@ -161,7 +163,7 @@ def test_compound_boundary_policy_is_inherited_from_level3() -> None:
 
     assert "<COMPOUND_SPEECH_BOUNDARY>" in level3
     assert "한글 글자와 순서는 그대로 유지한다" in level3
-    assert "4단계의 보호 표면" in level4
+    assert "3단계의 보호 표면" in level4
 
 
 def test_active_prompt_has_contextual_number_unit_handoff_contract() -> None:

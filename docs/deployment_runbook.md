@@ -412,7 +412,7 @@ macOS 운영 배포에 사용하지 않는다. `scripts/build_package.py`는 준
 
 ```sh
 .venv/bin/python scripts/release.py
-.venv/bin/python scripts/build_package.py --binary dist/tts_preprocessor
+.venv/bin/python scripts/build_package.py --binary dist/tts-preprocessor-standard
 ```
 
 `--include-debug`를 지원하지 않는 구버전 바이너리는 source debug로

@@ -164,7 +164,7 @@ def transform_request_payload(payload: dict) -> dict:
         raise TypeError("include_debug must be bool")
 
     level = payload.get("level", 2)
-    if isinstance(level, bool) or level not in {0, 1, 2, 3, 4, 5}:
+    if isinstance(level, bool) or level not in {0, 1, 2, 3, 4}:
         raise ValueError("level must be an integer from {0, 1, 2, 3, 4}")
     model = payload.get("model")
     if model is not None and not isinstance(model, str):

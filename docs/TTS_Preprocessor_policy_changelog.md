@@ -1,11 +1,27 @@
 # TTS Preprocessor Policy Changelog
 
+## Public stages consolidated to 0–4
+
+- Removed the former stage 4 and reassigned the former stage-5 natural speech
+  and standard-pronunciation contract to public stage 4. The current public API
+  accepts only stages 0, 1, 2, 3, and 4.
+- The four packaged executables are now `tts-preprocessor-simplified`,
+  `tts-preprocessor-standard`, `tts-preprocessor-standard-llm`, and
+  `tts-preprocessor-natural-llm`, corresponding to stages 1 through 4.
+- Current stage 4 uses `STAGE4_WORK_PLAN`, `S4-*` candidate IDs,
+  `LLM/data/stage4_pronunciations.json`, and
+  `GENERATED_STAGE4_PRONUNCIATION` consistently across runtime, prompts,
+  validation, tests, and packaging.
+- References to stage 5 in older entries below describe the historical
+  topology at the time of those decisions; they are not accepted current API
+  values or current artifact names.
+
 ## LLM outage-safe stage fallback and output isolation
 
 - Reduced provider request deadlines from 300 seconds to 15 seconds and added
   a 20-second integrated-process deadline with a 5-second packaged
   `--rules-only` recovery path.
-- Levels 3–5 now return their deterministic stage base after provider timeout,
+- Levels 3–4 return their deterministic stage base after provider timeout,
   outage, or unusable response. For batched selection, valid batches remain
   applied while only failed batches are restored.
 - Added a per-process, per-model four-call concurrency limit and a 30-second

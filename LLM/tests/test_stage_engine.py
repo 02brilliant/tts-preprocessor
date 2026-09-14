@@ -75,7 +75,7 @@ def test_medium_diagnostic_is_not_reported_as_fallback(monkeypatch) -> None:
     assert any(issue.severity == "Medium" for issue in result.validation_issues)
 
 
-def test_stage_engine_uses_natural_speech_prompt_for_level_five(monkeypatch) -> None:
+def test_stage_engine_uses_natural_speech_prompt_for_stage_four(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_LLM_BASE_URL", "http://llm.invalid/api")
     monkeypatch.setenv("LOCAL_LLM_TOKEN", "dummy-test-credential")
     captured = {}
@@ -417,7 +417,7 @@ def test_stage_engine_runtime_asset_check_requires_no_llm_credentials(monkeypatc
     stage_engine.validate_runtime_assets(prompt_levels=(1,))
 
 
-def test_stage_engine_runtime_asset_check_loads_stage5_registry(monkeypatch) -> None:
+def test_stage_engine_runtime_asset_check_loads_stage4_registry(monkeypatch) -> None:
     calls = []
 
     monkeypatch.setattr(stage_engine, "build_prompt", lambda *_args, **_kwargs: "")

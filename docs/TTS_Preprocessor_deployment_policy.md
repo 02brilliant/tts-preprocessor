@@ -171,13 +171,14 @@ Ordinary binary output and ordinary `/api/transform` responses MUST NOT expose
 that field or any decision marker. `shadow_logs` remains the source-preservation
 validation stream and MUST NOT be repurposed for contextual decisions.
 
-The level-3 LLM receives only the ordinary `normalized_text` string. Level 4
-additionally receives a closed selection plan containing only candidate IDs,
-normalized coordinates, finite outputs, and concise guidance. Deployment MUST
-NOT attach `contextual_decision_logs`, trace markers, or other rule-engine
-metadata to the model request. The integrated runtime may retain an internal
-normalized-coordinate provenance snapshot for deterministic response validation.
-The rule endpoint remains independently usable as a final TTS input path.
+The level-3 and level-4 LLMs receive the ordinary stage base text plus a closed
+selection plan containing only candidate IDs, normalized coordinates, finite
+outputs, and concise guidance. Level 4 first applies and locks its deterministic
+pronunciation overlay. Deployment MUST NOT attach `contextual_decision_logs`,
+trace markers, or other rule-engine metadata to the model request. The
+integrated runtime may retain an internal normalized-coordinate provenance
+snapshot for deterministic response validation. The rule endpoint remains
+independently usable as a final TTS input path.
 The configured default model is `gemma4-31B-it (vLLM)`; callers may still select another
 registered model explicitly. The runtime does not expose rule-reading lock
 metadata, use repeated stability sampling, or automatically retry. Levels 3 and 4

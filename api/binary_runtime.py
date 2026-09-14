@@ -43,7 +43,7 @@ class BinaryRuntimeError(RuntimeError):
 
 
 class LLMStageRuntimeError(RuntimeError):
-    """Raised when the packaged stage-2 binary returns a structured failure."""
+    """Raised when a packaged LLM-stage binary returns a structured failure."""
 
     def __init__(self, message: str, *, status_code: int, detail: object) -> None:
         super().__init__(message)

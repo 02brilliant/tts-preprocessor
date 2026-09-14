@@ -80,6 +80,8 @@ def test_windows_workflow_builds_smokes_and_uploads_one_flat_zip() -> None:
     assert "dist\\tts-preprocessor-natural-llm.exe" in workflow
     assert "Smoke test executable" in workflow
     assert "Extracted Windows executable smoke test failed" in workflow
+    assert workflow.count("ABC와 삼-킬로그램") == 2
+    assert "ABC와 삼 킬로그램" not in workflow
     for artifact in (
         "README.txt",
         "tts-preprocessor-natural-llm.exe",

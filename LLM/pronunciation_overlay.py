@@ -26,9 +26,9 @@ def apply_pronunciation_overlay(
     stage: int,
     snapshot: NormalizationSnapshot | None = None,
 ) -> PronunciationOverlayResult:
-    """Apply fixed pronunciation entries for stage 5 without changing stage 2.
+    """Apply fixed pronunciation entries for stage 4 without changing stage 2.
 
-    Stage 3 leaves the text unchanged. Stage 5 applies the unified exact
+    Stage 3 leaves the text unchanged. Stage 4 applies the unified exact
     registry once and locks every generated pronunciation so its LLM pass can
     add only closed, stage-specific changes around it.
     """

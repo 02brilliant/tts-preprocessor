@@ -1423,7 +1423,7 @@ Default runners:
 
 Optional runners:
 
-- `--binary ./dist/tts_preprocessor`
+- `--binary ./dist/tts-preprocessor-standard`
 - `--api http://host:port`
 
 The optional binary/API matrix uses the shared `scripts/probes/runtime_matrix.py`

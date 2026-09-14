@@ -82,7 +82,7 @@ def test_stage4_fixed_entry_has_positive_negative_and_contrast_coverage(
     assert apply_pronunciation_overlay(f"{contrast}은 유지한다.", stage=4).text.startswith(contrast)
 
 
-def test_overlay_is_stage_five_only() -> None:
+def test_overlay_is_stage_four_only() -> None:
     text = "생산량은 늘었습니다."
     assert apply_pronunciation_overlay(text, stage=3).text == text
     assert apply_pronunciation_overlay(text, stage=4).text == "생산냥은 늘었습니다."

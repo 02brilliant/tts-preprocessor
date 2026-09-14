@@ -26,7 +26,7 @@ def test_stage_three_has_no_deterministic_pronunciation_registry() -> None:
     assert entries_for_stage(3) == ()
 
 
-def test_stage_five_overlay_registry_contains_only_fixed_entries() -> None:
+def test_stage_four_overlay_registry_contains_only_fixed_entries() -> None:
     surfaces = {entry.surface for entry in entries_for_stage(4)}
     assert {"색연필", "문고리", "생산량", "입원료", "백분율"} <= surfaces
     assert {
@@ -56,7 +56,7 @@ def test_fixed_entries_are_not_llm_mutation_candidates_after_overlay_split() -> 
     )
 
 
-def test_stage_five_adds_only_closed_contextual_pronunciation_candidates() -> None:
+def test_stage_four_adds_only_closed_contextual_pronunciation_candidates() -> None:
     candidates = build_allowed_mutations(
         "인기는 높지만 예술의 대가는 큰 대가를 요구했습니다.",
         stage=4,
@@ -71,7 +71,7 @@ def test_stage_five_adds_only_closed_contextual_pronunciation_candidates() -> No
     ]
 
 
-def test_stage_five_combines_contextual_pronunciation_and_contraction() -> None:
+def test_stage_four_combines_contextual_pronunciation_and_contraction() -> None:
     candidate = next(
         item
         for item in build_allowed_mutations("대가입니다.", stage=4)
@@ -85,7 +85,7 @@ def test_stage_five_combines_contextual_pronunciation_and_contraction() -> None:
         "대깝니다",
     )
 
-def test_stage_five_does_not_match_contextual_entry_inside_longer_words() -> None:
+def test_stage_four_does_not_match_contextual_entry_inside_longer_words() -> None:
     candidates = build_allowed_mutations("개인기와 무인기를 확인했습니다.", stage=4)
     assert all(
         item.kind != "contextual_standard_pronunciation"
@@ -93,7 +93,7 @@ def test_stage_five_does_not_match_contextual_entry_inside_longer_words() -> Non
     )
 
 
-def test_level_three_does_not_gain_stage_five_contextual_candidates() -> None:
+def test_level_three_does_not_gain_stage_four_contextual_candidates() -> None:
     assert all(
         item.kind != "contextual_standard_pronunciation"
         for item in build_allowed_mutations("인기와 대가", stage=3)

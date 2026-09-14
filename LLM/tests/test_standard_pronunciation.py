@@ -12,7 +12,7 @@ from LLM.standard_pronunciation import (
 )
 
 
-def test_packaged_stage5_registry_separates_deterministic_and_contextual() -> None:
+def test_packaged_stage4_registry_separates_deterministic_and_contextual() -> None:
     deterministic = entries_for_mode("deterministic")
     contextual = entries_for_mode("contextual")
 
@@ -50,7 +50,7 @@ def test_packaged_stage5_registry_separates_deterministic_and_contextual() -> No
 
 
 def test_stage4_registry_rejects_duplicate_mode_surface(tmp_path: Path) -> None:
-    path = tmp_path / "stage5.json"
+    path = tmp_path / "stage4.json"
     entry = {
         "surface": "국물",
         "pronunciation": "궁물",
@@ -70,7 +70,7 @@ def test_stage4_registry_rejects_duplicate_mode_surface(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("mode", ("", "automatic", True))
 def test_stage4_registry_rejects_invalid_mode(tmp_path: Path, mode) -> None:
-    path = tmp_path / f"stage5-{mode!s}.json"
+    path = tmp_path / f"stage4-{mode!s}.json"
     path.write_text(
         json.dumps(
             {
@@ -95,7 +95,7 @@ def test_stage4_registry_rejects_invalid_mode(tmp_path: Path, mode) -> None:
 
 
 def _write_registry(tmp_path: Path, entry: dict) -> Path:
-    path = tmp_path / "stage5-invalid.json"
+    path = tmp_path / "stage4-invalid.json"
     path.write_text(
         json.dumps({"schema_version": 2, "entries": [entry]}),
         encoding="utf-8",
@@ -147,7 +147,7 @@ def test_stage4_registry_rejects_cross_mode_duplicate_surface(tmp_path: Path) ->
         category="contextual_standard_pronunciation",
         boundary_type="contextual",
     )
-    path = tmp_path / "stage5-duplicate.json"
+    path = tmp_path / "stage4-duplicate.json"
     path.write_text(
         json.dumps({"schema_version": 2, "entries": [deterministic, contextual]}),
         encoding="utf-8",
@@ -159,7 +159,7 @@ def test_stage4_registry_rejects_cross_mode_duplicate_surface(tmp_path: Path) ->
 def test_stage4_registry_rejects_pronunciation_chain(tmp_path: Path) -> None:
     first = _valid_entry(surface="읽고", pronunciation="일꼬")
     second = _valid_entry(surface="일꼬", pronunciation="일꼬요")
-    path = tmp_path / "stage5-chain.json"
+    path = tmp_path / "stage4-chain.json"
     path.write_text(
         json.dumps({"schema_version": 2, "entries": [first, second]}),
         encoding="utf-8",

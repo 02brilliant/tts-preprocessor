@@ -59,7 +59,7 @@ def test_api_server_validates_runtime_binary_on_startup(monkeypatch):
 
     def fake_resolve_binary_path() -> Path:
         seen.append("resolved")
-        return PROJECT_ROOT / "dist" / "tts_preprocessor"
+        return PROJECT_ROOT / "dist" / "tts-preprocessor-standard"
 
     def fake_resolve_integrated_binary_path(level: int) -> Path:
         seen.append(f"resolved-{level}")

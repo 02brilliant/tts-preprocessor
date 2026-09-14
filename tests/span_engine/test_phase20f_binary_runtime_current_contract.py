@@ -182,7 +182,7 @@ def test_phase20f_rejects_removed_level_five(monkeypatch) -> None:
         )
 
 
-def test_phase20f_level5_drops_rejected_output_from_public_contract(monkeypatch) -> None:
+def test_phase20f_level4_drops_rejected_output_from_public_contract(monkeypatch) -> None:
     import api.binary_runtime as binary_runtime
     import json
 

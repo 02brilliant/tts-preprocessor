@@ -130,7 +130,7 @@ def test_windows_validation_rejects_extra_source_and_symlink(
         archive.writestr(link, "README.txt")
         archive.writestr("tts-preprocessor-simplified.exe", "simplified")
         archive.writestr("tts-preprocessor-standard-llm.exe", "level3")
-        archive.writestr("tts-preprocessor-natural-llm.exe", "level5")
+        archive.writestr("tts-preprocessor-natural-llm.exe", "level4")
         archive.writestr("README.txt", "readme")
     symlink_result = _run(
         symlink_script, "--platform", "windows", "--validate-only"

@@ -114,7 +114,7 @@ def test_level4_accepts_code_authorized_contraction_over_locked_pronunciation() 
     ) == output
 
 
-def test_level4_llm_cannot_apply_deterministic_stage5_reading_itself() -> None:
+def test_level4_llm_cannot_apply_deterministic_stage4_reading_itself() -> None:
     with pytest.raises(LLMStageContractError, match="outside its whitelist"):
         validate_response("인기가 높습니다.", "인끼가 높습니다.", prompt_level=3)
 
@@ -127,15 +127,15 @@ def test_level4_rejects_unregistered_general_g2p() -> None:
 def test_stage_outputs_form_a_controlled_processing_superset() -> None:
     source = "3.05와 색연필, 생산량을 확인했습니다."
     level3 = "삼-쩜-영오와 색연필, 생산량을 확인했습니다."
-    level5_base = preprocess_stage4(level3)
-    level5 = level5_base.text
+    level4_base = preprocess_stage4(level3)
+    level4 = level4_base.text
 
     assert validate_response(source, level3, prompt_level=1) == level3
-    assert level5 == "삼-쩜-영오와 생년필, 생산냥을 확인했습니다."
-    assert validate_response(level5, level5, prompt_level=3, snapshot=level5_base.snapshot) == level5
+    assert level4 == "삼-쩜-영오와 생년필, 생산냥을 확인했습니다."
+    assert validate_response(level4, level4, prompt_level=3, snapshot=level4_base.snapshot) == level4
 
     with pytest.raises(LLMStageContractError):
-        validate_response(source, level5, prompt_level=1)
+        validate_response(source, level4, prompt_level=1)
 
 
 @pytest.mark.parametrize(

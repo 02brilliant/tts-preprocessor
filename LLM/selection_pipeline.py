@@ -501,7 +501,7 @@ def _locked_contraction_mutations(
 
 
 def _stage4_contextual_entries() -> dict[str, object]:
-    # Lazy-import so level-3 frozen executables do not require the stage-5
+    # Lazy-import so stage-3 frozen executables do not require the stage-4
     # pronunciation registry asset.
     from LLM.standard_pronunciation import entries_for_mode
 

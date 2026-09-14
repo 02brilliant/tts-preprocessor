@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -18,8 +19,17 @@ from tests._production_boundary import (
 pytestmark = pytest.mark.binary_runtime
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-BUILD_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
-RUNTIME_BINARY = ROOT_DIR / "dist" / "tts_preprocessor"
+if platform.system() == "Darwin":
+    BUILD_SCRIPT = ROOT_DIR / "scripts" / "build_macos_package.sh"
+    RUNTIME_BINARY = (
+        ROOT_DIR / "build" / "macos" / "dist" / "tts-preprocessor-standard"
+    )
+elif platform.system() == "Linux":
+    BUILD_SCRIPT = ROOT_DIR / "scripts" / "build_binary.sh"
+    RUNTIME_BINARY = ROOT_DIR / "dist" / "tts-preprocessor-standard"
+else:
+    BUILD_SCRIPT = None
+    RUNTIME_BINARY = None
 GOLDEN_CORPUS_PATH = ROOT_DIR / "tests" / "fixtures" / "production_golden.jsonl"
 
 BATCH1_FIXTURE_PATH = ROOT_DIR / "tests" / "fixtures" / "batch1_allowed_output_diffs.json"
@@ -179,9 +189,10 @@ LONG_NEWS_SAMPLE = (
 
 
 def _latest_source_mtime() -> float:
+    assert BUILD_SCRIPT is not None
     paths = [
         ROOT_DIR / "bin" / "build_binary_entrypoint.py",
-        ROOT_DIR / "scripts" / "build_binary.sh",
+        BUILD_SCRIPT,
         ROOT_DIR / "tts_preprocessor.spec",
     ]
     paths.extend(path for path in (ROOT_DIR / "engine").rglob("*.py"))
@@ -191,6 +202,8 @@ def _latest_source_mtime() -> float:
 
 @pytest.fixture(scope="session")
 def runtime_binary_path() -> Path:
+    if BUILD_SCRIPT is None or RUNTIME_BINARY is None:
+        pytest.skip(f"binary parity is not configured for {platform.system()}")
     needs_build = not RUNTIME_BINARY.exists() or RUNTIME_BINARY.stat().st_mtime < _latest_source_mtime()
     if needs_build:
         subprocess.run(

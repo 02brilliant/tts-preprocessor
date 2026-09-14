@@ -159,6 +159,11 @@ def test_transform_rejects_removed_level_five() -> None:
     with pytest.raises(ValidationError):
         TransformRequest.model_validate({"text": "원문", "level": 5, "model": "m"})
 
+    with pytest.raises(ValueError, match=r"\{0, 1, 2, 3, 4\}"):
+        server_module.transform_request_payload(
+            {"text": "원문", "level": 5, "model": "m"}
+        )
+
 
 def test_levels_zero_to_two_do_not_use_integrated_binary(monkeypatch) -> None:
     monkeypatch.setattr(server_module, "run_integrated_binary", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not run")))

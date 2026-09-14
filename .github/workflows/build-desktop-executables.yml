@@ -108,7 +108,7 @@ jobs:
             throw "Windows stage 4 executable asset check failed"
           }
           $simplifiedActual = (& ".\dist\tts-preprocessor-simplified.exe" --text "ABC와 3kg" | Out-String).TrimEnd()
-          if ($LASTEXITCODE -ne 0 -or $simplifiedActual -ne "ABC와 삼 킬로그램") {
+          if ($LASTEXITCODE -ne 0 -or $simplifiedActual -ne "ABC와 삼-킬로그램") {
             throw "Windows simplified executable smoke test failed."
           }
 
@@ -182,7 +182,7 @@ jobs:
             throw "Extracted Windows stage 4 executable asset check failed."
           }
           $simplifiedSmoke = (& ".\verify-windows\tts-preprocessor-simplified.exe" --text "ABC와 3kg" | Out-String).TrimEnd()
-          if ($LASTEXITCODE -ne 0 -or $simplifiedSmoke -ne "ABC와 삼 킬로그램") {
+          if ($LASTEXITCODE -ne 0 -or $simplifiedSmoke -ne "ABC와 삼-킬로그램") {
             throw "Extracted Windows simplified executable smoke test failed."
           }
 
