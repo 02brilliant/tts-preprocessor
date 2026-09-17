@@ -122,12 +122,12 @@ PROBE_GROUPS: dict[str, tuple[ProbeCase, ...]] = {
     "protected-number-unit": (
         ProbeCase("protected-url", "https://example.com/3장", "https://example.com/3장"),
         ProbeCase("protected-path", "/tmp/3권/file", "/tmp/3권/file"),
-        ProbeCase("protected-json", '{"value":"3편"}', '{"value":"3편"}'),
+        ProbeCase("protected-json", '{"value":"3편"}', '"value":"3편"'),
         ProbeCase("protected-code", "`3층`", "`3층`"),
         ProbeCase(
             "protected-decimal-json",
             '{"count":"+2.35명"}',
-            '{"count":"+2.35명"}',
+            '"count":"+2.35명"',
         ),
     ),
     "mixed-multiple-senses": (

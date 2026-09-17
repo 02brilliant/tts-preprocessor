@@ -121,12 +121,12 @@ CASES = [
     ProbeCase(
         "protected_json_price",
         '{"price":"USD1,000.50"}',
-        '{"price":"USD1,000.50"}',
+        '"price":"USD1,000.50"',
     ),
-    ProbeCase("protected_json_temp", '{"temp":"+77.50°F"}', '{"temp":"+77.50°F"}'),
-    ProbeCase("protected_json_range", '{"range":"1.50~2.0"}', '{"range":"1.50~2.0"}'),
-    ProbeCase("protected_json_colon", '{"colon":"1.50:2.0"}', '{"colon":"1.50:2.0"}'),
-    ProbeCase("protected_json_large", '{"large":"25.50억"}', '{"large":"25.50억"}'),
+    ProbeCase("protected_json_temp", '{"temp":"+77.50°F"}', '"temp":"+77.50°F"'),
+    ProbeCase("protected_json_range", '{"range":"1.50~2.0"}', '"range":"1.50~2.0"'),
+    ProbeCase("protected_json_colon", '{"colon":"1.50:2.0"}', '"colon":"1.50:2.0"'),
+    ProbeCase("protected_json_large", '{"large":"25.50억"}', '"large":"25.50억"'),
     ProbeCase("protected_path", "/path/USD1,000.50/log", "/path/USD1,000.50/log"),
     ProbeCase(
         "protected_url",

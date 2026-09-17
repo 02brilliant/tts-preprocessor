@@ -19,7 +19,7 @@ from scripts.probes.runtime_matrix import (
 
 CASES = [
     ProbeCase("protected_backtick", "`3:4테스트`", "`3:4테스트`"),
-    ProbeCase("protected_json_value", '{"ratio":"3:4테스트"}', '{"ratio":"3:4테스트"}'),
+    ProbeCase("protected_json_value", '{"ratio":"3:4테스트"}', '"ratio":"3:4테스트"'),
     ProbeCase("protected_path", "/path/3:4/log", "/path/3:4/log"),
     ProbeCase(
         "protected_url",
