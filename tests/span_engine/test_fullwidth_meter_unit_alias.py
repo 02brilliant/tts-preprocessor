@@ -41,29 +41,29 @@ def test_fullwidth_meter_alias_preserves_existing_unit_outputs(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "+.5ｍ",
-        "1,00ｍ",
-        "1~~2ｍ",
-        "1ｍabc",
-        "1ｍ/s",
-        "/path/1ｍ/log",
-        "https://example.com?q=1ｍ",
-        '{"depth":"1ｍ"}',
-        "`1ｍ`",
-        "ＡＩ",
-        "ＫＴＸ",
+        ('+.5ｍ', '+.5ｍ'),
+        ('1,00ｍ', '1,00ｍ'),
+        ('1~~2ｍ', '1~~2ｍ'),
+        ('1ｍabc', '1ｍabc'),
+        ('1ｍ/s', '1ｍ/s'),
+        ('/path/1ｍ/log', '/path/1ｍ/log'),
+        ('https://example.com?q=1ｍ', 'https://example.com?q=1ｍ'),
+        ('{"depth":"1ｍ"}', '"depth":"1ｍ"'),
+        ('`1ｍ`', '`1ｍ`'),
+        ('ＡＩ', 'ＡＩ'),
+        ('ＫＴＸ', 'ＫＴＸ'),
     ],
 )
 def test_fullwidth_meter_alias_preserve_and_no_broad_fullwidth_normalization(
-    text: str,
+    text: str, expected: str,
 ) -> None:
-    assert transform(text) == text
+    assert transform(text) == expected
 
 
-def test_fullwidth_meter_alias_square_bracket_preserve_then_unwrap() -> None:
-    assert transform("[1ｍ]") == "1ｍ"
+def test_fullwidth_meter_alias_square_bracket_preserve() -> None:
+    assert transform("[1ｍ]") == '[1ｍ]'
 
 
 def test_fullwidth_meter_alias_claim_owners() -> None:

@@ -57,9 +57,9 @@ def test_spaced_slash_boundary_invalid_item_does_not_block_valid_item(
             "https://example.com?q=1.5kg/2kg",
             "https://example.com?q=1.5kg/2kg",
         ),
-        ('{"value":"1.5kg / 2kg"}', '{"value":"1.5kg / 2kg"}'),
+        ('{"value":"1.5kg / 2kg"}', '"value":"1.5kg / 2kg"'),
         ("`1.5kg / 2kg`", "`1.5kg / 2kg`"),
-        ("[1.5kg / 2kg]", "1.5kg / 2kg"),
+        ("[1.5kg / 2kg]", '[1.5kg / 2kg]'),
     ],
 )
 def test_spaced_slash_boundary_regression_surfaces_keep_existing_policy(
@@ -71,9 +71,9 @@ def test_spaced_slash_boundary_regression_surfaces_keep_existing_policy(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ('값은 {"value":"1.5kg / 2kg"} / 12.5kg 이다.', '값은 {"value":"1.5kg / 2kg"} / 십이-쩜-오-킬로그램 이다.'),
+        ('값은 {"value":"1.5kg / 2kg"} / 12.5kg 이다.', '값은 "value":"1.5kg / 2kg" / 십이-쩜-오-킬로그램 이다.'),
         ('값은 `1.5kg / 2kg` / 12.5kg 이다.', '값은 `1.5kg / 2kg` / 십이-쩜-오-킬로그램 이다.'),
-        ('값은 [1.5kg / 2kg] / 12.5kg 이다.', '값은 1.5kg / 2kg / 십이-쩜-오-킬로그램 이다.'),
+        ('값은 [1.5kg / 2kg] / 12.5kg 이다.', '값은 [1.5kg / 2kg] / 십이-쩜-오-킬로그램 이다.'),
     ],
 )
 def test_spaced_slash_boundary_does_not_split_inside_protected_spans(

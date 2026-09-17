@@ -16,7 +16,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-square-bracket-currency-absolute-preserve",
         text="가격은 [₩1200]입니다",
-        expected="가격은 ₩1200입니다",
+        expected='가격은 [₩1200]입니다',
         rule="square bracket / absolute preserve before currency",
         reason="Square-bracket protection blocks currency reentry; presentation removes only the bracket delimiters and retains the interior bytes.",
         classification="preserve",

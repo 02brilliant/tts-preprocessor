@@ -93,16 +93,16 @@ def test_colon_numeric_time_like_preserve_or_time_policy() -> None:
 
 
 def test_colon_numeric_protected_and_code_like_preserve() -> None:
-    for source in (
-        "line 3:4테스트",
-        "case 3:4테스트",
-        "/path/3:4테스트/log",
-        "/path/+1:2/log",
-        "`3:4테스트`",
-        "`+1:2`",
-        '{"ratio":"3:4테스트"}',
-    ):
-        assert transform(source) == source
+    for (source, expected) in [
+        ('line 3:4테스트', 'line 3:4테스트'),
+        ('case 3:4테스트', 'case 3:4테스트'),
+        ('/path/3:4테스트/log', '/path/3:4테스트/log'),
+        ('/path/+1:2/log', '/path/+1:2/log'),
+        ('`3:4테스트`', '`3:4테스트`'),
+        ('`+1:2`', '`+1:2`'),
+        ('{"ratio":"3:4테스트"}', '"ratio":"3:4테스트"'),
+    ]:
+        assert transform(source) == expected
 
 
 def test_colon_numeric_version_release_dictionary_context_parity() -> None:

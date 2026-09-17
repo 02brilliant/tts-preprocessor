@@ -132,7 +132,7 @@ def test_batch8_unsafe_and_protected_month_ranges_do_not_partially_convert(
 
 
 def test_batch8_square_bracket_month_range_is_absolute_preserve_inside() -> None:
-    assert transform("[1∼11월]") == "1∼11월"
+    assert transform("[1∼11월]") == '[1∼11월]'
 
 
 def test_batch8_acronym_large_unit_and_range_claims_stay_independent() -> None:

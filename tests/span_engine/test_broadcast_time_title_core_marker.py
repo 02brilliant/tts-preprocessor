@@ -48,27 +48,27 @@ def test_broadcast_time_lexical_si_words_use_residual_number_reading(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "24시점",
-        "24시뉴스abc",
-        "24시뉴스v2",
-        "24시뉴스룸abc",
-        "24시뉴스룸/log",
-        "/path/24시뉴스이었습니다/log",
-        "https://example.com?q=24시뉴스이었습니다",
-        '{"title":"24시뉴스이었습니다"}',
-        "`24시뉴스이었습니다`",
+        ('24시점', '24시점'),
+        ('24시뉴스abc', '24시뉴스abc'),
+        ('24시뉴스v2', '24시뉴스v2'),
+        ('24시뉴스룸abc', '24시뉴스룸abc'),
+        ('24시뉴스룸/log', '24시뉴스룸/log'),
+        ('/path/24시뉴스이었습니다/log', '/path/24시뉴스이었습니다/log'),
+        ('https://example.com?q=24시뉴스이었습니다', 'https://example.com?q=24시뉴스이었습니다'),
+        ('{"title":"24시뉴스이었습니다"}', '"title":"24시뉴스이었습니다"'),
+        ('`24시뉴스이었습니다`', '`24시뉴스이었습니다`'),
     ],
 )
 def test_broadcast_time_title_core_marker_preserves_unsafe_or_protected_text(
-    text: str,
+    text: str, expected: str,
 ) -> None:
-    assert transform(text) == text
+    assert transform(text) == expected
 
 
-def test_broadcast_time_title_core_marker_square_bracket_unwrap_preserves_inner() -> None:
-    assert transform("[24시뉴스이었습니다]") == "24시뉴스이었습니다"
+def test_broadcast_time_title_core_marker_square_bracket_preserves_delimiters_and_inner() -> None:
+    assert transform("[24시뉴스이었습니다]") == '[24시뉴스이었습니다]'
 
 
 def test_broadcast_time_title_core_marker_provenance() -> None:

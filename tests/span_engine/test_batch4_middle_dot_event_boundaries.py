@@ -123,17 +123,16 @@ def test_batch4_one_digit_right_dotted_event_uses_strong_keyword_gate() -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "https://example.com/12· 3",
-        "/tmp/12· 3",
-        '{"value":"12· 3"}',
-        "[12· 3]",
-        "12· 3A",
+        ('https://example.com/12· 3', 'https://example.com/12· 3'),
+        ('/tmp/12· 3', '/tmp/12· 3'),
+        ('{"value":"12· 3"}', '"value":"12· 3"'),
+        ('[12· 3]', '[12· 3]'),
+        ('12· 3A', '12· 3A'),
     ],
 )
 def test_batch4_protected_or_unsafe_spaced_middle_dot_does_not_partially_rewrite(
-    text: str,
+    text: str, expected: str,
 ) -> None:
-    expected = text.strip("[]") if text.startswith("[") else text
     assert transform(text) == expected

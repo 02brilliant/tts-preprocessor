@@ -8,8 +8,8 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[12.3]", "12.3"),
-        ("[12·3]", "12·3"),
+        ("[12.3]", '[12.3]'),
+        ("[12·3]", '[12·3]'),
         ("A12.3B", "A12.3B"),
         ("A12·3B", "A12·3B"),
         ("2025-13-03", "이공이오 일삼 공삼"),

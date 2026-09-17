@@ -10,7 +10,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected='회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
+        expected='회의 [긴급] 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="canonical / bracket + date_time + currency",
         reason="정책 7장의 대표 복합 canonical output이다.",
         classification="canonical",

@@ -6,7 +6,7 @@ from engine.span_engine import transform
 def test_phase15_regression_smoke() -> None:
     assert transform("AI") == "에이아이"
     assert transform("FTA은 적용됐다") == "에프티에이는 적용됐다"
-    assert transform("가격은 [3kg]입니다") == "가격은 3kg입니다"
+    assert transform("가격은 [3kg]입니다") == '가격은 [3kg]입니다'
     assert transform("€50을 냈다") == "오십-유로를 냈다"
     assert transform("21명") == "스물한-명"
     assert transform("3~8cm") == "삼에서 팔-센티미터"

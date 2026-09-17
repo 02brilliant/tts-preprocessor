@@ -50,34 +50,34 @@ def test_mixed_counter_and_year_period_existing_outputs(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "6천400abc",
-        "6천400명abc",
-        "6천400명/log",
-        "/path/6천400명/log",
-        "https://example.com?q=6천400명",
-        '{"count":"6천400명"}',
-        "`6천400명`",
-        "1년간abc",
-        "/path/1년간/log",
-        "https://example.com?q=1년간",
-        '{"period":"1년간"}',
-        "`1년간`",
+        ('6천400abc', '6천400abc'),
+        ('6천400명abc', '6천400명abc'),
+        ('6천400명/log', '6천400명/log'),
+        ('/path/6천400명/log', '/path/6천400명/log'),
+        ('https://example.com?q=6천400명', 'https://example.com?q=6천400명'),
+        ('{"count":"6천400명"}', '"count":"6천400명"'),
+        ('`6천400명`', '`6천400명`'),
+        ('1년간abc', '1년간abc'),
+        ('/path/1년간/log', '/path/1년간/log'),
+        ('https://example.com?q=1년간', 'https://example.com?q=1년간'),
+        ('{"period":"1년간"}', '"period":"1년간"'),
+        ('`1년간`', '`1년간`'),
     ],
 )
-def test_mixed_counter_and_year_period_preserve_contexts(text: str) -> None:
-    assert transform(text) == text
+def test_mixed_counter_and_year_period_preserve_contexts(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[6천400명]", "6천400명"),
-        ("[1년간]", "1년간"),
+        ("[6천400명]", '[6천400명]'),
+        ("[1년간]", '[1년간]'),
     ],
 )
-def test_mixed_counter_and_year_period_square_bracket_unwrap(
+def test_mixed_counter_and_year_period_square_bracket_preserve(
     text: str, expected: str
 ) -> None:
     assert transform(text) == expected

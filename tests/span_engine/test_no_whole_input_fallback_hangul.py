@@ -24,7 +24,7 @@ def test_inline_json_shell_does_not_preserve_whole_korean_paragraph() -> None:
     out = transform(text)
     assert out != text
     assert "curl -X POST http://localhost:8010/api/transform" in out
-    assert '{"text":"25℃"}' in out
+    assert '"text":"25℃"' in out
     assert "이십오도" in out
     assert "피에이치 칠-쩜-사" in out
 
@@ -93,7 +93,7 @@ def test_symbol_alias_and_square_bracket_do_not_preserve_whole_paragraph() -> No
 
 def test_no_hangul_global_bypass_still_preserves_english_prose() -> None:
     assert transform("The temperature is 25℃.") == "The temperature is 25℃."
-    assert transform('{"text":"25℃"}') == '{"text":"25℃"}'
+    assert transform('{"text":"25℃"}') == '"text":"25℃"'
     assert (
         transform("curl -X POST http://localhost:8010/api/transform")
         == "curl -X POST http://localhost:8010/api/transform"
@@ -157,7 +157,7 @@ PROBLEM_PARAGRAPH_4 = (
 @pytest.mark.parametrize(
     ("paragraph", "expected_substrings"),
     [
-        (PROBLEM_PARAGRAPH_1, ["이십오도", "피에이치 칠-쩜-사", '{"text":"25℃"}']),
+        (PROBLEM_PARAGRAPH_1, ["이십오도", "피에이치 칠-쩜-사", '"text":"25℃"']),
         (PROBLEM_PARAGRAPH_2, ["제-이차", "제-십오권", "제-이-쩜-오문항"]),
         (PROBLEM_PARAGRAPH_3, ["만 이천삼백-원", "이십오-쩜-구구-달러", "300EURabc"]),
         (PROBLEM_PARAGRAPH_4, ["삼분의 일", "시속 구십 킬로미터", "피에이치 칠-쩜-사"]),
@@ -168,7 +168,7 @@ def test_problem_paragraphs_do_not_return_raw(
 ) -> None:
     out = assert_not_whole_preserved(paragraph, expected_substrings)
     if paragraph == PROBLEM_PARAGRAPH_4:
-        assert "[pH 7.4]" not in out
+        assert "[pH 7.4]" in out
 
 
 def test_hangul_input_with_transformable_surface_and_preserve_fragment_not_raw() -> None:

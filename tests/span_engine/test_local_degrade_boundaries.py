@@ -109,7 +109,7 @@ def test_inline_protected_spans_do_not_block_neighbors() -> None:
             "이십오-쩜-구구-달러",
         ],
         expected_preserved=[
-            '{"text":"25℃"}',
+            '"text":"25℃"',
             "curl -X POST http://localhost:8010/api/transform",
             "docs/2025/01/02/report.md",
             "user@example.com",

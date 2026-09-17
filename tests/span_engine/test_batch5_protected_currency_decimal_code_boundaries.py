@@ -10,7 +10,7 @@ def test_batch5_square_bracket_currency_is_absolute_preserve() -> None:
     text = "가격은 [₩1200]입니다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "가격은 ₩1200입니다"
+    assert output.normalized_text == '가격은 [₩1200]입니다'
     assert [
         (claim.owner, claim.claim_type, claim.surface_type, claim.reason)
         for claim in output.trace.claim_logs
@@ -124,7 +124,7 @@ def test_batch5_bracket_and_compound_unit_claims_are_independent() -> None:
     text = "가격은 [€1,234.56]이고 연비는 15.2km/L다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "가격은 €1,234.56이고 연비는 리터당 십오쩜이 킬로미터다"
+    assert output.normalized_text == '가격은 [€1,234.56]이고 연비는 리터당 십오쩜이 킬로미터다'
     assert [claim.owner for claim in output.trace.claim_logs] == [
         "bracket",
         "compound_slash_unit",

@@ -24,7 +24,7 @@ def test_ambiguous_or_unsupported_inputs_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[3kg]", "3kg"),
+        ("[3kg]", '[3kg]'),
         ("(약) 3만원", "삼만 원"),
     ],
 )

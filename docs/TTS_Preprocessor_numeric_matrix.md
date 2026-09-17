@@ -975,7 +975,7 @@ Current production-source audit examples:
 | `12.12 사태와 12.12 수치를 함께 적었다` | `십이십이 사태와 십이쩜일이 수치를 함께 적었다` | independent event and decimal claims |
 | `1~2` | `일에서 이` | tilde range |
 | `1~~2` | `1~~2` | invalid tilde fallback block |
-| `[₩1200]` | `₩1200` | square-bracket absolute preserve; delimiters removed at presentation |
+| `[₩1200]` | `[₩1200]` | square-bracket absolute preserve; delimiters and interior remain source-exact |
 | `{₩1200}` | `₩1200` | curly-brace absolute preserve; delimiters removed at presentation |
 | `【₩1200】` | `【₩1200】` | corner-bracket absolute preserve; delimiters and interior remain source-exact |
 | `$-10` | `마이너스 십 달러` | signed currency symbol-prefix amount |
@@ -1465,8 +1465,8 @@ calculation), and subordinate to registered structured/protected owners.
 | unsupported star | `3*4` | atomic preserve |
 | unsupported uppercase X | `3X4` | atomic preserve |
 | unsupported unit operand | `3kg+4kg` | atomic preserve |
-| unsupported parenthesized arithmetic | `(3+4)×2` | full source preserve |
-| unsupported numeric function | `sqrt(4)` | full source preserve |
+| unsupported parenthesized arithmetic | `(3+4)×2` | `×이`; parenthetical content deleted |
+| unsupported numeric function | `sqrt(4)` | `sqrt`; parenthetical content deleted |
 | protected path | `/path/3+4/log` | protected preserve |
 
 Owner contract:

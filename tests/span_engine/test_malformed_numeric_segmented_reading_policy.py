@@ -52,7 +52,7 @@ def test_severe_invalid_preserve_audit(text: str, expected: str) -> None:
     ("text", "expected"),
     [
         ("`25..50억`", "`25..50억`"),
-        ('{"value":"25..50억"}', '{"value":"25..50억"}'),
+        ('{"value":"25..50억"}', '"value":"25..50억"'),
         ("/path/25..50억/log", "/path/25..50억/log"),
         ("https://example.com?q=25..50억", "https://example.com?q=25..50억"),
         ("file-25..50.txt", "file-25..50.txt"),

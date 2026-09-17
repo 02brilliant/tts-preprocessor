@@ -10,7 +10,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected='회의 긴급 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
+        expected='회의 [긴급] 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="multi-rule / bracket + date + HH:MM + currency",
         reason="Bracket cleanup must happen first, then date/time parsing and atomic currency parsing must cooperate without partial rewrites.",
     ),
@@ -45,7 +45,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-bracket-preserve-plus-independent-compound-unit",
         text="가격은 [€1,234.56]이고 연비는 15.2km/L다",
-        expected="가격은 €1,234.56이고 연비는 리터당 십오쩜이 킬로미터다",
+        expected='가격은 [€1,234.56]이고 연비는 리터당 십오쩜이 킬로미터다',
         rule="multi-rule / bracket absolute preserve + compound unit",
         reason="The bracket owner blocks currency reentry only inside its span, while the later compound unit claims and renders independently.",
         classification="preserve",

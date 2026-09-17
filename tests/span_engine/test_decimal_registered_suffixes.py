@@ -107,9 +107,9 @@ def test_malformed_decimal_registered_suffixes_do_not_claim(
     ("src", "expected"),
     [
         ("`4.3명`", "`4.3명`"),
-        ("[4.3명]", "4.3명"),
+        ("[4.3명]", '[4.3명]'),
         ("/path/4.3명/log", "/path/4.3명/log"),
-        ('{"value":"4.3명"}', '{"value":"4.3명"}'),
+        ('{"value":"4.3명"}', '"value":"4.3명"'),
         ("https://example.com/4.3명", "https://example.com/4.3명"),
     ],
 )

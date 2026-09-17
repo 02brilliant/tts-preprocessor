@@ -270,9 +270,9 @@ def test_korean_da_score_pair_invalid_forms_do_not_partial_score_claim(
     ("src", "expected"),
     [
         ("`2대1`", "`2대1`"),
-        ("[2대1]", "2대1"),
+        ("[2대1]", '[2대1]'),
         ("/path/2대1/log", "/path/2대1/log"),
-        ('{"score":"2대1"}', '{"score":"2대1"}'),
+        ('{"score":"2대1"}', '"score":"2대1"'),
         ("A2대1", "A2대1"),
         ("v2대1", "v2대1"),
         ("2대1abc", "2대1abc"),

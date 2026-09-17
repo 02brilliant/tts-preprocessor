@@ -121,7 +121,7 @@ def test_owner_attached_invalid_surfaces_preserve_without_partial_fallback(text:
     ("text", "expected"),
     [
         ("`KRW1000`", "`KRW1000`"),
-        ('{"price":"KRW1000"}', '{"price":"KRW1000"}'),
+        ('{"price":"KRW1000"}', '"price":"KRW1000"'),
         ("/path/2,345억/log", "/path/2,345억/log"),
         ("https://example.com?q=KRW1000", "https://example.com?q=KRW1000"),
         ("v3백4십만", "v3백4십만"),

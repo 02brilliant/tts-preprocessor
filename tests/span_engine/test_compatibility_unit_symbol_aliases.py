@@ -91,24 +91,24 @@ def test_compatibility_and_policy_area_units_accept_registered_numeric_forms(
 
 
 @pytest.mark.parametrize(
-    "source",
+    ('source', 'expected'),
     [
-        "㎿",
-        "55㎿abc",
-        "55㎆abc",
-        "55㎘abc",
-        "55㎕abc",
-        "55㎗abc",
-        "55㎧abc",
-        "55㎙",
-        "55㎺",
-        "`55㎿`",
-        '{"power":"55㎿"}',
-        "https://example.com/55㎿",
+        ('㎿', '㎿'),
+        ('55㎿abc', '55㎿abc'),
+        ('55㎆abc', '55㎆abc'),
+        ('55㎘abc', '55㎘abc'),
+        ('55㎕abc', '55㎕abc'),
+        ('55㎗abc', '55㎗abc'),
+        ('55㎧abc', '55㎧abc'),
+        ('55㎙', '55㎙'),
+        ('55㎺', '55㎺'),
+        ('`55㎿`', '`55㎿`'),
+        ('{"power":"55㎿"}', '"power":"55㎿"'),
+        ('https://example.com/55㎿', 'https://example.com/55㎿'),
     ],
 )
-def test_unregistered_or_unsafe_compatibility_symbols_preserve(source: str) -> None:
-    assert transform(source) == source
+def test_unregistered_or_unsafe_compatibility_symbols_preserve(source: str, expected: str) -> None:
+    assert transform(source) == expected
 
 
 def test_compatibility_alias_registries_are_policy_aligned() -> None:

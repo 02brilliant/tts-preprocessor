@@ -46,9 +46,9 @@ def test_kb_unsafe_or_ownerless_structures_are_not_broadly_expanded(text: str) -
     [
         ("https://example.com/KB?q=KB", "https://example.com/KB?q=KB"),
         ("/tmp/KB/file", "/tmp/KB/file"),
-        ('{"value":"KB"}', '{"value":"KB"}'),
+        ('{"value":"KB"}', '"value":"KB"'),
         ("`KB`", "`KB`"),
-        ("[KB]", "KB"),
+        ("[KB]", '[KB]'),
         ("curl KB", "curl KB"),
     ],
 )
@@ -120,9 +120,9 @@ def test_unsupported_ampersand_forms_preserve_atomically(text: str) -> None:
     ("text", "expected"),
     [
         ("https://example.com/?q=M&A", "https://example.com/?q=M&A"),
-        ('{"value":"M&A"}', '{"value":"M&A"}'),
+        ('{"value":"M&A"}', '"value":"M&A"'),
         ("`M&A`", "`M&A`"),
-        ("[M&A]", "M&A"),
+        ("[M&A]", '[M&A]'),
         ("curl M&A", "curl M&A"),
     ],
 )
@@ -255,9 +255,9 @@ def test_malformed_comma_numeric_dae_is_not_partially_read(text: str) -> None:
     [
         ("https://example.com/40대", "https://example.com/40대"),
         ("/tmp/40대/file", "/tmp/40대/file"),
-        ('{"value":"40대"}', '{"value":"40대"}'),
+        ('{"value":"40대"}', '"value":"40대"'),
         ("`40대`", "`40대`"),
-        ("[40대]", "40대"),
+        ("[40대]", '[40대]'),
         ("curl 40대", "curl 40대"),
         ("A40대", "A40대"),
         ("40대A", "40대A"),

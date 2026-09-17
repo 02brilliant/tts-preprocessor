@@ -106,18 +106,18 @@ def test_gaji_range_owner_keeps_precedence_and_native_endpoints() -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "`4가지`",
-        "/path/4가지/file",
-        '{"value":"4가지"}',
-        "item_4가지",
-        "4가지.json",
-        "https://example.com/4가지",
+        ('`4가지`', '`4가지`'),
+        ('/path/4가지/file', '/path/4가지/file'),
+        ('{"value":"4가지"}', '"value":"4가지"'),
+        ('item_4가지', 'item_4가지'),
+        ('4가지.json', '4가지.json'),
+        ('https://example.com/4가지', 'https://example.com/4가지'),
     ],
 )
-def test_gaji_protected_surfaces_are_unchanged(text: str) -> None:
-    assert transform(text) == text
+def test_gaji_protected_surfaces_are_unchanged(text: str, expected: str) -> None:
+    assert transform(text) == expected
     logs = transform_debug(text)["debug"]["trace"]["contextual_decision_logs"]
     assert logs == []
 

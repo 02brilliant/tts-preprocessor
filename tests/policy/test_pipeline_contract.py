@@ -16,4 +16,4 @@ def test_transform_applies_prosody_after_normalization_and_phonetic():
 
 def test_transform_returns_bracket_processed_text_only_once():
     text = "(비공개) [중요] 일정은 2026-04-17이다"
-    assert transform(text) == "중요 일정은 이천이십육년 사월 십칠일이다"
+    assert transform(text) == '[중요] 일정은 이천이십육년 사월 십칠일이다'

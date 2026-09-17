@@ -253,9 +253,9 @@ def test_required_current_managed_dictionary_examples(
     [
         ("/path/S&P500/log", "/path/S&P500/log"),
         ("https://example.com?q=S&P500", "https://example.com?q=S&P500"),
-        ('{"index":"S&P500"}', '{"index":"S&P500"}'),
+        ('{"index":"S&P500"}', '"index":"S&P500"'),
         ("`S&P500`", "`S&P500`"),
-        ("[S&P500]", "S&P500"),
+        ("[S&P500]", '[S&P500]'),
     ],
 )
 def test_finance_index_numeric_suffix_respects_protected_contexts(
@@ -269,12 +269,12 @@ def test_finance_index_numeric_suffix_respects_protected_contexts(
     [
         ("/path/GUI/log", "/path/GUI/log"),
         ("https://example.com?q=Wi-Fi", "https://example.com?q=Wi-Fi"),
-        ('{"term":"GUI"}', '{"term":"GUI"}'),
-        ('{"term":"Wi-Fi"}', '{"term":"Wi-Fi"}'),
+        ('{"term":"GUI"}', '"term":"GUI"'),
+        ('{"term":"Wi-Fi"}', '"term":"Wi-Fi"'),
         ("`GUI`", "`GUI`"),
         ("`Wi-Fi`", "`Wi-Fi`"),
-        ("[GUI]", "GUI"),
-        ("[Wi-Fi]", "Wi-Fi"),
+        ("[GUI]", '[GUI]'),
+        ("[Wi-Fi]", '[Wi-Fi]'),
         ("5GHz 대역", "오-기가헤르츠 대역"),
         ("USB300", "USB300"),
         ("APIv2", "APIv2"),
@@ -282,14 +282,14 @@ def test_finance_index_numeric_suffix_respects_protected_contexts(
         ("A12.3B", "A12.3B"),
         ("/path/5G/log", "/path/5G/log"),
         ("https://example.com?q=5G", "https://example.com?q=5G"),
-        ('{"term":"5G"}', '{"term":"5G"}'),
+        ('{"term":"5G"}', '"term":"5G"'),
         ("`5G`", "`5G`"),
-        ("[5G]", "5G"),
+        ("[5G]", '[5G]'),
         ("/path/WiFi/log", "/path/WiFi/log"),
         ("https://example.com?q=WiFi", "https://example.com?q=WiFi"),
-        ('{"term":"WiFi"}', '{"term":"WiFi"}'),
+        ('{"term":"WiFi"}', '"term":"WiFi"'),
         ("`WiFi`", "`WiFi`"),
-        ("[WiFi]", "WiFi"),
+        ("[WiFi]", '[WiFi]'),
     ],
 )
 def test_current_managed_dictionary_respects_protected_contexts(

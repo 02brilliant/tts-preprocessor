@@ -49,7 +49,7 @@ def build_normalization_snapshot(output: TransformOutput) -> NormalizationSnapsh
             )
         )
 
-    for protected in _llm_protected_spans(normalized_text):
+    for protected in (*output.protected_spans, *_llm_protected_spans(normalized_text)):
         spans.append(
             NormalizedSpan(
                 normalized_start=protected.start,

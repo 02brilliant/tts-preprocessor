@@ -6,26 +6,26 @@ from engine.span_engine import transform, transform_with_trace
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "USB3",
-        "1e6",
-        "3.2E-4",
-        "1-1-9",
-        "종로3가",
-        "{{S:사용자입력}}",
-        "㎏",
-        "㎡",
-        "１",
+        ('USB3', 'USB3'),
+        ('1e6', '1e6'),
+        ('3.2E-4', '3.2E-4'),
+        ('1-1-9', '1-1-9'),
+        ('종로3가', '종로3가'),
+        ('{{S:사용자입력}}', '{S:사용자입력}'),
+        ('㎏', '㎏'),
+        ('㎡', '㎡'),
+        ('１', '１'),
     ],
 )
-def test_phase8_unsupported_and_literal_inputs_preserve(text: str) -> None:
+def test_phase8_unsupported_and_literal_inputs_preserve(text: str, expected: str) -> None:
     if text == "1-1-9":
         assert transform(text) == "일 일 구"
     elif text == "종로3가":
         assert transform(text) == "종로 삼-가"
     else:
-        assert transform(text) == text
+        assert transform(text) == expected
 
 
 def test_phase8_strong_bare_time_like_reads_as_time() -> None:
@@ -47,9 +47,9 @@ def test_phase28a_normalized_regression(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[3kg]", "3kg"),
+        ("[3kg]", '[3kg]'),
         ("(약) 3만원", "삼만 원"),
-        ("[[K:사용자입력]]", "[K:사용자입력]"),
+        ("[[K:사용자입력]]", '[[K:사용자입력]]'),
     ],
 )
 def test_phase9_bracket_filter_updates_phase8_literal_regression(

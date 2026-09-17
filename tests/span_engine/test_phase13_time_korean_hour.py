@@ -97,27 +97,27 @@ def test_korean_time_compact_and_mixed_spacing(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "A11시23분45초",
-        "11시23분45초abc",
-        "23분45초abc",
-        "`11시23분45초`",
-        "/11시23분45초/log",
-        "https://example.com/11시23분45초",
-        '{"time":"11시23분45초"}',
-        "23분045초abc",
-        "23분045초/log",
-        "23분1,00초",
-        "23분1..2초",
-        "3분개발",
-        "3초개발",
+        ('A11시23분45초', 'A11시23분45초'),
+        ('11시23분45초abc', '11시23분45초abc'),
+        ('23분45초abc', '23분45초abc'),
+        ('`11시23분45초`', '`11시23분45초`'),
+        ('/11시23분45초/log', '/11시23분45초/log'),
+        ('https://example.com/11시23분45초', 'https://example.com/11시23분45초'),
+        ('{"time":"11시23분45초"}', '"time":"11시23분45초"'),
+        ('23분045초abc', '23분045초abc'),
+        ('23분045초/log', '23분045초/log'),
+        ('23분1,00초', '23분1,00초'),
+        ('23분1..2초', '23분1..2초'),
+        ('3분개발', '3분개발'),
+        ('3초개발', '3초개발'),
     ],
 )
 def test_compact_korean_time_protected_or_unsafe_surface_preserves(
-    text: str,
+    text: str, expected: str,
 ) -> None:
-    assert transform(text) == text
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

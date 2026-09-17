@@ -58,12 +58,12 @@ def test_temperature_label_symbol_mismatch_keeps_current_behavior() -> None:
 
 
 def test_temperature_context_deduplication_respects_protected_contexts() -> None:
-    for source in (
-        "`화씨 +77°F`",
-        "/path/화씨+77°F/log",
-        '{"temp":"화씨 +77°F"}',
-    ):
-        assert transform(source) == source
+    for (source, expected) in [
+        ('`화씨 +77°F`', '`화씨 +77°F`'),
+        ('/path/화씨+77°F/log', '/path/화씨+77°F/log'),
+        ('{"temp":"화씨 +77°F"}', '"temp":"화씨 +77°F"'),
+    ]:
+        assert transform(source) == expected
 
 
 def test_temperature_context_deduplication_long_sentence_regressions() -> None:

@@ -11,8 +11,8 @@ def test_square_bracket_trace_debug_shape() -> None:
     json.dumps(debug, ensure_ascii=False)
     logs = debug["trace"]["bracket_filter_logs"]
     assert any(
-        log["event"] == "square_bracket_unwrapped"
-        and log["action"] == "unwrap_square_brackets"
+        log["event"] == "square_bracket_preserved"
+        and log["action"] == "preserve_square_bracket_content"
         and log["reason"] == "final_bracket_filter"
         and log["metadata"]["bracket_type"] == "square"
         for log in logs

@@ -175,7 +175,7 @@ def test_successful_earlier_owner_and_later_number_are_independent() -> None:
         ),
         (
             "[123]",
-            "123",
+            '[123]',
             [
                 (
                     "bracket",

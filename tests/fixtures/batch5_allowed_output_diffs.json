@@ -5,7 +5,7 @@
     {
       "decision_id": "bracket-keep-square-content-before-currency-rules",
       "input": "가격은 [₩1200]입니다",
-      "expected": "가격은 ₩1200입니다",
+      "expected": "가격은 [₩1200]입니다",
       "owner_contract": "square-bracket protection blocks currency owner reentry while presentation removes the bracket delimiters"
     },
     {
@@ -29,7 +29,7 @@
     {
       "decision_id": "scenario-square-bracket-currency-plus-compound-unit",
       "input": "가격은 [€1,234.56]이고 연비는 15.2km/L다",
-      "expected": "가격은 €1,234.56이고 연비는 리터당 십오쩜이 킬로미터다",
+      "expected": "가격은 [€1,234.56]이고 연비는 리터당 십오쩜이 킬로미터다",
       "owner_contract": "bracket-protected currency preserves while the later compound unit claims and renders independently"
     }
   ],

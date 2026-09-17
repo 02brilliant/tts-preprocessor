@@ -110,12 +110,12 @@ def test_bracket_filter_and_preserve_surface_remain_separate_from_parser_logs() 
     bracketed = transform_with_trace("[1200원]입니다")
     preserved = transform_with_trace("안내 pH 입니다")
 
-    assert bracketed.normalized_text == "1200원입니다"
+    assert bracketed.normalized_text == '[1200원]입니다'
     assert "".join(piece.text for piece in bracketed.render_pieces) == "[1200원]입니다"
     assert bracketed.trace.parser_logs == []
     assert bracketed.trace.render_logs[0].metadata["pre_filter_text"] == "[1200원]입니다"
     assert [log.event for log in bracketed.trace.bracket_filter_logs] == [
-        "square_bracket_unwrapped"
+        "square_bracket_preserved"
     ]
     assert preserved.normalized_text == "안내 pH 입니다"
     assert preserved.trace.parser_logs == []

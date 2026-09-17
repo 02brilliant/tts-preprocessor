@@ -52,7 +52,7 @@ def test_ambiguous_or_unsupported_dotted_event_behavior(text: str, expected: str
 def test_square_bracket_event_is_preserved_with_brackets() -> None:
     output = transform_with_trace("[12.12 사태]")
 
-    assert output.normalized_text == "12.12 사태"
+    assert output.normalized_text == '[12.12 사태]'
     assert not any(claim.owner == "event" for claim in output.trace.claim_logs)
 
 

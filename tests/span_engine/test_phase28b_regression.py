@@ -23,6 +23,6 @@ def test_bracket_internal_non_reentry() -> None:
     text = "[12.3 비상계엄]"
     output = transform_with_trace(text)
     
-    assert output.normalized_text == "12.3 비상계엄"
+    assert output.normalized_text == '[12.3 비상계엄]'
     assert not any(claim.owner == "event" for claim in output.trace.claim_logs)
     assert not any(claim.owner == "decimal" for claim in output.trace.claim_logs)

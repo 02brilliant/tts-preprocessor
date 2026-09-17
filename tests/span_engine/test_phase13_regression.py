@@ -16,7 +16,7 @@ from engine.span_engine import transform, transform_with_trace
         ("회의는 13:05에 시작한다", "회의는 십삼시 오분에 시작한다"),
         ("13:05", "십삼시 오분"),
         ("OpenAI", "오픈 에이아이"),
-        ("[[K:사용자입력]]", "[K:사용자입력]"),
+        ("[[K:사용자입력]]", '[[K:사용자입력]]'),
     ],
 )
 def test_phase13_regression_cases(text: str, expected: str) -> None:

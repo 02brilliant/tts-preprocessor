@@ -16,7 +16,7 @@ TRANSFORM_CASES = [
     ("회의는 13:05에 시작한다", "회의는 십삼시 오분에 시작한다"),
     ("12.3 비상계엄", "십이삼 비상계엄"),
     ("3~8cm", "삼에서 팔-센티미터"),
-    ("가격은 [3kg]입니다", "가격은 3kg입니다"),
+    ("가격은 [3kg]입니다", '가격은 [3kg]입니다'),
     ("비용은 (약) 3만원입니다", "비용은 삼만 원입니다"),
     ("FTA은 적용됐다", "에프티에이는 적용됐다"),
     ("AI이 적용됐다", "에이아이이 적용됐다"),
@@ -31,8 +31,8 @@ TRANSFORM_CASES = [
     ("전문\n가", "전문 가"),
     ("emoji 😀 테스트", "emoji 😀 테스트"),
     ("zero\u200bwidth", "zero\u200bwidth"),
-    ("[[K:사용자입력]]", "[K:사용자입력]"),
-    ("{{S:사용자입력}}", "{{S:사용자입력}}"),
+    ("[[K:사용자입력]]", '[[K:사용자입력]]'),
+    ("{{S:사용자입력}}", '{S:사용자입력}'),
 ]
 
 
@@ -49,7 +49,7 @@ def test_transform_with_trace_normalized_text_matches_expected(
 
     assert output.normalized_text == expected
     rendered = "".join(piece.text for piece in output.render_pieces)
-    if "[" in text or "(" in text:
+    if any(char in text for char in "[({"):
         assert rendered != ""
     else:
         assert split_paragraphs(rendered) == expected

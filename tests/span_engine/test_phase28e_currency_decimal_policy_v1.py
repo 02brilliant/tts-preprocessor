@@ -47,7 +47,7 @@ def test_integer_currency_existing_behavior_policy_v1(
     ],
 )
 def test_bracketed_currency_decimal_is_protected_policy_v1(text: str) -> None:
-    assert transform(text) == text[1:-1]
+    assert transform(text) == text
 
 
 @pytest.mark.parametrize(

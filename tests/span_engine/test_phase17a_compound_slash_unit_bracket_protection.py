@@ -8,8 +8,8 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[90km/h]", "90km/h"),
-        ("속도는 [90km/h]입니다", "속도는 90km/h입니다"),
+        ("[90km/h]", '[90km/h]'),
+        ("속도는 [90km/h]입니다", '속도는 [90km/h]입니다'),
         ("(90km/h)", ""),
         ("속도는 (90km/h)입니다", "속도는 입니다"),
     ],

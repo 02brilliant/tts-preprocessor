@@ -149,57 +149,38 @@ def test_numeric_x_boundary_preserves_non_expression_tokens(text: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "3*4",
-        "3X4",
-        "3kg+4kg",
-        "+25℃-3℃",
-        "1,000원+2,000원",
-        "(3+4)×2",
-        "2^3",
-        "sqrt(4)",
+        ('3*4', '3*4'),
+        ('3X4', '3X4'),
+        ('3kg+4kg', '3kg+4kg'),
+        ('+25℃-3℃', '+25℃-3℃'),
+        ('1,000원+2,000원', '1,000원+2,000원'),
+        ('(3+4)×2', '×이'),
+        ('2^3', '2^3'),
+        ('sqrt(4)', 'sqrt'),
     ],
 )
-def test_unsupported_operators_and_operands_preserve(text: str) -> None:
-    assert transform(text) == text
+def test_unsupported_operators_and_operands_preserve(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(
-    ("text", "protected_raw"),
+    ("text", "expected"),
     [
-        ('식은 (3+4)×2다', '(3+4)×2'),
-        ('식은 sqrt(4)다', 'sqrt(4)'),
+        ("식은 (3+4)×2다", "식은 ×이다"),
+        ("식은 sqrt(4)다", "식은 sqrt다"),
     ],
 )
-def test_unsupported_parenthesized_arithmetic_preserves_inside_korean_sentence(
-    text: str, protected_raw: str
+def test_parenthesized_arithmetic_is_elided_inside_korean_sentence(
+    text: str, expected: str
 ) -> None:
-    assert transform(text) == text
-    start = text.index(protected_raw)
-    end = start + len(protected_raw)
-    claims = _claim_logs(text)
-    preserve = next(
-        claim
-        for claim in claims
-        if claim["owner"] == "preserve"
-        and claim["reason"] == "url_path_email_code_protection_claim"
-        and claim["span"]["start"] == start
-        and claim["span"]["end"] == end
-    )
-    assert preserve["surface_type"] == "PROTECTED_LITERAL_SURFACE"
+    assert transform(text) == expected
+    start = text.index("(")
+    end = text.index(")") + 1
     assert not any(
-        claim["owner"]
-        in {
-            "basic_arithmetic_expression",
-            "signed_number",
-            "fraction",
-            "decimal",
-            "number",
-        }
-        and claim["span"]["start"] < end
-        and start < claim["span"]["end"]
-        for claim in claims
+        claim["span"]["start"] < end and start < claim["span"]["end"]
+        for claim in _claim_logs(text)
     )
 
 
@@ -228,9 +209,9 @@ def test_registered_managed_code_still_wins_over_arithmetic_negative_gate() -> N
         ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("/path/3+4/log", "/path/3+4/log"),
         ("https://example.com?q=3+4", "https://example.com?q=3+4"),
-        ('{"expr":"3+4"}', '{"expr":"3+4"}'),
+        ('{"expr":"3+4"}', '"expr":"3+4"'),
         ("`3+4`", "`3+4`"),
-        ("[3+4]", "3+4"),
+        ("[3+4]", '[3+4]'),
         ("1234-5678", "일이삼사 오육칠팔"),
     ],
 )

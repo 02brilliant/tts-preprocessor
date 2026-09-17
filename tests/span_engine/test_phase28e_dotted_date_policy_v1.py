@@ -36,10 +36,10 @@ def test_dotted_date_preserve_guards_policy_v1(text: str) -> None:
     assert transform(text) == text
 
 
-def test_bracketed_dotted_date_is_protected_then_unwrapped_policy_v1() -> None:
+def test_bracketed_dotted_date_is_protected_with_delimiters_policy_v1() -> None:
     output = transform_with_trace("[2025.01.03]")
 
-    assert output.normalized_text == "2025.01.03"
+    assert output.normalized_text == '[2025.01.03]'
     assert not any(
         claim.owner in {"date", "date_time.date", "decimal"}
         for claim in output.trace.claim_logs

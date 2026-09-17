@@ -113,20 +113,20 @@ def test_invalid_percent_numeric_blocks_preserve_without_partial_fallback(
 
 
 @pytest.mark.parametrize(
-    "source",
+    ('source', 'expected'),
     [
-        "/path/+1.5 kg/log",
-        "/path/+25 %/log",
-        "`+1.5 kg`",
-        "`+25 %`",
-        '{"unit":"+1.5 kg"}',
-        '{"percent":"+25 %"}',
-        "https://example.com?q=+1.5 kg",
-        "email+tag@example.com",
+        ('/path/+1.5 kg/log', '/path/+1.5 kg/log'),
+        ('/path/+25 %/log', '/path/+25 %/log'),
+        ('`+1.5 kg`', '`+1.5 kg`'),
+        ('`+25 %`', '`+25 %`'),
+        ('{"unit":"+1.5 kg"}', '"unit":"+1.5 kg"'),
+        ('{"percent":"+25 %"}', '"percent":"+25 %"'),
+        ('https://example.com?q=+1.5 kg', 'https://example.com?q=+1.5 kg'),
+        ('email+tag@example.com', 'email+tag@example.com'),
     ],
 )
-def test_protected_contexts_preserve(source: str) -> None:
-    assert transform(source) == source
+def test_protected_contexts_preserve(source: str, expected: str) -> None:
+    assert transform(source) == expected
 
 
 @pytest.mark.parametrize(

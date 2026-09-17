@@ -27,6 +27,7 @@ def test_transform_output_minimal_field_contract() -> None:
         "normalized_text",
         "render_pieces",
         "trace",
+        "protected_spans",
     ]
 
 

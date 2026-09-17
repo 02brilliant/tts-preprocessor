@@ -254,28 +254,28 @@ def test_currency_spacing_limited_to_attached_or_one_ascii_space(
 
 
 @pytest.mark.parametrize(
-    "source",
+    ('source', 'expected'),
     [
-        "`1,000원`",
-        "`KRW1000`",
-        "`₩1,000`",
-        "`1,000 KRW`",
-        '{"price":"1,000원"}',
-        '{"price":"KRW1000"}',
-        '{"price":"₩1,000"}',
-        '{"price":"1,000 KRW"}',
-        "/path/1,000원/log",
-        "/path/KRW1000/log",
-        "/path/₩1,000/log",
-        "/path/1,000KRW/log",
-        "https://example.com?q=KRW1000",
-        "SKU-KRW1000",
-        "version-KRW1000",
-        "ABC1000KRW",
+        ('`1,000원`', '`1,000원`'),
+        ('`KRW1000`', '`KRW1000`'),
+        ('`₩1,000`', '`₩1,000`'),
+        ('`1,000 KRW`', '`1,000 KRW`'),
+        ('{"price":"1,000원"}', '"price":"1,000원"'),
+        ('{"price":"KRW1000"}', '"price":"KRW1000"'),
+        ('{"price":"₩1,000"}', '"price":"₩1,000"'),
+        ('{"price":"1,000 KRW"}', '"price":"1,000 KRW"'),
+        ('/path/1,000원/log', '/path/1,000원/log'),
+        ('/path/KRW1000/log', '/path/KRW1000/log'),
+        ('/path/₩1,000/log', '/path/₩1,000/log'),
+        ('/path/1,000KRW/log', '/path/1,000KRW/log'),
+        ('https://example.com?q=KRW1000', 'https://example.com?q=KRW1000'),
+        ('SKU-KRW1000', 'SKU-KRW1000'),
+        ('version-KRW1000', 'version-KRW1000'),
+        ('ABC1000KRW', 'ABC1000KRW'),
     ],
 )
-def test_currency_protected_and_code_like_contexts_preserve(source: str) -> None:
-    assert transform(source) == source
+def test_currency_protected_and_code_like_contexts_preserve(source: str, expected: str) -> None:
+    assert transform(source) == expected
 
 
 @pytest.mark.parametrize(

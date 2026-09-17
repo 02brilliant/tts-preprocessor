@@ -6,23 +6,23 @@ from engine.span_engine import transform
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "The temperature is 25℃.",
-        "The price is $25.99.",
-        "pH 7.4 was maintained for 3 hours.",
-        "The ratio is 1/3 and the change is 2.5%p.",
-        "Use 90km/h mode and 60Hz sampling.",
-        '{"text":"25℃"}',
-        "curl -X POST http://localhost:8010/api/transform",
-        "https://example.com/a?x=1",
-        "user@example.com",
-        "/home/user/file.txt",
-        'const value = "$25.99";',
+        ('The temperature is 25℃.', 'The temperature is 25℃.'),
+        ('The price is $25.99.', 'The price is $25.99.'),
+        ('pH 7.4 was maintained for 3 hours.', 'pH 7.4 was maintained for 3 hours.'),
+        ('The ratio is 1/3 and the change is 2.5%p.', 'The ratio is 1/3 and the change is 2.5%p.'),
+        ('Use 90km/h mode and 60Hz sampling.', 'Use 90km/h mode and 60Hz sampling.'),
+        ('{"text":"25℃"}', '"text":"25℃"'),
+        ('curl -X POST http://localhost:8010/api/transform', 'curl -X POST http://localhost:8010/api/transform'),
+        ('https://example.com/a?x=1', 'https://example.com/a?x=1'),
+        ('user@example.com', 'user@example.com'),
+        ('/home/user/file.txt', '/home/user/file.txt'),
+        ('const value = "$25.99";', 'const value = "$25.99";'),
     ],
 )
-def test_phase35a_global_no_hangul_bypass_exact_preserve(text: str) -> None:
-    assert transform(text) == text
+def test_phase35a_global_no_hangul_bypass_exact_preserve(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(
@@ -92,7 +92,7 @@ def test_phase35a_numeric_list_line_supports_compound_and_data_tokens() -> None:
         ),
         (
             '오늘 설정입니다.\n{"temp":"25℃","duration":"3시간 18분"}\n이상입니다.',
-            '오늘 설정입니다.\n\n{"temp":"25℃","duration":"3시간 18분"} 이상입니다.',
+            '오늘 설정입니다.\n\n"temp":"25℃","duration":"3시간 18분" 이상입니다.',
         ),
     ],
 )

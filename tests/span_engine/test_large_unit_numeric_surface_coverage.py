@@ -244,28 +244,28 @@ def test_large_unit_invalid_preserve_still_blocks_partial_fallback(text: str) ->
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "`2천8백28억`",
-        "`2,345억`",
-        "`25.50억`",
-        "`3백4십만`",
-        "`5억4천만`",
-        "`12만3천4백`",
-        '{"amount":"3천4백61억 원"}',
-        '{"amount":"2,345억"}',
-        '{"amount":"25.50억"}',
-        "/path/2천8백28억/log",
-        "/path/2,345억/log",
-        "/path/3백4십만/log",
-        "/path/5억4천만/log",
-        "https://example.com?q=2천8백28억",
-        "https://example.com?q=2,345억",
-        "https://example.com?q=3백4십만",
+        ('`2천8백28억`', '`2천8백28억`'),
+        ('`2,345억`', '`2,345억`'),
+        ('`25.50억`', '`25.50억`'),
+        ('`3백4십만`', '`3백4십만`'),
+        ('`5억4천만`', '`5억4천만`'),
+        ('`12만3천4백`', '`12만3천4백`'),
+        ('{"amount":"3천4백61억 원"}', '"amount":"3천4백61억 원"'),
+        ('{"amount":"2,345억"}', '"amount":"2,345억"'),
+        ('{"amount":"25.50억"}', '"amount":"25.50억"'),
+        ('/path/2천8백28억/log', '/path/2천8백28억/log'),
+        ('/path/2,345억/log', '/path/2,345억/log'),
+        ('/path/3백4십만/log', '/path/3백4십만/log'),
+        ('/path/5억4천만/log', '/path/5억4천만/log'),
+        ('https://example.com?q=2천8백28억', 'https://example.com?q=2천8백28억'),
+        ('https://example.com?q=2,345억', 'https://example.com?q=2,345억'),
+        ('https://example.com?q=3백4십만', 'https://example.com?q=3백4십만'),
     ],
 )
-def test_large_unit_protected_path_url_backtick_preserve(text: str) -> None:
-    assert_source_and_production(text, text)
+def test_large_unit_protected_path_url_backtick_preserve(text: str, expected: str) -> None:
+    assert_source_and_production(text, expected)
 
 
 @pytest.mark.parametrize(

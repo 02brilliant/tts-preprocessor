@@ -98,7 +98,7 @@ def test_json_before_korean_ending_does_not_block_neighbors() -> None:
     assert_editorial_local_degrade(
         text,
         expected_transformed=["이십오도", "피에이치 칠-쩜-사", "제-이문항"],
-        expected_preserved=['{"text":"25℃"}'],
+        expected_preserved=['"text":"25℃"'],
     )
 
 
@@ -122,7 +122,7 @@ def test_preserve_valid_preserve_valid_sequence_survives() -> None:
     assert_editorial_local_degrade(
         text,
         expected_transformed=["이십오도", "피에이치 칠-쩜-사", "이십오-쩜-구구-달러", "케이푸드"],
-        expected_preserved=['{"text":"25℃"}', '"The temperature is 25℃."'],
+        expected_preserved=['"text":"25℃"', '"The temperature is 25℃."'],
     )
 
 

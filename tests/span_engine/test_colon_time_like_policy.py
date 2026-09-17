@@ -13,7 +13,7 @@ def prod(text: str) -> str:
     ("text", "expected"),
     [
         ("`3:4테스트`", "`3:4테스트`"),
-        ('{"ratio":"3:4테스트"}', '{"ratio":"3:4테스트"}'),
+        ('{"ratio":"3:4테스트"}', '"ratio":"3:4테스트"'),
         ("/path/3:4/log", "/path/3:4/log"),
         ("https://example.com?q=3:4테스트", "https://example.com?q=3:4테스트"),
         ("line 1:23", "line 1:23"),
@@ -29,7 +29,7 @@ def prod(text: str) -> str:
         ("file 09:30", "file 09:30"),
         ("/path/09:30/log", "/path/09:30/log"),
         ("https://example.com?t=09:30", "https://example.com?t=09:30"),
-        ('{"time":"09:30"}', '{"time":"09:30"}'),
+        ('{"time":"09:30"}', '"time":"09:30"'),
         ("`09:30`", "`09:30`"),
     ],
 )
@@ -185,10 +185,10 @@ def test_comma_separated_time_like_list_preserve_and_context_regressions(
     ("text", "expected"),
     [
         ("`13:05, 10:30`", "`13:05, 10:30`"),
-        ('{"times":"13:05, 10:30"}', '{"times":"13:05, 10:30"}'),
+        ('{"times":"13:05, 10:30"}', '"times":"13:05, 10:30"'),
         ("/path/13:05,10:30/log", "/path/13:05,10:30/log"),
         ("https://example.com?q=13:05,10:30", "https://example.com?q=13:05,10:30"),
-        ("[13:05, 10:30]", "13:05, 10:30"),
+        ("[13:05, 10:30]", '[13:05, 10:30]'),
     ],
 )
 def test_comma_separated_time_like_list_protected_contexts_preserve(

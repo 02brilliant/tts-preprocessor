@@ -170,17 +170,16 @@ def test_caret_unit_malformed_numeric_surface_is_fully_preserved(
 
 
 @pytest.mark.parametrize(
-    "source",
+    ('source', 'expected'),
     [
-        "`2.35명쯤`",
-        "[총 2.35번]",
-        '{"count":"+2.35명"}',
-        "/path/2.35kg^2/file",
-        "https://example.com/2.35KB^2",
+        ('`2.35명쯤`', '`2.35명쯤`'),
+        ('[총 2.35번]', '[총 2.35번]'),
+        ('{"count":"+2.35명"}', '"count":"+2.35명"'),
+        ('/path/2.35kg^2/file', '/path/2.35kg^2/file'),
+        ('https://example.com/2.35KB^2', 'https://example.com/2.35KB^2'),
     ],
 )
-def test_decimal_unit_expansion_keeps_protected_surfaces(source: str) -> None:
-    expected = source[1:-1] if source.startswith("[") and source.endswith("]") else source
+def test_decimal_unit_expansion_keeps_protected_surfaces(source: str, expected: str) -> None:
     assert transform(source) == expected
 
 

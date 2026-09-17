@@ -61,17 +61,17 @@ def test_quarter_suffix_malformed_or_code_like_surface_is_atomic(text: str) -> N
 
 
 @pytest.mark.parametrize(
-    "text",
-    (
-        "https://example.com/1분기",
-        "/tmp/1분기.txt",
-        "report_1분기.txt",
-        '{"quarter":"1분기"}',
-        "`1분기`",
-    ),
+    ('text', 'expected'),
+    [
+        ('https://example.com/1분기', 'https://example.com/1분기'),
+        ('/tmp/1분기.txt', '/tmp/1분기.txt'),
+        ('report_1분기.txt', 'report_1분기.txt'),
+        ('{"quarter":"1분기"}', '"quarter":"1분기"'),
+        ('`1분기`', '`1분기`'),
+    ],
 )
-def test_quarter_suffix_respects_protected_spans(text: str) -> None:
-    assert transform(text) == text
+def test_quarter_suffix_respects_protected_spans(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 def test_quarter_suffix_uses_numeric_suffix_owner_not_time_prefix_preserve() -> None:

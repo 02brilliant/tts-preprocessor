@@ -410,6 +410,8 @@ class TransformOutput:
     normalized_text: str
     render_pieces: list[RenderPiece]
     trace: TransformTrace | None = None
+    # Protected bracket content in final normalized-text coordinates.
+    protected_spans: list[SourceSpan] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         _ensure_str_field("normalized_text", self.normalized_text)
@@ -420,6 +422,10 @@ class TransformOutput:
                 raise TypeError("render_pieces must contain RenderPiece")
         if self.trace is not None and not isinstance(self.trace, TransformTrace):
             raise TypeError("trace must be TransformTrace or None")
+        if not isinstance(self.protected_spans, list) or any(
+            not isinstance(span, SourceSpan) for span in self.protected_spans
+        ):
+            raise TypeError("protected_spans must be list[SourceSpan]")
 
 
 __all__ = [

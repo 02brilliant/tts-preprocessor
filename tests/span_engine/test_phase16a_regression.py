@@ -11,4 +11,4 @@ def test_phase16a_regression_smoke() -> None:
     assert transform("21명") == "스물한-명"
     assert transform("12.12 사태") == "십이십이 사태"
     assert transform("긴급번호 112는") == "긴급번호 일일이는"
-    assert transform("가격은 [3kg]입니다") == "가격은 3kg입니다"
+    assert transform("가격은 [3kg]입니다") == '가격은 [3kg]입니다'

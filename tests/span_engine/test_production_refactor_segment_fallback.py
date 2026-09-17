@@ -228,8 +228,11 @@ def test_protected_subsegments_do_not_reenter_owners_during_recovery(
     output = transform_module.transform_with_trace(text)
 
     assert output.normalized_text == (
-        '문서 {"text":"25℃"} 3kg `60Hz` FAIL구간 사십오-제곱미터 자료'
+        '문서 "text":"25℃" [3kg] `60Hz` FAIL구간 사십오-제곱미터 자료'
     )
+    assert [
+        output.normalized_text[span.start:span.end] for span in output.protected_spans
+    ] == ['"text":"25℃"', '[3kg]']
     assert any(piece.text == '"25℃"' and piece.owner is None for piece in output.render_pieces)
     assert any(piece.text == "3kg" and piece.owner is None for piece in output.render_pieces)
     assert any(piece.text == "`60Hz`" and piece.owner is None for piece in output.render_pieces)
@@ -339,4 +342,3 @@ def test_segment_boundaries_and_piece_offset_are_exact_private_primitives() -> N
     assert shifted.metadata is not metadata
     assert shifted.metadata["nested"] is nested
     assert unmapped.source_span is None
-

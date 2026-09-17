@@ -118,18 +118,18 @@ def test_ordinary_decimal_fractional_zero_targets(text: str, expected: str) -> N
 PROTECTED_CONTEXT_CASES = [
     ("`1.50kg`", "`1.50kg`"),
     ("`USD1,000.50`", "`USD1,000.50`"),
-    ('{"price":"USD1,000.50"}', '{"price":"USD1,000.50"}'),
-    ('{"temp":"+77.50°F"}', '{"temp":"+77.50°F"}'),
-    ('{"range":"1.50~2.0"}', '{"range":"1.50~2.0"}'),
-    ('{"colon":"1.50:2.0"}', '{"colon":"1.50:2.0"}'),
-    ('{"large":"25.50억"}', '{"large":"25.50억"}'),
+    ('{"price":"USD1,000.50"}', '"price":"USD1,000.50"'),
+    ('{"temp":"+77.50°F"}', '"temp":"+77.50°F"'),
+    ('{"range":"1.50~2.0"}', '"range":"1.50~2.0"'),
+    ('{"colon":"1.50:2.0"}', '"colon":"1.50:2.0"'),
+    ('{"large":"25.50억"}', '"large":"25.50억"'),
     ("/path/USD1,000.50/log", "/path/USD1,000.50/log"),
     ("/path/1.50~2.0/log", "/path/1.50~2.0/log"),
     ("https://example.com?q=USD1,000.50", "https://example.com?q=USD1,000.50"),
     ("https://example.com?q=1.50~2.0", "https://example.com?q=1.50~2.0"),
     (
         '보호 구간에는 `1.50kg`, {"price":"USD1,000.50"}, /path/1.50~2.0/log, https://example.com?q=USD1,000.50이 있다.',
-        '보호 구간에는 `1.50kg`, {"price":"USD1,000.50"}, /path/1.50~2.0/log, https://example.com?q=USD1,000.50이 있다.',
+        '보호 구간에는 `1.50kg`, "price":"USD1,000.50", /path/1.50~2.0/log, https://example.com?q=USD1,000.50이 있다.',
     ),
 ]
 

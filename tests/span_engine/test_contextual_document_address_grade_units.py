@@ -139,9 +139,9 @@ def test_batch4_signed_and_decimal_use_residual_reading(
     [
         ("https://example.com/3부", "https://example.com/3부"),
         ("/tmp/3동/file", "/tmp/3동/file"),
-        ('{"value":"3호"}', '{"value":"3호"}'),
+        ('{"value":"3호"}', '"value":"3호"'),
         ("`3판`", "`3판`"),
-        ("[3단]", "3단"),
+        ("[3단]", '[3단]'),
         ("A3등", "A3등"),
         ("3척.txt", "3척.txt"),
     ],

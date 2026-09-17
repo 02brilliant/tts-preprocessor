@@ -10,14 +10,14 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("가격은 [3kg]입니다", "가격은 3kg입니다"),
-        ("문서 [AI] 확인", "문서 AI 확인"),
-        ("값은 [123]입니다", "값은 123입니다"),
-        ("포맷은 [JSON]입니다", "포맷은 JSON입니다"),
-        ("입력 [[K:사용자입력]] 확인", "입력 [K:사용자입력] 확인"),
+        ("가격은 [3kg]입니다", '가격은 [3kg]입니다'),
+        ("문서 [AI] 확인", '문서 [AI] 확인'),
+        ("값은 [123]입니다", '값은 [123]입니다'),
+        ("포맷은 [JSON]입니다", '포맷은 [JSON]입니다'),
+        ("입력 [[K:사용자입력]] 확인", '입력 [[K:사용자입력]] 확인'),
     ],
 )
-def test_square_bracket_content_is_protected_and_unwrapped(
+def test_square_bracket_and_content_are_preserved(
     text: str, expected: str
 ) -> None:
     output = transform_with_trace(text)
@@ -37,7 +37,7 @@ def test_square_bracket_content_is_protected_and_unwrapped(
 def test_square_bracket_render_pieces_remain_pre_filter_for_validation() -> None:
     output = transform_with_trace("가격은 [3kg]입니다")
 
-    assert output.normalized_text == "가격은 3kg입니다"
+    assert output.normalized_text == '가격은 [3kg]입니다'
     assert "".join(piece.text for piece in output.render_pieces) == "가격은 [3kg]입니다"
     assert all(log.passed for log in output.trace.validation_logs)
-    assert any(log.event == "square_bracket_unwrapped" for log in output.trace.bracket_filter_logs)
+    assert any(log.event == "square_bracket_preserved" for log in output.trace.bracket_filter_logs)

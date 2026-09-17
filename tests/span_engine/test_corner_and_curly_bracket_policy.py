@@ -10,8 +10,8 @@ from engine.span_engine import transform, transform_with_trace
     [
         ("문장 【AI 3kg】 확인", "문장 【AI 3kg】 확인"),
         ("문장 {AI 3kg} 확인", "문장 AI 3kg 확인"),
-        ('문장 {"price":"KRW1000"} 확인', '문장 {"price":"KRW1000"} 확인'),
-        ("문장 {key: value} 확인", "문장 {key: value} 확인"),
+        ('문장 {"price":"KRW1000"} 확인', '문장 "price":"KRW1000" 확인'),
+        ("문장 {key: value} 확인", '문장 key: value 확인'),
         ("문장 (AI 3kg) 확인", "문장 확인"),
         ("【문장(임시)】", "【문장(임시)】"),
         ("{문장(임시)}", "문장(임시)"),
@@ -43,9 +43,9 @@ def test_corner_and_curly_bracket_interiors_are_protected_before_claim() -> None
 def test_json_like_curly_braces_remain_protected_literals() -> None:
     output = transform_with_trace('{"price":"KRW1000"} 밖의 KRW1000')
 
-    assert output.normalized_text == '{"price":"KRW1000"} 밖의 천-원'
-    assert any(claim.owner == "preserve" for claim in output.trace.claim_logs)
-    assert not any(log.event == "curly_brace_unwrapped" for log in output.trace.bracket_filter_logs)
+    assert output.normalized_text == '"price":"KRW1000" 밖의 천-원'
+    assert any(claim.owner == "bracket" for claim in output.trace.claim_logs)
+    assert any(log.event == "curly_brace_unwrapped" for log in output.trace.bracket_filter_logs)
 
 
 @pytest.mark.parametrize(

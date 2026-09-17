@@ -63,9 +63,9 @@ def test_segmented_malformed_numeric_behavior_unchanged(src: str, expected: str)
     ("src", "expected"),
     [
         ("`01.5`", "`01.5`"),
-        ("[01.5]", "01.5"),
+        ("[01.5]", '[01.5]'),
         ("/path/01.5/log", "/path/01.5/log"),
-        ('{"value":"01.5"}', '{"value":"01.5"}'),
+        ('{"value":"01.5"}', '"value":"01.5"'),
         ("A01.5", "A01.5"),
         ("v01.5", "v01.5"),
     ],

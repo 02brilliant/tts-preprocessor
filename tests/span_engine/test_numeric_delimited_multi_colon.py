@@ -96,7 +96,8 @@ def test_multi_colon_protected_code_like_and_contexts_preserve():
         "요한복음 1:2:3",
     ]
     for source in cases:
-        assert transform(source) == source
+        expected = source[1:-1] if source.startswith("{") else source
+        assert transform(source) == expected
 
 
 def test_multi_colon_regression_with_existing_owners():

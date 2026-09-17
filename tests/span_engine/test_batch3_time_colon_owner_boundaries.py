@@ -103,19 +103,19 @@ def test_batch3_suffix_clock_spacing_is_generated_by_time_owner() -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "https://example.com/a:1",
-        "/tmp/a:1",
-        '{"time":"13:05:09"}',
-        "C:\\tmp\\a:1",
+        ('https://example.com/a:1', 'https://example.com/a:1'),
+        ('/tmp/a:1', '/tmp/a:1'),
+        ('{"time":"13:05:09"}', '"time":"13:05:09"'),
+        ('C:\\tmp\\a:1', 'C:\\tmp\\a:1'),
     ],
 )
 def test_batch3_protected_code_like_colons_do_not_leak_partial_readings(
-    text: str,
+    text: str, expected: str,
 ) -> None:
     output = transform_with_trace(text)
-    assert output.normalized_text == text
+    assert output.normalized_text == expected
     assert not any(
         claim.owner in {"time", "colon_semantic_pair"}
         for claim in output.trace.claim_logs

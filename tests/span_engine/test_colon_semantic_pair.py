@@ -155,13 +155,13 @@ def test_colon_semantic_pair_protected_and_code_like_contexts():
     assert "이십오도" in out
     assert "삼-킬로그램" in out
 
-    for source in (
-        "line 10:20",
-        "case 3:16",
-        "/path/1:2/log",
-        '{"ratio":"1:2"}',
-    ):
-        assert transform(source) == source
+    for (source, expected) in [
+        ('line 10:20', 'line 10:20'),
+        ('case 3:16', 'case 3:16'),
+        ('/path/1:2/log', '/path/1:2/log'),
+        ('{"ratio":"1:2"}', '"ratio":"1:2"'),
+    ]:
+        assert transform(source) == expected
 
 
 def test_colon_semantic_pair_fullwidth_colon_equivalence():

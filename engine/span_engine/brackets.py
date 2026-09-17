@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from engine.span_engine.claim_registry import SurfaceClaimRegistry, spans_overlap
@@ -15,6 +16,10 @@ class BracketRange:
     raw: str
     complete: bool = True
     outermost: bool = True
+
+    @property
+    def single_line(self) -> bool:
+        return "\n" not in self.raw and "\r" not in self.raw
 
     def __post_init__(self) -> None:
         if self.bracket_type not in {"square", "corner", "curly", "parenthesis"}:
@@ -40,6 +45,7 @@ class ProtectedBracketResult:
 class BracketFilterResult:
     normalized_text: str
     logs: list[TraceLogEntry] = field(default_factory=list)
+    protected_spans: list[SourceSpan] = field(default_factory=list)
 
 
 class _Marker:
@@ -55,7 +61,6 @@ _OPEN_TO_TYPE = {
 }
 _CLOSE_TO_OPEN = {"]": "[", "】": "【", "}": "{", ")": "("}
 _PRESERVE_BRACKET_TYPES = frozenset({"square", "corner", "curly"})
-_UNWRAPPED_BRACKET_TYPES = frozenset({"square", "curly"})
 _CODE_LIKE_CURLY_BRACKET_RE = re.compile(
     r'^\{+\s*(?:"(?:[^"\\]|\\.)+"|[A-Za-z_][A-Za-z0-9_]*)\s*:.*\}+$',
     re.DOTALL,
@@ -144,6 +149,8 @@ def protect_non_parenthesis_brackets_before_claim(
 
     protected: list[BracketRange] = []
     for bracket_range in bracket_ranges:
+        if not bracket_range.single_line:
+            continue
         if bracket_range.bracket_type not in _PRESERVE_BRACKET_TYPES:
             continue
         registry.claim(
@@ -205,13 +212,19 @@ def apply_final_bracket_filter(
 
     elements: list[str | _Marker] = []
     emitted_parenthesis_markers: set[tuple[int, int]] = set()
-    sorted_ranges = sorted(bracket_ranges, key=lambda value: value.span.start)
-    unwrapped_ranges = [
-        value for value in sorted_ranges if value.bracket_type in _UNWRAPPED_BRACKET_TYPES
-    ]
+    sorted_ranges = sorted(
+        (value for value in bracket_ranges if value.single_line),
+        key=lambda value: value.span.start,
+    )
     parenthesis_ranges = [
         value for value in sorted_ranges if value.bracket_type == "parenthesis"
     ]
+    preserved_ranges = [
+        value for value in sorted_ranges if value.bracket_type in _PRESERVE_BRACKET_TYPES
+    ]
+    marker_prefix = _marker_prefix("".join(piece.text for piece in pieces))
+    protected_literals: list[tuple[str, str]] = []
+    emitted_protected: set[tuple[int, int]] = set()
 
     for piece in pieces:
         if piece.source_span is None or piece.provenance.startswith("GENERATED_"):
@@ -229,6 +242,20 @@ def apply_final_bracket_filter(
 
         for offset, char in enumerate(piece.text):
             source_index = piece.source_span.start + offset
+            preserved = _range_containing_index(source_index, preserved_ranges)
+            if preserved is not None:
+                key = _range_key(preserved.span)
+                if key not in emitted_protected:
+                    literal = (
+                        preserved.raw[1:-1]
+                        if preserved.bracket_type == "curly"
+                        else preserved.raw
+                    )
+                    marker = f"{marker_prefix}{len(protected_literals)}\ue001"
+                    protected_literals.append((marker, literal))
+                    elements.append(marker)
+                    emitted_protected.add(key)
+                continue
             parenthesis_range = _range_containing_index(
                 source_index, parenthesis_ranges
             )
@@ -238,12 +265,49 @@ def apply_final_bracket_filter(
                     elements.append(_PARENTHESIS_MARKER)
                     emitted_parenthesis_markers.add(marker_key)
                 continue
-            if _is_unwrapped_delimiter_index(source_index, unwrapped_ranges):
-                continue
             elements.append(char)
 
     logs = [_bracket_log(bracket_range) for bracket_range in sorted_ranges]
-    return BracketFilterResult(_collapse_parenthesis_boundary_spaces(elements), logs)
+    normalized, protected_spans = _restore_protected_literals(
+        _collapse_parenthesis_boundary_spaces(elements), protected_literals
+    )
+    return BracketFilterResult(normalized, logs, protected_spans)
+
+
+def _marker_prefix(text: str) -> str:
+    prefix = "\ue000"
+    while prefix in text:
+        prefix += "\ue000"
+    return prefix
+
+
+def _restore_protected_literals(
+    text: str, literals: list[tuple[str, str]]
+) -> tuple[str, list[SourceSpan]]:
+    spans: list[SourceSpan] = []
+    for marker, literal in literals:
+        start = text.index(marker)
+        text = text[:start] + literal + text[start + len(marker):]
+        if literal:
+            spans.append(SourceSpan(start, start + len(literal)))
+    return text, spans
+
+
+def transform_outside_protected_spans(
+    text: str, spans: list[SourceSpan], transform: Callable[[str], str]
+) -> tuple[str, list[SourceSpan]]:
+    """Keep literal contents and whitespace exact through paragraph processing."""
+    prefix = _marker_prefix(text)
+    literals: list[tuple[str, str]] = []
+    parts: list[str] = []
+    cursor = 0
+    for span in spans:
+        marker = f"{prefix}{len(literals)}\ue001"
+        parts.extend((text[cursor:span.start], marker))
+        literals.append((marker, text[span.start:span.end]))
+        cursor = span.end
+    parts.append(text[cursor:])
+    return _restore_protected_literals(transform("".join(parts)), literals)
 
 
 def _overlaps_any(span: SourceSpan, bracket_ranges: list[BracketRange]) -> bool:
@@ -263,15 +327,6 @@ def _range_containing_index(
         if bracket_range.span.start <= index < bracket_range.span.end:
             return bracket_range
     return None
-
-
-def _is_unwrapped_delimiter_index(
-    index: int, unwrapped_ranges: list[BracketRange]
-) -> bool:
-    for bracket_range in unwrapped_ranges:
-        if index == bracket_range.span.start or index == bracket_range.span.end - 1:
-            return True
-    return False
 
 
 def _append_parenthesis_marker(
@@ -329,8 +384,8 @@ def _has_future_non_space(elements: list[str | _Marker], start: int) -> bool:
 
 def _bracket_log(bracket_range: BracketRange) -> TraceLogEntry:
     if bracket_range.bracket_type == "square":
-        event = "square_bracket_unwrapped"
-        action = "unwrap_square_brackets"
+        event = "square_bracket_preserved"
+        action = "preserve_square_bracket_content"
     elif bracket_range.bracket_type == "curly":
         event = "curly_brace_unwrapped"
         action = "unwrap_curly_braces"

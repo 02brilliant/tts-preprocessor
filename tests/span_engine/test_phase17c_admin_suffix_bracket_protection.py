@@ -6,8 +6,8 @@ from engine.span_engine import output_to_debug_dict, transform, transform_with_t
 
 
 def test_phase17c_admin_suffix_bracket_outputs() -> None:
-    assert transform("[종로3가]") == "종로3가"
-    assert transform("주소는 [종로3가]입니다") == "주소는 종로3가입니다"
+    assert transform("[종로3가]") == '[종로3가]'
+    assert transform("주소는 [종로3가]입니다") == '주소는 [종로3가]입니다'
     assert transform("(종로3가)") == ""
     assert transform("주소는 (종로3가)입니다") == "주소는 입니다"
 

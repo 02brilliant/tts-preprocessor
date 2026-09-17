@@ -185,21 +185,21 @@ def test_nyang_surface_is_sufficient_to_use_special_determiner(
 
 
 @pytest.mark.parametrize(
-    "source",
+    ('source', 'expected'),
     [
-        "제3 자",
-        "제 3 자",
-        "03자",
-        "이름 03자",
-        "3자abc",
-        "3자리abc",
-        "제3자abc",
-        "A3자",
-        "`이름 3자`",
-        '{"text":"한글 3자"}',
+        ('제3 자', '제3 자'),
+        ('제 3 자', '제 3 자'),
+        ('03자', '03자'),
+        ('이름 03자', '이름 03자'),
+        ('3자abc', '3자abc'),
+        ('3자리abc', '3자리abc'),
+        ('제3자abc', '제3자abc'),
+        ('A3자', 'A3자'),
+        ('`이름 3자`', '`이름 3자`'),
+        ('{"text":"한글 3자"}', '"text":"한글 3자"'),
     ],
 )
-def test_character_ja_spacing_invalid_and_protected_boundaries(source: str) -> None:
+def test_character_ja_spacing_invalid_and_protected_boundaries(source: str, expected: str) -> None:
     result = transform(source)
 
     if source == "제3 자":
@@ -209,7 +209,7 @@ def test_character_ja_spacing_invalid_and_protected_boundaries(source: str) -> N
     elif source == "제3자abc":
         assert result == "제-삼자abc"
     else:
-        assert result == source
+        assert result == expected
 
 
 def test_integer_only_special_determiner_policy_keeps_decimal_word_fallback() -> None:

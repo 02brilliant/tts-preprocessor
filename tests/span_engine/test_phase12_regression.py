@@ -16,7 +16,7 @@ from engine.span_engine import transform, transform_with_trace
         ("2025-01-03", "이천이십오년 일월 삼일"),
         ("123-456-7890", "일이삼 사오육 칠팔구공"),
         ("OpenAI", "오픈 에이아이"),
-        ("[[K:사용자입력]]", "[K:사용자입력]"),
+        ("[[K:사용자입력]]", '[[K:사용자입력]]'),
     ],
 )
 def test_phase12_regression_cases(text: str, expected: str) -> None:

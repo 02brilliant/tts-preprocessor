@@ -38,8 +38,8 @@ def test_validation_runs_before_final_bracket_filter() -> None:
     square = transform_with_trace("가격은 [3kg]입니다")
 
     assert parenthesis.normalized_text == "문장입니다"
-    assert square.normalized_text == "가격은 3kg입니다"
+    assert square.normalized_text == '가격은 [3kg]입니다'
     assert all(log.passed for log in parenthesis.trace.validation_logs)
     assert all(log.passed for log in square.trace.validation_logs)
     assert any(log.event == "parenthesis_elided" for log in parenthesis.trace.bracket_filter_logs)
-    assert any(log.event == "square_bracket_unwrapped" for log in square.trace.bracket_filter_logs)
+    assert any(log.event == "square_bracket_preserved" for log in square.trace.bracket_filter_logs)

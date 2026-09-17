@@ -8,17 +8,17 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[12.12 사태]", "12.12 사태"),
-        ("사건은 [12.12 사태]입니다", "사건은 12.12 사태입니다"),
-        ("[ -2.5 ]", " -2.5 "),
-        ("[3kg]", "3kg"),
-        ("[2025.01.03]", "2025.01.03"),
-        ("[5·18 민주화운동]", "5·18 민주화운동"),
-        ("[€1.25]", "€1.25"),
-        ("[3.5~8kg]", "3.5~8kg"),
+        ("[12.12 사태]", '[12.12 사태]'),
+        ("사건은 [12.12 사태]입니다", '사건은 [12.12 사태]입니다'),
+        ("[ -2.5 ]", '[ -2.5 ]'),
+        ("[3kg]", '[3kg]'),
+        ("[2025.01.03]", '[2025.01.03]'),
+        ("[5·18 민주화운동]", '[5·18 민주화운동]'),
+        ("[€1.25]", '[€1.25]'),
+        ("[3.5~8kg]", '[3.5~8kg]'),
     ],
 )
-def test_square_bracket_protects_inner_text_and_unwraps_policy_v1(
+def test_square_bracket_preserves_brackets_and_inner_text_policy_v1(
     text: str, expected: str
 ) -> None:
     assert transform(text) == expected

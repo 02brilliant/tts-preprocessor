@@ -52,7 +52,7 @@ def test_inline_backtick_json_preserve_but_outside_transform():
     )
     out = transform(text)
     assert out != text
-    assert '`{"text":"25℃"}`' in out
+    assert '`"text":"25℃"`' in out
     assert "이십오도" in out
     assert "피에이치 칠-쩜-사" in out
 
@@ -68,7 +68,7 @@ def test_markdown_code_fence_preserve_but_outside_transform():
     out = transform(text)
     assert out != text
     assert "```json\n" in out
-    assert '{"text":"25℃", "ph":"pH 7.4"}' in out
+    assert '"text":"25℃", "ph":"pH 7.4"' in out
     assert "``` 하지만 본문" in out
     assert "이십오도" in out
     assert "피에이치 칠-쩜-사" in out

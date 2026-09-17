@@ -6,27 +6,27 @@ from engine.span_engine import transform
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "A3가",
-        "3가abc",
-        "3가kg",
-        "3-가",
-        "3 가",
-        "03가",
-        "3.5가",
-        "1,000가",
-        "[종로3가]",
-        "(종로3가)",
+        ('A3가', 'A3가'),
+        ('3가abc', '3가abc'),
+        ('3가kg', '3가kg'),
+        ('3-가', '3-가'),
+        ('3 가', '3 가'),
+        ('03가', '03가'),
+        ('3.5가', '3.5가'),
+        ('1,000가', '1,000가'),
+        ('[종로3가]', '[종로3가]'),
+        ('(종로3가)', ''),
     ],
 )
-def test_phase17c_admin_suffix_preserve_or_protected_cases(text: str) -> None:
+def test_phase17c_admin_suffix_preserve_or_protected_cases(text: str, expected: str) -> None:
     if text.startswith("(") and text.endswith(")"):
         assert transform(text) == ""
     elif text.startswith("[") and text.endswith("]"):
-        assert transform(text) == text[1:-1]
-    else:
         assert transform(text) == text
+    else:
+        assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

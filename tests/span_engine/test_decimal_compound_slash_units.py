@@ -86,6 +86,6 @@ def test_slash_conflicts_and_protected_contexts_are_preserved_or_owned(
     expected = {
         "1/3": "삼분의 일",
         "2026/06/01": "이천이십육년 유월 일일",
-        "[5.6km/h]": "5.6km/h",
+        "[5.6km/h]": "[5.6km/h]",
     }.get(source, source)
     assert _production_transform(source) == expected

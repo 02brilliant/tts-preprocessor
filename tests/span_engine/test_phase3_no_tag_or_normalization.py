@@ -13,8 +13,8 @@ from engine.span_engine.tokenizer import tokenize_immutable_spans, validate_toke
         ("㎏", "㎏"),
         ("㎡", "㎡"),
         ("１", "１"),
-        ("[[K:사용자입력]]", "[K:사용자입력]"),
-        ("{{S:사용자입력}}", "{{S:사용자입력}}"),
+        ("[[K:사용자입력]]", '[[K:사용자입력]]'),
+        ("{{S:사용자입력}}", '{S:사용자입력}'),
     ],
 )
 def test_no_unicode_normalization_or_tag_interpretation(

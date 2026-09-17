@@ -71,9 +71,9 @@ def test_multiplier_bae_tail_preservation(src: str, expected: str) -> None:
     ("src", "expected"),
     [
         ("`3배`", "`3배`"),
-        ("[3배]", "3배"),
+        ("[3배]", '[3배]'),
         ("/path/3배/log", "/path/3배/log"),
-        ('{"value":"3배"}', '{"value":"3배"}'),
+        ('{"value":"3배"}', '"value":"3배"'),
         ("A3배", "A3배"),
         ("v3배", "v3배"),
     ],

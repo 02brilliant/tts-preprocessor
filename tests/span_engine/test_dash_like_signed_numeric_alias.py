@@ -48,9 +48,9 @@ def test_dash_like_sign_is_owner_local_signed_numeric_alias(
         ("––2.03%", "––2.03%"),
         ("/path/–2.03%/log", "/path/–2.03%/log"),
         ("https://example.com?q=–2.03%", "https://example.com?q=–2.03%"),
-        ('{"rate":"–2.03%"}', '{"rate":"–2.03%"}'),
+        ('{"rate":"–2.03%"}', '"rate":"–2.03%"'),
         ("`–2.03%`", "`–2.03%`"),
-        ("[–2.03%]", "–2.03%"),
+        ("[–2.03%]", '[–2.03%]'),
     ],
 )
 def test_dash_like_sign_preserves_ranges_connectors_invalid_and_protected(

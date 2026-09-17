@@ -48,10 +48,10 @@ def test_supported_unit_and_compound_unit_readings_remain(text: str, expected: s
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[40℉abc]", "40℉abc"),
-        ("[30ºCtest]", "30ºCtest"),
-        ("[45㎡abc]", "45㎡abc"),
-        ("[15.2km/La]", "15.2km/La"),
+        ("[40℉abc]", '[40℉abc]'),
+        ("[30ºCtest]", '[30ºCtest]'),
+        ("[45㎡abc]", '[45㎡abc]'),
+        ("[15.2km/La]", '[15.2km/La]'),
     ],
 )
 def test_bracket_protected_unit_like_tails_remain_raw(text: str, expected: str) -> None:

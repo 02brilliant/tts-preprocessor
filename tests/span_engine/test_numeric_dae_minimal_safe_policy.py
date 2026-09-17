@@ -273,9 +273,9 @@ def test_ambiguous_numeric_dae_uses_source_exact_provenance() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[3대]", "3대"),
+        ("[3대]", '[3대]'),
         ("`3대`", "`3대`"),
-        ('{"value":"3대"}', '{"value":"3대"}'),
+        ('{"value":"3대"}', '"value":"3대"'),
         ("path/3대/file", "path/3대/file"),
         ("A3대", "A3대"),
         ("identifier_3대", "identifier_3대"),

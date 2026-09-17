@@ -240,21 +240,21 @@ def test_signed_compound_slash_unit_support_is_not_expanded(text: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "C++17",
-        "A+B",
-        "x-y=3",
-        "a+=1",
-        "email+tag@example.com",
-        "https://example.com?q=+1",
-        "/path/-1/log",
-        '{"value":"+1"}',
-        "`-2.5kg`",
+        ('C++17', 'C++17'),
+        ('A+B', 'A+B'),
+        ('x-y=3', 'x-y=3'),
+        ('a+=1', 'a+=1'),
+        ('email+tag@example.com', 'email+tag@example.com'),
+        ('https://example.com?q=+1', 'https://example.com?q=+1'),
+        ('/path/-1/log', '/path/-1/log'),
+        ('{"value":"+1"}', '"value":"+1"'),
+        ('`-2.5kg`', '`-2.5kg`'),
     ],
 )
-def test_protected_or_code_like_context_does_not_reenter_signed_owner(text: str) -> None:
-    assert transform(text) == text
+def test_protected_or_code_like_context_does_not_reenter_signed_owner(text: str, expected: str) -> None:
+    assert transform(text) == expected
     claims = transform_debug(text)["debug"]["trace"]["claim_logs"]
     assert not any(claim["owner"].startswith("signed_") for claim in claims)
 

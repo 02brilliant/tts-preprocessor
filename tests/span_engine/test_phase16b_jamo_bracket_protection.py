@@ -8,8 +8,8 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("[ㄱㄴㄷ]", "ㄱㄴㄷ"),
-        ("입력 [ㄱㄴㄷ] 확인", "입력 ㄱㄴㄷ 확인"),
+        ("[ㄱㄴㄷ]", '[ㄱㄴㄷ]'),
+        ("입력 [ㄱㄴㄷ] 확인", '입력 [ㄱㄴㄷ] 확인'),
         ("(ㄱㄴㄷ)", ""),
         ("입력 (ㄱㄴㄷ) 확인", "입력 확인"),
     ],

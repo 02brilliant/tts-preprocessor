@@ -1012,7 +1012,7 @@ const value = "$25.99"; -> same
 15.2km/La -> same
 pH7.4test -> same
 40℉abc -> same
-[3kg] -> 3kg
+[3kg] -> [3kg]
 ```
 
 #### Owner Fallback Candidate
@@ -1337,9 +1337,8 @@ fragments. Ordinary standalone signed-number handling is unchanged.
 
 These targeted follow-up rules retain square-bracket protection and temperature
 sign canonical (`+온도` -> `영상`, or `-온도` -> `영하`). General
-parenthesis elision also remains in force except for the narrow unsupported
-parenthesized arithmetic/function atomic-preserve boundary defined in sections
-7.6.1 and 45.
+parenthesis elision applies to arithmetic and function tokens as well, as
+specified in sections 7.6.1 and 45.
 
 ASCII hyphen-minus can be subtraction only under the section 45 intent gate.
 A bare compact two-block `N-N` surface remains ambiguous and source-exact:
@@ -2947,7 +2946,7 @@ def transform_with_trace(raw_text: str) -> TransformOutput:
 
 - `Safe Post-Surface Particle Exception`은 render 직후, shadow validation 직전에 실행한다.
 - `validate_shadow()`는 prosody 이전에 실행된다. prosody는 이미 보존 검증을 통과한 render piece stream에 insert-only로만 개입한다.
-- `Final Bracket Filter`는 shadow validation 이후의 출력 shaping 단계다. `(...)` 삭제, `[...]`·`{...}` unwrap, `【...】` 보존은 validation failure로 보지 않는다.
+- `Final Bracket Filter`는 shadow validation 이후의 출력 shaping 단계다. `(...)` 전체 삭제, `{...}` unwrap, `[...]`·`【...】` 전체 보존은 validation failure로 보지 않는다.
 - `transform()`은 공개 문자열 API이고, `transform_with_trace()`는 `TransformOutput`을 반환하는 debug/internal API다.
 
 ## 4. 핵심 데이터 모델## 4. 핵심 데이터 모델
@@ -3302,7 +3301,7 @@ class SurfaceClaimRegistry:
 | Shadow Validation | render 직후 필수 검증 |
 | Prosody | 기존 insert_commas, 단 RenderPiece 기반 권장 |
 | Paragraph Split | 기존 split_paragraphs 유지 |
-| Final Bracket Filter | `(...)` 삭제, `[...]`·`{...}` unwrap, `【...】` 전체 보존, bracket 삭제로 생긴 중복 공백 제한 정리 |
+| Final Bracket Filter | `(...)` 전체 삭제, `{...}` delimiter만 삭제, `[...]`·`【...】` 전체 보존, bracket 삭제로 생긴 중복 공백 제한 정리 |
 
 ### 5.1 실패 전파 방식
 
@@ -3660,13 +3659,8 @@ parenthesis filter는 여전히 괄호와 원문 내부를 삭제한다. 예를 
 괄호·URL/path/code-like boundary로 확장하지 않으며, 일반 `문장(임시)`의 삭제
 정책도 바꾸지 않는다.
 
-단, `basic_arithmetic_expression` 문법이 의도적으로 지원하지 않는
-숫자 기반 괄호식·숫자 인자 함수형 토큰은 full-consume 실패 뒤 내부
-숫자만 변환하거나 토큰 일부를 삭제하지 않는다. `(3+4)×2`,
-`sqrt(4)`처럼 좁게 식별된 전체 토큰은 protected preserve span으로
-원자 보존하며, 이 span에 한해서만 최종 parenthesis elision을
-적용하지 않는다. 일반 `문장(임시)`와 `(+3°)`의 기존 parenthesis
-삭제 정책은 그대로 유지한다.
+지원하지 않는 숫자 괄호식과 함수형 토큰에도 예외 없이 소괄호 삭제를 적용한다.
+`(3+4)×2 -> ×이`, `sqrt(4) -> sqrt`이며, 남은 괄호 밖 내용만 일반 규칙으로 처리한다.
 
 원칙:
 
@@ -3710,35 +3704,43 @@ canonical:
 
 #### 7.6.2 Square Brackets `[...]` and Curly Braces `{...}`
 
-사용자가 입력한 `[...]`와 일반 `{...}`는 내부를 무교정 보호하여 출력하기 위한 용도다.
+공통 예외: 양쪽 괄호가 닫힌 구간 안에 원문 줄바꿈(LF, CRLF, CR)이 하나라도
+있으면 그 구간에는 괄호 보호·제거 정책을 적용하지 않는다. 대괄호·중괄호·소괄호를
+그대로 두고 일반 교정 및 줄바꿈 규칙을 적용한다. 입력 줄바꿈이 공백으로 합쳐진
+뒤에도 괄호 정책을 다시 적용하지 않는다. 다른 한 줄 괄호 구간은 정상 처리한다.
+중첩된 구간은 가장 바깥 닫힌 괄호의 줄바꿈 여부를 기준으로 판단한다.
+
+사용자가 입력한 `[...]`와 `{...}`는 내부를 무교정 보호하여 출력하기 위한 용도다.
+이 정책은 공통 규칙 엔진에서 처리하며 1~4단계 전체에 적용한다. 후속 발음 교정과
+LLM 선택 단계도 보호 구간을 수정할 수 없다. 괄호 제거 후의 보호 좌표를 후속 단계에 전달한다.
 
 원칙:
 
 - square bracket/curly brace protection은 Phase 1 tokenization 직후, Surface Claim Phase 시작 전에 수행한다.
-- well-formed outermost `[...]` 또는 일반 `{...}` 구간 전체를 `PROTECTED_LITERAL_SURFACE`로 claim한다.
+- well-formed outermost `[...]` 또는 `{...}` 구간 전체를 `PROTECTED_LITERAL_SURFACE`로 claim한다.
 - 이 claim은 `reentry_allowed=False`이며 내부 token은 parser scan 대상에서 제외한다.
-- `[...]`, 일반 `{...}` 내부는 normalization 대상에서 제외한다.
+- `[...]`, `{...}` 내부는 normalization 대상에서 제외한다.
 - 내부 숫자, 단위, 영문, 기호도 변환하지 않는다.
-- 최종 bracket filter에서는 해당 surface의 raw 내부 텍스트만 출력하고 `[`, `]`, `{`, `}` 기호만 삭제한다.
+- 최종 bracket filter에서는 `[...]`를 대괄호까지 그대로 출력한다.
+- `{...}`는 바깥쪽 `{`, `}` 기호만 삭제하고 내부 텍스트를 그대로 출력한다.
 - 내부 텍스트와 내부 공백은 입력한 그대로 출력한다.
 
 예:
 
 ```text
 입력: 가격은 [3kg]입니다
-출력: 가격은 3kg입니다
+출력: 가격은 [3kg]입니다
 
 입력: 가격은 {3kg}입니다
 출력: 가격은 3kg입니다
 ```
 
-JSON/object-style `{...}`는 코드 보호 예외로 전체를 보존한다. quoted key와
-colon을 포함하는 JSON, 또는 `key: value` 형태의 code-like object는 일반
-중괄호 unwrap 대상이 아니다.
+JSON/object-style `{...}`도 같은 규칙을 적용한다. 내부는 그대로 보호하며
+바깥쪽 중괄호만 삭제한다.
 
 ```text
-{"price":"KRW1000"} -> {"price":"KRW1000"}
-{key: value} -> {key: value}
+{"price":"KRW1000"} -> "price":"KRW1000"
+{key: value} -> key: value
 ```
 
 이 예시에서 `3kg`는 unit parser로 들어가면 안 된다.
@@ -3747,7 +3749,7 @@ colon을 포함하는 JSON, 또는 `key: value` 형태의 code-like object는 �
 
 `【...】`는 내부와 bracket delimiter를 모두 원문 그대로 보존한다. 내부는
 normalization 대상에서 제외하며, `【AI 3kg】 -> 【AI 3kg】`이다. 이는
-`[...]`·일반 `{...}`의 delimiter-only 삭제와 다르다.
+`[...]`와 같은 보존 정책이며 `{...}`의 delimiter-only 삭제와 다르다.
 
 #### 7.6.4 중첩 괄호
 
@@ -3755,7 +3757,7 @@ normalization 대상에서 제외하며, `【AI 3kg】 -> 【AI 3kg】`이다. �
 
 ```text
 (...[...]) -> 바깥쪽이 (...) 이므로 전체 삭제
-[...(...)...] -> 바깥쪽이 [...] 이므로 내부 전체를 그대로 출력하고 [ ]만 삭제
+[...(...)...] -> 바깥쪽이 [...] 이므로 대괄호와 내부 전체를 그대로 출력
 {...(...)...} -> 바깥쪽이 {...} 이므로 내부 전체를 그대로 출력하고 { }만 삭제
 【...(...)...】 -> 바깥쪽이 【...】 이므로 bracket과 내부 전체를 보존
 ```
@@ -3767,7 +3769,7 @@ normalization 대상에서 제외하며, `【AI 3kg】 -> 【AI 3kg】`이다. �
 최종 출력: 문장입니다
 
 입력: 가격은 [3kg(확인)]입니다
-최종 출력: 가격은 3kg(확인)입니다
+최종 출력: 가격은 [3kg(확인)]입니다
 ```
 
 불완전 괄호는 그대로 보존하여 출력한다.
@@ -3909,10 +3911,9 @@ Shadow Validation에서 가장 흔한 오류는 출력 문자열 전체에서 �
 
 아래 순서대로 claim을 시도한다. 이 표는 실제 `claim_scanner.py`의 scanner 호출 순서와 맞춘 implementation order다. 문서용 snapshot은 `claim_scanner.CLAIM_ORDER_DOC`를 따른다.
 
-For example, `가격은 [₩1200]입니다 -> 가격은 ₩1200입니다`: presentation removes
-the bracket delimiters, but the protected interior is not re-entered by the
-currency owner. `{₩1200}` follows the same unwrap behavior, while
-`【₩1200】` preserves both delimiters and interior.
+For example, `가격은 [₩1200]입니다 -> 가격은 [₩1200]입니다`: square brackets
+and their interior remain source-exact and are not re-entered by the currency
+owner. `{₩1200}` becomes `₩1200`; `【₩1200】` preserves both delimiters and interior.
 `square bracket`, curly brace, and corner bracket protection은 Surface Claim
 Phase 진입 전에 bracket owner로 excluded range를 만든다. URL/path/email/file-like
 protected literal은 claim phase 안에서 `preserve` owner와
@@ -9001,8 +9002,8 @@ score 12:30 -> time gate fail -> Terminal Fallback Preserve
 ```text
 비용은 (약) 3만원입니다 -> 비용은 삼만 원입니다
 문장(임시[확인])입니다 -> 문장입니다
-가격은 [3kg]입니다 -> 가격은 3kg입니다
-가격은 [3kg(확인)]입니다 -> 가격은 3kg(확인)입니다
+가격은 [3kg]입니다 -> 가격은 [3kg]입니다
+가격은 [3kg(확인)]입니다 -> 가격은 [3kg(확인)]입니다
 문장(임시 입니다 -> 문장(임시 입니다
 가격은 [3kg입니다 -> 가격은 [3kg입니다
 ```
@@ -9012,7 +9013,7 @@ score 12:30 -> time gate fail -> Terminal Fallback Preserve
 - `(...)`는 처리 완료 후 전체 삭제
 - `(...)` 삭제로 생긴 중복 공백만 1칸 정리
 - `[...]` 내부는 normalization하지 않음
-- `[...]`는 최종 출력에서 괄호 문자만 삭제
+- `[...]`는 최종 출력에서 대괄호와 내부를 그대로 보존
 - 중첩 괄호는 가장 바깥쪽 괄호 기준
 - 불완전 괄호는 preserve
 
@@ -9738,7 +9739,7 @@ Codex는 이 문서만 보고 전체 시스템을 구현하므로, 다음 규칙
 5. A1 교정 허용군은 `은/는`, `을/를`, `으로`이다. A2 보존 허용군은 `이`이며, `이`는 `가`로 교정하지 않는다.
 6. `가`, `로`, `과`, `와`, `도`가 입력된 경우에는 Risky 조사군이므로 수정하지 않는다.
 7. `(...)`는 render와 validation이 끝난 뒤 최종 bracket filter에서 괄호와 내부 내용을 삭제한다. 삭제로 새로 생긴 중복 공백만 1칸으로 정리한다.
-8. `[...]`는 Phase 1 직후 `PROTECTED_LITERAL_SURFACE`로 claim하고 내부를 무교정 보호하며 최종 bracket filter에서 괄호 문자만 삭제한다.
+8. `[...]`는 Phase 1 직후 `PROTECTED_LITERAL_SURFACE`로 claim하고 내부를 무교정 보호하며 최종 bracket filter에서도 대괄호와 내부를 그대로 보존한다.
 9. Shadow Validation은 최종 문자열 검색이 아니라 RenderPiece sequence의 provenance와 source_span 기준으로 수행한다.
 10. Final Bracket Filter는 Shadow Validation 이후의 출력 shaping 단계이므로, `(...)` 삭제는 Shadow Validation 실패로 보지 않는다.
 11. Slash compound unit은 이 문서의 `Slash Compound Unit Reading Inventory`에 있는 한 줄 단위 명세만 구현한다. 복수 발음 후보를 runtime에서 임의 선택하지 않는다.
@@ -12762,10 +12763,10 @@ the existing fraction operand, so `8/2` keeps the fraction canonical while
 large-unit, variable, function, parenthesized, exponent, and root operands are
 out of scope. No calculation or precedence evaluation is performed; operator
 chains are read in source order. Unsupported parenthesized numeric arithmetic
-and numeric-argument function tokens are narrow protected literals, including
-inside a Korean sentence: `(3+4)×2` and `sqrt(4)` preserve their full source
-surface and bypass only the final parenthesis-elision presentation step. This
-does not broaden function parsing or alter ordinary parenthesis deletion.
+and numeric-argument functions follow the common bracket presentation policy:
+`(3+4)×2 -> ×이` and `sqrt(4) -> sqrt`. Their parenthetical contents are deleted
+and cannot provide readings for neighboring tokens. This does not enable
+function parsing or expression evaluation.
 
 The parser is state-based. At expression start, after a binary operator, or
 after `=`, `+`/supported minus belongs to the existing signed operand. After a

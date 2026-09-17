@@ -66,14 +66,14 @@ def test_phase35a_owner_local_symbol_alias_expansion(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "https://example.com/a／b",
-        '{"path":"a／b"}',
-        "curl -X POST http://x/y",
-        "The fraction is 1／3.",
-        "The value is 2.5％p.",
+        ('https://example.com/a／b', 'https://example.com/a／b'),
+        ('{"path":"a／b"}', '"path":"a／b"'),
+        ('curl -X POST http://x/y', 'curl -X POST http://x/y'),
+        ('The fraction is 1／3.', 'The fraction is 1／3.'),
+        ('The value is 2.5％p.', 'The value is 2.5％p.'),
     ],
 )
-def test_phase35a_alias_preserve_priority_for_non_korean_context(text: str) -> None:
-    assert transform(text) == text
+def test_phase35a_alias_preserve_priority_for_non_korean_context(text: str, expected: str) -> None:
+    assert transform(text) == expected

@@ -56,9 +56,9 @@ def test_percent_point_uppercase_p_unsafe_tails_preserve(
     ("src", "expected"),
     [
         ("`3%P`", "`3%P`"),
-        ("[3%P]", "3%P"),
+        ("[3%P]", '[3%P]'),
         ("/path/3%P/log", "/path/3%P/log"),
-        ('{"change":"3%P"}', '{"change":"3%P"}'),
+        ('{"change":"3%P"}', '"change":"3%P"'),
         ("https://example.com?q=3%P", "https://example.com?q=3%P"),
     ],
 )

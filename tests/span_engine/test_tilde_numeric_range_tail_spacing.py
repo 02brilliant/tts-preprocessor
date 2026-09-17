@@ -103,25 +103,25 @@ def test_tilde_numeric_range_unit_tail_regression() -> None:
 
 
 def test_tilde_numeric_range_invalid_and_protected_preserve() -> None:
-    for source in (
-        "+01.5~2",
-        "+1,00.5~2",
-        "+.5~2",
-        "1.~2",
-        "3..140~4",
-        "1~~2",
-        "1~",
-        "~2",
-        "`1~2`",
-        "`-2.480~3.24`",
-        "/path/1~2/log",
-        "/path/-2.480~3.24/log",
-        "https://example.com?q=1~2",
-        '{"range":"1~2"}',
-        "v1~2",
-        "file1~2.txt",
-    ):
-        assert transform(source) == source
+    for (source, expected) in [
+        ('+01.5~2', '+01.5~2'),
+        ('+1,00.5~2', '+1,00.5~2'),
+        ('+.5~2', '+.5~2'),
+        ('1.~2', '1.~2'),
+        ('3..140~4', '3..140~4'),
+        ('1~~2', '1~~2'),
+        ('1~', '1~'),
+        ('~2', '~2'),
+        ('`1~2`', '`1~2`'),
+        ('`-2.480~3.24`', '`-2.480~3.24`'),
+        ('/path/1~2/log', '/path/1~2/log'),
+        ('/path/-2.480~3.24/log', '/path/-2.480~3.24/log'),
+        ('https://example.com?q=1~2', 'https://example.com?q=1~2'),
+        ('{"range":"1~2"}', '"range":"1~2"'),
+        ('v1~2', 'v1~2'),
+        ('file1~2.txt', 'file1~2.txt'),
+    ]:
+        assert transform(source) == expected
 
 
 def test_tilde_numeric_range_non_tilde_delimiters_unchanged() -> None:

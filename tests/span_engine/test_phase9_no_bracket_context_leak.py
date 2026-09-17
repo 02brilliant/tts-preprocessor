@@ -6,7 +6,7 @@ from engine.span_engine import transform_with_trace
 def test_square_bracket_ai_and_number_are_not_claimed() -> None:
     output = transform_with_trace("[AI] [123] JSON")
 
-    assert output.normalized_text == "AI 123 제이슨"
+    assert output.normalized_text == '[AI] [123] 제이슨'
     assert not any(
         claim.owner in {"dictionary", "acronym_fallback", "number"}
         and claim.span.start < 10

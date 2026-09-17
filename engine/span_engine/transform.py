@@ -6,14 +6,13 @@ from typing import Any
 from engine.span_engine.arithmetic import (
     is_invalid_basic_arithmetic_expression_text,
     is_strict_basic_arithmetic_expression,
-    unsupported_parenthesized_arithmetic_spans,
 )
 from engine.span_engine.brackets import (
     apply_final_bracket_filter,
     find_bracket_ranges,
     find_incomplete_bracket_ranges,
-    is_code_like_curly_bracket,
     protect_non_parenthesis_brackets_before_claim,
+    transform_outside_protected_spans,
 )
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
 from engine.span_engine.claim_scanner import claim_surfaces
@@ -75,7 +74,12 @@ def transform(text: str) -> str:
 
 def transform_with_trace(text: str) -> TransformOutput:
     checked_text = _ensure_str(text)
-    normalized_input = normalize_user_newline_semantics(checked_text)
+    # Keep original newlines until bracket eligibility has been decided in the core.
+    normalized_input, _ = transform_outside_protected_spans(
+        checked_text,
+        [value.span for value in find_bracket_ranges(checked_text)],
+        normalize_user_newline_semantics,
+    )
     try:
         output = _transform_with_language_gate_trace(normalized_input)
     except Exception as exc:
@@ -98,10 +102,14 @@ def _apply_paragraph_split_to_output(output: TransformOutput) -> TransformOutput
     text = output.normalized_text
     if not has_hangul_syllable(text):
         return output
+    normalized_text, protected_spans = transform_outside_protected_spans(
+        text, output.protected_spans, split_paragraphs
+    )
     return TransformOutput(
-        normalized_text=split_paragraphs(text),
+        normalized_text=normalized_text,
         render_pieces=output.render_pieces,
         trace=output.trace,
+        protected_spans=protected_spans,
     )
 
 
@@ -125,6 +133,13 @@ def _transform_with_language_gate_trace(
     text: str, *, split_spaced_slash_boundaries: bool = True
 ) -> TransformOutput:
     stripped = text.strip()
+    bracket_ranges = find_bracket_ranges(text)
+    if bracket_ranges and not (
+        all(not value.single_line for value in bracket_ranges)
+        and not has_hangul_syllable(text)
+        and is_code_like_line(text)
+    ):
+        return _transform_core_with_trace(text)
     if any(
         text[span.start : span.end].startswith("```")
         for span in protected_literal_spans(text)
@@ -389,19 +404,21 @@ def _transform_hangul_with_segment_fallback(text: str, exc: Exception) -> Transf
 
     transformed: list[str] = []
     render_pieces: list[RenderPiece] = []
+    protected_spans: list[SourceSpan] = []
+    normalized_cursor = 0
     segment_failures: list[dict[str, Any]] = []
     segment_recoveries: list[dict[str, Any]] = []
 
     for start, end in _fallback_segments(text):
         try:
-            segment_text, segment_pieces = _transform_fallback_segment(
+            segment_text, segment_pieces, segment_protected = _transform_fallback_segment(
                 text, start, end
             )
         except Exception:
             for sub_start, sub_end in _fallback_subsegments(text, start, end):
                 try:
-                    segment_text, segment_pieces = _transform_fallback_segment(
-                        text, sub_start, sub_end
+                    segment_text, segment_pieces, segment_protected = (
+                        _transform_fallback_segment(text, sub_start, sub_end)
                     )
                     status = (
                         "preserved_boundary"
@@ -418,10 +435,23 @@ def _transform_hangul_with_segment_fallback(text: str, exc: Exception) -> Transf
                         )
                     )
                     segment_failures.append(failure)
+                    segment_protected = []
+                protected_spans.extend(
+                    SourceSpan(
+                        span.start + normalized_cursor, span.end + normalized_cursor
+                    )
+                    for span in segment_protected
+                )
+                normalized_cursor += len(segment_text)
                 transformed.append(segment_text)
                 render_pieces.extend(segment_pieces)
             continue
 
+        protected_spans.extend(
+            SourceSpan(span.start + normalized_cursor, span.end + normalized_cursor)
+            for span in segment_protected
+        )
+        normalized_cursor += len(segment_text)
         transformed.append(segment_text)
         render_pieces.extend(segment_pieces)
         segment_recoveries.append(
@@ -439,21 +469,23 @@ def _transform_hangul_with_segment_fallback(text: str, exc: Exception) -> Transf
         normalized_text=normalized_text,
         render_pieces=render_pieces,
         trace=trace,
+        protected_spans=protected_spans,
     )
 
 
 def _transform_fallback_segment(
     text: str, start: int, end: int
-) -> tuple[str, list[RenderPiece]]:
+) -> tuple[str, list[RenderPiece], list[SourceSpan]]:
     segment = text[start:end]
     if not segment:
-        return "", []
+        return "", [], []
     if segment.isspace():
-        return segment, [_preserve_render_piece(segment, start, end)]
+        return segment, [_preserve_render_piece(segment, start, end)], []
     output = _transform_core_with_trace(segment)
     return (
         output.normalized_text,
         [_offset_render_piece(piece, start) for piece in output.render_pieces],
+        output.protected_spans,
     )
 
 
@@ -561,25 +593,12 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
     source_chars = build_source_map(checked_text)
     tokens = tokenize_immutable_spans(checked_text, source_chars)
     validate_token_coverage(checked_text, tokens)
-    bracket_ranges = find_bracket_ranges(checked_text)
+    bracket_ranges = [
+        value for value in find_bracket_ranges(checked_text) if value.single_line
+    ]
     incomplete_bracket_ranges = find_incomplete_bracket_ranges(checked_text)
-    unsupported_parenthesized_spans = unsupported_parenthesized_arithmetic_spans(
-        checked_text
-    )
-    active_bracket_ranges = [
-        bracket_range
-        for bracket_range in bracket_ranges
-        if not any(
-            bracket_range.span.start < span.end
-            and span.start < bracket_range.span.end
-            for span in unsupported_parenthesized_spans
-        )
-    ]
-    presentation_bracket_ranges = [
-        bracket_range
-        for bracket_range in active_bracket_ranges
-        if not is_code_like_curly_bracket(bracket_range)
-    ]
+    active_bracket_ranges = bracket_ranges
+    presentation_bracket_ranges = bracket_ranges
     registry = SurfaceClaimRegistry()
     shadow = build_shadow_buffer(tokens)
     protect_non_parenthesis_brackets_before_claim(
@@ -729,7 +748,12 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
         )
     )
     trace.validation_logs.extend(validation.logs)
-    return TransformOutput(normalized_text=normalized_text, render_pieces=pieces, trace=trace)
+    return TransformOutput(
+        normalized_text=normalized_text,
+        render_pieces=pieces,
+        trace=trace,
+        protected_spans=bracket_filter.protected_spans,
+    )
 
 
 def _apply_sentence_final_slash_punctuation_alias(

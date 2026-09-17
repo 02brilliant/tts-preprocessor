@@ -8,10 +8,10 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected", "blocked_owner"),
     [
-        ("[12.12 사태]", "12.12 사태", "event"),
-        ("사건은 [12.12 사태]입니다", "사건은 12.12 사태입니다", "event"),
-        ("[긴급번호 112는]", "긴급번호 112는", "emergency"),
-        ("[국민콜 110에]", "국민콜 110에", "public_number"),
+        ("[12.12 사태]", '[12.12 사태]', "event"),
+        ("사건은 [12.12 사태]입니다", '사건은 [12.12 사태]입니다', "event"),
+        ("[긴급번호 112는]", '[긴급번호 112는]', "emergency"),
+        ("[국민콜 110에]", '[국민콜 110에]', "public_number"),
     ],
 )
 def test_square_bracket_internal_phase14_claims_are_blocked(

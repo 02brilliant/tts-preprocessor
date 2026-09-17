@@ -59,8 +59,8 @@ def test_malformed_dotted_numbers_preserve_atomically(text: str) -> None:
         ("https://example.com/v/7443.28", "https://example.com/v/7443.28"),
         ("/tmp/7443.28/report", "/tmp/7443.28/report"),
         ("report-7443.28.txt", "report-7443.28.txt"),
-        ("[7443.28]", "7443.28"),
-        ("[5만1839.26]", "5만1839.26"),
+        ("[7443.28]", '[7443.28]'),
+        ("[5만1839.26]", '[5만1839.26]'),
         ("https://example.com/5만1839.26", "https://example.com/5만1839.26"),
         ("/path/5만1839.26/log", "/path/5만1839.26/log"),
     ],
@@ -107,7 +107,7 @@ def test_two_block_dotted_specific_owner_boundaries() -> None:
         ("12.12.1990", "12.12.1990"),
         ("v1.2.3", "v1.2.3"),
         ("docs/2025.01.03/report.md", "docs/2025.01.03/report.md"),
-        ("[2025.01.03]", "2025.01.03"),
+        ("[2025.01.03]", '[2025.01.03]'),
     ],
 )
 def test_three_or_more_dotted_blocks_keep_existing_routing(
@@ -206,19 +206,19 @@ def test_korean_numeric_chain_reads_only_ascii_integer_cores(
 
 
 @pytest.mark.parametrize(
-    "text",
+    ('text', 'expected'),
     [
-        "A1한2",
-        "abc119",
-        "한1글_id",
-        "ㄱ한1글",
-        "한1글/경로",
-        "`5극3특`",
-        '{"값":"한1글"}',
+        ('A1한2', 'A1한2'),
+        ('abc119', 'abc119'),
+        ('한1글_id', '한1글_id'),
+        ('ㄱ한1글', 'ㄱ한1글'),
+        ('한1글/경로', '한1글/경로'),
+        ('`5극3특`', '`5극3특`'),
+        ('{"값":"한1글"}', '"값":"한1글"'),
     ],
 )
-def test_korean_numeric_chain_rejects_code_like_tokens(text: str) -> None:
-    assert transform(text) == text
+def test_korean_numeric_chain_rejects_code_like_tokens(text: str, expected: str) -> None:
+    assert transform(text) == expected
 
 
 @pytest.mark.parametrize(

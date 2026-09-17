@@ -11,8 +11,8 @@ from engine.span_engine import transform, transform_with_trace
         ("㎏", "㎏"),
         ("㎡", "㎡"),
         ("１", "１"),
-        ("[[K:사용자입력]]", "[K:사용자입력]"),
-        ("{{S:사용자입력}}", "{{S:사용자입력}}"),
+        ("[[K:사용자입력]]", '[[K:사용자입력]]'),
+        ("{{S:사용자입력}}", '{S:사용자입력}'),
     ],
 )
 def test_phase7_no_normalization_or_tag_interpretation_regression(
