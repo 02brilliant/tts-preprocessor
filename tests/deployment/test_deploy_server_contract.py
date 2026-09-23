@@ -285,6 +285,9 @@ def _prepare_deploy_tree(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 
     env = os.environ.copy()
     env["PATH"] = f"{fake_bin}:{env['PATH']}"
+    env["DEPLOY_SKIP_REMOTE_API_PROBE"] = "0"
+    env["DEPLOY_SKIP_SOURCE_PYTEST"] = "0"
+    env["DEPLOY_ALLOW_DIRTY"] = "0"
     return tmp_path / "scripts/deploy_server.sh", env, calls
 
 
@@ -333,7 +336,9 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
 
     linux_start = deploy.index("run_remote_build_action prepare")
     macos_start = deploy.index('bash "$MACOS_BUILD_SCRIPT"')
-    first_wait = deploy.index('wait "$LINUX_BUILD_PID"')
+    macos_wait = deploy.index('wait "$MACOS_BUILD_PID"')
+    linux_wait = deploy.index('wait "$LINUX_BUILD_PID"')
+    macos_validate = deploy.index("validate_local_macos_archive &")
     stop = deploy.index("if ! stop_remote_server")
     bytecode_cleanup = deploy.index("if ! clear_remote_python_bytecode")
     publish = deploy.index("if ! run_remote_build_action publish")
@@ -355,12 +360,13 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     )
     rsync_engine = deploy.index('"$ROOT_DIR/engine/"')
 
-    assert linux_start < first_wait
-    assert macos_start < first_wait
+    assert linux_start < macos_wait
+    assert macos_start < macos_wait
+    assert macos_wait < macos_validate < linux_wait
     assert local_probes < remote_preflight < rsync_engine < linux_start
     assert enforce_clean < source_pytest < local_probes
     assert (
-        first_wait
+        linux_wait
         < stop
         < bytecode_cleanup
         < publish
@@ -393,6 +399,9 @@ def test_deploy_contract_has_stop_before_publish_and_deploy_id() -> None:
     assert 'pytest -m "not binary_runtime"' in deploy
     assert "DEPLOY_SKIP_SOURCE_PYTEST" in deploy
     assert "macOS packaged binary core semantic probes" in deploy
+    assert "validate_local_macos_archive &" in deploy
+    assert "DEPLOY_SKIP_REMOTE_API_PROBE" in deploy
+    assert "unset DEPLOY_SKIP_REMOTE_API_PROBE" in deploy
     assert "contextual_number_units.py" not in deploy
     assert "registered_unit_surface.py" not in deploy
 
@@ -745,6 +754,24 @@ def test_start_or_final_check_failure_never_runs_rollback(tmp_path: Path) -> Non
     assert "linux-cleanup" not in events
     assert "rollback" not in SOURCE_DEPLOY.read_text(encoding="utf-8").lower()
     assert "final verification failed" in result.stderr
+
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="deploy execution fixtures require the project Apple Silicon environment",
+)
+def test_skip_remote_api_probe_omits_on_server_suite(tmp_path: Path) -> None:
+    script, env, calls = _prepare_deploy_tree(tmp_path)
+    env["DEPLOY_SKIP_REMOTE_API_PROBE"] = "1"
+
+    result = _run_deploy(script, env)
+
+    assert result.returncode == 0, result.stderr
+    events = _events(calls)
+    assert "final-check" in events
+    assert "linux-cleanup" in events
+    _assert_not_run(events, "api-semantic-probes")
+    assert "Skipping on-server API semantic probes" in result.stdout
 
 
 @pytest.mark.skipif(

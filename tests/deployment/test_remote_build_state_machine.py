@@ -167,6 +167,32 @@ def _prepare_remote_tree(tmp_path: Path) -> tuple[Path, dict[str, str]]:
 
     real_mv = shutil.which("mv")
     assert real_mv
+    real_sha256sum = shutil.which("sha256sum")
+    assert real_sha256sum
+    _write_executable(
+        fake_bin / "sha256sum",
+        f"""
+        #!/usr/bin/env bash
+        set -euo pipefail
+        path="${{1:-}}"
+        if [[ "${{FAKE_STAGING_DIGEST_MISMATCH:-0}}" == "1" \
+          && "$path" == *".tts-preprocessor.prepare."*"/tts-preprocessor-standard" ]]; then
+          printf '%s  %s\\n' \
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+            "$path"
+          exit 0
+        fi
+        if [[ "${{FAKE_PUBLISH_DIGEST_MISMATCH:-0}}" == "1" \
+          && "$path" == *"/app/packages/tts-preprocessor/tts-preprocessor-standard" \
+          && "$path" != *".tts-preprocessor.prepare."* ]]; then
+          printf '%s  %s\\n' \
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" \
+            "$path"
+          exit 0
+        fi
+        exec "{real_sha256sum}" "$@"
+        """,
+    )
     _write_executable(
         fake_bin / "mv",
         f"""
@@ -254,15 +280,16 @@ def test_python_version_mismatch_fails_before_build(tmp_path: Path) -> None:
     _assert_old_release_preserved(root)
 
 
-def test_prepared_probe_failure_cleans_staging_and_preserves_release(
+def test_staging_digest_mismatch_cleans_staging_and_preserves_release(
     tmp_path: Path,
 ) -> None:
     root, env = _prepare_remote_tree(tmp_path)
-    env["FAKE_PROBE_FAILURE"] = "prepared"
+    env["FAKE_STAGING_DIGEST_MISMATCH"] = "1"
 
     result = _run_remote_build(root, env, "prepare")
 
     assert result.returncode != 0
+    assert "staging packaged binary tts-preprocessor-standard SHA-256" in result.stderr
     _assert_old_release_preserved(root)
     assert not (
         root / f"app/packages/.tts-preprocessor.prepare.{DEPLOY_ID}"
@@ -388,12 +415,12 @@ def test_publish_failure_does_not_attempt_automatic_restore(tmp_path: Path) -> N
     ).read_bytes() == b"old-macos"
 
 
-def test_published_probe_failure_keeps_partial_publish_and_reports_it(
+def test_published_digest_mismatch_keeps_partial_publish_and_reports_it(
     tmp_path: Path,
 ) -> None:
     root, env = _prepare_remote_tree(tmp_path)
     _prepare_successfully(root, env)
-    env["FAKE_PROBE_FAILURE"] = "published"
+    env["FAKE_PUBLISH_DIGEST_MISMATCH"] = "1"
 
     result = _run_remote_build(root, env, "publish")
 
@@ -402,7 +429,7 @@ def test_published_probe_failure_keeps_partial_publish_and_reports_it(
         root / "app/packages/tts-preprocessor/tts-preprocessor-standard"
     ).read_text(encoding="utf-8") == "new-package\n"
     assert (root / "app/downloads/tts-preprocessor-linux.zip").is_file()
-    assert "published packaged binary semantic probes failed" in result.stderr
+    assert "published packaged binary tts-preprocessor-standard SHA-256" in result.stderr
     assert "may be partially updated" in result.stderr
 
 

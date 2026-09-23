@@ -111,11 +111,10 @@ Source tests alone are not sufficient. Before the Darwin deployer rsyncs
 build sources, it MUST run the canonical core semantic suite against the
 local worktree source facade. This catches probe/engine drift before any
 remote package is built. The remote Linux build MUST then run the same
-canonical core semantic runner against:
-
-- the dist binary
-- the staging packaged binary
-- the published packaged binary
+canonical core semantic runner against the dist binary. Staging and
+published copies MUST match that probed dist by SHA-256 and still pass
+simplified smoke plus LLM `--check`; they MUST NOT rerun the full core
+suite against identical bytes.
 
 The canonical runner is:
 

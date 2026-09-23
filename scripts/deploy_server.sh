@@ -46,6 +46,7 @@ MACOS_BUILD_LOG=""
 REMOTE_MACOS_TEMP=""
 LINUX_BUILD_PID=""
 MACOS_BUILD_PID=""
+MACOS_VALIDATE_PID=""
 PARALLEL_BUILDS_ACTIVE=false
 
 RSYNC_COMMON_ARGS=(
@@ -139,7 +140,12 @@ run_source_pytest() {
   fi
 
   echo "[deploy] Running source pytest (-m not binary_runtime)..."
-  if ! PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" -m pytest -m "not binary_runtime" -q; then
+  if ! (
+    unset DEPLOY_SKIP_REMOTE_API_PROBE
+    unset DEPLOY_SKIP_SOURCE_PYTEST
+    unset DEPLOY_ALLOW_DIRTY
+    PYTHONPATH="$ROOT_DIR" "$PROJECT_PYTHON" -m pytest -m "not binary_runtime" -q
+  ); then
     echo "[deploy][ERROR] Source pytest failed. Deployment aborted." >&2
     exit 1
   fi
@@ -180,7 +186,7 @@ terminate_parallel_builds() {
   fi
 
   echo "[deploy][ERROR] Received $signal_name; terminating parallel build children." >&2
-  for child_pid in "$LINUX_BUILD_PID" "$MACOS_BUILD_PID"; do
+  for child_pid in "$LINUX_BUILD_PID" "$MACOS_BUILD_PID" "$MACOS_VALIDATE_PID"; do
     if [[ -n "$child_pid" ]] && kill -0 "$child_pid" 2>/dev/null; then
       # Job control normally gives each background build its own process group.
       # Some non-interactive shells do not, so fall back to the direct child PID
@@ -189,7 +195,7 @@ terminate_parallel_builds() {
     fi
   done
   set +e
-  for child_pid in "$LINUX_BUILD_PID" "$MACOS_BUILD_PID"; do
+  for child_pid in "$LINUX_BUILD_PID" "$MACOS_BUILD_PID" "$MACOS_VALIDATE_PID"; do
     if [[ -n "$child_pid" ]]; then
       wait "$child_pid" 2>/dev/null
     fi
@@ -198,6 +204,7 @@ terminate_parallel_builds() {
   PARALLEL_BUILDS_ACTIVE=false
   LINUX_BUILD_PID=""
   MACOS_BUILD_PID=""
+  MACOS_VALIDATE_PID=""
   set +m
   best_effort_remote_cleanup || true
   echo "[deploy][ERROR] Publish, server stop, desktop deletion, upload, and server start were not run." >&2
@@ -245,6 +252,11 @@ REMOTE
 }
 
 run_remote_api_semantic_probes() {
+  if [[ "${DEPLOY_SKIP_REMOTE_API_PROBE:-0}" == "1" ]]; then
+    echo "[deploy] Skipping on-server API semantic probes (DEPLOY_SKIP_REMOTE_API_PROBE=1)."
+    return 0
+  fi
+
   ssh -- "$SSH_TARGET" bash -s -- "$REMOTE_BASE_DIR" <<'REMOTE'
 set -euo pipefail
 remote_base_dir="$1"
@@ -534,30 +546,42 @@ trap 'terminate_parallel_builds INT' INT
 trap 'terminate_parallel_builds TERM' TERM
 
 set +e
-wait "$LINUX_BUILD_PID"
-LINUX_BUILD_STATUS=$?
 wait "$MACOS_BUILD_PID"
 MACOS_BUILD_STATUS=$?
+MACOS_VALIDATE_STATUS=0
+if [[ "$MACOS_BUILD_STATUS" -eq 0 ]]; then
+  echo "[deploy] macOS build succeeded; validating the ZIP while Linux prepare continues..."
+  validate_local_macos_archive &
+  MACOS_VALIDATE_PID=$!
+fi
+wait "$LINUX_BUILD_PID"
+LINUX_BUILD_STATUS=$?
+if [[ -n "$MACOS_VALIDATE_PID" ]]; then
+  wait "$MACOS_VALIDATE_PID"
+  MACOS_VALIDATE_STATUS=$?
+fi
 set -e
 PARALLEL_BUILDS_ACTIVE=false
 LINUX_BUILD_PID=""
 MACOS_BUILD_PID=""
+MACOS_VALIDATE_PID=""
 set +m
 trap - INT TERM
 
-if [[ "$LINUX_BUILD_STATUS" -ne 0 || "$MACOS_BUILD_STATUS" -ne 0 ]]; then
+if [[ "$LINUX_BUILD_STATUS" -ne 0 \
+  || "$MACOS_BUILD_STATUS" -ne 0 \
+  || "$MACOS_VALIDATE_STATUS" -ne 0 ]]; then
   best_effort_remote_cleanup || true
   echo "[deploy][ERROR] Parallel build stage failed; the existing server and production artifacts were retained." >&2
   echo "[deploy][ERROR] Linux prepare status: $LINUX_BUILD_STATUS (log: $LINUX_BUILD_LOG)" >&2
   echo "[deploy][ERROR] macOS build status: $MACOS_BUILD_STATUS (log: $MACOS_BUILD_LOG)" >&2
+  echo "[deploy][ERROR] macOS ZIP probe status: $MACOS_VALIDATE_STATUS" >&2
   echo "[deploy][ERROR] Server stop, publish, desktop deletion, upload, and server start were not run." >&2
   exit 1
 fi
-echo "[deploy][OK] Linux prepare and macOS build both succeeded."
+echo "[deploy][OK] Linux prepare, macOS build, and macOS ZIP probes succeeded."
 echo "[deploy] Linux log: $LINUX_BUILD_LOG"
 echo "[deploy] macOS log: $MACOS_BUILD_LOG"
-
-validate_local_macos_archive
 
 echo "[deploy] Stopping the server before Linux publish..."
 if ! stop_remote_server; then

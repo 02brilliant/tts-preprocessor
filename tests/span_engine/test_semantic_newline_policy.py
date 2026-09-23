@@ -24,6 +24,14 @@ def test_blank_line_does_not_duplicate_existing_comma() -> None:
     )
 
 
+@pytest.mark.parametrize("blank_line", ["\n  \n", "\r\n\t\r\n", "\n \n \n"])
+def test_whitespace_only_blank_lines_join_with_one_space(blank_line: str) -> None:
+    text = f"지역에 대해{blank_line}미국의 새 전략"
+    expected = "지역에 대해, 미국의 새 전략"
+    assert normalize_user_newline_semantics(text) == expected
+    assert transform(text) == expected
+
+
 def test_comma_is_preserved_while_visual_newline_joins() -> None:
     assert transform("오키나와,\n타이완") == "오키나와, 타이완"
 

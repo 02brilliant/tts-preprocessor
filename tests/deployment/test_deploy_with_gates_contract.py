@@ -26,13 +26,15 @@ def test_deploy_with_gates_script_exists_and_wraps_deploy_server() -> None:
     assert "DEPLOY_COMMIT_MESSAGE" in script
     assert "git -C" in script and "commit -m" in script
     assert "DEPLOY_EXTERNAL_API_PROBE" in script
+    assert "DEPLOY_SKIP_REMOTE_API_PROBE" in script
     assert "DEPLOY_SERVER_HOST" in script
     assert "run_semantic_probes.py" in script
     assert "--runtime api" in script
     assert "check_server.sh" not in script
     commit_index = script.index("commit_packaged_worktree_if_needed")
+    skip_remote_api = script.index("DEPLOY_SKIP_REMOTE_API_PROBE")
     deploy_index = script.index('bash "$DEPLOY_SERVER_SCRIPT"')
-    assert commit_index < deploy_index
+    assert commit_index < skip_remote_api < deploy_index
 
 
 def test_deploy_with_gates_commits_the_same_packaged_pathspec_as_deploy_server() -> None:

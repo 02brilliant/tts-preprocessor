@@ -143,16 +143,19 @@ def test_source_free_runtime_and_semantic_probe_contracts_remain() -> None:
         'run_semantic_probe_set "$BUILD_SRC_DIR/dist/tts-preprocessor-standard" "dist binary"'
         in remote_build
     )
+    assert "assert_linux_package_matches_probed_dist" in remote_build
+    assert '"staging packaged binary"' in remote_build
+    assert '"published packaged binary"' in remote_build
     assert (
         'run_semantic_probe_set \\\n'
         '    "$PREPARED_PACKAGE_DIR/tts-preprocessor-standard" \\\n'
         '    "staging packaged binary"'
-        in remote_build
+        not in remote_build
     )
     assert (
         'run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor-standard" '
         '"published packaged binary"'
-        in remote_build
+        not in remote_build
     )
     assert "--runtime binary" in remote_build
     assert '"$BUILD_SRC_DIR"' in remote_build

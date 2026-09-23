@@ -63,6 +63,10 @@ commit_packaged_worktree_if_needed() {
 
 echo "[deploy-gates] Running integrated deployment gates..."
 commit_packaged_worktree_if_needed
+if [[ "${DEPLOY_EXTERNAL_API_PROBE:-1}" == "1" ]]; then
+  export DEPLOY_SKIP_REMOTE_API_PROBE="${DEPLOY_SKIP_REMOTE_API_PROBE:-1}"
+  echo "[deploy-gates] On-server API core probes will be skipped; the public API suite runs after deploy."
+fi
 bash "$DEPLOY_SERVER_SCRIPT"
 
 if [[ "${DEPLOY_EXTERNAL_API_PROBE:-1}" == "1" ]]; then

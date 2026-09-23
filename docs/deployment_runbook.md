@@ -168,8 +168,9 @@ bash scripts/deploy_server.sh
    `scripts/probes/` canonical probe set, release README와 다음 시작에 쓸
    server control script 전송
 6. 고유 deploy ID로 원격 Linux `prepare`와 로컬 macOS arm64 빌드를 병렬 시작
-7. 두 PID를 모두 `wait`하고 각 종료 코드 확인
-8. 두 작업 모두 성공한 경우에만 로컬 macOS ZIP 재검증
+7. macOS 빌드가 먼저 성공하면 Linux prepare가 끝나기 전에 로컬 macOS ZIP
+   core semantic probe를 시작한다
+8. Linux prepare와 macOS ZIP probe가 모두 성공한 뒤에만 publish로 진행
 9. 서버 중지
 10. 검증된 Linux staging package와 ZIP publish
 11. staging된 `start_server.sh`, `stop_server.sh`를 운영 scripts에 설치
@@ -180,7 +181,9 @@ bash scripts/deploy_server.sh
 15. 운영 `app/`에 남은 `engine/`, `docs/` 제거
 16. 서버 시작
 17. Web, Linux ZIP, macOS ZIP, API docs, API transform sanity 검증
-18. 실행 중인 API에 canonical core semantic probe 전체 실행
+18. 실행 중인 API에 canonical core semantic probe 전체 실행.
+   `deploy_with_gates.sh`는 이 서버 로컬 스위트를 건너뛰고 공개 URL로
+   같은 core suite를 한 번만 실행한다
 19. 해당 deploy ID의 staging과 임시 `buildsrc` 정리
 
 Windows ZIP은 이 통합 배포에서 만들거나 업로드하지 않는다.
@@ -202,7 +205,8 @@ bash scripts/build_remote_package.sh cleanup <deploy-id>
 1. Linux dist PyInstaller 빌드
 2. dist binary core semantic probe
 3. deploy-ID별 staging package 생성
-4. staging packaged binary core semantic probe
+4. staging 바이너리 SHA-256이 probed dist와 같은지 확인, simplified
+   smoke와 LLM `--check` 유지
 5. staging Linux ZIP 생성 및 구조 검증
 6. ZIP SHA-256이 포함된 prepare marker 생성 및 재검증
 
@@ -218,7 +222,8 @@ tts-preprocessor/tts-preprocessor-simplified
 
 `publish`는 서버가 중지된 후에만 실행한다. marker의 deploy ID, staging 경로,
 ZIP SHA-256과 ZIP 구조를 다시 확인한 뒤 운영 package와 Linux ZIP을 순서대로
-교체하고 published binary core semantic probe를 실행한다.
+교체하고 published 바이너리가 probed dist와 같은 SHA-256인지 확인한 다음
+simplified smoke와 LLM `--check`를 실행한다.
 
 publish 단계에는 backup 또는 자동 rollback이 없다. publish 실패 시 서버를
 다시 시작하지 않으며 현재 운영 package와 Linux ZIP이 부분 반영됐을 수 있다.
@@ -230,9 +235,9 @@ publish 단계에는 backup 또는 자동 rollback이 없다. publish 실패 시
 
 ### 2.2 중단과 실패 상태
 
-병렬 빌드 중 `INT` 또는 `TERM`을 받으면 두 자식 프로세스를 종료하고
-`wait`한다. publish, 서버 중지, desktop 삭제, 업로드, 서버 시작은 실행하지
-않는다.
+병렬 빌드 또는 겹쳐 실행 중인 macOS ZIP probe 중 `INT` 또는 `TERM`을
+받으면 해당 자식 프로세스를 종료하고 `wait`한다. publish, 서버 중지,
+desktop 삭제, 업로드, 서버 시작은 실행하지 않는다.
 
 자동 rollback은 어떤 publish 이후 실패에도 수행하지 않는다.
 
@@ -427,5 +432,5 @@ downloads/tts-preprocessor-linux.zip
 ```
 
 운영 Linux 호환성 판단은 Ubuntu 22.04 서버의 기존 Python 3.13
-`buildenv`와 dist, staging packaged, published packaged core semantic
-probe 결과를 기준으로 한다.
+`buildenv`, dist core semantic probe, 그리고 staging/published 바이너리가
+그 dist와 같은 SHA-256인지로 한다.

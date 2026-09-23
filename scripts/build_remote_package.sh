@@ -289,6 +289,29 @@ run_integrated_asset_check() {
   echo "[remote-build][OK] $label bundled assets passed."
 }
 
+assert_linux_package_matches_probed_dist() {
+  local package_dir="$1"
+  local label="$2"
+  local name
+  local dist_digest
+  local package_digest
+
+  for name in \
+    tts-preprocessor-standard \
+    tts-preprocessor-simplified \
+    tts-preprocessor-standard-llm \
+    tts-preprocessor-natural-llm
+  do
+    dist_digest="$(calculate_sha256 "$BUILD_SRC_DIR/dist/$name")"
+    package_digest="$(calculate_sha256 "$package_dir/$name")"
+    if [[ "$dist_digest" != "$package_digest" ]]; then
+      echo "[remote-build][ERROR] $label $name SHA-256 does not match the probed dist binary." >&2
+      return 1
+    fi
+  done
+  echo "[remote-build][OK] $label binaries match the probed dist SHA-256."
+}
+
 prepare_linux_release() {
   local archive_digest
   local simplified_smoke_actual
@@ -349,8 +372,8 @@ prepare_linux_release() {
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-standard-llm"
   chmod +x "$PREPARED_PACKAGE_DIR/tts-preprocessor-natural-llm"
-  run_semantic_probe_set \
-    "$PREPARED_PACKAGE_DIR/tts-preprocessor-standard" \
+  assert_linux_package_matches_probed_dist \
+    "$PREPARED_PACKAGE_DIR" \
     "staging packaged binary"
   simplified_smoke_actual="$("$PREPARED_PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
   if [[ "$simplified_smoke_actual" != "ABC와 삼-킬로그램" ]]; then
@@ -413,7 +436,9 @@ publish_linux_release() {
   rm -f -- "$ARCHIVE_PATH"
   mv -- "$PREPARED_ARCHIVE" "$ARCHIVE_PATH"
 
-  run_semantic_probe_set "$PACKAGE_DIR/tts-preprocessor-standard" "published packaged binary"
+  assert_linux_package_matches_probed_dist \
+    "$PACKAGE_DIR" \
+    "published packaged binary"
   simplified_smoke_actual="$("$PACKAGE_DIR/tts-preprocessor-simplified" --text "ABC와 3kg")"
   if [[ "$simplified_smoke_actual" != "ABC와 삼-킬로그램" ]]; then
     echo "[remote-build][ERROR] Published simplified binary smoke failed." >&2
