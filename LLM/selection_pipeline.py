@@ -39,8 +39,15 @@ _GENERIC_GUIDANCE = {
         "자연스러울 때만 선택한다."
     ),
     "compound_boundary": (
-        "긴 복합명사의 의미 경계가 명확하고 TTS 오독 방지에 필요할 때만 "
-        "하이픈 후보 하나를 선택한다."
+        "등록 명사·의미 단위의 공통 경계 또는 검토된 전문용어의 정확한 결합 "
+        "경계만 제시한 선택 후보이며 적용 의무는 없다. "
+        "문장 전체에서 수식어와 핵심 명사구의 계층을 확인하고, 최상위 의미 경계를 "
+        "우선 검토한다. 국가·지역 이름이나 독립된 기관명 뒤의 짧은 경계도 핵심 "
+        "명사구가 한 덩어리일 때 자연스러울 수 있다. 길이 균형은 의미 우선순위가 "
+        "아니므로 첫 후보를 자동 선택하지 않는다. 단어 길이와 뜻상 필요한 경우 "
+        "여러 경계가 있는 분할안도 고를 수 있지만 핵심 명사구를 불필요하게 "
+        "쪼개지 않는다. 기관명·제품명 같은 고유명사도 명사 결합의 경계가 명확하면 "
+        "선택할 수 있다. 실제 발화에 도움이 되지 않거나 해석이 불확실하면 생략한다."
     ),
     "prosody_comma": (
         "긴 문장의 호흡과 의미 단위가 명확할 때만 쉼표를 선택한다. "
@@ -246,6 +253,12 @@ def build_selection_plan(
                 "문맥상 확실할 때만 허용된 후보를 선택하고 불확실하면 유지한다.",
             )
         )
+        if kind == "compound_boundary_or_natural_speech_contraction":
+            guidance = (
+                _GENERIC_GUIDANCE["compound_boundary"] + " "
+                + _GENERIC_GUIDANCE["natural_speech_contraction"]
+                + " 하이픈과 축약은 제시된 대안 중 하나만 선택하고 결합하지 않는다."
+            )
         candidates.append(
             SelectionCandidate(
                 candidate_id="",

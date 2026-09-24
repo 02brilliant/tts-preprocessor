@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from functools import lru_cache
 import re
 
+from LLM.compound_boundary import (
+    build_compound_mutations,
+    build_locked_acronym_compound_mutations,
+)
 from LLM.standard_pronunciation import entries_for_mode
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
 
@@ -62,17 +66,6 @@ _CONTEXTUAL_PRESERVE_PHRASES = {
         "대가로 불리",
     ),
 }
-_COMPOUND_GRAMMATICAL_TAIL_RE = re.compile(
-    r"(?:"
-    r"했습니다|하였습니다|합니다|됩니다|되었습니다|입니다|"
-    r"이었다|이었어요|이었는데|이었지만|이에요|이어서|이세요|이셨다|"
-    r"습니다|습니까|어요|아요|였다|였어요|였는데|였지만|"
-    r"이라고|이라면|이라서|이며|이고|"
-    r"으로는|에서는|에게는|까지는|부터는|"
-    r"으로|에서|에게|까지|부터|처럼|보다|"
-    r"은|는|이|가|을|를|의|에|와|과|도|만|로"
-    r")+$"
-)
 _HANGUL_WORD_RE = re.compile(r"[가-힣]+")
 _CONTRACTION_TAILS = {
     "이었다": "였다",
@@ -105,7 +98,8 @@ def build_allowed_mutations(
     if stage not in {3, 4}:
         raise ValueError("stage must be 3 or 4")
 
-    candidates: list[AllowedMutation] = []
+    candidates = build_compound_mutations(normalized_text)
+    candidates.extend(build_locked_acronym_compound_mutations(normalized_text, snapshot))
     for word_match in _HANGUL_WORD_RE.finditer(normalized_text):
         word = word_match.group(0)
 
@@ -116,27 +110,6 @@ def build_allowed_mutations(
             )
             if contraction is not None:
                 candidates.append(contraction)
-
-        compound_tail = _COMPOUND_GRAMMATICAL_TAIL_RE.search(word)
-        stem_end = len(word) if compound_tail is None else compound_tail.start()
-        compound_stem = word[:stem_end]
-        compound_tail_text = word[stem_end:]
-        if len(compound_stem) >= 6:
-            candidates.append(
-                AllowedMutation(
-                    start=word_match.start(),
-                    end=word_match.end(),
-                    kind="compound_boundary",
-                    source_text=word,
-                    allowed_outputs=tuple(
-                        compound_stem[:index]
-                        + "-"
-                        + compound_stem[index:]
-                        + compound_tail_text
-                        for index in range(2, len(compound_stem) - 1)
-                    ),
-                )
-            )
 
     if stage >= 4:
         contextual = _entry_mutations(
@@ -475,8 +448,8 @@ def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutatio
         "compound_boundary": 2,
     }
     # Different stage policies can legitimately target the same complete span
-    # (for example, a long compound ending in ``입니다`` may allow either one
-    # compound-boundary hyphen or the closed ``이다`` contraction).  Preserve
+    # (for example, a long compound ending in ``입니다`` may allow either a
+    # compound-boundary layout or the closed ``이다`` contraction).  Preserve
     # those as mutually exclusive whole-span alternatives.  This does not
     # authorize chaining the two rewrites.
     coalesced: dict[tuple[int, int, str], AllowedMutation] = {}
@@ -486,6 +459,19 @@ def _resolve_overlaps(candidates: list[AllowedMutation]) -> tuple[AllowedMutatio
         if existing is None:
             coalesced[key] = candidate
             continue
+        if {existing.kind, candidate.kind} == {
+            "compound_boundary", "natural_speech_contraction"
+        }:
+            compound = next(
+                item for item in (existing, candidate)
+                if item.kind == "compound_boundary"
+            )
+            # A single agreed noun boundary is the more useful TTS cue than
+            # optional ``입니다`` contraction. Keep the boundary optional, but
+            # do not offer the contraction as a competing whole-word reading.
+            if len(compound.allowed_outputs) == 1:
+                coalesced[key] = compound
+                continue
         preferred = min(
             (existing, candidate),
             key=lambda item: priority.get(item.kind, 9),
