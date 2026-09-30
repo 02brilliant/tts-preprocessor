@@ -42,11 +42,11 @@ POLICY_CASES = [
         reason="Twenty-nine is the upper regular native boundary for hybrid-safe counters.",
     ),
     TextCase(
-        case_id="counter-hybrid-30-special-boundary",
+        case_id="counter-quantity-30-native-form",
         text="30명",
         expected="서른-명",
         rule="counter noun / boundary",
-        reason="Thirty is the last native special-case form before the sino fallback begins.",
+        reason="Thirty retains its native determiner form for confirmed quantities.",
     ),
     TextCase(
         case_id="counter-hybrid-31-native-reading",
@@ -56,11 +56,11 @@ POLICY_CASES = [
         reason="Thirty-one remains inside the canonical native range for the registered hybrid-safe counter 명.",
     ),
     TextCase(
-        case_id="counter-nonhybrid-57-gae-sino-fallback",
+        case_id="counter-quantity-57-gae-native",
         text="57개",
-        expected="오십칠-개",
-        rule="counter noun / negative",
-        reason="개 is hybrid-safe only up to 30, so 57 must use the sino fallback.",
+        expected="쉰일곱-개",
+        rule="counter noun / confirmed quantity",
+        reason="The approved exact quantity counter 개 uses native determiners through 99.",
     ),
     TextCase(
         case_id="counter-nonhybrid-floor-remains-sino",

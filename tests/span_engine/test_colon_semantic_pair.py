@@ -45,7 +45,7 @@ def test_colon_semantic_pair_comma_and_large_number_positive_contexts():
         ("1,000:2,000 비율", "천 대 이천 비율"),
         (
             "99,999,999:1 축척",
-            "구천-구백구십구만 구천-구백구십구 대 일 축척",
+            "구천구백구십구만 구천구백구십구 대 일 축척",
         ),
     ]
     for source, expected in cases:

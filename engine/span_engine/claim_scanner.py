@@ -57,6 +57,7 @@ from engine.span_engine.duration import scan_duration_candidates
 from engine.span_engine.emergency import scan_emergency_candidates
 from engine.span_engine.event import scan_event_candidates
 from engine.span_engine.fraction import (
+    scan_fraction_mankeum_candidates,
     scan_fraction_candidates,
     scan_textual_fraction_candidates,
 )
@@ -489,6 +490,7 @@ def claim_surfaces(
             )
         )
     candidates.extend(_claim_scanned_candidates(scan_compound_signed_number_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
+    candidates.extend(_claim_scanned_candidates(scan_fraction_mankeum_candidates(raw_text, excluded_ranges), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_malformed_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(scan_contextual_large_unit_collision_candidates(raw_text), registry, excluded_ranges))
     candidates.extend(_claim_scanned_candidates(large_unit_counter_candidates, registry, excluded_ranges))

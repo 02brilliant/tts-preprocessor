@@ -56,6 +56,8 @@ def render_tokens_with_surfaces(
             raise ValueError("surfaces must not overlap")
         pieces.extend(_render_original_range(raw_text, tokens, cursor, surface.span.start))
         if surface.render_pieces is not None:
+            if surface.numeric_plan is not None and surface.render_pieces:
+                surface.render_pieces[0].numeric_plans = (surface.numeric_plan,)
             pieces.extend(surface.render_pieces)
         else:
             pieces.append(
@@ -65,6 +67,7 @@ def render_tokens_with_surfaces(
                     source_span=surface.span,
                     owner=surface.owner,
                     metadata={"surface_type": surface.surface_type},
+                    numeric_plans=() if surface.numeric_plan is None else (surface.numeric_plan,),
                 )
             )
         cursor = surface.span.end

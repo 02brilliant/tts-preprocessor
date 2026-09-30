@@ -152,7 +152,7 @@ def test_ampersand_acronym_markdown_fence_is_protected() -> None:
         ('40.0대', '사십-쩜-영-대', "contextual_number_unit"),
         ('40.5대', '사십-쩜-오-대', "contextual_number_unit"),
         ("1,000대", "천-대", "counter_noun"),
-        ('6,700대,', '육천-칠백-대,', "counter_noun"),
+        ('6,700대,', '육천칠백-대,', "counter_noun"),
         ("40대 남성", "사십-대 남성", "contextual_number_unit"),
         ("100대 명소", "백-대 명소", "counter_noun"),
     ],
@@ -288,8 +288,8 @@ def test_required_numeric_dae_sentence_uses_counter_and_quantity_sequence() -> N
         "자동차는 모두 6,700대 12,500입니다."
     )
     expected = (
-        "자동차는 모두 육천-칠백-대, 만 이천오백입니다. "
-        "자동차는 모두 육천-칠백-대 만이천오백입니다."
+        "자동차는 모두 육천칠백-대, 만 이천오백입니다. "
+        "자동차는 모두 육천칠백-대 만이천오백입니다."
     )
 
     assert transform(text) == expected

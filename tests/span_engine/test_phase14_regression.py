@@ -41,4 +41,4 @@ def test_phase14_unsupported_or_ambiguous_inputs_preserve(text: str) -> None:
 
 
 def test_phase14_range_compatible_korean_suffix_transform() -> None:
-    assert transform("3~8명") == "삼에서 팔-명"
+    assert transform("3~8명") == "세-명에서 여덟-명"

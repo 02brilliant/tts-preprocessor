@@ -41,8 +41,11 @@ from LLM.selection_pipeline import (
     build_selection_plan,
     recover_selection_response,
     compose_selection,
+    selection_numeric_annotations,
 )
 from LLM.validation_models import NormalizationSnapshot, ValidationIssue
+from engine.span_engine.numeric_plan import NumericAnnotation
+from LLM.provenance import minimal_snapshot
 from LLM.stage_mapping import stage_for_prompt_level
 from LLM.vllm_client import (
     VllmClientError,
@@ -68,6 +71,7 @@ class LLMStageResult:
     completion_tokens: int | None = None
     llm_status: str = "applied"
     fallback_reason: str | None = None
+    numeric_annotations: tuple[NumericAnnotation, ...] = ()
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -166,6 +170,7 @@ def transform(
             validation_issues=(issue,),
             llm_status=status,
             fallback_reason=issue.code,
+            numeric_annotations=() if snapshot is None else snapshot.numeric_annotations,
         )
     batches = getattr(result, "batches", ()) or ((selection_plan, result.text),)
     accepted = []
@@ -239,6 +244,10 @@ def transform(
         completion_tokens=result.completion_tokens,
         llm_status=llm_status,
         fallback_reason=fallback_reason,
+        numeric_annotations=selection_numeric_annotations(
+            snapshot or minimal_snapshot(normalized_text), plan=selection_plan,
+            decisions=tuple(retained) if speech_text != normalized_text else (),
+        ),
     )
 
 

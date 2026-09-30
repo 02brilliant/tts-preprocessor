@@ -117,6 +117,8 @@ def parse_candidates(raw_text: str, candidates: list[SurfaceCandidate]) -> list[
             raise TypeError("candidates must contain SurfaceCandidate")
         surface = _parse_candidate(raw_text, candidate)
         if surface is not None:
+            from engine.span_engine.numeric_plan import build_numeric_plan
+            surface.numeric_plan = build_numeric_plan(raw_text, candidate, surface.reading or "")
             surfaces.append(surface)
     return surfaces
 
@@ -190,6 +192,15 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         reading = parse_percent_point_candidate(raw_text, candidate)
     elif candidate.owner == "fraction":
         reading = parse_fraction_candidate(raw_text, candidate)
+        if reading is not None and "mankeum_span" in candidate.metadata:
+            suffix = candidate.metadata["mankeum_span"]
+            tail = raw_text[suffix.start:suffix.end]
+            pieces = [
+                RenderPiece(reading, "GENERATED_READING", candidate.metadata["fraction_span"], "fraction"),
+                RenderPiece(tail, "ORIGINAL_KOREAN", suffix, "fraction"),
+            ]
+            return Surface(candidate.surface_type, "fraction", raw, candidate.core_span,
+                           reading + tail, pieces, metadata=_surface_metadata(candidate))
     elif candidate.owner == "textual_fraction":
         return parse_textual_fraction_candidate(raw_text, candidate)
     elif candidate.owner == "basic_arithmetic_expression":
@@ -242,6 +253,18 @@ def _parse_candidate(raw_text: str, candidate: SurfaceCandidate) -> Surface | No
         "multi_colon_numeric",
     }:
         reading = parse_range_candidate(raw_text, candidate)
+        if candidate.metadata.get("count_readings") is not None:
+            first, last = candidate.metadata["count_readings"]
+            pieces = [
+                RenderPiece(first, "GENERATED_READING", candidate.metadata["left_span"], "range"),
+                RenderPiece(candidate.metadata["suffix"], "GENERATED_READING",
+                            candidate.metadata["suffix_span"], "range",
+                            {"rule_id": "COUNT_RANGE_REPEAT_UNIT", "generated_unit_copy": True}),
+                RenderPiece("에서 ", "GENERATED_READING", None, "range"),
+                RenderPiece(last, "GENERATED_READING", candidate.metadata["right_span"], "range"),
+            ]
+            return Surface(candidate.surface_type, "range", raw, candidate.core_span,
+                           reading, pieces, metadata=_surface_metadata(candidate))
     elif candidate.owner == "compound_slash_unit":
         reading = parse_compound_slash_unit_candidate(raw_text, candidate)
     elif candidate.owner == "compound_exact_unit":

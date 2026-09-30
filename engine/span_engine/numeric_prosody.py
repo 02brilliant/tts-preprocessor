@@ -52,45 +52,9 @@ def format_decimal_prosody_suffix(fractional_part: str) -> str:
 
 
 def apply_compact_group_prosody(reading: str) -> str:
+    """Keep each spoken four-digit integer group intact."""
     if not isinstance(reading, str):
         raise TypeError("reading must be str")
-    if not reading:
-        return reading
-
-    for unit in ("천", "백", "십"):
-        index = reading.find(unit)
-        if index == -1:
-            continue
-        head = reading[: index + 1]
-        tail = reading[index + 1 :]
-        if not tail:
-            continue
-        if unit == "천":
-            cheon_prefix = head[:-1]
-            has_lower = any(marker in tail for marker in ("백", "십"))
-            if has_lower and cheon_prefix in (
-                "삼",
-                "사",
-                "오",
-                "육",
-                "칠",
-                "팔",
-                "구",
-            ):
-                return (
-                    f"{head}{INTERNAL_PROSODY_BREAK}"
-                    f"{apply_compact_group_prosody(tail)}"
-                )
-            continue
-        if unit == "백" and len(reading) > 7 and (
-            "십" in tail or len(tail) >= 3
-        ):
-            return (
-                f"{head}{INTERNAL_PROSODY_BREAK}"
-                f"{apply_compact_group_prosody(tail)}"
-            )
-        if unit == "십" and len(reading) > 7 and len(tail) >= 2:
-            return f"{head}{INTERNAL_PROSODY_BREAK}{tail}"
     return reading
 
 

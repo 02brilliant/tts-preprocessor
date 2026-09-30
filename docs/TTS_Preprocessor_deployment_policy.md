@@ -1,5 +1,16 @@
 # TTS Preprocessor Deployment Policy
 
+## Numeric evidence asset (2026-10-01)
+
+All four existing executable specs include the package-local asset
+`engine/span_engine/data/numeric_vowels.json`. The internal loader resolves it
+relative to its bundled module, with no dictionary network call at runtime.
+Adding this asset does not change source-free production, executable names,
+API-to-binary routing, or build ownership. Source tests check all four specs and
+the loader schema. Source validation on macOS does not establish Linux frozen
+runtime validity; binary-runtime verification belongs to the existing release gates.
+The numeric metadata change itself does not require running deployment scripts.
+
 This is the authoritative long-term deployment and runtime policy. Concrete
 commands, host addresses, and incident procedures belong in
 `docs/deployment_runbook.md`.

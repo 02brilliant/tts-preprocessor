@@ -13,7 +13,9 @@ a = Analysis(
     [str(ROOT_DIR / "bin" / "build_simplified_binary_entrypoint.py")],
     pathex=[str(ROOT_DIR)],
     binaries=[],
-    datas=[],
+    datas=[
+        (str(ROOT_DIR / "engine" / "span_engine" / "data" / "numeric_vowels.json"), "engine/span_engine/data"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

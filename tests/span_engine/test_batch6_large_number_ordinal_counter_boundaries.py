@@ -8,8 +8,8 @@ from engine.span_engine.transform import transform_with_trace
 
 def test_batch6_supported_large_number_width_ends_at_gyeong() -> None:
     assert transform("99999999999999999999") == (
-        "구천-구백구십구경 구천-구백구십구조 구천-구백구십구억 "
-        "구천-구백구십구만 구천-구백구십구"
+        "구천구백구십구경 구천구백구십구조 구천구백구십구억 "
+        "구천구백구십구만 구천구백구십구"
     )
 
 

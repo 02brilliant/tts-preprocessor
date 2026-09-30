@@ -62,7 +62,7 @@ def test_decimal_prosody_e2e(source: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("reading", "expected"),
     [
-        ("삼천이백십삼", "삼천-이백십삼"),
+        ("삼천이백십삼", "삼천이백십삼"),
         ("천이백삼십사", "천이백삼십사"),
         ("만", "만"),
         ("일", "일"),
@@ -75,8 +75,8 @@ def test_apply_compact_group_prosody(reading: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("334억 8천만 3213", "삼백삼십사억 팔천만 삼천-이백십삼"),
-        ("123,456", "십이만 삼천-사백오십육"),
+        ("334억 8천만 3213", "삼백삼십사억 팔천만 삼천이백십삼"),
+        ("123,456", "십이만 삼천사백오십육"),
     ],
 )
 def test_spaced_integer_prosody_e2e(source: str, expected: str) -> None:
@@ -85,8 +85,8 @@ def test_spaced_integer_prosody_e2e(source: str, expected: str) -> None:
 
 def test_apply_spaced_integer_prosody_on_plain_spaced_reading() -> None:
     assert apply_spaced_integer_prosody("만 이천삼백사십오") == "만 이천삼백사십오"
-    assert apply_spaced_integer_prosody("십이만 삼천사백오십육") == "십이만 삼천-사백오십육"
+    assert apply_spaced_integer_prosody("십이만 삼천사백오십육") == "십이만 삼천사백오십육"
 
 
 def test_read_spaced_integer_text_applies_group_prosody() -> None:
-    assert read_spaced_integer_text("123456") == "십이만 삼천-사백오십육"
+    assert read_spaced_integer_text("123456") == "십이만 삼천사백오십육"

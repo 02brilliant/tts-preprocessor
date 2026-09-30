@@ -7,6 +7,7 @@ from engine.span_engine.brackets import BracketRange
 from engine.span_engine.models import RenderPiece, SourceSpan, Surface, SurfaceCandidate
 from engine.span_engine.numeric_reading import read_fraction_text
 from engine.span_engine.residual_spacing import needs_residual_hangul_space
+from engine.span_engine.residual_spacing import _residual_tail_boundary_ok
 from engine.span_engine.signed_numeric import (
     SIGNED_OWNER_POLICIES,
     apply_sign_profile,
@@ -84,6 +85,29 @@ def scan_fraction_candidates(
             )
         )
     return candidates
+
+
+def scan_fraction_mankeum_candidates(
+    raw_text: str, excluded_ranges: list[BracketRange] | None = None
+) -> list[SurfaceCandidate]:
+    """Exact suffix exception before the malformed large-unit (4만...) gate."""
+    result = []
+    for candidate in scan_fraction_candidates(raw_text, excluded_ranges):
+        end = candidate.core_span.end
+        if candidate.owner != "fraction" or not raw_text.startswith("만큼", end):
+            continue
+        if not _residual_tail_boundary_ok(raw_text, end + 2):
+            continue
+        tail_end = end + 2
+        while tail_end < len(raw_text) and "가" <= raw_text[tail_end] <= "힣":
+            tail_end += 1
+        candidate.metadata["fraction_span"] = candidate.core_span
+        candidate.metadata["mankeum_span"] = SourceSpan(end, tail_end)
+        candidate.core_span = SourceSpan(candidate.core_span.start, tail_end)
+        candidate.full_span = candidate.core_span
+        candidate.reason = "fraction_mankeum_exact_tail_gate"
+        result.append(candidate)
+    return result
 
 
 def scan_textual_fraction_candidates(

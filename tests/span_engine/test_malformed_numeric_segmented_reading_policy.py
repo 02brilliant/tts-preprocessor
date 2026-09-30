@@ -96,7 +96,7 @@ def test_structural_delimiter_colon_like_audit(text: str, expected: str) -> None
         ("+1.5-2kg", "+1.5-2kg"),
         ("-1.5-2kg", "-1.5-2kg"),
         ("1-2kg", "일에서 이-킬로그램"),
-        ("1-2개", "일에서 이-개"),
+        ("1-2개", "한-개에서 두-개"),
         ("1-2원", "일에서 이-원"),
     ],
 )

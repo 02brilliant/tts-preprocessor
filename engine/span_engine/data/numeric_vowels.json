@@ -1,0 +1,48 @@
+{
+  "version": "1",
+  "verified_on": "2026-10-01",
+  "position_rule_source": "https://m.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=327322",
+  "native_position_source": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=311233",
+  "entries": {
+    "sino:이": {
+      "lexeme_id": "krdict:71125",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=71125"
+    },
+    "sino:이십": {
+      "lexeme_id": "krdict:31648",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=31648"
+    },
+    "sino:사": {
+      "lexeme_id": "krdict:58114",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=58114"
+    },
+    "native:두": {
+      "lexeme_id": "krdict:71458",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=71458"
+    },
+    "native:열": {
+      "lexeme_id": "krdict:67806",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=67806"
+    },
+    "native:세": {
+      "lexeme_id": "krdict:17194",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/eng/dicSearch/SearchView?ParaWordNo=17194&blockCount=10&currentPage=1&exaType=&mainSearchWord=%EC%82%AC%EA%B3%BC&nation=eng&nationCode=6&proverbType=&searchType=E&sort=W&viewType=A&wordMatchFlag=N"
+    },
+    "native:네": {
+      "lexeme_id": "krdict:네2:관형사:넷의",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicMarinerSearch/search?mainSearchWord=%EB%84%A4"
+    },
+    "sino:오": {
+      "lexeme_id": "krdict:오3:수사:五",
+      "length": "long",
+      "source": "https://krdict.korean.go.kr/eng/dicMarinerSearch/search?mainSearchWord=%EC%98%A4&nation=eng"
+    }
+  }
+}

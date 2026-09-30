@@ -17,6 +17,11 @@ from engine.span_engine.spoken_boundary import SPOKEN_NUMERIC_BOUNDARY
 # 사람/살 retain native-style readings through 99; 100+ uses Sino-Korean reading.
 NATIVE_ONLY_1_TO_99_COUNTERS = frozenset({"사람", "살", "가지"})
 
+# Confirmed quantities only. Other hybrid counters retain their established limit.
+NATIVE_QUANTITY_1_TO_99_COUNTERS = frozenset(
+    {"개", "명", "마리", "그루", "송이", "자루", "벌", "켤레"}
+)
+
 # 시간 follows the native counter reading path used by time/range policy.
 _NATIVE_TIME_COUNTERS = frozenset({"시간"})
 NATIVE_COUNTERS = NATIVE_ONLY_1_TO_99_COUNTERS | _NATIVE_TIME_COUNTERS
@@ -263,10 +268,28 @@ def native_number_under_100(value: int) -> str | None:
 
 
 def counter_number_reading(raw_number: str, counter: str) -> str | None:
+    details = counter_reading_details(raw_number, counter)
+    return None if details is None else details[0]
+
+
+def native_lexemes(value: int) -> tuple[str, ...]:
+    reading = native_number_under_100(value)
+    if reading is None:
+        return ()
+    if value < 10 or value % 10 == 0:
+        return (reading,)
+    return (_NATIVE_TENS[value // 10 * 10], _NATIVE_ONES[value % 10])
+
+
+def counter_reading_details(
+    raw_number: str, counter: str, *, contextual_proxy: bool = False
+) -> tuple[str, str] | None:
     if not isinstance(raw_number, str):
         raise TypeError("raw_number must be str")
     if not isinstance(counter, str):
         raise TypeError("counter must be str")
+    if contextual_proxy and counter != "개":
+        raise ValueError("contextual proxy is only defined for 개")
     normalized_number = raw_number.replace(",", "")
     if not _is_valid_integer(raw_number) or not is_supported_counter(counter):
         return None
@@ -274,7 +297,7 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
         reading = read_sino_time_suffix_number_text(raw_number)
         if reading is None:
             return None
-        return reading
+        return reading, "sino"
     if _has_unsupported_leading_zero(normalized_number, counter):
         return None
 
@@ -293,6 +316,7 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
     ):
         return None
 
+    system = "sino"
     mode = counter_mode(counter)
     if value >= 100:
         try:
@@ -300,6 +324,7 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
         except ValueError:
             return None
     elif mode == "native_only":
+        system = "native"
         reading = native_number_under_100(value)
     elif mode == "hybrid":
         threshold = (
@@ -307,7 +332,10 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
             if counter in HYBRID_THRESHOLD_39_COUNTERS
             else DEFAULT_HYBRID_COUNTER_THRESHOLD
         )
+        if counter in NATIVE_QUANTITY_1_TO_99_COUNTERS and not contextual_proxy:
+            threshold = 99
         special_reading = special_determiner_reading(value, counter)
+        system = "native" if special_reading or 1 <= value <= threshold else "sino"
         reading = special_reading or (
             native_number_under_100(value)
             if 1 <= value <= threshold
@@ -319,7 +347,12 @@ def counter_number_reading(raw_number: str, counter: str) -> str | None:
         reading = None
     if reading is None:
         return None
-    return reading + ("" if counter in SPACELESS_COUNTERS else SPOKEN_NUMERIC_BOUNDARY)
+    return reading + ("" if counter in SPACELESS_COUNTERS else SPOKEN_NUMERIC_BOUNDARY), system
+
+
+def contextual_proxy_reading_details(raw_number: str) -> tuple[str, str] | None:
+    """Preserve the 39 limit of contextual units historically read via 개."""
+    return counter_reading_details(raw_number, "개", contextual_proxy=True)
 
 
 def scan_counter_candidates(raw_text: str) -> list[SurfaceCandidate]:

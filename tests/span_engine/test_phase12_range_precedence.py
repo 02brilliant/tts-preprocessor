@@ -37,5 +37,5 @@ def test_unsupported_range_like_inputs_do_not_partial_claim(text: str) -> None:
 def test_range_compatible_counter_suffix_claims_range() -> None:
     output = transform_with_trace("3~8명")
 
-    assert output.normalized_text == "삼에서 팔-명"
+    assert output.normalized_text == "세-명에서 여덟-명"
     assert any(claim.owner == "range" for claim in output.trace.claim_logs)

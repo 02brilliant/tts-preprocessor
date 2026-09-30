@@ -53,64 +53,54 @@ def read_spaced_integer_text(text: str) -> str | None:
     return read_spaced_integer_value(int(normalized))
 
 
-def read_integer_value(value: int) -> str:
+def integer_lexeme_groups(value: int) -> tuple[tuple[str, ...], ...]:
+    """The lexical construction shared by rendering and vowel annotations.
+
+    Groups are linguistic 만/억 units, independent of inserted TTS hyphens.
+    """
     if not isinstance(value, int):
         raise TypeError("value must be int")
     if value < 0:
         raise ValueError("value must be non-negative")
     if value == 0:
-        return _DIGIT_READINGS["0"]
-
-    groups: list[int] = []
+        return (("영",),)
+    groups = []
     remaining = value
     while remaining:
         groups.append(remaining % 10000)
         remaining //= 10000
     if len(groups) > len(_LARGE_UNITS):
         raise ValueError("value is too large")
-
-    parts: list[str] = []
+    parts = []
     for index in range(len(groups) - 1, -1, -1):
-        group_value = groups[index]
-        if group_value == 0:
+        if not groups[index]:
             continue
-        group_reading = _read_under_10000(group_value)
+        atoms = []
+        for offset, digit in enumerate(f"{groups[index]:04d}"):
+            if digit == "0":
+                continue
+            unit = _SMALL_UNITS[3 - offset]
+            if digit != "1" or not unit:
+                atoms.append(_DIGIT_READINGS[digit])
+            if unit:
+                atoms.append(unit)
         large_unit = _LARGE_UNITS[index]
-        if large_unit == "만" and group_reading == "일":
-            parts.append(large_unit)
-        else:
-            parts.append(f"{group_reading}{large_unit}")
-    return "".join(parts)
+        if large_unit == "만" and atoms == ["일"]:
+            atoms = []
+        if large_unit:
+            atoms.append(large_unit)
+        parts.append(tuple(atoms))
+    return tuple(parts)
+
+
+def read_integer_value(value: int) -> str:
+    return "".join("".join(group) for group in integer_lexeme_groups(value))
 
 
 def read_spaced_integer_value(value: int) -> str:
-    if not isinstance(value, int):
-        raise TypeError("value must be int")
-    if value < 0:
-        raise ValueError("value must be non-negative")
-    if value == 0:
-        return _DIGIT_READINGS["0"]
-
-    groups: list[int] = []
-    remaining = value
-    while remaining:
-        groups.append(remaining % 10000)
-        remaining //= 10000
-    if len(groups) > len(_LARGE_UNITS):
-        raise ValueError("value is too large")
-
-    parts: list[str] = []
-    for index in range(len(groups) - 1, -1, -1):
-        group_value = groups[index]
-        if group_value == 0:
-            continue
-        group_reading = _read_under_10000(group_value)
-        large_unit = _LARGE_UNITS[index]
-        if large_unit == "만" and group_reading == "일":
-            parts.append(large_unit)
-        else:
-            parts.append(f"{group_reading}{large_unit}")
-    return apply_spaced_integer_prosody(" ".join(parts))
+    return apply_spaced_integer_prosody(
+        " ".join("".join(group) for group in integer_lexeme_groups(value))
+    )
 
 
 def read_decimal_text(text: str) -> str | None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from engine.span_engine.numeric_plan import NumericAnnotation, NumericReadingPlan
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class NormalizedSpan:
 class NormalizationSnapshot:
     normalized_text: str
     spans: tuple[NormalizedSpan, ...]
+    numeric_annotations: tuple[NumericAnnotation, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class AllowedMutation:
     kind: str
     source_text: str
     allowed_outputs: tuple[str, ...]
+    numeric_options: tuple[NumericReadingPlan | None, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start < 0 or self.end <= self.start:

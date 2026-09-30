@@ -490,6 +490,7 @@ def _transform_fallback_segment(
 
 
 def _offset_render_piece(piece: RenderPiece, offset: int) -> RenderPiece:
+    from engine.span_engine.numeric_plan import offset_plan
     source_span = piece.source_span
     if source_span is not None:
         source_span = SourceSpan(
@@ -502,6 +503,7 @@ def _offset_render_piece(piece: RenderPiece, offset: int) -> RenderPiece:
         source_span=source_span,
         owner=piece.owner,
         metadata=dict(piece.metadata),
+        numeric_plans=tuple(offset_plan(plan, offset) for plan in piece.numeric_plans),
     )
 
 

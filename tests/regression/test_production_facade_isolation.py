@@ -205,7 +205,8 @@ def test_pyinstaller_config_uses_current_dependency_closure() -> None:
     assert "tts_preprocessor.spec" in deploy_script
     assert "collect_submodules" not in spec
     assert "hiddenimports=[]" in spec
-    assert "datas=[]" in spec
+    assert '"numeric_vowels.json"' in spec
+    assert '"engine/span_engine/data"' in spec
     assert "excludes=[]" in spec
     assert "runtime_hooks=[]" in spec
     assert "pyinstaller_runtime_hooks" not in spec

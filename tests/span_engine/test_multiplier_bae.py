@@ -104,7 +104,7 @@ def test_multiplier_bae_invalid_numeric_does_not_claim(src: str) -> None:
         ("차량 3대가 이동했다.", "차량 세-대가 이동했다."),
         ("차량 40대가 이동했다.", "차량 사십-대가 이동했다."),
         ("21명", "스물한-명"),
-        ("40명", "사십-명"),
+        ("40명", "마흔-명"),
     ],
 )
 def test_multiplier_bae_does_not_break_counters(src: str, expected: str) -> None:

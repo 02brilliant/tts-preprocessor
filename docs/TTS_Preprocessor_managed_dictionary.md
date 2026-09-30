@@ -1,5 +1,35 @@
 # TTS Preprocessor Managed Dictionary Policy
 
+## Numeric vowel evidence registry (2026-10-01)
+
+`engine/span_engine/data/numeric_vowels.json` is an internal evidence registry,
+not a text-replacement dictionary. Only generated numeric readings consult it.
+Original Korean homographs such as 이 사람 and 두 개 do not trigger entries.
+
+The initial verified long entries are Sino 이 (71125), 이십 (31648), 사 (58114),
+오³ (五, numeral), and native determiners 두 (71458), 열² (67806), 세 (17194),
+네² (넷의). Each entry stores its dictionary identity and official source URL.
+For 오 and 네 the identity includes the headword, homograph number and part of
+speech because the verified official search page supplies the evidence.
+No dictionary definitions or audio files are bundled.
+
+The position rule cites National Institute of Korean Language Online Q&A
+327322 (2026-02-11), referring to standard pronunciation rule 6 and orthography
+rule 44. The additional native example source 311233 explains the initial 열
+and shortened noninitial 두 in 열두. Lexical units come from the renderer,
+not TTS punctuation. Unlisted lexemes (including 스물, 스무 and large-number
+units in this first evidence set) stay unknown; their noninitial verified
+components still receive position-based targets. Phone/decimal digit-sequence
+units remain unresolved. No acoustic success flag exists.
+
+Data lookup is offline and cached. The four existing PyInstaller specs package
+this JSON at `engine/span_engine/data`; runtime never queries external dictionaries.
+Schema/source checks and representative lexical-position regressions are source tests.
+The eight confirmed quantity counters now select native forms through 99, but
+this does not add vowel evidence entries. Unverified forms such as 마흔 and 쉰
+keep unknown lexical length and unresolved target; removed integer hyphens do
+not reset the position rule.
+
 ## 1. Purpose
 
 Managed dictionary entries are policy-approved fixed lexical exceptions. They

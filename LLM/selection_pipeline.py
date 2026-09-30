@@ -7,6 +7,7 @@ import re
 from LLM.pronunciation_lexicon import build_allowed_mutations
 from LLM.provenance import minimal_snapshot
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
+from engine.span_engine.numeric_plan import NumericReadingPlan, project_annotations
 
 
 _PROSODY_SPACE_RE = re.compile(r"(?<=[가-힣]) (?=[가-힣])")
@@ -92,6 +93,7 @@ class SelectionCandidate:
     guidance: str
     source: str | None = None
     required: bool = False
+    numeric_options: tuple[NumericReadingPlan | None, ...] = ()
 
     def to_payload(self) -> dict:
         return {
@@ -112,6 +114,7 @@ class SelectionCandidate:
             source_text=self.surface,
             allowed_outputs=self.options,
             kind=self.kind,
+            numeric_options=self.numeric_options,
         )
 
 
@@ -270,6 +273,7 @@ def build_selection_plan(
                 guidance=guidance,
                 source=None if entry is None else entry.source,
                 required=kind == "residual_structured",
+                numeric_options=mutation.numeric_options,
             )
         )
         occupied.append((mutation.start, mutation.end))
@@ -313,6 +317,7 @@ def build_selection_plan(
                 guidance=candidate.guidance,
                 source=candidate.source,
                 required=candidate.required,
+                numeric_options=candidate.numeric_options,
             )
             for index, candidate in enumerate(ordered, start=1)
         ),
@@ -407,7 +412,7 @@ def recover_selection_response(
             counts[raw["id"]] = counts.get(raw["id"], 0) + 1
     optional_plan = SelectionPlan(tuple(
         SelectionCandidate(c.candidate_id, c.start, c.end, c.kind, c.surface,
-                           c.options, c.guidance, c.source, False)
+                           c.options, c.guidance, c.source, False, c.numeric_options)
         for c in plan.candidates
     ), stage=plan.stage)
     accepted = []
@@ -473,6 +478,17 @@ def render_selection_response(
 ) -> str:
     decisions = parse_selection_response(response_text, plan=plan)
     return compose_selection(source_text, plan=plan, decisions=decisions)
+
+
+def selection_numeric_annotations(snapshot: NormalizationSnapshot, *, plan: SelectionPlan,
+                                  decisions: tuple[SelectionDecision, ...]):
+    candidates = {c.candidate_id: c for c in plan.candidates}
+    edits = []
+    for decision in decisions:
+        c = candidates[decision.candidate_id]
+        numeric = c.numeric_options[decision.option] if c.numeric_options else None
+        edits.append((c.start, c.end, c.options[decision.option], numeric))
+    return project_annotations(snapshot.numeric_annotations, tuple(edits))
 
 
 def _locked_contraction_mutations(

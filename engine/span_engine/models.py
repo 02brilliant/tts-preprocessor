@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from engine.span_engine.numeric_plan import NumericReadingPlan
 
 SPAN_TOKEN_KINDS = frozenset(
     {
@@ -148,6 +151,7 @@ class RenderPiece:
     source_span: SourceSpan | None = None
     owner: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    numeric_plans: tuple[NumericReadingPlan, ...] = ()
 
     def __post_init__(self) -> None:
         _ensure_str_field("text", self.text)
@@ -174,6 +178,7 @@ class Surface:
     allow_reentry: bool = False
     allow_prosody_inside: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+    numeric_plan: NumericReadingPlan | None = None
 
     def __post_init__(self) -> None:
         _ensure_str_field("surface_type", self.surface_type)
@@ -412,6 +417,11 @@ class TransformOutput:
     trace: TransformTrace | None = None
     # Protected bracket content in final normalized-text coordinates.
     protected_spans: list[SourceSpan] = field(default_factory=list)
+
+    @property
+    def numeric_annotations(self):
+        from engine.span_engine.numeric_plan import annotations_from_output
+        return annotations_from_output(self)
 
     def __post_init__(self) -> None:
         _ensure_str_field("normalized_text", self.normalized_text)

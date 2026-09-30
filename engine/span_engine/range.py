@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from engine.span_engine.counter import (
+    NATIVE_QUANTITY_1_TO_99_COUNTERS,
     SPACELESS_COUNTERS,
     counter_number_reading,
     native_number_under_100,
@@ -74,7 +75,10 @@ HYPHEN_RANGE_COMPATIBLE_KOREAN_SUFFIX_READINGS = {
     "분기": "분기",
     "원": "원",
     "가지": "가지",
+    **{counter: counter for counter in NATIVE_QUANTITY_1_TO_99_COUNTERS},
 }
+COUNT_RANGE_SUFFIXES = NATIVE_QUANTITY_1_TO_99_COUNTERS | {"가지"}
+NEW_COUNT_RANGE_SUFFIXES = NATIVE_QUANTITY_1_TO_99_COUNTERS - {"명", "개"}
 _SPACED_KOREAN_SUFFIXES = KOREAN_RANGE_SUFFIXES - SPACELESS_COUNTERS
 _UNITS_BY_LENGTH = sorted(
     {**SIMPLE_UNIT_READINGS, **SPECIAL_UNIT_READINGS, **COMPOUND_EXACT_UNIT_NAMES},
@@ -848,6 +852,12 @@ def _hyphen_korean_suffix_candidate(
         suffix_span = SourceSpan(suffix_start, suffix_start + len(suffix))
         if not _valid_after_korean_suffix(raw_text, suffix_span):
             return None
+        if suffix in NEW_COUNT_RANGE_SUFFIXES:
+            tail = raw_text[suffix_span.end:]
+            if tail and "\uac00" <= tail[0] <= "\ud7a3" and not tail.startswith(
+                _BROAD_RANGE_ATTACHED_TAILS + ("도", "만", "와", "과", "처럼", "마다", "보다")
+            ):
+                return None
         core_end = suffix_start if suffix_start != right_end else right_end
         reading = (
             _gaji_range_reading(left.raw, right.raw)
@@ -857,6 +867,17 @@ def _hyphen_korean_suffix_candidate(
             )
             + SPOKEN_NUMERIC_BOUNDARY
         )
+        # Only already admitted, unambiguous quantity suffixes. Keep signed /
+        # decimal and ambiguous suffix policies with their existing owners.
+        count_readings = None
+        if suffix in COUNT_RANGE_SUFFIXES:
+            first = counter_number_reading(left.raw, suffix)
+            last = counter_number_reading(right.raw, suffix)
+            if first is not None and last is not None:
+                count_readings = (first, last)
+                reading = f"{first}{suffix}에서 {last}"
+            elif suffix in NEW_COUNT_RANGE_SUFFIXES:
+                return None
         return SurfaceCandidate(
             core_span=SourceSpan(left_start, core_end),
             full_span=SourceSpan(left_start, suffix_span.end),
@@ -871,6 +892,9 @@ def _hyphen_korean_suffix_candidate(
                 "suffix_reading": suffix_reading,
                 "suffix_span": suffix_span,
                 "reading": reading,
+                "count_readings": count_readings,
+                "left_span": SourceSpan(left_start, left_start + len(left.raw)),
+                "right_span": SourceSpan(right_end - len(right.raw), right_end),
             },
         )
     return None

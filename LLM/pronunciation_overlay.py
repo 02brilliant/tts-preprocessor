@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from engine.span_engine.numeric_plan import project_annotations
 
 from LLM.pronunciation_lexicon import (
     build_stage4_deterministic_pronunciation_mutations,
@@ -131,6 +132,10 @@ def apply_locked_pronunciation_mutations(
 
     updated_snapshot = NormalizationSnapshot(
         normalized_text=output,
+        numeric_annotations=project_annotations(snapshot.numeric_annotations, tuple(
+            (m.start, m.end, replacement, m.numeric_options[0] if m.numeric_options else None)
+            for m, replacement in replacements
+        )),
         spans=tuple(
             sorted(
                 projected_spans,

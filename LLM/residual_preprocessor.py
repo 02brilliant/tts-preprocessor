@@ -19,7 +19,8 @@ from engine.span_engine.counter import native_number_under_100
 from engine.span_engine.contextual_number_unit import (
     scan_contextual_number_unit_candidates,
 )
-from engine.span_engine.models import ContextualDecision, ContextualDecisionKind
+from engine.span_engine.models import ContextualDecision, ContextualDecisionKind, SourceSpan
+from engine.span_engine.numeric_plan import build_numeric_plan, make_plan, number_component
 from engine.span_engine.numeric_reading import read_number_text, read_fraction_text
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
 from LLM.pronunciation_overlay import (
@@ -86,7 +87,8 @@ def _structured(
             and decision.confirmed_reading
         ):
             span = candidate.core_span
-            found.append((span.start, span.end, decision.confirmed_reading))
+            found.append((span.start, span.end, decision.confirmed_reading,
+                          build_numeric_plan(text, candidate, decision.confirmed_reading)))
     for scan, parse in _SCANNERS:
         for candidate in scan(text):
             span = candidate.core_span
@@ -95,15 +97,15 @@ def _structured(
             else:
                 reading = parse(text, candidate)
                 if reading and reading != text[span.start:span.end]:
-                    found.append((span.start, span.end, reading))
+                    found.append((span.start, span.end, reading, build_numeric_plan(text, candidate, reading)))
     # Longer recognized forms own their entire surface; numbers cannot be
     # consumed independently inside dates, amounts, or malformed expressions.
     mutations = []
-    for start, end, reading in sorted(found, key=lambda item: (-(item[1] - item[0]), item[0])):
+    for start, end, reading, numeric in sorted(found, key=lambda item: (-(item[1] - item[0]), item[0])):
         if _overlaps(start, end, blocked):
             continue
         mutations.append(AllowedMutation(
-            start, end, "residual_structured", text[start:end], (reading,),
+            start, end, "residual_structured", text[start:end], (reading,), (numeric,),
         ))
         blocked.append((start, end))
     return sorted(mutations, key=lambda item: item.start), blocked
@@ -151,8 +153,12 @@ def residual_choices(
             options = [reading] if reading else []
             kind = "residual_fraction"
         if options:
+            plans = tuple(_option_plan(match, kind, option, (
+                (number_component(right, "denominator"), number_component(left, "numerator"))
+                if sep == "/" else ()
+            ), "fraction" if sep == "/" else "ratio_or_clock") for option in options)
             result.append(AllowedMutation(
-                match.start(), match.end(), kind, match.group(), tuple(options),
+                match.start(), match.end(), kind, match.group(), tuple(options), plans,
             ))
             blocked.append(match.span())
     for match in _COUNTER.finditer(text):
@@ -173,6 +179,10 @@ def residual_choices(
         result.append(AllowedMutation(
             match.start(), match.end(),
             "deferred_n_beon" if unit == "번" else "residual_counter", match.group(), outputs,
+            tuple(_option_plan(match, "residual_counter", option,
+                  (number_component(number, system="sino" if sino and option == sino + unit else "native"),),
+                  "ordinal_or_measure" if sino and option == sino + unit else "count", unit)
+                  for option in outputs),
         ))
         blocked.append(match.span())
     for match in _WORD.finditer(text):
@@ -194,6 +204,16 @@ def residual_choices(
         if reading:
             result.append(AllowedMutation(
                 match.start(), match.end(), "residual_number", match.group(), (reading,),
+                (_option_plan(match, "residual_number", reading, (number_component(match.group()),), "cardinal"),),
             ))
             blocked.append(match.span())
     return result, blocked
+
+
+def _option_plan(match, rule, reading, components, semantic, unit=None):
+    form = "fraction" if rule == "residual_fraction" else "unresolved" if not components else (
+        "decimal" if components[0].fractional_part is not None else "integer"
+    )
+    return make_plan(match.group(), SourceSpan(*match.span()), "residual_reading",
+                     ContextualDecisionKind.CONFIRMED, semantic, form, rule, reading,
+                     components, unit, coordinate_space="normalized_input")

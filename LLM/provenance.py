@@ -66,6 +66,7 @@ def build_normalization_snapshot(output: TransformOutput) -> NormalizationSnapsh
     return NormalizationSnapshot(
         normalized_text=normalized_text,
         spans=tuple(sorted(spans, key=lambda span: (span.normalized_start, span.normalized_end))),
+        numeric_annotations=output.numeric_annotations,
     )
 
 

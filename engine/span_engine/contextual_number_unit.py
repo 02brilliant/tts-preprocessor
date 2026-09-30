@@ -5,6 +5,7 @@ from typing import Any
 
 from engine.span_engine.counter import (
     counter_number_reading,
+    contextual_proxy_reading_details,
     native_number_under_100,
 )
 from engine.span_engine.models import (
@@ -1250,6 +1251,7 @@ def _confirmed(
         separator=separator,
         matched_anchor=matched_anchor,
         claim_end=claim_end,
+        reading_mode=reading_mode,
     )
 
 
@@ -1289,6 +1291,7 @@ def _candidate(
     matched_anchor: str | None = None,
     blocking_reason: str | None = None,
     claim_end: int | None = None,
+    reading_mode: str | None = None,
 ) -> SurfaceCandidate:
     effective_end = match.end() if claim_end is None else claim_end
     span = SourceSpan(match.start(), effective_end)
@@ -1369,6 +1372,7 @@ def _candidate(
             "source_space_span": source_space_span,
             "unit_tail_span": unit_tail_span,
             "number_reading": number_reading,
+            "reading_mode": reading_mode,
             "separator": separator,
         },
     )
@@ -1458,8 +1462,8 @@ def _number_reading(
             return native_number_under_100(value)
         reading = counter_number_reading(raw_number, "가지")
         return reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY) if reading is not None else None
-    reading = counter_number_reading(raw_number, "개")
-    return reading.removesuffix(SPOKEN_NUMERIC_BOUNDARY) if reading is not None else None
+    details = contextual_proxy_reading_details(raw_number)
+    return details[0].removesuffix(SPOKEN_NUMERIC_BOUNDARY) if details is not None else None
 
 
 def _canonical_separator(match: re.Match[str], semantic_type: str) -> str:

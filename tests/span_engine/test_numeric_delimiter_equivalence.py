@@ -44,9 +44,9 @@ def test_colon_like_delimiter_equivalence_for_time_semantic_pair_and_fallback():
 
 def test_range_like_delimiter_equivalence_for_unit_ranges_and_fallback():
     cases = [
-        ("1–2개", "일에서 이-개"),
-        ("1~2개", "일에서 이-개"),
-        ("1～2개", "일에서 이-개"),
+        ("1–2개", "한-개에서 두-개"),
+        ("1~2개", "한-개에서 두-개"),
+        ("1～2개", "한-개에서 두-개"),
         ("1–2kg", "일에서 이-킬로그램"),
         ('1.5–2kg', '일-쩜-오에서 이-킬로그램'),
         ('1.5~2kg', '일-쩜-오에서 이-킬로그램'),

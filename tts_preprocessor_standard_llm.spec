@@ -14,6 +14,7 @@ a = Analysis(
     pathex=[str(ROOT_DIR)],
     binaries=[],
     datas=[
+        (str(ROOT_DIR / "engine" / "span_engine" / "data" / "numeric_vowels.json"), "engine/span_engine/data"),
         (str(ROOT_DIR / "LLM" / "models.json"), "LLM"),
         (str(ROOT_DIR / "LLM" / "docs" / "LLM_prompt.txt"), "LLM/docs"),
     ],

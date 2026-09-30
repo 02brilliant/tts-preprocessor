@@ -1,5 +1,44 @@
 # TTS Preprocessor Policy Changelog
 
+## 2026-10-01 Approved quantity and integer-boundary follow-up
+
+- Expanded native determiner readings through 99 only for confirmed quantities
+  with `개·명·마리·그루·송이·자루·벌·켤레`. Contextual owners that historically
+  used `개` as a proxy keep their former 39 limit; other counters and 100+
+  readings retain their policies. `40명 → 마흔-명`, while an occurrence such as
+  `40번 처리했다. → 사십-번 처리했다.`
+- The existing range owner now repeats each of those eight exact units for
+  unsigned integer endpoints using the same counter reader. For example,
+  `39~40명 → 서른아홉-명에서 마흔-명` and
+  `40~50마리 → 마흔-마리에서 쉰-마리`. Existing delimiter, tail, protection,
+  provenance and ambiguous-unit gates remain in force.
+- Removed generated 천·백·십 hyphens inside four-digit integer groups in the
+  common spaced integer reader. `123,456 → 십이만 삼천사백오십육`;
+  만-group spaces, unit boundaries, identifier groups and decimal `쩜`/digit
+  chunks remain. Numeric plans now reflect the selected native readings and
+  omit removed boundaries without changing lexical vowel-position rules.
+- Both previously listed follow-ups are implemented. No TTS audio was evaluated.
+
+## 2026-10-01 Numeric plans, quantity ranges and fraction tails
+
+- Integrated internal numeric plans into existing Surface/RenderPiece ownership,
+  common integer/counter rendering, LLM snapshots and finite residual choices.
+  Semantics, numeric form, numeral system, lexical vowel goals and boundaries
+  are separate. Public API/CLI payloads and rule-engine execution counts remain unchanged.
+- Quantity ranges with already admitted 명/개/가지 reuse the existing counter
+  policy at each endpoint and explicitly generate the first copy of the unit.
+  For example `39~40명` now reads `서른아홉-명에서 사십-명`.
+  Measurement/time/ambiguous-unit gates and native thresholds are unchanged.
+- Added the exact slash-fraction 만큼 tail, including already safe particles,
+  ahead of malformed large-unit detection. Original Korean shadow validation
+  is preserved; arbitrary longer tails and protected strings remain guarded.
+- Added offline official vowel evidence and source packaging checks. No TTS
+  audio was synthesized or evaluated. Unverified words/domains and uncertain
+  final coordinates remain explicitly unresolved. 쩜 and all existing internal
+  numeric/unit boundary policies are retained.
+- The two follow-up items at this point were 고유어 수사 적용 범위 개선 and
+  숫자 내부 경계 처리 개선; the entry above records their implementation.
+
 ## Public stages consolidated to 0–4
 
 - Removed the former stage 4 and reassigned the former stage-5 natural speech

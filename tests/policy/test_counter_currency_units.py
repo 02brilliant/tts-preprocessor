@@ -17,6 +17,7 @@ from engine.main import transform as transform_text
         ("31권", "31권"),
         ("사과 21개는 남았다", "사과 스물한-개는 남았다"),
         ("책 30권을 정리했다", "책 서른-권을 정리했다"),
+        ("57개", "쉰일곱-개"),
     ],
 )
 def test_hybrid_counter_positive_and_boundary_cases(text: str, expected: str):
@@ -28,7 +29,6 @@ def test_hybrid_counter_positive_and_boundary_cases(text: str, expected: str):
     [
         ("21층", "21층"),
         ("21원", "이십일-원"),
-        ("57개", "오십칠-개"),
         ("100명", "백-명"),
         ("101권", "백일-권"),
     ],
