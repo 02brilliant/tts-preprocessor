@@ -52,7 +52,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-suffix-clock-afternoon-spacing",
         text="오후 2시 출발",
-        expected="오후 두-시 출발",
+        expected="오후 두~시 출발",
         rule="regression / suffix-clock generated spacing",
         reason="An 오후 H시 form uses the native hour reading and retains canonical generated spacing before the original 시 marker.",
         classification="override",
@@ -60,7 +60,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-hhmm-positive-context",
         text="회의는 12:30에 시작한다",
-        expected="회의는 열두시 삼십분에 시작한다",
+        expected="회의는 열~두시 삼십분에 시작한다",
         rule="regression / HH:MM positive context",
         reason="A positively licensed HH:MM form must normalize consistently with the independent H시 rules.",
         classification="override",
@@ -93,7 +93,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-spaced-middle-dot-preserves-symbol",
         text="123 · 456",
-        expected="백이십삼 · 사백오십육",
+        expected="백이십삼 · 사~백오십육",
         rule="regression / middle dot spacing guard",
         reason="Whitespace around the middle dot disables structured parsing and preserves the symbol.",
         classification="middle_dot",
@@ -117,7 +117,7 @@ REGRESSION_CASES = [
     TextCase(
         case_id="regression-leading-zero-time-override",
         text="09시",
-        expected="아홉-시",
+        expected="아홉시",
         rule="regression / suffix clock override",
         reason="The suffix-clock owner removes leading zeros before applying its existing clock-hour reading.",
         classification="override",

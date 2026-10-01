@@ -8,13 +8,13 @@ from engine.span_engine import transform
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("45㎡", "사십오-제곱미터"),
+        ("45㎡", "사~십오-제곱미터"),
         ("3㎏", "삼-킬로그램"),
         ("10㎐", "십-헤르츠"),
-        ("20％", "이십-퍼센트"),
-        ("5℃", "오도"),
+        ("20％", "이~십-퍼센트"),
+        ("5℃", "오~도"),
         ("3°", "삼도"),
-        ("면적은 45㎡입니다", "면적은 사십오-제곱미터입니다"),
+        ("면적은 45㎡입니다", "면적은 사~십오-제곱미터입니다"),
         ("1㎕", "일-마이크로리터"),
         ("1㎗", "일-데시리터"),
         ("1㎘", "일-킬로리터"),
@@ -28,7 +28,7 @@ from engine.span_engine import transform
         ("1㎸", "일-킬로볼트"),
         ("1㎳", "일-밀리초"),
         ("1㎲", "일-마이크로초"),
-        ("온도는 5℃는 낮다", "온도는 오도는 낮다"),
+        ("온도는 5℃는 낮다", "온도는 오~도는 낮다"),
     ],
 )
 def test_special_unit_owner_minimal_supported_patterns(
@@ -40,7 +40,7 @@ def test_special_unit_owner_minimal_supported_patterns(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ('-2.5℃', '영하 이-쩜-오도'),
+        ('-2.5℃', '영하 이~쩜-오도'),
         ("+3℃", "영상 삼도"),
         ("-3°", "마이너스 삼도"),
     ],

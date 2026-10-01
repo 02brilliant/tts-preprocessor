@@ -26,12 +26,12 @@ CASES = [
     ProbeCase(
         "dash_like_signed_percent_hyphen_boundary",
         "–2.03%",
-        '마이너스 이-쩜-영삼-퍼센트',
+        '마이너스 이~쩜-영삼-퍼센트',
     ),
     ProbeCase(
         "dash_like_range_unit_hyphen_boundary",
         "1–2kg",
-        "일에서 이-킬로그램",
+        "일에서 이~킬로그램",
     ),
     ProbeCase(
         "numbered_equipment_middle_dot",

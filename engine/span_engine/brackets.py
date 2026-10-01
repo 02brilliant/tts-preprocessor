@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from engine.span_engine.claim_registry import SurfaceClaimRegistry, spans_overlap
 from engine.span_engine.models import ClaimedRange, RenderPiece, SourceSpan, TraceLogEntry
+from engine.text_alignment import MappedText
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class BracketFilterResult:
     normalized_text: str
     logs: list[TraceLogEntry] = field(default_factory=list)
     protected_spans: list[SourceSpan] = field(default_factory=list)
+    rendered_indices: tuple[int | None, ...] | None = None
 
 
 class _Marker:
@@ -210,7 +212,7 @@ def apply_final_bracket_filter(
         if not isinstance(piece, RenderPiece):
             raise TypeError("pieces must contain RenderPiece")
 
-    elements: list[str | _Marker] = []
+    elements: list[MappedText | _Marker] = []
     emitted_parenthesis_markers: set[tuple[int, int]] = set()
     sorted_ranges = sorted(
         (value for value in bracket_ranges if value.single_line),
@@ -222,22 +224,27 @@ def apply_final_bracket_filter(
     preserved_ranges = [
         value for value in sorted_ranges if value.bracket_type in _PRESERVE_BRACKET_TYPES
     ]
-    marker_prefix = _marker_prefix("".join(piece.text for piece in pieces))
-    protected_literals: list[tuple[str, str]] = []
+    rendered = "".join(piece.text for piece in pieces)
+    marker_prefix = _marker_prefix(rendered)
+    protected_literals: list[tuple[str, MappedText]] = []
     emitted_protected: set[tuple[int, int]] = set()
+    rendered_cursor = 0
 
     for piece in pieces:
+        piece_start = rendered_cursor
+        rendered_cursor += len(piece.text)
+        mapped_piece = MappedText(piece.text, tuple(range(piece_start, rendered_cursor)))
         if piece.source_span is None or piece.provenance.startswith("GENERATED_"):
             if _span_overlaps_ranges(piece.source_span, parenthesis_ranges):
                 _append_parenthesis_marker(
                     elements, piece.source_span, emitted_parenthesis_markers
                 )
             else:
-                elements.append(piece.text)
+                elements.append(mapped_piece)
             continue
 
         if len(piece.text) != piece.source_span.length:
-            elements.append(piece.text)
+            elements.append(mapped_piece)
             continue
 
         for offset, char in enumerate(piece.text):
@@ -252,8 +259,13 @@ def apply_final_bracket_filter(
                         else preserved.raw
                     )
                     marker = f"{marker_prefix}{len(protected_literals)}\ue001"
-                    protected_literals.append((marker, literal))
-                    elements.append(marker)
+                    literal_start = piece_start + offset + int(preserved.bracket_type == "curly")
+                    literal_end = literal_start + len(literal)
+                    literal_indices = (tuple(range(literal_start, literal_end))
+                                       if rendered[literal_start:literal_end] == literal
+                                       else (None,) * len(literal))
+                    protected_literals.append((marker, MappedText(literal, literal_indices)))
+                    elements.append(MappedText.inserted(marker))
                     emitted_protected.add(key)
                 continue
             parenthesis_range = _range_containing_index(
@@ -265,13 +277,42 @@ def apply_final_bracket_filter(
                     elements.append(_PARENTHESIS_MARKER)
                     emitted_parenthesis_markers.add(marker_key)
                 continue
-            elements.append(char)
+            elements.append(mapped_piece.slice(offset, offset + 1))
 
     logs = [_bracket_log(bracket_range) for bracket_range in sorted_ranges]
-    normalized, protected_spans = _restore_protected_literals(
+    normalized, protected_spans = _restore_mapped_literals(
         _collapse_parenthesis_boundary_spaces(elements), protected_literals
     )
-    return BracketFilterResult(normalized, logs, protected_spans)
+    return BracketFilterResult(normalized.text, logs, protected_spans, normalized.indices)
+
+
+def _restore_mapped_literals(
+    text: MappedText, literals: list[tuple[str, MappedText]]
+) -> tuple[MappedText, list[SourceSpan]]:
+    spans: list[SourceSpan] = []
+    for marker, literal in literals:
+        # Unique internal placeholders, never a search for repeated user text.
+        start = text.text.index(marker)
+        text = MappedText.join((text.slice(0, start), literal, text.slice(start + len(marker))))
+        if literal.text:
+            spans.append(SourceSpan(start, start + len(literal.text)))
+    return text, spans
+
+
+def transform_outside_protected_spans_with_mapping(
+    text: MappedText, spans: list[SourceSpan], transform: Callable[[MappedText], MappedText]
+) -> tuple[MappedText, list[SourceSpan]]:
+    prefix = _marker_prefix(text.text)
+    literals: list[tuple[str, MappedText]] = []
+    parts: list[MappedText] = []
+    cursor = 0
+    for span in spans:
+        marker = f"{prefix}{len(literals)}\ue001"
+        parts.extend((text.slice(cursor, span.start), MappedText.inserted(marker)))
+        literals.append((marker, text.slice(span.start, span.end)))
+        cursor = span.end
+    parts.append(text.slice(cursor))
+    return _restore_mapped_literals(transform(MappedText.join(parts)), literals)
 
 
 def _marker_prefix(text: str) -> str:
@@ -330,7 +371,7 @@ def _range_containing_index(
 
 
 def _append_parenthesis_marker(
-    elements: list[str | _Marker],
+    elements: list[MappedText | _Marker],
     span: SourceSpan | None,
     emitted_parenthesis_markers: set[tuple[int, int]],
 ) -> None:
@@ -340,44 +381,44 @@ def _append_parenthesis_marker(
         emitted_parenthesis_markers.add(key)
 
 
-def _collapse_parenthesis_boundary_spaces(elements: list[str | _Marker]) -> str:
+def _collapse_parenthesis_boundary_spaces(elements: list[MappedText | _Marker]) -> MappedText:
     if all(element is not _PARENTHESIS_MARKER for element in elements):
-        return "".join(str(element) for element in elements)
+        return MappedText.join(elements)
 
-    result: list[str] = []
+    result: list[MappedText] = []
     index = 0
     while index < len(elements):
         element = elements[index]
         if element is not _PARENTHESIS_MARKER:
-            result.append(str(element))
+            result.append(element)
             index += 1
             continue
 
         removed_left_space = _remove_trailing_spaces(result)
         index += 1
         removed_right_space = False
-        while index < len(elements) and isinstance(elements[index], str) and str(elements[index]).isspace():
+        while index < len(elements) and isinstance(elements[index], MappedText) and elements[index].text.isspace():
             removed_right_space = True
             index += 1
 
         has_future_text = _has_future_non_space(elements, index)
         if (removed_left_space or removed_right_space) and result and has_future_text:
-            result.append(" ")
+            result.append(MappedText.inserted(" "))
 
-    return "".join(result).strip()
+    return MappedText.join(result).strip()
 
 
-def _remove_trailing_spaces(values: list[str]) -> bool:
+def _remove_trailing_spaces(values: list[MappedText]) -> bool:
     removed = False
-    while values and values[-1].isspace():
+    while values and values[-1].text.isspace():
         values.pop()
         removed = True
     return removed
 
 
-def _has_future_non_space(elements: list[str | _Marker], start: int) -> bool:
+def _has_future_non_space(elements: list[MappedText | _Marker], start: int) -> bool:
     return any(
-        isinstance(element, str) and not element.isspace()
+        isinstance(element, MappedText) and not element.text.isspace()
         for element in elements[start:]
     )
 

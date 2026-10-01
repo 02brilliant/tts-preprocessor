@@ -9,12 +9,14 @@ ALLOWED_BINARY_MODULE_PREFIXES = (
 
 ALLOWED_BINARY_MODULES = (
     "engine.main",
+    "engine.text_alignment",  # Shared presentation coordinates; no alternate engine.
     "engine.prosody",
     "engine.prosody.paragraph",
 )
 
 REQUIRED_BINARY_MODULES = (
     "engine.main",
+    "engine.text_alignment",
     "engine.prosody.paragraph",
     "engine.span_engine.production_adapter",
     "engine.span_engine.trace",

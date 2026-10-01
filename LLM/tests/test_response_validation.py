@@ -299,7 +299,7 @@ def test_every_llm_stage_rejects_locked_numeric_boundary_rewrite(
     output = transform_with_trace(source)
     snapshot = build_normalization_snapshot(output)
 
-    assert "-" in output.normalized_text
+    assert any(marker in output.normalized_text for marker in ("-", "~"))
     assert validate_response(
         output.normalized_text,
         output.normalized_text,
@@ -337,7 +337,7 @@ from engine.main import transform
 @pytest.mark.parametrize(
     ("source", "output"),
     (
-        ('2.35번 확인했다.', '이-쩜-삼오-번 확인했다.'),
+        ('2.35번 확인했다.', '이~쩜-삼오-번 확인했다.'),
         ('1,000원을 냈다.', '천-원을 냈다.'),
         ("09:30에 시작했다.", "아홉시 삼십분에 시작했다."),
     ),
@@ -398,7 +398,7 @@ def test_integrated_response_still_requires_filename_and_sentence_periods() -> N
         ),
         (
             "제품 코드는 SKU-H100-25다.",
-            "제품 코드는 에스케이유 에이치백 이십오다.",
+            "제품 코드는 에스케이유 에이치백 이~십오다.",
         ),
     ),
 )

@@ -10,7 +10,7 @@ PARSER_CONTEXT_CASES = (
     TextCase(
         case_id="parser-context-time-in-korean-sentence",
         text="회의는 13:05에 시작한다",
-        expected="회의는 십삼시 오분에 시작한다",
+        expected="회의는 십삼시 오~분에 시작한다",
         rule="parser context / time",
         reason="time parser는 한글 문장 안에서도 좌우 문맥을 읽고 숫자만 해석해야 한다.",
         classification="parser",
@@ -18,7 +18,7 @@ PARSER_CONTEXT_CASES = (
     TextCase(
         case_id="parser-context-date-in-korean-sentence",
         text="일정은 2025년 1월 3일이다",
-        expected="일정은 이천이십오년 일월 삼일이다",
+        expected="일정은 이~천이십오년 일월 삼일이다",
         rule="parser context / date",
         reason="date parser는 한글 주변 context를 읽되 한글 literal 자체는 바꾸지 않아야 한다.",
         classification="parser",

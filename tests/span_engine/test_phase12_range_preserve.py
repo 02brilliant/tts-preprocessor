@@ -23,7 +23,7 @@ def test_unsupported_ranges_preserve(text: str) -> None:
 
 
 def test_comma_integer_tilde_range_transforms_policy_update() -> None:
-    assert transform("1,000~2,000") == "천에서 이천"
+    assert transform("1,000~2,000") == "천에서 이~천"
 
 
 @pytest.mark.parametrize(
@@ -41,8 +41,8 @@ def test_broad_signed_tilde_ranges_transform(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3~8개", "세-개에서 여덟-개"),
-        ("3~8명", "세-명에서 여덟-명"),
+        ("3~8개", "세~개에서 여덟-개"),
+        ("3~8명", "세~명에서 여덟-명"),
     ],
 )
 def test_range_compatible_korean_suffix_ranges_transform(

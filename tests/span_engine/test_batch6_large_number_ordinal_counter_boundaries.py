@@ -129,7 +129,7 @@ def test_batch6_comma_decimal_is_one_compact_decimal_claim() -> None:
     text = "1,234,567,890,123.456"
     output = transform_with_trace(text)
     assert output.normalized_text == (
-        "일조이천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육"
+        "일조이~천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육"
     )
     assert [
         (claim.owner, claim.surface_type, claim.reason, claim.span.start, claim.span.end)

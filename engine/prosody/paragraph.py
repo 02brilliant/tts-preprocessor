@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 from dataclasses import dataclass
+from engine.text_alignment import MappedText
 
 # -----------------------------
 # Constants (정책 v1.3 기준)
@@ -74,35 +75,45 @@ def normalize_user_newline_semantics(
     """Join visual line wrapping and retain only TTS paragraph boundaries."""
     if not isinstance(text, str):
         raise TypeError("text must be str")
+    return _normalize_newlines_with_mapping(
+        MappedText.identity(text), paragraphize_boundaries=paragraphize_boundaries
+    ).text
+
+
+def _normalize_newlines_with_mapping(
+    mapped: MappedText, *, paragraphize_boundaries: bool = False
+) -> MappedText:
+    text = mapped.text
     if not _NEWLINE_RUN_RE.search(text):
-        return text
+        return mapped
 
     protected_ranges = _protected_newline_ranges(text)
     quote_interiors, quote_closers = _matched_ascii_quote_positions(
         text, protected_ranges
     )
-    parts: list[str] = []
+    parts: list[MappedText] = []
     cursor = 0
     for match in _NEWLINE_RUN_RE.finditer(text):
         start, end = match.span()
-        parts.append(text[cursor:start])
+        parts.append(mapped.slice(cursor, start))
         next_cursor = end
         if _range_contains_index(protected_ranges, start):
-            parts.append(match.group(0))
+            parts.append(mapped.slice(start, end))
         elif _is_structured_code_boundary(text, start, end):
-            parts.append(match.group(0))
+            parts.append(mapped.slice(start, end))
         elif start in quote_interiors:
             joiner, next_cursor = _newline_joiner(text, start, end)
             if joiner:
                 parts[-1] = parts[-1].rstrip(_HORIZONTAL_WHITESPACE)
-            parts.append(joiner)
+            parts.append(MappedText.inserted(joiner))
         else:
             last_non_space = _last_non_space_index(text, start)
             if last_non_space is not None and (
                 _is_existing_sentence_terminal(text, last_non_space)
                 or last_non_space in quote_closers
             ):
-                parts.append("\n\n" if paragraphize_boundaries else match.group(0))
+                parts.append(MappedText.inserted("\n\n") if paragraphize_boundaries
+                             else mapped.slice(start, end))
             else:
                 joiner, next_cursor = _newline_joiner(text, start, end)
                 if joiner:
@@ -111,11 +122,15 @@ def normalize_user_newline_semantics(
                         _is_explicit_blank_line(match.group(0))
                         and not _ends_with_punctuation(text, last_non_space)
                     ):
-                        parts[-1] += ","
-                parts.append(joiner)
+                        parts[-1] = MappedText.join((parts[-1], MappedText.inserted(",")))
+                parts.append(MappedText.inserted(joiner))
         cursor = next_cursor
-    parts.append(text[cursor:])
-    return "".join(parts)
+    parts.append(mapped.slice(cursor))
+    return MappedText.join(parts)
+
+
+def normalize_user_newline_semantics_with_mapping(mapped: MappedText) -> MappedText:
+    return _normalize_newlines_with_mapping(mapped)
 
 
 def _normalize_user_newlines(text: str) -> str:
@@ -295,36 +310,67 @@ def _extract_paragraph_decision_features(
 
 
 def split_paragraphs(text: str) -> str:
+    result = split_paragraphs_with_mapping(MappedText.identity(text))
     if not text or not text.strip():
         return text
+    return _ParagraphResult(result.text)
 
-    normalized = _normalize_user_newlines(text)
-    user_blocks = _split_user_blocks(text)
+
+def split_paragraphs_with_mapping(mapped: MappedText) -> MappedText:
+    text = mapped.text
+    if not text or not text.strip():
+        return mapped
+
+    normalized = _normalize_newlines_with_mapping(mapped, paragraphize_boundaries=True)
+    user_blocks = []
+    cursor = 0
+    for match in re.finditer(r"\n\n", normalized.text):
+        if cursor < match.start():
+            user_blocks.append(normalized.slice(cursor, match.start()))
+        cursor = match.end()
+    if cursor < len(normalized.text):
+        user_blocks.append(normalized.slice(cursor))
 
     if not user_blocks:
-        return normalized.strip() or text
+        stripped = normalized.strip()
+        return stripped if stripped.text else mapped
 
-    processed_blocks = [_split_block_conservatively(block) for block in user_blocks]
-    return _ParagraphResult(_join_user_blocks(processed_blocks))
+    processed_blocks = [_split_block_with_mapping(block) for block in user_blocks]
+    return MappedText.join(processed_blocks, "\n\n")
 
 
 def _split_block_conservatively(block: str) -> str:
-    sentences = _split_sentences(block)
+    return _split_block_with_mapping(MappedText.identity(block)).text
+
+
+def _split_block_with_mapping(block: MappedText) -> MappedText:
+    stripped = block.strip()
+    sentences: list[MappedText] = []
+    cursor = 0
+    pattern = r'(?<!\d\.\d)(?<![A-Za-z]\.[A-Za-z])(?<=[.!?])\s+'
+    for match in re.finditer(pattern, stripped.text):
+        sentence = stripped.slice(cursor, match.start()).strip()
+        if sentence.text:
+            sentences.append(sentence)
+        cursor = match.end()
+    sentence = stripped.slice(cursor).strip()
+    if sentence.text:
+        sentences.append(sentence)
     if len(sentences) < SHORT_TAIL_THRESHOLD:
         return block.strip()
 
-    paragraphs: list[str] = []
-    buffer: list[str] = []
+    paragraphs: list[MappedText] = []
+    buffer: list[MappedText] = []
 
     for sent in sentences:
-        if buffer and _should_split_at_this_point(buffer, sent):
-            paragraphs.append(" ".join(buffer))
+        if buffer and _should_split_at_this_point([part.text for part in buffer], sent.text):
+            paragraphs.append(MappedText.join(buffer, " "))
             buffer = []
         buffer.append(sent)
 
     if buffer:
-        paragraphs.append(" ".join(buffer))
-    return "\n".join(paragraphs)
+        paragraphs.append(MappedText.join(buffer, " "))
+    return MappedText.join(paragraphs, "\n")
 
 def _should_split_at_this_point(buffer: list[str], current_sent: str) -> bool:
     buffer_text = " ".join(buffer)

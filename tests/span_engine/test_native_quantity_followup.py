@@ -50,27 +50,27 @@ def test_range_reuses_exact_quantity_policy_and_unit_provenance(unit):
 
 @pytest.mark.parametrize("unit", QUANTITY_UNITS)
 def test_range_delimiters_spacing_and_reversed_order(unit):
-    assert transform(f"2~5{unit}") == f"두-{unit}에서 다섯-{unit}"
-    assert transform(f"2-5{unit}") == f"두-{unit}에서 다섯-{unit}"
-    assert transform(f"2∼5{unit}") == f"두-{unit}에서 다섯-{unit}"
-    assert transform(f"2～5{unit}") == f"두-{unit}에서 다섯-{unit}"
-    assert transform(f"2~ 5 {unit}을") == f"두-{unit}에서 다섯-{unit}을"
-    assert transform(f"5~2{unit}") == f"다섯-{unit}에서 두-{unit}"
+    assert transform(f"2~5{unit}") == f"두~{unit}에서 다섯-{unit}"
+    assert transform(f"2-5{unit}") == f"두~{unit}에서 다섯-{unit}"
+    assert transform(f"2∼5{unit}") == f"두~{unit}에서 다섯-{unit}"
+    assert transform(f"2～5{unit}") == f"두~{unit}에서 다섯-{unit}"
+    assert transform(f"2~ 5 {unit}을") == f"두~{unit}에서 다섯-{unit}을"
+    assert transform(f"5~2{unit}") == f"다섯-{unit}에서 두~{unit}"
     assert transform(f"2 - 5{unit}") == f"2 - 5{unit}"
 
 
 @pytest.mark.parametrize("source,expected", [
-    ("0명", "영-명"), ("040명", "040명"), ("40.5명", "사십-쩜-오-명"),
-    ("-40명", "마이너스 사십 명"), ("+40명", "플러스 사십 명"),
-    ("40/2명", "이분의 사십 명"), ("4,,0명", "4,,0명"),
+    ("0명", "영-명"), ("040명", "040명"), ("40.5명", "사~십-쩜-오-명"),
+    ("-40명", "마이너스 사~십 명"), ("+40명", "플러스 사~십 명"),
+    ("40/2명", "이~분의 사~십 명"), ("4,,0명", "4,,0명"),
     ("02~5마리", "02~5마리"), ("2~05마리", "2~05마리"),
-    ("2~5.5마리", "이에서 오-쩜-오 마리"),
-    ("-2~5마리", "마이너스 이에서 오 마리"),
-    ("2~5마리수", "이에서 오 마리수"),
-    ("2~5그루터기", "이에서 오 그루터기"),
-    ("2~5송이버섯", "이에서 오 송이버섯"),
-    ("2~5벌레", "이에서 오 벌레"),
-    ("2~5마리_foo", "이에서 오 마리_foo"),
+    ("2~5.5마리", "이~에서 오~쩜-오 마리"),
+    ("-2~5마리", "마이너스 이~에서 오~ 마리"),
+    ("2~5마리수", "이~에서 오~ 마리수"),
+    ("2~5그루터기", "이~에서 오~ 그루터기"),
+    ("2~5송이버섯", "이~에서 오~ 송이버섯"),
+    ("2~5벌레", "이~에서 오~ 벌레"),
+    ("2~5마리_foo", "이~에서 오~ 마리_foo"),
     ("https://example.com/2~5마리", "https://example.com/2~5마리"),
     ("`2~5마리`", "`2~5마리`"),
     ("[2~5마리]", "[2~5마리]"),
@@ -83,15 +83,15 @@ def test_no_new_native_reading_or_partial_quantity_range(source, expected):
 
 
 @pytest.mark.parametrize("source,expected", [
-    ("40권", "사십-권"), ("40장", "사십-장"), ("40척", "사십-척"),
-    ("40대", "사십-대"), ("40번 처리했다.", "사십-번 처리했다."),
-    ("40시간", "사십-시간"), ("40사람", "마흔-사람"),
+    ("40권", "사~십-권"), ("40장", "사~십-장"), ("40척", "사~십-척"),
+    ("40대", "사~십-대"), ("40번 처리했다.", "사~십-번 처리했다."),
+    ("40시간", "사~십-시간"), ("40사람", "마흔-사람"),
     ("40살", "마흔-살"), ("40가지", "마흔-가지"),
     ("100명", "백-명"), ("101명", "백일-명"),
-    ("2~5%", "이에서 오-퍼센트"), ("2~5kg", "이에서 오-킬로그램"),
-    ("2~5분", "이분에서 오분"), ("2~5가지", "두-가지에서 다섯-가지"),
+    ("2~5%", "이~에서 오~퍼센트"), ("2~5kg", "이~에서 오~킬로그램"),
+    ("2~5분", "이~분에서 오~분"), ("2~5가지", "두~가지에서 다섯-가지"),
     ("010-1234-5678", "공일공 일이삼사 오육칠팔"),
-    ("3/4만큼", "사분의 삼만큼"),
+    ("3/4만큼", "사~분의 삼만큼"),
 ])
 def test_unrelated_counter_and_owner_policy(source, expected):
     assert transform(source) == expected
@@ -100,13 +100,13 @@ def test_unrelated_counter_and_owner_policy(source, expected):
 @pytest.mark.parametrize("source,expected", [
     ("3,456", "삼천사백오십육"),
     ("123,456", "십이만 삼천사백오십육"),
-    ("52,025", "오만 이천이십오"),
+    ("52,025", "오~만 이~천이십오"),
     ("123,456원", "십이만 삼천사백오십육-원"),
     ("123,456kg", "십이만 삼천사백오십육-킬로그램"),
     ("1.23456", "일-쩜-이삼사-오육"),
     ("1.23456789", "일-쩜-이삼사오-육칠팔구"),
-    ("2.05%", "이-쩜-영오-퍼센트"),
-    ("2.50kg", "이-쩜-오영-킬로그램"),
+    ("2.05%", "이~쩜-영오-퍼센트"),
+    ("2.50kg", "이~쩜-오영-킬로그램"),
 ])
 def test_integer_boundary_change_leaves_other_boundaries(source, expected):
     output = transform_output(source)

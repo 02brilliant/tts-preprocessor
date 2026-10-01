@@ -10,7 +10,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected='회의 [긴급] 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
+        expected='회의 [긴급] 일정은 이~천이십오년 일월 삼일 십삼시 오~분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="canonical / bracket + date_time + currency",
         reason="정책 7장의 대표 복합 canonical output이다.",
         classification="canonical",
@@ -98,7 +98,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-special-unit",
         text="45㎡",
-        expected="사십오-제곱미터",
+        expected="사~십오-제곱미터",
         rule="canonical / special unit",
         reason="registered special unit inventory의 exact canonical output이다.",
         classification="canonical",
@@ -106,7 +106,7 @@ CANONICAL_OUTPUT_CASES = (
     TextCase(
         case_id="canonical-temperature",
         text="-2.5℃",
-        expected='영하 이-쩜-오도',
+        expected='영하 이~쩜-오도',
         rule="canonical / temperature",
         reason="temperature parser는 음수와 decimal precision을 보존해야 한다.",
         classification="canonical",

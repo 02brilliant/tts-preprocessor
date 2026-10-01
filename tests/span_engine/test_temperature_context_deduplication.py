@@ -18,10 +18,10 @@ def test_fahrenheit_label_symbol_context_deduplicates() -> None:
 
 def test_celsius_label_symbol_context_deduplicates() -> None:
     cases = [
-        ("섭씨 +25°C", "섭씨 영상 이십오도"),
-        ("섭씨 -25°C", "섭씨 영하 이십오도"),
-        ("섭씨 +25℃", "섭씨 영상 이십오도"),
-        ("섭씨 -25℃", "섭씨 영하 이십오도"),
+        ("섭씨 +25°C", "섭씨 영상 이~십오도"),
+        ("섭씨 -25°C", "섭씨 영하 이~십오도"),
+        ("섭씨 +25℃", "섭씨 영상 이~십오도"),
+        ("섭씨 -25℃", "섭씨 영하 이~십오도"),
         ('섭씨 +1.5°C', '섭씨 영상 일-쩜-오도'),
         ('섭씨 -0.0°C', '섭씨 영하 영-쩜-영도'),
     ]
@@ -35,18 +35,18 @@ def test_standalone_temperature_canonical_is_unchanged() -> None:
         ("-77°F", "화씨 영하 칠십칠도"),
         ("+77℉", "화씨 영상 칠십칠도"),
         ("-77℉", "화씨 영하 칠십칠도"),
-        ("+25℃", "영상 이십오도"),
-        ("-25℃", "영하 이십오도"),
-        ("+25°C", "영상 이십오도"),
-        ("-25°C", "영하 이십오도"),
+        ("+25℃", "영상 이~십오도"),
+        ("-25℃", "영하 이~십오도"),
+        ("+25°C", "영상 이~십오도"),
+        ("-25°C", "영하 이~십오도"),
         ("오늘 +77°F였다", "오늘 화씨 영상 칠십칠도였다"),
         ("오늘 -77°F였다", "오늘 화씨 영하 칠십칠도였다"),
         ("오늘 +77℉였다", "오늘 화씨 영상 칠십칠도였다"),
         ("오늘 -77℉였다", "오늘 화씨 영하 칠십칠도였다"),
-        ("오늘 +25℃였다", "오늘 영상 이십오도였다"),
-        ("오늘 -25℃였다", "오늘 영하 이십오도였다"),
-        ("오늘 +25°C였다", "오늘 영상 이십오도였다"),
-        ("오늘 -25°C였다", "오늘 영하 이십오도였다"),
+        ("오늘 +25℃였다", "오늘 영상 이~십오도였다"),
+        ("오늘 -25℃였다", "오늘 영하 이~십오도였다"),
+        ("오늘 +25°C였다", "오늘 영상 이~십오도였다"),
+        ("오늘 -25°C였다", "오늘 영하 이~십오도였다"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -54,7 +54,7 @@ def test_standalone_temperature_canonical_is_unchanged() -> None:
 
 def test_temperature_label_symbol_mismatch_keeps_current_behavior() -> None:
     assert transform("섭씨 +77°F") == "섭씨 화씨 영상 칠십칠도"
-    assert transform("화씨 +25°C") == "화씨 영상 이십오도"
+    assert transform("화씨 +25°C") == "화씨 영상 이~십오도"
 
 
 def test_temperature_context_deduplication_respects_protected_contexts() -> None:
@@ -88,7 +88,7 @@ def test_temperature_context_deduplication_long_sentence_regressions() -> None:
     output = transform(text)
     assert "화씨 영상 칠십칠도" in output
     assert "화씨 영하 십도" in output
-    assert "섭씨 영상 이십오도" in output
+    assert "섭씨 영상 이~십오도" in output
     assert "섭씨 영하 삼도" in output
     assert "화씨 화씨" not in output
-    assert "standalone 화씨 영상 칠십칠도와 영상 이십오도도" in output
+    assert "standalone 화씨 영상 칠십칠도와 영상 이~십오도도" in output

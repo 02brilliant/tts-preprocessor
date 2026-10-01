@@ -1,5 +1,47 @@
 # TTS Preprocessor Deployment Policy
 
+## Local packaged command deadline (2026-10-01)
+
+The API's standard/simplified rule commands, including `--include-debug`, have
+an approved default deadline of 30 seconds. The shared local command path also
+applies this limit to `--list-models`. Configure it in the server environment as
+`TTS_PREPROCESSOR_RULE_PROCESS_TIMEOUT_SECONDS`; only finite positive seconds
+are accepted. Invalid configuration fails before starting a command.
+This is an API subprocess guard, not a new executable/CLI option or TTS profile.
+On Linux/macOS, each invocation starts its own process session. On timeout the
+API kills that invocation's process group (including ordinary descendant
+processes), drains its pipes and reaps the direct child. A parent exiting first
+does not prevent cleanup of descendants that retain its pipes. It does not
+terminate the API's process group or another request's process.
+Timeout raises a distinct runtime error and returns HTTP 504 with the existing
+`detail` error schema. No partial output, original-as-success fallback, automatic
+retry or new success response fields are allowed. Normal command failures remain
+HTTP 500. This does not change stage 0 passthrough, integrated LLM's 20-second
+deadline or its existing 5-second rules-only recovery contract.
+The API continues to execute packaged binaries without importing engine source.
+
+## Internal presentation coordinates (2026-10-01)
+
+The shared `engine.text_alignment` helper carries bracket/newline/paragraph
+coordinates without importing an alternate engine or adding dependencies.
+It is statically imported by the existing transform graph and included in the
+source/frozen module-boundary inventory. Presentation maps are private metadata;
+the public TransformOutput fields and API/CLI/debug schemas remain unchanged.
+Fresh-runtime tests cover paragraph-first imports to prevent circular imports.
+All four executables retain the existing build and source-free runtime contract;
+frozen-runtime verification remains a release gate, not a macOS source check.
+
+## Always-on numeric long-vowel rendering (2026-10-01)
+
+The four existing packaged executables apply the same generated numeric `~`
+policy. No feature flag, environment variable, public argument, extra executable
+or TTS profile is introduced. Stage 0 remains passthrough. The existing
+`numeric_vowels.json` asset now includes three closed month evidence records.
+The shared renderer is imported by the existing rule and residual-selection paths.
+API-to-binary routing and source-free production are unchanged. Source tests and
+local source semantic probes validate output and packaging declarations; they do
+not replace frozen-runtime release gates or establish TTS acoustic performance.
+
 ## Numeric evidence asset (2026-10-01)
 
 All four existing executable specs include the package-local asset

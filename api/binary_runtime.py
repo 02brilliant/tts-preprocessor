@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import re
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -40,6 +41,10 @@ _LLM_STATUSES = frozenset(
 
 class BinaryRuntimeError(RuntimeError):
     """Raised when the packaged runtime binary cannot be executed safely."""
+
+
+class BinaryRuntimeTimeoutError(BinaryRuntimeError):
+    """A local packaged command exceeded its deadline; no output is usable."""
 
 
 class LLMStageRuntimeError(RuntimeError):
@@ -198,22 +203,49 @@ def run_transform_binary_debug(
 
 
 def _run_binary_command(command: list[str], *, text: str) -> str:
-    result = subprocess.run(
+    timeout = _positive_timeout_env("TTS_PREPROCESSOR_RULE_PROCESS_TIMEOUT_SECONDS", 30.0)
+    # PyInstaller may launch a child process. A separate session ensures timeout
+    # cleanup targets this invocation's process group, never the API's group.
+    with subprocess.Popen(
         command,
-        input=text,
-        capture_output=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        check=False,
-    )
+        start_new_session=(os.name == "posix"),
+    ) as process:
+        try:
+            stdout, stderr = process.communicate(input=text, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            _stop_binary_process(process)
+            raise BinaryRuntimeTimeoutError(
+                f"Packaged runtime command timed out after {timeout:g} seconds."
+            ) from exc
+        except BaseException:
+            _stop_binary_process(process)
+            raise
 
-    if result.returncode != 0:
-        stderr = result.stderr.strip() or result.stdout.strip() or "binary execution failed"
+    if process.returncode != 0:
+        stderr = stderr.strip() or stdout.strip() or "binary execution failed"
         raise BinaryRuntimeError(stderr)
 
-    normalized = result.stdout.rstrip("\n")
+    normalized = stdout.rstrip("\n")
     if not normalized:
         raise BinaryRuntimeError("binary returned empty output")
     return normalized
+
+
+def _stop_binary_process(process: subprocess.Popen) -> None:
+    if os.name == "posix":
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    else:
+        process.kill()
+    # Drain pipes and reap the direct child, including when the parent exited
+    # first but a descendant kept the output pipes open until the deadline.
+    process.communicate()
 
 
 def list_llm_models(*, binary_path: Path | None = None) -> dict:

@@ -74,14 +74,14 @@ ADVERSARIAL_CASES = [
     TextCase(
         case_id="canonical-shape-only-year-month-dot-form-is-decimal",
         text="2025.01",
-        expected='이천이십오-쩜-영일',
+        expected='이~천이십오-쩜-영일',
         rule="decimal / no shape-only date inference",
         reason="A four-digit first block alone is not an explicit Korean date context gate.",
     ),
     TextCase(
         case_id="canonical-standalone-2400-boundary",
         text="24:00",
-        expected="이십사시",
+        expected="이~십사시",
         rule="HH:MM / exact standalone day boundary",
         reason="The exact 24:00 boundary is a canonical strong standalone time and overrides the broad ambiguity guard.",
     ),

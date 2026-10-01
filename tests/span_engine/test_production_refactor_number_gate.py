@@ -25,7 +25,7 @@ def _claim_snapshot(text: str) -> tuple[str, list[tuple[str, str, str, int, int]
     [
         (
             "1 ~ 2",
-            "일에서 이",
+            "일에서 이~",
             (
                 "range",
                 "RANGE_SURFACE",
@@ -135,7 +135,7 @@ def test_attached_unit_slash_and_contamination_remain_atomic(
 
 def test_successful_earlier_owner_and_later_number_are_independent() -> None:
     assert _claim_snapshot("3 kg 테스트 4") == (
-        "삼-킬로그램 테스트 사",
+        "삼-킬로그램 테스트 사~",
         [
             (
                 "simple_unit",

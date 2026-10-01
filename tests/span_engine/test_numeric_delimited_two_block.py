@@ -27,22 +27,22 @@ def test_leading_zero_two_block_uses_digit_code_reading():
 
 def test_hyphen_two_block_with_range_compatible_unit():
     cases = [
-        ("1-2장", "일에서 이-장"),
-        ("1–2장", "일에서 이-장"),
-        ("1~2장", "일에서 이-장"),
-        ("1～2장", "일에서 이-장"),
-        ("3-4페이지", "삼에서 사-페이지"),
-        ("10-20개", "열-개에서 스무-개"),
-        ("10–20개", "열-개에서 스무-개"),
-        ("2-3명", "두-명에서 세-명"),
-        ("3-5분", "삼에서 오-분"),
-        ("1-2kg", "일에서 이-킬로그램"),
-        ("1–2kg", "일에서 이-킬로그램"),
-        ("1~2kg", "일에서 이-킬로그램"),
-        ("1～2kg", "일에서 이-킬로그램"),
-        ("2-3cm", "이에서 삼-센티미터"),
-        ("10-20%", "십에서 이십-퍼센트"),
-        ("100-200원", "백에서 이백-원"),
+        ("1-2장", "일에서 이~장"),
+        ("1–2장", "일에서 이~장"),
+        ("1~2장", "일에서 이~장"),
+        ("1～2장", "일에서 이~장"),
+        ("3-4페이지", "삼에서 사~페이지"),
+        ("10-20개", "열~개에서 스무-개"),
+        ("10–20개", "열~개에서 스무-개"),
+        ("2-3명", "두~명에서 세~명"),
+        ("3-5분", "삼에서 오~분"),
+        ("1-2kg", "일에서 이~킬로그램"),
+        ("1–2kg", "일에서 이~킬로그램"),
+        ("1~2kg", "일에서 이~킬로그램"),
+        ("1～2kg", "일에서 이~킬로그램"),
+        ("2-3cm", "이~에서 삼-센티미터"),
+        ("10-20%", "십에서 이~십-퍼센트"),
+        ("100-200원", "백에서 이~백-원"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -50,11 +50,11 @@ def test_hyphen_two_block_with_range_compatible_unit():
 
 def test_hyphen_two_block_optional_spacing_and_korean_tail():
     cases = [
-        ("1-2 장", "일에서 이-장"),
-        ("1-2 장입니다", "일에서 이-장입니다"),
-        ("1-2장으로", "일에서 이-장으로"),
-        ("10-20 개는", "열-개에서 스무-개는"),
-        ("10-20개는", "열-개에서 스무-개는"),
+        ("1-2 장", "일에서 이~장"),
+        ("1-2 장입니다", "일에서 이~장입니다"),
+        ("1-2장으로", "일에서 이~장으로"),
+        ("10-20 개는", "열~개에서 스무-개는"),
+        ("10-20개는", "열~개에서 스무-개는"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -75,12 +75,12 @@ def test_hyphen_two_block_non_unit_and_code_like_contexts_preserve():
     ]
     for source in cases:
         assert transform(source) == source
-    assert transform("1~2테스트") == "일에서 이 테스트"
-    assert transform("1～2테스트") == "일에서 이 테스트"
+    assert transform("1~2테스트") == "일에서 이~ 테스트"
+    assert transform("1～2테스트") == "일에서 이~ 테스트"
 
 
 def test_hyphen_two_block_range_preserves_input_order_without_value_gate():
-    assert transform("5-3개") == "다섯-개에서 세-개"
+    assert transform("5-3개") == "다섯-개에서 세~개"
 
 
 def test_hyphen_two_block_arbitrary_noun_does_not_range_claim():
@@ -92,22 +92,22 @@ def test_hyphen_two_block_arbitrary_noun_does_not_range_claim():
 def test_colon_two_block_standalone_blocks_internal_numeric_fallback():
     for source in ("9:30", "3:15", "10:20"):
         assert transform(source) == source
-    assert transform("13:05") == "십삼시 오분"
-    assert transform("13：05") == "십삼시 오분"
-    assert transform("1:2") == "일 대 이"
-    assert transform("1：2") == "일 대 이"
+    assert transform("13:05") == "십삼시 오~분"
+    assert transform("13：05") == "십삼시 오~분"
+    assert transform("1:2") == "일 대 이~"
+    assert transform("1：2") == "일 대 이~"
 
 
 def test_colon_two_block_time_requires_explicit_context():
     cases = [
-        ("13:05에 시작", "십삼시 오분에 시작"),
-        ("13：05에 시작", "십삼시 오분에 시작"),
+        ("13:05에 시작", "십삼시 오~분에 시작"),
+        ("13：05에 시작", "십삼시 오~분에 시작"),
         ("14:00부터", "십사시부터"),
         ("18:30까지", "십팔시 삼십분까지"),
         ("오전 9:30", "오전 아홉시 삼십분"),
-        ("오후 3:15", "오후 세시 십오분"),
-        ("AM 10:20", "AM 열시 이십분"),
-        ("PM 8:05", "PM 여덟시 오분"),
+        ("오후 3:15", "오후 세~시 십오분"),
+        ("AM 10:20", "AM 열~시 이~십분"),
+        ("PM 8:05", "PM 여덟시 오~분"),
         ("회의 14:00", "회의 십사시"),
         ("마감 18:00", "마감 십팔시"),
     ]
@@ -117,10 +117,10 @@ def test_colon_two_block_time_requires_explicit_context():
 
 def test_colon_two_block_semantic_pair_contexts_transform():
     cases = [
-        ("2:0으로 이겼다", "이 대 영으로 이겼다"),
+        ("2:0으로 이겼다", "이~ 대 영으로 이겼다"),
         ("3:1 승리", "삼 대 일 승리"),
-        ("1:2 비율", "일 대 이 비율"),
-        ("1：2 비율", "일 대 이 비율"),
+        ("1:2 비율", "일 대 이~ 비율"),
+        ("1：2 비율", "일 대 이~ 비율"),
         ("16:9 화면비", "십육 대 구 화면비"),
     ]
     for source, expected in cases:
@@ -145,7 +145,7 @@ def test_colon_two_block_duration_media_contexts_are_not_time():
 
 def test_invalid_time_like_surface_preserves_with_explicit_context():
     assert transform("13:99") == "십삼 대 구십구"
-    assert transform("24:01부터") == "이십사시 일분부터"
+    assert transform("24:01부터") == "이~십사시 일분부터"
     cases = [
         "13:99에 시작",
         "오전 13:05",
@@ -159,7 +159,7 @@ def test_protected_numeric_delimited_spans_do_not_block_neighbors():
     out = transform(text)
     assert out != text
     assert "`1-2`" in out
-    assert "이십오도" in out
+    assert "이~십오도" in out
     assert "삼-킬로그램" in out
 
     text = (
@@ -169,5 +169,5 @@ def test_protected_numeric_delimited_spans_do_not_block_neighbors():
     out = transform(text)
     assert out != text
     assert "The meeting was at 13:05." in out
-    assert "이십오-쩜-구구-달러" in out
+    assert "이~십오-쩜-구구-달러" in out
     assert "피에이치 칠-쩜-사" in out

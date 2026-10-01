@@ -148,7 +148,7 @@ def test_large_unit_core_surface_provenance_contract() -> None:
 def test_multiplier_remains_full_span_policy_distinct_control() -> None:
     output = transform_with_trace("3배")
 
-    assert output.normalized_text == "세-배"
+    assert output.normalized_text == "세~배"
     assert _claim_snapshot(output) == [
         (
             "multiplier",
@@ -160,10 +160,10 @@ def test_multiplier_remains_full_span_policy_distinct_control() -> None:
         )
     ]
     assert _parser_snapshot(output) == [
-        ("multiplier", "MULTIPLIER_SURFACE", "success", "세-배", 0, 2)
+        ("multiplier", "MULTIPLIER_SURFACE", "success", "세~배", 0, 2)
     ]
     assert _piece_snapshot(output) == [
-        ("세-", "GENERATED_READING", "multiplier", 0, 1),
+        ("세~", "GENERATED_READING", "multiplier", 0, 1),
         ("배", "ORIGINAL_KOREAN", "multiplier", 1, 2),
     ]
 

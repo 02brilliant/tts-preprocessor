@@ -314,8 +314,11 @@ def _match_compound_candidate(
     raw_text: str, start: int, excluded_ranges: list[BracketRange]
 ) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
+    prefix = _consume_numeric_prefix(raw_text, start)
+    if prefix is None:
+        return candidates
     for unit in _ORDERED_COMPOUND_UNITS:
-        span = _scan_compound_span(raw_text, start, unit)
+        span = _scan_compound_span(raw_text, start, unit, prefix)
         if span is None:
             continue
         if _span_overlaps_excluded_range(span, excluded_ranges):
@@ -345,8 +348,11 @@ def _match_compound_exact_candidate(
     raw_text: str, start: int, excluded_ranges: list[BracketRange]
 ) -> list[SurfaceCandidate]:
     candidates: list[SurfaceCandidate] = []
+    prefix = _consume_numeric_prefix(raw_text, start)
+    if prefix is None:
+        return candidates
     for unit in _ORDERED_COMPOUND_EXACT_UNITS:
-        span = _scan_compound_span(raw_text, start, unit)
+        span = _scan_compound_span(raw_text, start, unit, prefix)
         if span is None:
             continue
         if _span_overlaps_excluded_range(span, excluded_ranges):
@@ -374,8 +380,13 @@ def _match_compound_exact_candidate(
     return candidates
 
 
-def _scan_compound_span(raw_text: str, start: int, unit: str) -> SourceSpan | None:
-    numeric_end = _consume_numeric(raw_text, start, unit)
+def _scan_compound_span(
+    raw_text: str, start: int, unit: str,
+    prefix: tuple[int, bool, bool] | None = None,
+) -> SourceSpan | None:
+    if prefix is None:
+        prefix = _consume_numeric_prefix(raw_text, start)
+    numeric_end = _numeric_end_for_unit(prefix, unit)
     if numeric_end is None:
         return None
     if numeric_end < len(raw_text) and raw_text[numeric_end] == " ":
@@ -389,6 +400,21 @@ def _scan_compound_span(raw_text: str, start: int, unit: str) -> SourceSpan | No
 
 
 def _consume_numeric(raw_text: str, start: int, unit: str) -> int | None:
+    return _numeric_end_for_unit(_consume_numeric_prefix(raw_text, start), unit)
+
+
+def _numeric_end_for_unit(prefix: tuple[int, bool, bool] | None, unit: str) -> int | None:
+    if prefix is None:
+        return None
+    end, has_comma, has_decimal = prefix
+    if has_comma and unit not in _COMMA_ENABLED_UNITS:
+        return None
+    if has_decimal and unit not in _DECIMAL_ENABLED_UNITS:
+        return None
+    return end
+
+
+def _consume_numeric_prefix(raw_text: str, start: int) -> tuple[int, bool, bool] | None:
     index = start
     if index < len(raw_text) and is_signed_numeric_sign(raw_text[index]):
         if index + 1 < len(raw_text) and is_signed_numeric_sign(raw_text[index + 1]):
@@ -399,22 +425,19 @@ def _consume_numeric(raw_text: str, start: int, unit: str) -> int | None:
         return None
     integer = raw_text[index:integer_end]
     normalized_integer = integer.replace(",", "")
-    if "," in integer and unit not in _COMMA_ENABLED_UNITS:
-        return None
     if len(normalized_integer) > 1 and normalized_integer.startswith("0"):
         return None
     if int(normalized_integer) >= 100000000:
         return None
     index = integer_end
-    if index < len(raw_text) and raw_text[index] == ".":
-        if unit not in _DECIMAL_ENABLED_UNITS:
-            return None
+    has_decimal = index < len(raw_text) and raw_text[index] == "."
+    if has_decimal:
         fraction_start = index + 1
         fraction_end = _consume_digits(raw_text, fraction_start)
         if fraction_end == fraction_start:
             return None
         index = fraction_end
-    return index
+    return index, "," in integer, has_decimal
 
 
 def _consume_integer(raw_text: str, start: int) -> int | None:

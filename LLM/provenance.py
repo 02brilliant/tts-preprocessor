@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from difflib import SequenceMatcher
 import re
 
 from LLM.validation_models import NormalizationSnapshot, NormalizedSpan
 from engine.span_engine.models import TransformOutput
 from engine.span_engine.protected import protected_literal_spans
+from engine.text_alignment import rendered_index_map
 
 
 _LOCKED_PROVENANCE = frozenset(
@@ -20,9 +20,13 @@ def build_normalization_snapshot(output: TransformOutput) -> NormalizationSnapsh
     if not isinstance(output, TransformOutput):
         raise TypeError("output must be TransformOutput")
     normalized_text = output.normalized_text
-    rendered_text = "".join(piece.text for piece in output.render_pieces)
-    mapping = _matching_index_map(rendered_text, normalized_text)
+    mapping = rendered_index_map(output)
     spans: list[NormalizedSpan] = []
+    if mapping is None and output.render_pieces and normalized_text:
+        # Untraceable presentation/fallback edits cannot silently unlock output.
+        spans.append(NormalizedSpan(0, len(normalized_text), normalized_text,
+                                    None, None, "preserve", "ALIGNMENT_UNRESOLVED",
+                                    locked=True, protected=False))
     rendered_cursor = 0
     for piece in output.render_pieces:
         piece_start = rendered_cursor
@@ -30,10 +34,12 @@ def build_normalization_snapshot(output: TransformOutput) -> NormalizationSnapsh
         rendered_cursor = piece_end
         if not piece.text:
             continue
-        final_range = _project_range(piece_start, piece_end, mapping)
-        if final_range is None:
+        if mapping is None:
             continue
-        normalized_start, normalized_end = final_range
+        surviving = [mapping[index] for index in range(piece_start, piece_end) if index in mapping]
+        if not surviving:
+            continue  # Explicitly elided by the bracket filter, not a lost lock.
+        normalized_start, normalized_end = surviving[0], surviving[-1] + 1
         source_span = piece.source_span
         spans.append(
             NormalizedSpan(
@@ -88,14 +94,6 @@ def minimal_snapshot(normalized_text: str) -> NormalizationSnapshot:
     return NormalizationSnapshot(normalized_text=normalized_text, spans=spans)
 
 
-def _matching_index_map(source: str, target: str) -> dict[int, int]:
-    mapping: dict[int, int] = {}
-    for block in SequenceMatcher(a=source, b=target, autojunk=False).get_matching_blocks():
-        for offset in range(block.size):
-            mapping[block.a + offset] = block.b + offset
-    return mapping
-
-
 def _llm_protected_spans(text: str):
     spans = list(protected_literal_spans(text))
     for match in _ADDITIONAL_IDENTIFIER_RE.finditer(text):
@@ -105,20 +103,6 @@ def _llm_protected_spans(text: str):
 
         spans.append(SourceSpan(match.start(), match.end()))
     return tuple(sorted(spans, key=lambda span: span.start))
-
-
-def _project_range(
-    start: int,
-    end: int,
-    mapping: dict[int, int],
-) -> tuple[int, int] | None:
-    projected = [mapping.get(index) for index in range(start, end)]
-    if not projected or any(index is None for index in projected):
-        return None
-    indexes = [index for index in projected if index is not None]
-    if indexes != list(range(indexes[0], indexes[0] + len(indexes))):
-        return None
-    return indexes[0], indexes[-1] + 1
 
 
 __all__ = ["build_normalization_snapshot", "minimal_snapshot"]

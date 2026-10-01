@@ -67,12 +67,12 @@ def test_prefixed_ordinal_spaced_je_number(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("2문항", "두-문항"),
-        ("40문항", "사십-문항"),
+        ("2문항", "두~문항"),
+        ("40문항", "사~십-문항"),
         ("101문항", "백일-문항"),
-        ("2항목", "두-항목"),
+        ("2항목", "두~항목"),
         ("2대", "2대"),
-        ("40대", "사십-대"),
+        ("40대", "사~십-대"),
     ],
 )
 def test_plain_counter_reading_unchanged(
@@ -85,7 +85,7 @@ def test_plain_counter_reading_unchanged(
     ("source", "expected"),
     [
         ("A제2문항", "A제2문항"),
-        ("A제 2문항", "A제 두-문항"),
+        ("A제 2문항", "A제 두~문항"),
         ("제2문항abc", "제-이문항abc"),
         ("제2문항A", "제-이문항A"),
         ("제2항목abc", "제-이항목abc"),

@@ -24,7 +24,7 @@ def test_bracket_protection_with_date_time(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("회의는 13:05(시작)에 열린다", "회의는 십삼시 오분에 열린다"),
+        ("회의는 13:05(시작)에 열린다", "회의는 십삼시 오~분에 열린다"),
         ("13:05(시작)", "13:05"),
         ("값은 12:30(비율)이다", "값은 12:30이다"),
     ],

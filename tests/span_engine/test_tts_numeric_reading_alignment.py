@@ -19,8 +19,8 @@ def _debug(text: str) -> dict:
         ('307.16', '삼백칠-쩜-일육'),
         ('7443.28', '칠천사백사십삼-쩜-이팔'),
         ('7443.28에', '칠천사백사십삼-쩜-이팔에'),
-        ('2025.01', '이천이십오-쩜-영일'),
-        ('2025.13', '이천이십오-쩜-일삼'),
+        ('2025.01', '이~천이십오-쩜-영일'),
+        ('2025.13', '이~천이십오-쩜-일삼'),
     ],
 )
 def test_two_block_dotted_numbers_default_to_decimal(
@@ -102,7 +102,7 @@ def test_two_block_dotted_specific_owner_boundaries() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("2025.01.03", "이천이십오년 일월 삼일"),
+        ("2025.01.03", "이~천이십오년 일월 삼일"),
         ("2025.13.03", "이공이오쩜 일삼쩜 공삼"),
         ("12.12.1990", "12.12.1990"),
         ("v1.2.3", "v1.2.3"),
@@ -193,10 +193,10 @@ def test_structured_compact_large_unit_trace_and_provenance() -> None:
     ("text", "expected"),
     [
         ("다우존스30", "다우존스삼십"),
-        ("5극3특", "오극삼특"),
-        ("5극 3특", "오극 삼특"),
+        ("5극3특", "오~극삼특"),
+        ("5극 3특", "오~극 삼특"),
         ("한1글", "한일글"),
-        ("다우존스30과 5극3특", "다우존스삼십과 오극삼특"),
+        ("다우존스30과 5극3특", "다우존스삼십과 오~극삼특"),
     ],
 )
 def test_korean_numeric_chain_reads_only_ascii_integer_cores(
@@ -253,7 +253,7 @@ def test_korean_numeric_chain_trace_and_provenance() -> None:
         (piece["text"], piece["provenance"])
         for piece in debug["render_pieces"]
     ] == [
-        ("오", "GENERATED_READING"),
+        ("오~", "GENERATED_READING"),
         ("극", "ORIGINAL_KOREAN"),
         ("삼", "GENERATED_READING"),
         ("특", "ORIGINAL_KOREAN"),
@@ -271,10 +271,6 @@ def test_full_news_numeric_regression_via_official_transform() -> None:
         "2만5508.07에 각각 마감했다. 5극3특, 5극 3특 3대 프로젝트 시작합니다."
     )
     expected = (
-        "뉴욕증시에서 다우존스삼십 산업평균지수는 전장보다 삼백칠-쩜-일육포인트 내린 "
-        "오만천팔백삼십구-쩜-이육에 거래를 마쳤다. 에스앤피 오백 지수는 전장보다 "
-        "십사-쩜-사일포인트 내린 칠천사백사십삼-쩜-이팔에, 기술주 중심의 나스닥 "
-        "종합지수는 전장보다 십이-쩜-일칠포인트 내린 이만오천오백팔-쩜-영칠에 각각 "
-        "마감했다. 오극삼특, 오극 삼특 3대 프로젝트 시작합니다."
+        '뉴욕증시에서 다우존스삼십 산업평균지수는 전장보다 삼백칠-쩜-일육포인트 내린 오만천팔백삼십구-쩜-이육에 거래를 마쳤다. 에스앤피 오백 지수는 전장보다 십사-쩜-사일포인트 내린 칠천사백사십삼-쩜-이팔에, 기술주 중심의 나스닥 종합지수는 전장보다 십이-쩜-일칠포인트 내린 이만오천오백팔-쩜-영칠에 각각 마감했다. 오~극삼특, 오~극 삼특 3대 프로젝트 시작합니다.'
     )
     assert transform(text) == expected

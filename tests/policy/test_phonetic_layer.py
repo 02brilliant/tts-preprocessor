@@ -9,14 +9,14 @@ from tests._policy_case import assert_text_exact
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("회의는 13:05에 시작한다", "회의는 십삼시 오분에 시작한다"),
-        ("오전 3:05에 출발한다", "오전 세시 오분에 출발한다"),
+        ("회의는 13:05에 시작한다", "회의는 십삼시 오~분에 시작한다"),
+        ("오전 3:05에 출발한다", "오전 세~시 오~분에 출발한다"),
         pytest.param(
             "13시에는 문을 닫는다",
-            "십삼-시에는 문을 닫는다",
+            "십삼시에는 문을 닫는다",
             id="suffix-clock-generated-spacing-survives-phonetic-layer",
         ),
-        ("5분부터 발언한다", "오분부터 발언한다"),
+        ("5분부터 발언한다", "오~분부터 발언한다"),
     ],
 )
 def test_phonetic_smoothing_positive_cases(text: str, expected: str):
@@ -38,14 +38,14 @@ def test_phonetic_smoothing_negative_cases(text: str, expected: str):
 
 def test_phonetic_smoothing_interaction_with_prosody():
     text = "그리고 우리는 13:05에 출발하고 비용은 ₩100을 넘지 않는다"
-    expected = "그리고, 우리는 십삼시 오분에 출발하고 비용은 백-원을 넘지 않는다"
+    expected = "그리고, 우리는 십삼시 오~분에 출발하고 비용은 백-원을 넘지 않는다"
     assert_text_exact(transform(text), text, expected)
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("2026-04-17", "이천이십육년 사월 십칠일"),
+        ("2026-04-17", "이~천이십육년 사~월 십칠일"),
         ("12.12 사태", "십이십이 사태"),
         ("₩100을 결제했다", "백-원을 결제했다"),
     ],

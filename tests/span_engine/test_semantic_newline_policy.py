@@ -90,7 +90,7 @@ def test_protected_code_newlines_remain_source_exact(text: str) -> None:
 
 
 def test_newline_is_joined_before_language_gate_line_classification() -> None:
-    assert transform("설명은\nKGM은 2일에 발표했다") == "설명은 케이지엠은 이일에 발표했다"
+    assert transform("설명은\nKGM은 2일에 발표했다") == "설명은 케이지엠은 이~일에 발표했다"
 
 
 def test_user_supplied_multiline_article_example() -> None:

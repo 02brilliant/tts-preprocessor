@@ -1,5 +1,67 @@
 # TTS Preprocessor Policy Changelog
 
+Entries below are implementation history, newest first. Historical example
+outputs do not override current canonical policy or numeric-matrix examples.
+
+## 2026-10-01 Span lookup optimization and local binary deadline
+
+- Index claim and shadow overlap candidates by source coordinates; preserve
+  insertion-order collision priority, nested reentry and closed shadow exceptions.
+  Restrict original-token gap rendering to intersecting tokens without changing
+  fragment provenance or the existing behavior for unordered external tokens.
+- Parse each compound-unit numeric prefix once per candidate start. Keep existing
+  unit inventories, longest-match order, comma/decimal permissions and safe tails.
+  Rule outputs, trace, numeric metadata and presentation coordinates are unchanged.
+- Fix the default API rule-command deadline at the approved 30 seconds, configurable
+  via `TTS_PREPROCESSOR_RULE_PROCESS_TIMEOUT_SECONDS`. Include rule debug and local
+  model-list commands. On Linux/macOS kill only the invocation's process group,
+  drain pipes and reap the direct child, including a parent that already exited.
+  Return HTTP 504 with existing `detail`, without retry or partial/original success.
+- Preserve integrated LLM 20-second and rules-only 5-second recovery, stage 0,
+  public success schemas and source-free production. No new dependencies, binary
+  build, deployment or TTS acoustic verification is part of this source change.
+
+## 2026-10-01 Presentation coordinates and numeric metadata integrity
+
+- Carry actual bracket-filter and paragraph-edit character coordinates into
+  normalization snapshots. Remove repeated-text similarity alignment; keep
+  generated locks after elision, trimming and paragraph whitespace edits. Unknown
+  alignment is conservatively locked, including against contraction exceptions.
+- Project numeric annotations through recorded edits and keep unknown alignment
+  explicit. Correct contextual source spans and signed 조각's selected native
+  system. Record existing large-unit and multi-colon owner components without
+  expanding long-vowel scope or changing their spoken outputs.
+- Preserve numeric options when slicing a selection plan; rebase only its
+  normalized-input source coordinates. Retain residual component/unit spans and
+  handle insertions at annotation endpoints without including outside text.
+  Carry input newline-edit coordinates back to original numeric source spans;
+  inserted, unmappable endpoints remain unresolved.
+- Update current boundary/fraction examples and check current policy code-block
+  and inline examples in addition to the numeric matrix. Historical changelog
+  examples remain history. Public payloads, stages, engine execution counts,
+  source-free runtime and TTS policy are unchanged.
+- Broad rule-engine optimization and binary timeout policy are separate work;
+  neither is implemented here. No deployment or TTS acoustic verification.
+
+## 2026-10-01 Always-on numeric long-vowel markers
+
+- Render verified lexical/position `long` targets with `~` in generated numeric
+  readings across stages 1–4. No runtime toggle or TTS-specific branch; stage 0
+  passes through. Replace a coincident generated hyphen rather than producing
+  `~-`; retain unrelated boundaries and original punctuation.
+- Admit closed month evidence (2/4/5), owner-confirmed integer clock/duration,
+  unsigned integer fractions and date year/day components. Keep unknown native
+  lexemes, decimal/identifier digit domains and unverified fixed names unresolved.
+- Join only confirmed numeric clock-hour/시 boundaries: `12시→열~두시`.
+  Keep duration 시간 and 제N차/회/편/항/조 boundaries. `12개→열~두-개`,
+  `2.50kg→이~쩜-오영-킬로그램`, `3/4만큼→사~분의 삼만큼`.
+- Reuse the renderer in finite LLM residual options (including deferred 번/호/층
+  after selection), without model-authored markers, new calls or response fields.
+  Preserve locks, protected originals, provenance and explicit coordinate projection.
+- Extend the existing offline evidence asset, update explicit approved expectations
+  and add marker, exclusion, source/coordinate and LLM option regressions.
+  No TTS audio evaluation, commit, push or deployment is part of this change.
+
 ## 2026-10-01 Approved quantity and integer-boundary follow-up
 
 - Expanded native determiner readings through 99 only for confirmed quantities

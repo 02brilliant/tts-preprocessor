@@ -29,7 +29,7 @@ def test_phase8_unsupported_and_literal_inputs_preserve(text: str, expected: str
 
 
 def test_phase8_strong_bare_time_like_reads_as_time() -> None:
-    assert transform("13:05") == "십삼시 오분"
+    assert transform("13:05") == "십삼시 오~분"
 
 
 @pytest.mark.parametrize(

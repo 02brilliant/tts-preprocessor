@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_left, bisect_right
 from typing import Any
 
 from engine.span_engine.arithmetic import (
@@ -13,8 +14,10 @@ from engine.span_engine.brackets import (
     find_incomplete_bracket_ranges,
     protect_non_parenthesis_brackets_before_claim,
     transform_outside_protected_spans,
+    transform_outside_protected_spans_with_mapping,
 )
 from engine.span_engine.claim_registry import SurfaceClaimRegistry
+from engine.text_alignment import MappedText
 from engine.span_engine.claim_scanner import claim_surfaces
 from engine.span_engine.date_time import build_time_gate_logs
 from engine.span_engine.contextual_number_unit import build_contextual_decision_logs
@@ -42,8 +45,8 @@ from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import apply_safe_post_surface_particle_exception
 from engine.span_engine.public_number import build_public_number_gate_logs
 from engine.prosody.paragraph import (
-    normalize_user_newline_semantics,
-    split_paragraphs,
+    normalize_user_newline_semantics_with_mapping,
+    split_paragraphs_with_mapping,
 )
 from engine.span_engine.prosody import apply_prosody_comma_adapter
 from engine.span_engine.prosody_extra import apply_extra_prosody_comma_adapter
@@ -75,16 +78,23 @@ def transform(text: str) -> str:
 def transform_with_trace(text: str) -> TransformOutput:
     checked_text = _ensure_str(text)
     # Keep original newlines until bracket eligibility has been decided in the core.
-    normalized_input, _ = transform_outside_protected_spans(
-        checked_text,
+    mapped_input, _ = transform_outside_protected_spans_with_mapping(
+        MappedText.identity(checked_text),
         [value.span for value in find_bracket_ranges(checked_text)],
-        normalize_user_newline_semantics,
+        normalize_user_newline_semantics_with_mapping,
     )
+    normalized_input = mapped_input.text
     try:
         output = _transform_with_language_gate_trace(normalized_input)
     except Exception as exc:
         output = recover_transform_output(normalized_input, exc)
-    return _apply_paragraph_split_to_output(output)
+    output = _apply_paragraph_split_to_output(output)
+    if normalized_input != checked_text:
+        from engine.span_engine.numeric_plan import project_plan_source
+        for piece in output.render_pieces:
+            piece.numeric_plans = tuple(project_plan_source(plan, mapped_input.indices, checked_text)
+                                        for plan in piece.numeric_plans)
+    return output
 
 
 def recover_transform_output(text: str, exc: Exception) -> TransformOutput:
@@ -102,15 +112,21 @@ def _apply_paragraph_split_to_output(output: TransformOutput) -> TransformOutput
     text = output.normalized_text
     if not has_hangul_syllable(text):
         return output
-    normalized_text, protected_spans = transform_outside_protected_spans(
-        text, output.protected_spans, split_paragraphs
+    indices = output.rendered_indices
+    if indices is None and "".join(piece.text for piece in output.render_pieces) == text:
+        indices = tuple(range(len(text)))
+    mapped, protected_spans = transform_outside_protected_spans_with_mapping(
+        MappedText(text, indices if indices is not None else (None,) * len(text)),
+        output.protected_spans, split_paragraphs_with_mapping
     )
-    return TransformOutput(
-        normalized_text=normalized_text,
+    result = TransformOutput(
+        normalized_text=mapped.text,
         render_pieces=output.render_pieces,
         trace=output.trace,
         protected_spans=protected_spans,
     )
+    result.rendered_indices = mapped.indices if indices is not None else None
+    return result
 
 
 def contains_hangul_syllable(text: str) -> bool:
@@ -750,12 +766,14 @@ def _transform_core_with_trace(text: str) -> TransformOutput:
         )
     )
     trace.validation_logs.extend(validation.logs)
-    return TransformOutput(
+    result = TransformOutput(
         normalized_text=normalized_text,
         render_pieces=pieces,
         trace=trace,
         protected_spans=bracket_filter.protected_spans,
     )
+    result.rendered_indices = bracket_filter.rendered_indices
+    return result
 
 
 def _apply_sentence_final_slash_punctuation_alias(
@@ -875,85 +893,42 @@ def _count_by_attr(values: list[Any], attr: str) -> dict[str, int]:
 
 def _surface_internal_shadow_spans(surfaces: list[Any], shadow: list[Any]) -> set[tuple[int, int]]:
     consumed: set[tuple[int, int]] = set()
+    ordered = sorted(shadow, key=lambda unit: unit.span.start)
+    starts = [unit.span.start for unit in ordered]
+    max_ends: list[int] = []
+    maximum = 0
+    for unit in ordered:
+        maximum = max(maximum, unit.span.end)
+        max_ends.append(maximum)
     for surface in surfaces:
-        for unit in shadow:
-            if (
-                getattr(surface, "owner", None) == "currency"
-                and getattr(surface, "metadata", {}).get("reason")
-                in {
-                    "decimal_large_unit_krw_expansion",
-                    "large_unit_currency_suffix",
-                }
-                and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None) == "currency"
-                and getattr(surface, "metadata", {}).get("reason")
-                in {
-                    "decimal_large_unit_krw_expansion",
-                    "large_unit_currency_suffix",
-                }
-                and surface.span.start <= unit.span.start
-                and unit.span.end <= surface.span.end
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None)
-                in {
-                    "large_unit_atomic",
-                    "mixed_integer_atomic",
-                    "mixed_decimal_atomic",
-                    "phrase_dictionary",
-                }
-                and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None) == "parenthesized_hangul_alias"
-                and getattr(surface, "metadata", {}).get("consume_parenthetical_alias")
-                is True
-                and _spans_overlap(
-                    surface.span.start, surface.span.end, unit.span.start, unit.span.end
-                )
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None) in {"counter_noun", "multiplier"}
-                and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(unit, "kind", None) == "KOREAN_SPACE"
-                and surface.span.start <= unit.span.start
-                and unit.span.end <= surface.span.end
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None) == "numeric_suffix"
-                and getattr(surface, "metadata", {}).get("reason")
-                in {
-                    "prefixed_ordinal_numeric_suffix",
-                    "prefixed_ordinal_numeric_core",
-                }
-                and _spans_overlap(surface.span.start, surface.span.end, unit.span.start, unit.span.end)
-            ):
-                consumed.add((unit.span.start, unit.span.end))
-                continue
-            if (
-                getattr(surface, "owner", None) == "time"
-                and getattr(surface, "metadata", {}).get("compact_si_direction")
-                is True
-                and _spans_overlap(
-                    surface.span.start, surface.span.end, unit.span.start, unit.span.end
-                )
-            ):
+        owner = getattr(surface, "owner", None)
+        metadata = getattr(surface, "metadata", {})
+        currency_exception = owner == "currency" and metadata.get("reason") in {
+            "decimal_large_unit_krw_expansion", "large_unit_currency_suffix",
+        }
+        overlap_exception = (
+            currency_exception
+            or owner in {"large_unit_atomic", "mixed_integer_atomic", "mixed_decimal_atomic",
+                         "phrase_dictionary", "counter_noun", "multiplier"}
+            or (owner == "parenthesized_hangul_alias"
+                and metadata.get("consume_parenthetical_alias") is True)
+            or (owner == "numeric_suffix" and metadata.get("reason") in {
+                "prefixed_ordinal_numeric_suffix", "prefixed_ordinal_numeric_core"})
+            or (owner == "time" and metadata.get("compact_si_direction") is True)
+        )
+        # Include touching endpoints for the containment exceptions, even for
+        # empty spans; the exact policy predicates below still decide consumption.
+        first = bisect_left(max_ends, surface.span.start)
+        last = bisect_right(starts, surface.span.end)
+        for index in range(first, last):
+            unit = ordered[index]
+            overlaps = _spans_overlap(surface.span.start, surface.span.end,
+                                      unit.span.start, unit.span.end)
+            contained = (surface.span.start <= unit.span.start
+                         and unit.span.end <= surface.span.end)
+            if ((overlap_exception and overlaps)
+                    or (contained and (currency_exception
+                                       or getattr(unit, "kind", None) == "KOREAN_SPACE"))):
                 consumed.add((unit.span.start, unit.span.end))
     return consumed
 

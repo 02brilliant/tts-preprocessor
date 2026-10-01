@@ -63,6 +63,50 @@ def test_numeric_matrix_has_canonical_backtick_rows() -> None:
 _CANONICAL_ROWS = _canonical_rows()
 
 
+def _current_policy_examples() -> list[tuple[str, str, str]]:
+    """Check explicitly current sections; never rewrite historical expectations."""
+    sections = (
+        ("docs/TTS_Preprocessor_policy.md", "숫자 발화 경계 canonical 정책"),
+        ("docs/TTS_Preprocessor_level_policy.md", "규칙 엔진 숫자 발화 경계"),
+        ("docs/TTS_Preprocessor_level_policy.md", "숫자 장음 상시 출력 (2026-10-01)"),
+    )
+    examples = []
+    for path, title in sections:
+        document = Path(path).read_text(encoding="utf-8")
+        section = document.split("## " + title + "\n", 1)[1].split("\n## ", 1)[0]
+        pairs = []
+        for block in re.findall(r"```text\n(.*?)\n```", section, re.DOTALL):
+            for line in block.splitlines():
+                source, expected = line.split(" -> ", 1)
+                pairs.append((source, expected))
+        pairs.extend(re.findall(r"`([^`]+?)→([^`]+)`", section))
+        for sources, expected in pairs:
+            aliases = [sources]
+            if "/" in sources:
+                left, right = sources.split("/", 1)
+                # Only equivalent attached/spaced aliases, never km/L or a fraction.
+                if left.replace(" ", "") == right.replace(" ", ""):
+                    aliases = [left, right]
+            for source in aliases:
+                examples.append((path, source.strip(), expected.strip()))
+    return examples
+
+
+_CURRENT_POLICY_EXAMPLES = _current_policy_examples()
+
+
+def test_current_policy_example_coverage():
+    assert len(_CURRENT_POLICY_EXAMPLES) >= 30
+    assert any(source == "2025년" and expected == "이~천이십오년"
+               for _, source, expected in _CURRENT_POLICY_EXAMPLES)
+
+
+@pytest.mark.parametrize("path,source,expected", _CURRENT_POLICY_EXAMPLES)
+def test_current_policy_examples_match_implementation(path, source, expected):
+    del path
+    assert transform(source) == expected
+
+
 @pytest.mark.parametrize(
     ("section", "surface", "doc_expected"),
     _CANONICAL_ROWS,

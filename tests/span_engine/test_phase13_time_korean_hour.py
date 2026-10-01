@@ -8,43 +8,43 @@ from engine.span_engine import SourceSpan, transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3시", "세-시"),
-        ("3시에 시작", "세-시에 시작"),
-        ("3시 5분", "세-시 오분"),
-        ("3시 5분 7초", "세-시 오분 칠초"),
-        ("오후 3시", "오후 세-시"),
-        ("오전 10시 30분", "오전 열-시 삼십분"),
-        ("12시", "열두-시"),
-        ("12시에", "열두-시에"),
-        ("12시를", "열두-시를"),
-        ("12시을", "열두-시을"),
-        ("12시는", "열두-시는"),
-        ("12시은", "열두-시은"),
-        ("12시가", "열두-시가"),
-        ("12시이", "열두-시이"),
-        ("12시로", "열두-시로"),
-        ("12시으로", "열두-시으로"),
-        ("12시와", "열두-시와"),
-        ("12시과", "열두-시과"),
-        ("12시도", "열두-시도"),
-        ("12시만", "열두-시만"),
-        ("12시보다 늦게", "열두-시보다 늦게"),
-        ("12시처럼 보인다", "열두-시처럼 보인다"),
-        ("12시마다 알림", "열두-시마다 알림"),
-        ("12시면 늦다", "열두-시면 늦다"),
-        ("12시이면", "열두-시이면"),
-        ("12시라면", "열두-시라면"),
-        ("12시이라고 했다", "열두-시이라고 했다"),
-        ("12시라고 했다", "열두-시라고 했다"),
-        ("12시인데", "열두-시인데"),
-        ("12시였다", "열두-시였다"),
-        ("12시이었다", "열두-시이었다"),
-        ("12시이다", "열두-시이다"),
-        ("12시에는", "열두-시에는"),
-        ("12시에서", "열두-시에서"),
-        ("12시에도", "열두-시에도"),
-        ("12시보다", "열두-시보다"),
-        ("12시인", "열두-시인"),
+        ("3시", "세~시"),
+        ("3시에 시작", "세~시에 시작"),
+        ("3시 5분", "세~시 오~분"),
+        ("3시 5분 7초", "세~시 오~분 칠초"),
+        ("오후 3시", "오후 세~시"),
+        ("오전 10시 30분", "오전 열~시 삼십분"),
+        ("12시", "열~두시"),
+        ("12시에", "열~두시에"),
+        ("12시를", "열~두시를"),
+        ("12시을", "열~두시을"),
+        ("12시는", "열~두시는"),
+        ("12시은", "열~두시은"),
+        ("12시가", "열~두시가"),
+        ("12시이", "열~두시이"),
+        ("12시로", "열~두시로"),
+        ("12시으로", "열~두시으로"),
+        ("12시와", "열~두시와"),
+        ("12시과", "열~두시과"),
+        ("12시도", "열~두시도"),
+        ("12시만", "열~두시만"),
+        ("12시보다 늦게", "열~두시보다 늦게"),
+        ("12시처럼 보인다", "열~두시처럼 보인다"),
+        ("12시마다 알림", "열~두시마다 알림"),
+        ("12시면 늦다", "열~두시면 늦다"),
+        ("12시이면", "열~두시이면"),
+        ("12시라면", "열~두시라면"),
+        ("12시이라고 했다", "열~두시이라고 했다"),
+        ("12시라고 했다", "열~두시라고 했다"),
+        ("12시인데", "열~두시인데"),
+        ("12시였다", "열~두시였다"),
+        ("12시이었다", "열~두시이었다"),
+        ("12시이다", "열~두시이다"),
+        ("12시에는", "열~두시에는"),
+        ("12시에서", "열~두시에서"),
+        ("12시에도", "열~두시에도"),
+        ("12시보다", "열~두시보다"),
+        ("12시인", "열~두시인"),
     ],
 )
 def test_korean_hour_time(text: str, expected: str) -> None:
@@ -54,38 +54,38 @@ def test_korean_hour_time(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("11시23분", "열한-시 이십삼분"),
-        ("11시 23분", "열한-시 이십삼분"),
-        ("11시23분45초", "열한-시 이십삼분 사십오초"),
-        ("11시 23분45초", "열한-시 이십삼분 사십오초"),
-        ("11시23분 45초", "열한-시 이십삼분 사십오초"),
-        ("11시 23분 45초", "열한-시 이십삼분 사십오초"),
-        ("1시2분3초", "한-시 이분 삼초"),
-        ("23시59분59초", "이십삼-시 오십구분 오십구초"),
-        ("23분45초", "이십삼분 사십오초"),
-        ("23분 45초", "이십삼분 사십오초"),
-        ("11시60분", "열한-시 육십분"),
-        ("11시23분60초", "열한-시 이십삼분 육십초"),
-        ("60분45초", "육십분 사십오초"),
-        ("23분60초", "이십삼분 육십초"),
-        ("120분45초", "백이십분 사십오초"),
-        ("1,200분45초", "천이백분 사십오초"),
-        ("3시 99분", "세-시 구십구분"),
-        ("3시5분99초", "세-시 오분 구십구초"),
-        ("11시23분45초입니다", "열한-시 이십삼분 사십오초입니다"),
-        ("23분45초입니다", "이십삼분 사십오초입니다"),
-        ("09시", "아홉-시"),
-        ("009시", "아홉-시"),
+        ("11시23분", "열~한시 이~십삼분"),
+        ("11시 23분", "열~한시 이~십삼분"),
+        ("11시23분45초", "열~한시 이~십삼분 사~십오초"),
+        ("11시 23분45초", "열~한시 이~십삼분 사~십오초"),
+        ("11시23분 45초", "열~한시 이~십삼분 사~십오초"),
+        ("11시 23분 45초", "열~한시 이~십삼분 사~십오초"),
+        ("1시2분3초", "한시 이~분 삼초"),
+        ("23시59분59초", "이~십삼시 오~십구분 오~십구초"),
+        ("23분45초", "이~십삼분 사~십오초"),
+        ("23분 45초", "이~십삼분 사~십오초"),
+        ("11시60분", "열~한시 육십분"),
+        ("11시23분60초", "열~한시 이~십삼분 육십초"),
+        ("60분45초", "육십분 사~십오초"),
+        ("23분60초", "이~십삼분 육십초"),
+        ("120분45초", "백이십분 사~십오초"),
+        ("1,200분45초", "천이백분 사~십오초"),
+        ("3시 99분", "세~시 구십구분"),
+        ("3시5분99초", "세~시 오~분 구십구초"),
+        ("11시23분45초입니다", "열~한시 이~십삼분 사~십오초입니다"),
+        ("23분45초입니다", "이~십삼분 사~십오초입니다"),
+        ("09시", "아홉시"),
+        ("009시", "아홉시"),
         ("09 시", "09 시"),
-        ("0시", "영-시"),
-        ("00시", "영-시"),
-        ("00시23분45초", "영-시 이십삼분 사십오초"),
-        ("09시23분", "아홉-시 이십삼분"),
-        ("09시 23분45초", "아홉-시 이십삼분 사십오초"),
-        ("09시23분 045초", "아홉-시 이십삼분 사십오초"),
-        ("11시005분", "열한-시 오분"),
-        ("23분045초", "이십삼분 사십오초"),
-        ("123분545초", "백이십삼분 오백사십오초"),
+        ("0시", "영시"),
+        ("00시", "영시"),
+        ("00시23분45초", "영시 이~십삼분 사~십오초"),
+        ("09시23분", "아홉시 이~십삼분"),
+        ("09시 23분45초", "아홉시 이~십삼분 사~십오초"),
+        ("09시23분 045초", "아홉시 이~십삼분 사~십오초"),
+        ("11시005분", "열~한시 오~분"),
+        ("23분045초", "이~십삼분 사~십오초"),
+        ("123분545초", "백이십삼분 오~백사십오초"),
         ("01.5분", "01.5분"),
         ('01.5초', '일쩜오-초'),
     ],
@@ -123,15 +123,15 @@ def test_compact_korean_time_protected_or_unsafe_surface_preserves(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("낮 12시를 기준", "낮 열두-시를 기준"),
-        ("낮 12시는 기준", "낮 열두-시는 기준"),
-        ("낮 12시가 기준", "낮 열두-시가 기준"),
-        ("낮 12시로 기준", "낮 열두-시로 기준"),
-        ("낮 12시면 늦다", "낮 열두-시면 늦다"),
-        ("오전 12시를 기준", "오전 열두-시를 기준"),
-        ("오후 3시는 어렵다", "오후 세-시는 어렵다"),
-        ("밤 10시면 늦다", "밤 열-시면 늦다"),
-        ("새벽 2시라고 했다", "새벽 두-시라고 했다"),
+        ("낮 12시를 기준", "낮 열~두시를 기준"),
+        ("낮 12시는 기준", "낮 열~두시는 기준"),
+        ("낮 12시가 기준", "낮 열~두시가 기준"),
+        ("낮 12시로 기준", "낮 열~두시로 기준"),
+        ("낮 12시면 늦다", "낮 열~두시면 늦다"),
+        ("오전 12시를 기준", "오전 열~두시를 기준"),
+        ("오후 3시는 어렵다", "오후 세~시는 어렵다"),
+        ("밤 10시면 늦다", "밤 열~시면 늦다"),
+        ("새벽 2시라고 했다", "새벽 두~시라고 했다"),
     ],
 )
 def test_korean_hour_time_safe_context_tail(text: str, expected: str) -> None:
@@ -167,7 +167,7 @@ def test_invalid_or_attached_korean_time_preserve(text: str, expected: str) -> N
 def test_korean_hour_time_safe_tail_trace() -> None:
     output = transform_with_trace("낮 12시를 기준")
 
-    assert output.normalized_text == "낮 열두-시를 기준"
+    assert output.normalized_text == "낮 열~두시를 기준"
     assert any(
         claim.owner == "time" and claim.reason == "time_hour_korean_context"
         for claim in output.trace.claim_logs
@@ -182,15 +182,15 @@ def test_korean_hour_time_safe_tail_trace() -> None:
 def test_korean_time_markers_remain_original_korean() -> None:
     output = transform_with_trace("3시 5분")
 
-    assert output.normalized_text == "세-시 오분"
+    assert output.normalized_text == "세~시 오~분"
     assert [
         (piece.text, piece.provenance, piece.source_span, piece.owner)
         for piece in output.render_pieces
     ] == [
-        ("세-", "GENERATED_READING", SourceSpan(0, 1), "time"),
+        ("세~", "GENERATED_READING", SourceSpan(0, 1), "time"),
         ("시", "ORIGINAL_KOREAN", SourceSpan(1, 2), None),
         (" ", "ORIGINAL_SPACE", SourceSpan(2, 3), None),
-        ("오", "GENERATED_READING", SourceSpan(3, 4), "time"),
+        ("오~", "GENERATED_READING", SourceSpan(3, 4), "time"),
         ("분", "ORIGINAL_KOREAN", SourceSpan(4, 5), None),
     ]
 
@@ -198,7 +198,7 @@ def test_korean_time_markers_remain_original_korean() -> None:
 def test_compact_korean_time_is_fully_owned_without_suffix_fallback() -> None:
     output = transform_with_trace("11시23분 45초")
 
-    assert output.normalized_text == "열한-시 이십삼분 사십오초"
+    assert output.normalized_text == "열~한시 이~십삼분 사~십오초"
     assert [
         (claim.owner, claim.reason, claim.span)
         for claim in output.trace.claim_logs
@@ -218,7 +218,7 @@ def test_compact_korean_time_is_fully_owned_without_suffix_fallback() -> None:
 def test_compact_minute_second_is_fully_owned_by_time() -> None:
     output = transform_with_trace("23분45초")
 
-    assert output.normalized_text == "이십삼분 사십오초"
+    assert output.normalized_text == "이~십삼분 사~십오초"
     assert [
         (claim.owner, claim.reason, claim.span)
         for claim in output.trace.claim_logs
@@ -241,11 +241,11 @@ def test_compact_korean_time_generated_boundaries_keep_original_markers() -> Non
         (piece.text, piece.provenance, piece.source_span, piece.owner)
         for piece in output.render_pieces
     ] == [
-        ("열한-", "GENERATED_READING", SourceSpan(0, 2), "time"),
+        ("열~한", "GENERATED_READING", SourceSpan(0, 2), "time"),
         ("시", "ORIGINAL_KOREAN", SourceSpan(2, 3), None),
-        (" 이십삼", "GENERATED_READING", SourceSpan(3, 5), "time"),
+        (" 이~십삼", "GENERATED_READING", SourceSpan(3, 5), "time"),
         ("분", "ORIGINAL_KOREAN", SourceSpan(5, 6), None),
-        (" 사십오", "GENERATED_READING", SourceSpan(6, 8), "time"),
+        (" 사~십오", "GENERATED_READING", SourceSpan(6, 8), "time"),
         ("초", "ORIGINAL_KOREAN", SourceSpan(8, 9), None),
     ]
     assert all(log.passed for log in output.trace.validation_logs)
@@ -254,7 +254,7 @@ def test_compact_korean_time_generated_boundaries_keep_original_markers() -> Non
 def test_leading_zero_suffix_time_uses_one_owner_and_common_sino_reader() -> None:
     output = transform_with_trace("09시23분045초")
 
-    assert output.normalized_text == "아홉-시 이십삼분 사십오초"
+    assert output.normalized_text == "아홉시 이~십삼분 사~십오초"
     assert [
         (claim.owner, claim.reason, claim.span)
         for claim in output.trace.claim_logs

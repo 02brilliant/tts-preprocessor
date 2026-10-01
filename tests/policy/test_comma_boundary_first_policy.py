@@ -378,14 +378,14 @@ NUMERIC_DENSITY_CASES = [
     TextCase(
         case_id="numeric-density-heavy-default-no-comma",
         text="2025년 1월 3일 13:05에 100원을 결제한다",
-        expected="이천이십오년 일월 삼일 십삼시 오분에 백-원을 결제한다",
+        expected="이~천이십오년 일월 삼일 십삼시 오~분에 백-원을 결제한다",
         rule="prosody / numeric density negative",
         reason="A numeric-heavy protected sentence should default to no comma.",
     ),
     TextCase(
         case_id="numeric-density-heavy-strong-boundary-one-exception",
         text="그리고 2025년 1월 3일 13:05에 100원을 결제한다",
-        expected="그리고, 이천이십오년 일월 삼일 십삼시 오분에 백-원을 결제한다",
+        expected="그리고, 이~천이십오년 일월 삼일 십삼시 오~분에 백-원을 결제한다",
         rule="prosody / numeric density exception",
         reason="A heavy protected sentence may still allow one strong connector boundary.",
     ),
@@ -471,7 +471,7 @@ PHONETIC_BOUNDARY_NEGATIVE_CASES = [
     TextCase(
         case_id="phonetic-boundary-time",
         text="13:05에 출발한다",
-        expected="십삼시 오분에 출발한다",
+        expected="십삼시 오~분에 출발한다",
         rule="prosody / phonetic boundary negative",
         reason="A phonetic time binding must survive prosody without internal comma insertion.",
     ),
@@ -485,7 +485,7 @@ PHONETIC_BOUNDARY_NEGATIVE_CASES = [
     TextCase(
         case_id="phonetic-boundary-time-in-clause",
         text="회의는 13:05에 시작한다",
-        expected="회의는 십삼시 오분에 시작한다",
+        expected="회의는 십삼시 오~분에 시작한다",
         rule="prosody / phonetic boundary negative",
         reason="Prosody must not insert commas inside or adjacent to a phonetic time chunk.",
     ),
@@ -607,15 +607,15 @@ def test_leading_time_frame_negative_cases(case: TextCase):
         ),
         (
             "내년 2월 3일 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
-            "내년 이월 삼일, 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
+            "내년 이~월 삼일, 국내 주요 지역에서 새로운 서비스를 순차적으로 출시할 예정입니다.",
         ),
         (
             "내년 2월부터 4월까지 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
-            "내년 이월부터 사월까지, 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
+            "내년 이~월부터 사~월까지, 국내 주요 지역에서 새로운 서비스를 순차적으로 시험할 예정입니다.",
         ),
         (
             "내년 2월 서비스를 출시합니다.",
-            "내년 이월 서비스를 출시합니다.",
+            "내년 이~월 서비스를 출시합니다.",
         ),
     ],
 )

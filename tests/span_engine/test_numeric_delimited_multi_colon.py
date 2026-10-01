@@ -102,15 +102,15 @@ def test_multi_colon_protected_code_like_and_contexts_preserve():
 
 def test_multi_colon_regression_with_existing_owners():
     cases = [
-        ("1:2 비율", "일 대 이 비율"),
+        ("1:2 비율", "일 대 이~ 비율"),
         (
             "-1.250:3.14 비율이다",
             "마이너스 일-쩜-이오영 대 삼-쩜-일사 비율이다",
         ),
-        ("13:05에 시작", "십삼시 오분에 시작"),
+        ("13:05에 시작", "십삼시 오~분에 시작"),
         ("1:02:03", "1:02:03"),
         ('3.5~8kg', '삼-쩜-오에서 팔-킬로그램'),
-        ('-2.3~4.5kg', '마이너스 이-쩜-삼에서 사-쩜-오-킬로그램'),
+        ('-2.3~4.5kg', '마이너스 이~쩜-삼에서 사~쩜-오-킬로그램'),
         ('pH 7.4와 1:2:3', '피에이치 칠-쩜-사와 일 대 이 대 삼'),
     ]
     for source, expected in cases:
@@ -129,4 +129,4 @@ def test_multi_colon_invalid_surfaces_block_partial_numeric_fallback_with_neighb
         text = f"{source} 옆 25℃"
         out = transform(text)
         assert source in out
-        assert "이십오도" in out
+        assert "이~십오도" in out

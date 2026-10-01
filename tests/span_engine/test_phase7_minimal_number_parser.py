@@ -34,7 +34,7 @@ def test_number_to_korean_under_10000(value: int, reading: str) -> None:
     ("text", "expected"),
     [
         ("123", "백이십삼"),
-        ('2025', '이천이십오'),
+        ('2025', '이~천이십오'),
         ("AI 123", "에이아이 백이십삼"),
         ("123입니다", "백이십삼입니다"),
         ("123.", "백이십삼."),
@@ -65,8 +65,8 @@ def test_unsupported_number_patterns_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("-5", "마이너스 오"),
-        ("+5", "플러스 오"),
+        ("-5", "마이너스 오~"),
+        ("+5", "플러스 오~"),
     ],
 )
 def test_phase16d_signed_number_updates_former_unsupported_number_patterns_preserve(
@@ -76,7 +76,7 @@ def test_phase16d_signed_number_updates_former_unsupported_number_patterns_prese
 
 
 def test_phase10_unit_owner_prevents_number_partial_for_unit_case() -> None:
-    assert transform("50kg") == "오십-킬로그램"
+    assert transform("50kg") == "오~십-킬로그램"
 
 
 @pytest.mark.parametrize(

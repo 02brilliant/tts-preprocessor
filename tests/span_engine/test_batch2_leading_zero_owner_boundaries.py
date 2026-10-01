@@ -19,9 +19,9 @@ from engine.span_engine.transform import transform_with_trace
         ("03 kg", "03 kg"),
         ("₩01,000", "₩01,000"),
         ("₩ 01,000", "₩ 01,000"),
-        ("09시", "아홉-시"),
-        ("07시 05분", "일곱-시 오분"),
-        ("009시", "아홉-시"),
+        ("09시", "아홉시"),
+        ("07시 05분", "일곱시 오~분"),
+        ("009시", "아홉시"),
         ("09 시", "09 시"),
     ],
 )
@@ -85,7 +85,7 @@ def test_suffix_clock_leading_zero_uses_time_surface() -> None:
         claim for claim in output.trace.claim_logs if claim.owner == "time"
     ]
 
-    assert output.normalized_text == "일곱-시 오분"
+    assert output.normalized_text == "일곱시 오~분"
     assert [(claim.span.start, claim.span.end) for claim in time_claims] == [
         (0, 2),
         (4, 6),
@@ -115,7 +115,7 @@ def test_batch2_identifier_payload_and_date_owners_are_independent() -> None:
 
     assert (
         output.normalized_text
-        == "아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다"
+        == "아이디: 00123 기록은 이~천이십오년 일월 삼일에 갱신한다"
     )
     assert any(claim.owner == "acronym_fallback" for claim in output.trace.claim_logs)
     assert any(claim.owner == "date" for claim in output.trace.claim_logs)

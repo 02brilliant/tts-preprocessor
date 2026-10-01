@@ -500,6 +500,7 @@ def _scan_signed_candidates(
                     reading,
                     _tail_prefix(tail),
                     owner,
+                    piece_counter=owner == "signed_number" and tail.startswith("조각"),
                 ),
             )
         )
@@ -512,11 +513,13 @@ def _signed_candidate_metadata(
     reading: str,
     tail: str | None,
     owner: str,
+    *, piece_counter: bool = False,
 ) -> dict[str, object]:
     parsed = _parse_signed_surface(raw)
     if parsed is None:
         return {"reading": reading, "tail": tail}
     sign, numeric, unit = parsed
+    numeric = numeric.strip()
     policy = SIGNED_OWNER_POLICIES[owner]
     core = parse_signed_numeric_core(
         sign + numeric,
@@ -531,13 +534,22 @@ def _signed_candidate_metadata(
     profile = policy.sign_profile
     if owner == "signed_degree":
         profile = SignProfile.TEMPERATURE if unit == "º" else SignProfile.DEFAULT
-    return {
+    metadata = {
         "reading": reading,
         "tail": tail,
         "sign_profile": profile.value,
         "numeric_form": core.numeric_form,
         "sign_surface": core.sign_surface,
+        "amount": sign + numeric,
+        "unit": unit,
     }
+    if piece_counter and not core.has_decimal:
+        from engine.span_engine.counter import counter_reading_details
+        details = counter_reading_details(core.integer_raw, "조각")
+        if details is not None:
+            metadata.update(numeral_system=details[1], number_reading=details[0].removesuffix("-"),
+                            reading_counter="조각")
+    return metadata
 
 
 def _scan_invalid_signed_temperature_preserve_candidates(

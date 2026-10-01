@@ -60,7 +60,7 @@ def test_json_like_integrated_protected_contexts_source_and_production():
         "문장 밖의 KRW1000, 2천8백28억, 1~2테스트는 처리되어야 한다."
     )
     expected = (
-        '보호 구간에는 `KRW1000`, `2천8백28억`, "price":"1,000원", "range":"1~2테스트", /path/2,345억/log, https://example.com?q=KRW1000이 있고, 문장 밖의 천-원, 이천팔백이십팔억, 일에서 이 테스트는 처리되어야 한다.'
+        '보호 구간에는 `KRW1000`, `2천8백28억`, "price":"1,000원", "range":"1~2테스트", /path/2,345억/log, https://example.com?q=KRW1000이 있고, 문장 밖의 천-원, 이천팔백이십팔억, 일에서 이~ 테스트는 처리되어야 한다.'
     )
 
     assert transform(text) == expected

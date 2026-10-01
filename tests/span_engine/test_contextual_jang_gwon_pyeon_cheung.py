@@ -15,16 +15,16 @@ def _debug(text: str) -> dict:
 @pytest.mark.parametrize(
     ("text", "expected", "semantic"),
     [
-        ("사진 3장을 골랐다", "사진 세-장을 골랐다", "sheet_count"),
-        ("종이 4장", "종이 네-장", "sheet_count"),
-        ("3장 2절", "삼-장 이절", "chapter_number"),
+        ("사진 3장을 골랐다", "사진 세~장을 골랐다", "sheet_count"),
+        ("종이 4장", "종이 네~장", "sheet_count"),
+        ("3장 2절", "삼-장 이~절", "chapter_number"),
         ("책 3장을 읽었다", "책 삼-장을 읽었다", "chapter_number"),
-        ("책 3권을 샀다", "책 세-권을 샀다", "book_count"),
-        ("도서 4권", "도서 네-권", "book_count"),
-        ("3권 2호", "삼-권 이-호", "volume_number"),
+        ("책 3권을 샀다", "책 세~권을 샀다", "book_count"),
+        ("도서 4권", "도서 네~권", "book_count"),
+        ("3권 2호", "삼-권 이~호", "volume_number"),
         ("시리즈 3권", "시리즈 삼-권", "volume_number"),
-        ("영화 3편을 봤다", "영화 세-편을 봤다", "work_count"),
-        ("논문 4편을 발표했다", "논문 네-편을 발표했다", "work_count"),
+        ("영화 3편을 봤다", "영화 세~편을 봤다", "work_count"),
+        ("논문 4편을 발표했다", "논문 네~편을 발표했다", "work_count"),
         ("시리즈 3편", "시리즈 삼-편", "part_number"),
         ("법전 3편", "법전 삼-편", "part_number"),
         ("3층 회의실", "삼-층 회의실", "floor_location"),
@@ -182,8 +182,7 @@ def test_batch5_multiple_meanings_can_coexist() -> None:
         "3층 회의실에서 책 3장을 읽었다."
     )
     expected = (
-        "사진 세-장과 책 두-권, 영화 네-편을 챙겨 "
-        "삼-층 회의실에서 책 삼-장을 읽었다."
+        '사진 세~장과 책 두~권, 영화 네~편을 챙겨 삼-층 회의실에서 책 삼-장을 읽었다.'
     )
     debug = _debug(text)
     assert debug["normalized_text"] == expected

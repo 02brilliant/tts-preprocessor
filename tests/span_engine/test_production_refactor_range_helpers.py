@@ -34,10 +34,10 @@ def test_p2_numeric_sign_rendering_characterization(
 @pytest.mark.parametrize(
     ("text", "expected", "owner", "surface_type", "reason", "span"),
     [
-        ('-2.3~+4.5kg이다', '마이너스 이-쩜-삼에서 플러스 사-쩜-오-킬로그램이다', "range_with_unit", "RANGE_WITH_UNIT_SURFACE", "numeric_delimited_hyphen_range_with_unit_gate", SourceSpan(0, 11)),
+        ('-2.3~+4.5kg이다', '마이너스 이~쩜-삼에서 플러스 사~쩜-오-킬로그램이다', "range_with_unit", "RANGE_WITH_UNIT_SURFACE", "numeric_delimited_hyphen_range_with_unit_gate", SourceSpan(0, 11)),
         (
             "-1:2 비율",
-            "마이너스 일 대 이 비율",
+            "마이너스 일 대 이~ 비율",
             "colon_semantic_pair",
             "COLON_SEMANTIC_PAIR_SURFACE",
             "colon_semantic_pair_explicit_context_gate",
@@ -68,14 +68,14 @@ def test_p2_signed_owner_trace_and_span_characterization(
 @pytest.mark.parametrize(
     ("text", "expected", "owner", "generated"),
     [
-        ("1~2이다", "일에서 이이다", "range", "일에서 이"),
-        ("1~2테스트", "일에서 이 테스트", "range", "일에서 이 "),
-        ("1~2처럼", "일에서 이 처럼", "range", "일에서 이 "),
-        ("1~2다", "일에서 이 다", "range", "일에서 이 "),
-        ("1:2이다", "일 대 이이다", "colon_semantic_pair", "일 대 이"),
-        ("1:2테스트", "일 대 이 테스트", "colon_semantic_pair", "일 대 이 "),
-        ("1:2처럼", "일 대 이처럼", "colon_semantic_pair", "일 대 이"),
-        ("1:2다", "일 대 이다", "colon_semantic_pair", "일 대 이"),
+        ("1~2이다", "일에서 이~이다", "range", "일에서 이~"),
+        ("1~2테스트", "일에서 이~ 테스트", "range", "일에서 이~ "),
+        ("1~2처럼", "일에서 이~ 처럼", "range", "일에서 이~ "),
+        ("1~2다", "일에서 이~ 다", "range", "일에서 이~ "),
+        ("1:2이다", "일 대 이~이다", "colon_semantic_pair", "일 대 이~"),
+        ("1:2테스트", "일 대 이~ 테스트", "colon_semantic_pair", "일 대 이~ "),
+        ("1:2처럼", "일 대 이~처럼", "colon_semantic_pair", "일 대 이~"),
+        ("1:2다", "일 대 이~다", "colon_semantic_pair", "일 대 이~"),
     ],
 )
 def test_p2_owner_specific_attached_hangul_tail_characterization(
@@ -95,10 +95,10 @@ def test_p2_owner_specific_attached_hangul_tail_characterization(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("1~2 은", "일에서 이 은"),
-        ("1~2.", "일에서 이."),
-        ("1:2 은", "일 대 이 은"),
-        ("1:2.", "일 대 이."),
+        ("1~2 은", "일에서 이~ 은"),
+        ("1~2.", "일에서 이~."),
+        ("1:2 은", "일 대 이~ 은"),
+        ("1:2.", "일 대 이~."),
         ("1~2abc", "1~2abc"),
         ("1:2abc", "1:2abc"),
     ],

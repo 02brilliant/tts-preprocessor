@@ -10,7 +10,7 @@ from engine.span_engine import transform
     [
         ('$1.25', '일-쩜-이오-달러'),
         ('$1.25는', '일-쩜-이오-달러는'),
-        ('$25.99', '이십오-쩜-구구-달러'),
+        ('$25.99', '이~십오-쩜-구구-달러'),
         ('USD1.25', '일-쩜-이오-달러'),
         ('1.25USD', '일-쩜-이오-달러'),
         ('1.25 USD', '일-쩜-이오-달러'),
@@ -29,7 +29,7 @@ def test_currency_decimal_full_consume_policy_v1(text: str, expected: str) -> No
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("₩12,300", "만 이천삼백-원"),
+        ("₩12,300", "만 이~천삼백-원"),
         ("￥1,500", "천오백-엔"),
     ],
 )

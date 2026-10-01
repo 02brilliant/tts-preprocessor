@@ -50,7 +50,7 @@ def test_single_letter_alnum_code_updates_former_unit_preserve_case() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("50 kg", "오십-킬로그램"),
+        ("50 kg", "오~십-킬로그램"),
         ("1,000kg", "천-킬로그램"),
         ('3.5kg', '삼-쩜-오-킬로그램'),
     ],

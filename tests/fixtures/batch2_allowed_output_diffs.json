@@ -23,7 +23,7 @@
     {
       "decision_id": "interaction-identifier-digit-mode-plus-date",
       "input": "ID: 00123 기록은 2025.01.03에 갱신한다",
-      "expected": "아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
+      "expected": "아이디: 00123 기록은 이~천이십오년 일월 삼일에 갱신한다",
       "owner_contract": "registered acronym and dotted date transform independently while identifier numeric payload preserves"
     },
     {
@@ -35,7 +35,7 @@
     {
       "decision_id": "interaction-leading-zero-bare-time-override",
       "input": "01 09시 07시 05분",
-      "expected": "01 아홉-시 일곱-시 오분",
+      "expected": "01 아홉시 일곱시 오~분",
       "owner_contract": "standalone leading-zero preserves while registered suffix-time owners normalize locally"
     },
     {
@@ -59,7 +59,7 @@
     {
       "decision_id": "override-time-hour-minute-beats-leading-zero",
       "input": "07시 05분",
-      "expected": "일곱-시 오분",
+      "expected": "일곱시 오~분",
       "owner_contract": "suffix-clock owner normalizes leading-zero hour and minute cores"
     },
     {
@@ -83,7 +83,7 @@
     {
       "decision_id": "regression-leading-zero-time-override",
       "input": "09시",
-      "expected": "아홉-시",
+      "expected": "아홉시",
       "owner_contract": "suffix-clock owner removes leading zeros and applies the existing clock-hour reading"
     }
   ],

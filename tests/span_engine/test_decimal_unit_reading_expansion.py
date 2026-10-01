@@ -9,14 +9,14 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('2.35명쯤', '이-쩜-삼오-명쯤'),
-        ('2.35명정도', '이-쩜-삼오-명정도'),
-        ('2.35명꼴', '이-쩜-삼오-명꼴'),
-        ('2.35명당', '이-쩜-삼오-명당'),
-        ('총 2.35번', '총 이-쩜-삼오-번'),
-        ('책 2.35권', '책 이-쩜-삼오-권'),
-        ('영화 2.35편', '영화 이-쩜-삼오-편'),
-        ('2.35층 회의실', '이-쩜-삼오-층 회의실'),
+        ('2.35명쯤', '이~쩜-삼오-명쯤'),
+        ('2.35명정도', '이~쩜-삼오-명정도'),
+        ('2.35명꼴', '이~쩜-삼오-명꼴'),
+        ('2.35명당', '이~쩜-삼오-명당'),
+        ('총 2.35번', '총 이~쩜-삼오-번'),
+        ('책 2.35권', '책 이~쩜-삼오-권'),
+        ('영화 2.35편', '영화 이~쩜-삼오-편'),
+        ('2.35층 회의실', '이~쩜-삼오-층 회의실'),
         ('1.5가지', '일-쩜-오-가지'),
         ('1.5가지.', '일-쩜-오-가지.'),
         ('5.5분 뒤', '오쩜오-분 뒤'),
@@ -32,11 +32,11 @@ def test_valid_decimal_contextual_units_use_sino_decimal_reading(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('5.5분이 남았다', '오-쩜-오-분이 남았다'),
-        ('2.35번 확인했다', '이-쩜-삼오-번 확인했다'),
-        ('2.35권이 놓였다', '이-쩜-삼오-권이 놓였다'),
-        ('2.35편이 공개됐다', '이-쩜-삼오-편이 공개됐다'),
-        ('2.35층이 남았다', '이-쩜-삼오-층이 남았다'),
+        ('5.5분이 남았다', '오~쩜-오-분이 남았다'),
+        ('2.35번 확인했다', '이~쩜-삼오-번 확인했다'),
+        ('2.35권이 놓였다', '이~쩜-삼오-권이 놓였다'),
+        ('2.35편이 공개됐다', '이~쩜-삼오-편이 공개됐다'),
+        ('2.35층이 남았다', '이~쩜-삼오-층이 남았다'),
     ],
 )
 def test_decimal_contextual_units_follow_expanded_exact_anchors_or_defer(
@@ -48,13 +48,13 @@ def test_decimal_contextual_units_follow_expanded_exact_anchors_or_defer(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('+2.35명', '플러스 이-쩜-삼오 명'),
-        ('-2.35개', '마이너스 이-쩜-삼오 개'),
-        ('–2.35명', '마이너스 이-쩜-삼오 명'),
-        ('−2.35개', '마이너스 이-쩜-삼오 개'),
-        ('총 +2.35번', '총 플러스 이-쩜-삼오 번'),
-        ('책 -2.35권', '책 마이너스 이-쩜-삼오 권'),
-        ('차량 +2.35대', '차량 플러스 이-쩜-삼오 대'),
+        ('+2.35명', '플러스 이~쩜-삼오 명'),
+        ('-2.35개', '마이너스 이~쩜-삼오 개'),
+        ('–2.35명', '마이너스 이~쩜-삼오 명'),
+        ('−2.35개', '마이너스 이~쩜-삼오 개'),
+        ('총 +2.35번', '총 플러스 이~쩜-삼오 번'),
+        ('책 -2.35권', '책 마이너스 이~쩜-삼오 권'),
+        ('차량 +2.35대', '차량 플러스 이~쩜-삼오 대'),
     ],
 )
 def test_signed_decimal_counters_are_claimed_atomically(
@@ -87,14 +87,14 @@ def test_noncanonical_decimal_and_code_like_surfaces_remain_preserved(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('2.35kHz', '이-쩜-삼오-킬로헤르츠'),
-        ('2.35KB', '이-쩜-삼오-킬로바이트'),
-        ('2.35Mbps', '이-쩜-삼오 메가비피에스'),
-        ('2.35rpm', '이-쩜-삼오 알피엠'),
-        ('2.35fps', '이-쩜-삼오 에프피에스'),
-        ('2.35ppm', '이-쩜-삼오 피피엠'),
-        ('2.35ppb', '이-쩜-삼오 피피비'),
-        ('2.35dBi', '이-쩜-삼오 디비아이'),
+        ('2.35kHz', '이~쩜-삼오-킬로헤르츠'),
+        ('2.35KB', '이~쩜-삼오-킬로바이트'),
+        ('2.35Mbps', '이~쩜-삼오 메가비피에스'),
+        ('2.35rpm', '이~쩜-삼오 알피엠'),
+        ('2.35fps', '이~쩜-삼오 에프피에스'),
+        ('2.35ppm', '이~쩜-삼오 피피엠'),
+        ('2.35ppb', '이~쩜-삼오 피피비'),
+        ('2.35dBi', '이~쩜-삼오 디비아이'),
         ('10000.5kg', '만-쩜-오-킬로그램'),
         ('10,000.5kg', '만-쩜-오-킬로그램'),
     ],
@@ -141,8 +141,8 @@ def test_large_unit_unapproved_delimiters_do_not_allow_partial_decimal_rewrite(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('2.35m^2', '이-쩜-삼오-제곱미터'),
-        ('2.35cm^3', '이-쩜-삼오-세제곱센티미터'),
+        ('2.35m^2', '이~쩜-삼오-제곱미터'),
+        ('2.35cm^3', '이~쩜-삼오-세제곱센티미터'),
         ('2.35KB^2', '이-쩜-삼오KB^2'),
         ('2.35foo^2', '이-쩜-삼오foo^2'),
         ('2.35m^4', '이-쩜-삼오m^4'),
@@ -185,6 +185,6 @@ def test_decimal_unit_expansion_keeps_protected_surfaces(source: str, expected: 
 
 def test_signed_decimal_beon_keeps_residual_reading_and_spacing() -> None:
     source = "총 +2.35번"
-    assert transform(source) == "총 플러스 이-쩜-삼오 번"
+    assert transform(source) == "총 플러스 이~쩜-삼오 번"
     result = transform_with_trace(source)
     assert any(piece.provenance == "GENERATED_READING" for piece in result.render_pieces)

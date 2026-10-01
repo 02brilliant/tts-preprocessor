@@ -120,7 +120,7 @@ FULL_PIPELINE_PROTECTION_CASES = [
     TextCase(
         case_id="full-pipeline-protects-phonetic-time-binding-after-connector",
         text="그리고 우리는 13:05에 출발한다",
-        expected="그리고, 우리는 십삼시 오분에 출발한다",
+        expected="그리고, 우리는 십삼시 오~분에 출발한다",
         rule="protected phrase / phonetic binding + prosody interaction",
         reason="The connector comma may appear before the clause, but the phonetic-bound time must remain intact.",
     ),

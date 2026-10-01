@@ -23,7 +23,7 @@ def test_quoted_english_prose_sentence_does_not_block_korean_measurements() -> N
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["이십오도", "피에이치 칠-쩜-사"],
+        expected_transformed=["이~십오도", "피에이치 칠-쩜-사"],
         expected_preserved=[
             '"The temperature is 25℃ and pH 7.4 was maintained for 3 hours."'
         ],
@@ -37,7 +37,7 @@ def test_unquoted_english_sentence_before_korean_suffix_is_local_preserve() -> N
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["이십오도", "피에이치 칠-쩜-사"],
+        expected_transformed=["이~십오도", "피에이치 칠-쩜-사"],
         expected_preserved=["The temperature is 25℃.", "라는 문구"],
     )
 
@@ -49,7 +49,7 @@ def test_quoted_english_ph_sentence_before_korean_ending_is_local_preserve() -> 
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["피에이치 칠-쩜-사", "이십오-쩜-구구-달러"],
+        expected_transformed=["피에이치 칠-쩜-사", "이~십오-쩜-구구-달러"],
         expected_preserved=['"pH 7.4 was maintained for 3 hours."'],
     )
 
@@ -61,7 +61,7 @@ def test_quoted_url_and_comma_do_not_block_neighbor_ph() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["피에이치 칠-쩜-사", "이십오도"],
+        expected_transformed=["피에이치 칠-쩜-사", "이~십오도"],
         expected_preserved=['"https://example.com/a/b"'],
     )
 
@@ -73,7 +73,7 @@ def test_parenthesized_path_does_not_block_neighbor_temperature() -> None:
     )
     out = transform(text)
     assert out != text
-    assert "이십오도" in out
+    assert "이~십오도" in out
     assert "삼-킬로그램" in out
     assert "이천이십오" not in out
 
@@ -85,7 +85,7 @@ def test_email_with_korean_particle_does_not_block_currency() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["이십오-쩜-구구-달러", "만 이천삼백-원", "피에이치 칠-쩜-사"],
+        expected_transformed=["이~십오-쩜-구구-달러", "만 이~천삼백-원", "피에이치 칠-쩜-사"],
         expected_preserved=["user@example.com"],
     )
 
@@ -97,7 +97,7 @@ def test_json_before_korean_ending_does_not_block_neighbors() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["이십오도", "피에이치 칠-쩜-사", "제-이문항"],
+        expected_transformed=["이~십오도", "피에이치 칠-쩜-사", "제-이문항"],
         expected_preserved=['"text":"25℃"'],
     )
 
@@ -109,7 +109,7 @@ def test_backticked_curl_command_does_not_block_neighbors() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["피에이치 칠-쩜-사", "이십오도", "에이-십 씨"],
+        expected_transformed=["피에이치 칠-쩜-사", "이~십오도", "에이-십 씨"],
         expected_preserved=["curl -X POST http://localhost:8010/api/transform"],
     )
 
@@ -121,7 +121,7 @@ def test_preserve_valid_preserve_valid_sequence_survives() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["이십오도", "피에이치 칠-쩜-사", "이십오-쩜-구구-달러", "케이푸드"],
+        expected_transformed=["이~십오도", "피에이치 칠-쩜-사", "이~십오-쩜-구구-달러", "케이푸드"],
         expected_preserved=['"text":"25℃"', '"The temperature is 25℃."'],
     )
 
@@ -133,6 +133,6 @@ def test_code_like_tokens_with_quotes_and_commas_do_not_expand_span() -> None:
     )
     assert_editorial_local_degrade(
         text,
-        expected_transformed=["사십오-제곱미터", "육십-헤르츠", "이천이십오년 일월 삼일"],
+        expected_transformed=["사~십오-제곱미터", "육십-헤르츠", "이~천이십오년 일월 삼일"],
         expected_preserved=["C:/Users/test/file.txt", "id_12345", "v1.2.3"],
     )

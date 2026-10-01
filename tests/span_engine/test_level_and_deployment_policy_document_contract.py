@@ -29,7 +29,7 @@ def test_level_policy_stage_contract_phrases() -> None:
         "다른 LLM 단계의 출력 문자열을 다음 단계 입력으로 사용하지 않는다",
         "ASCII 하이픈 U+002D(`-`)",
         "1번째→첫-번째",
-        "5kg/5 kg→오-킬로그램",
+        "5kg/5 kg→오~킬로그램",
         "stage3_base_text` 또는 `stage4_base_text",
         "원시 모델 출력이나 `rejected_speech_text`를 외부에 노출하지 않고",
         "validation_failure",

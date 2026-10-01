@@ -417,6 +417,17 @@ class TransformOutput:
     trace: TransformTrace | None = None
     # Protected bracket content in final normalized-text coordinates.
     protected_spans: list[SourceSpan] = field(default_factory=list)
+    @property
+    def rendered_indices(self) -> tuple[int | None, ...] | None:
+        # Private, non-dataclass metadata: preserve the minimal public field
+        # contract and do not serialize presentation coordinates into API/debug.
+        return getattr(self, "_rendered_indices", None)
+
+    @rendered_indices.setter
+    def rendered_indices(self, value: tuple[int | None, ...] | None) -> None:
+        if value is not None and (not isinstance(value, tuple) or len(value) != len(self.normalized_text)):
+            raise ValueError("invalid rendered-coordinate map")
+        self._rendered_indices = value
 
     @property
     def numeric_annotations(self):

@@ -20,7 +20,7 @@ from engine.main import transform_output
     ("금리는 0.5%p 올랐습니다.", "금리는 영-쩜-오-퍼센트포인트 올랐습니다."),
     ("무게는 3kg입니다.", "무게는 삼-킬로그램입니다."),
     ("가격은 USD 10입니다.", "가격은 십-달러입니다."),
-    ("기간은 2026-09-07부터입니다.", "기간은 이천이십육년 구월 칠일부터입니다."),
+    ("기간은 2026-09-07부터입니다.", "기간은 이~천이십육년 구월 칠일부터입니다."),
 ])
 def test_certified_readings_are_applied_without_model_and_locked(source, expected):
     prepared = preprocess_stage3(source)
@@ -54,12 +54,12 @@ def test_duplicate_numbers_are_selected_by_exact_occurrence():
         {"id": choices[0].candidate_id, "option": 1},
     ]})
     output = render_selection_response(source, plan=plan, response_text=response)
-    assert output == "세-번 맡았다. 삼번 받았다."
+    assert output == "세~번 맡았다. 삼번 받았다."
     assert validate_speech_text(source, output, stage=3, candidates=plan.to_allowed_mutations()).ok
 
 
 @pytest.mark.parametrize(("source", "expected"), [
-    ("3번 처리했습니다.", "세-번 처리했습니다."),
+    ("3번 처리했습니다.", "세~번 처리했습니다."),
     ("3번 항목을 처리했습니다.", "삼번 항목을 처리했습니다."),
     ("3번을 처리했습니다.", "삼번을 처리했습니다."),
 ])
@@ -78,14 +78,14 @@ def test_contextual_counter_options_and_preservation(unit):
     source = f"3{unit}을 확인했다."
     plan = build_selection_plan(source, stage=3)
     candidate = next(c for c in plan.candidates if c.kind == "residual_counter")
-    assert candidate.options == (f"삼{unit}", f"세-{unit}")
+    assert candidate.options == (f"삼{unit}", f"세~{unit}")
     assert not candidate.required
     assert render_selection_response(source, plan=plan, response_text='{"schema_version":1,"decisions":[]}') == source
 
 
 @pytest.mark.parametrize(("source", "kind", "reading"), [
-    ("표현은 3/4 입니다.", "residual_fraction", "사분의 삼"),
-    ("표현은 3:4 입니다.", "residual_ratio_or_time", "삼 대 사"),
+    ("표현은 3/4 입니다.", "residual_fraction", "사~분의 삼"),
+    ("표현은 3:4 입니다.", "residual_ratio_or_time", "삼 대 사~"),
 ])
 def test_numeric_punctuation_is_consumed_only_by_approved_whole_candidate(source, kind, reading):
     plan = build_selection_plan(source, stage=3)

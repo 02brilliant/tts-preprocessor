@@ -59,7 +59,7 @@ def test_emergency_counter_forbidden_signatures_do_not_appear(
         ("3번", "3번"),
         ("3분", "3분"),
         ("3초", "삼초"),
-        ("3건", "세-건"),
+        ("3건", "세~건"),
     ],
 )
 def test_unsupported_counter_nouns_use_phase11_number_suffix_fallback(

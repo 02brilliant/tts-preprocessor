@@ -17,7 +17,7 @@ def test_single_quoted_english_prose_preserved_but_outside_values_transform() ->
     assert_preserve_and_transform(
         text,
         preserved=["The temperature is 25℃."],
-        transformed=["이십오도", "피에이치 칠-쩜-사"],
+        transformed=["이~십오도", "피에이치 칠-쩜-사"],
     )
 
 
@@ -26,7 +26,7 @@ def test_smart_quoted_english_prose_preserved_but_outside_values_transform() -> 
     assert_preserve_and_transform(
         text,
         preserved=["pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠-쩜-사", "이십오도"],
+        transformed=["피에이치 칠-쩜-사", "이~십오도"],
     )
 
 
@@ -37,7 +37,7 @@ def test_multi_sentence_quote_preserved() -> None:
         preserved=[
             "The temperature is 25℃. pH 7.4 was maintained for 3 hours. The ratio is 1/3."
         ],
-        transformed=["이십오도", "삼분의 일"],
+        transformed=["이~십오도", "삼분의 일"],
     )
 
 
@@ -55,7 +55,7 @@ def test_colon_english_prose_preserved() -> None:
     assert_preserve_and_transform(
         text,
         preserved=["Result: pH 7.4 was maintained for 3 hours."],
-        transformed=["피에이치 칠-쩜-사", "이십오-쩜-구구-달러"],
+        transformed=["피에이치 칠-쩜-사", "이~십오-쩜-구구-달러"],
     )
 
 
@@ -65,4 +65,4 @@ def test_quote_boundary_does_not_consume_korean_particles() -> None:
     assert '"The temperature is 25℃."' in out or "The temperature is 25℃." in out
     assert "라는 표현" in out
     assert "도 원문" in out
-    assert "이십오도" in out
+    assert "이~십오도" in out

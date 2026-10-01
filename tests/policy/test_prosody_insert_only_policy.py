@@ -21,7 +21,7 @@ def test_prosody_preserves_existing_punctuation(text: str, expected: str):
 
 def test_prosody_comma_is_insert_only_against_normalized_output():
     output = transform_with_trace("그리고 우리는 13:05에 출발한다")
-    assert output.normalized_text == "그리고, 우리는 십삼시 오분에 출발한다"
+    assert output.normalized_text == "그리고, 우리는 십삼시 오~분에 출발한다"
     generated_commas = [
         piece
         for piece in output.render_pieces
@@ -35,4 +35,4 @@ def test_prosody_comma_is_insert_only_against_normalized_output():
 
 
 def test_full_pipeline_prosody_keeps_protected_numeric_phrase_intact():
-    assert transform("그리고 우리는 13:05에 출발한다") == "그리고, 우리는 십삼시 오분에 출발한다"
+    assert transform("그리고 우리는 13:05에 출발한다") == "그리고, 우리는 십삼시 오~분에 출발한다"

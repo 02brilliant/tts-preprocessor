@@ -23,11 +23,11 @@ def test_date_wins_over_code_separator_and_invalid_dates_degrade_locally():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "이천이십오년 일월 삼일",
-            "이천이십육년 유월 십칠일",
+            "이~천이십오년 일월 삼일",
+            "이~천이십육년 유월 십칠일",
             "이공이오 일삼 공삼",
             "이공이오 공일 삼이",
-            "이십오도",
+            "이~십오도",
         ],
         expected_preserved=["docs/2025/01/02/report.md"],
     )
@@ -65,10 +65,10 @@ def test_currency_wins_over_number_and_code_like_invalid_tokens_preserve():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "만 이천삼백-원",
-            "이십오-쩜-구구-달러",
+            "만 이~천삼백-원",
+            "이~십오-쩜-구구-달러",
             "삼백-유로",
-            "이십오-쩜-오영-달러",
+            "이~십오-쩜-오영-달러",
             "삼-킬로그램",
         ],
         expected_preserved=["EURA 300", "300EURabc", "USDX 300", "USB300"],
@@ -85,7 +85,7 @@ def test_units_and_compound_units_do_not_enter_path_or_code_like_spans():
         text,
         expected_transformed=[
             "삼-킬로그램",
-            "사십오-제곱미터",
+            "사~십오-제곱미터",
             "육십-헤르츠",
             "리터당 십오쩜이 킬로미터",
             "피에이치 칠-쩜-사",
@@ -118,7 +118,7 @@ def test_emergency_counter_phone_and_hyphen_precedence_boundaries():
             "백십구번 버스",
             "공일공 일이삼사 오육칠팔",
             "일이 삼사 오육",
-            "이십오도",
+            "이~십오도",
         ],
         expected_preserved=["1-2", "1-1 무"],
     )
@@ -133,11 +133,11 @@ def test_signed_temperature_wins_unless_hyphen_code_prefix_blocks_it():
     assert_precedence_case(
         text,
         expected_transformed=[
-            "영하 이-쩜-오도",
-            "화씨 영하 이-쩜-오도",
+            "영하 이~쩜-오도",
+            "화씨 영하 이~쩜-오도",
             "영상 삼도",
-            "온도영하 이-쩜-오도",
-            "이십오-쩜-구구-달러",
+            "온도영하 이~쩜-오도",
+            "이~십오-쩜-구구-달러",
         ],
         expected_preserved=["A-2.5℃", "x-2.5℉", "B-2.5º"],
     )
@@ -155,8 +155,8 @@ def test_prefixed_ordinal_wins_over_counter_but_plain_counter_remains_counter():
         expected_transformed=[
             "제-이문항",
             "제-십오권",
-            "두-문항",
-            "사십-문항",
+            "두~문항",
+            "사~십-문항",
             "백일-문항",
             "피에이치 칠-쩜-사",
             "제-이문항abc",

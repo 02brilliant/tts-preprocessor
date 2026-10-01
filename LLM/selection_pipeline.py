@@ -7,7 +7,7 @@ import re
 from LLM.pronunciation_lexicon import build_allowed_mutations
 from LLM.provenance import minimal_snapshot
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
-from engine.span_engine.numeric_plan import NumericReadingPlan, project_annotations
+from engine.span_engine.numeric_plan import NumericReadingPlan, offset_plan, project_annotations
 
 
 _PROSODY_SPACE_RE = re.compile(r"(?<=[가-힣]) (?=[가-힣])")
@@ -190,6 +190,9 @@ class SelectionPlan:
                     guidance=candidate.guidance,
                     source=candidate.source,
                     required=candidate.required,
+                    numeric_options=tuple(offset_plan(plan, -start)
+                                          if plan is not None and plan.coordinate_space == "normalized_input"
+                                          else plan for plan in candidate.numeric_options),
                 )
                 for candidate in self.candidates
                 if start <= candidate.start and candidate.end <= end
@@ -497,7 +500,8 @@ def _locked_contraction_mutations(
     existing: list[AllowedMutation],
 ) -> list[AllowedMutation]:
     locked = tuple(span for span in snapshot.spans if span.locked)
-    protected = tuple(span for span in snapshot.spans if span.protected)
+    protected = tuple(span for span in snapshot.spans
+                      if span.protected or span.provenance == "ALIGNMENT_UNRESOLVED")
     existing_keys = {(item.start, item.end) for item in existing}
     results: list[AllowedMutation] = []
     for mutation in build_allowed_mutations(text, stage=4):

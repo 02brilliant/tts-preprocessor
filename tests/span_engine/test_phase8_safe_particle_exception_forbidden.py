@@ -12,7 +12,7 @@ from engine.span_engine import transform
         ("FTA이 적용됐다", "에프티에이이 적용됐다"),
         ("KOSPI이 올랐다", "코스피이 올랐다"),
         ("3이 맞다", "삼이 맞다"),
-        ("5이 맞다", "오이 맞다"),
+        ("5이 맞다", "오~이 맞다"),
     ],
 )
 def test_a2_i_particle_is_noop(text: str, expected: str) -> None:

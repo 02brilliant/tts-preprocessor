@@ -18,7 +18,7 @@ MIXED_TOKEN_CASES = [
     TextCase("mixed-numeric-large-13000-yeo-myeong", "1만3천여 명", "일만삼천여 명", "mixed token", "canonical leading one"),
     TextCase("mixed-numeric-versus-1-dae-1", "1대1", "일대일", "mixed token", "atomic surface"),
     TextCase("mixed-range-with-unit-3to8cm", "3에서 8cm", "삼에서 팔-센티미터", "mixed token", "atomic surface"),
-    TextCase("mixed-range-with-unit-1to5cm", "1에서 5cm", "일에서 오-센티미터", "mixed token", "atomic surface"),
+    TextCase("mixed-range-with-unit-1to5cm", "1에서 5cm", "일에서 오~센티미터", "mixed token", "atomic surface"),
     TextCase("mixed-counter-spaced-large-number", "8만 9천 개", "팔만 구천-개", "mixed token", "atomic surface"),
 ]
 

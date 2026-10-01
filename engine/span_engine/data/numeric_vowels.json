@@ -3,6 +3,20 @@
   "verified_on": "2026-10-01",
   "position_rule_source": "https://m.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=327322",
   "native_position_source": "https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=311233",
+  "months": {
+    "2": {
+      "headword": "이월¹", "lexeme_id": "krdict:26893", "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=26893"
+    },
+    "4": {
+      "headword": "사월", "lexeme_id": "krdict:20228", "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=20228"
+    },
+    "5": {
+      "headword": "오월", "lexeme_id": "krdict:62516", "length": "long",
+      "source": "https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=62516"
+    }
+  },
   "entries": {
     "sino:이": {
       "lexeme_id": "krdict:71125",

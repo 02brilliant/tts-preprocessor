@@ -13,7 +13,7 @@ from engine.span_engine import SourceSpan, transform_with_trace
         ("1분기 2분기", "일분기 이분기"),
         ("4분기", "사분기"),
         ("10분기", "십분기"),
-        ("2025년 1분기", "이천이십오년 일분기"),
+        ("2025년 1분기", "이~천이십오년 일분기"),
         ("1 분기", "일 분기"),
         ("제1분기", "제-일분기"),
     ),
@@ -118,8 +118,8 @@ def test_quarter_suffix_debug_contract_has_no_contextual_decision_log() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     (
-        ("1~4분기", "일에서 사-분기"),
-        ("1-4분기", "일에서 사-분기"),
+        ("1~4분기", "일에서 사~분기"),
+        ("1-4분기", "일에서 사~분기"),
     ),
 )
 def test_quarter_range_uses_general_range_policy_not_date_shared_suffix(

@@ -10,7 +10,7 @@
     {
       "decision_id": "standalone-time-day-boundary",
       "input": "24:00",
-      "expected": "이십사시"
+      "expected": "이~십사시"
     }
   ],
   "allowed_diffs": [

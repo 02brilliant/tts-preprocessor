@@ -10,14 +10,14 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-bracket-date-time-currency",
         text="회의(비공개) [긴급] 일정은 2025.01.03 13:05에 시작하고 비용은 €1,234.56이다",
-        expected='회의 [긴급] 일정은 이천이십오년 일월 삼일 십삼시 오분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
+        expected='회의 [긴급] 일정은 이~천이십오년 일월 삼일 십삼시 오~분에 시작하고 비용은 천이백삼십사-쩜-오육-유로이다',
         rule="multi-rule / bracket + date + HH:MM + currency",
         reason="Bracket cleanup must happen first, then date/time parsing and atomic currency parsing must cooperate without partial rewrites.",
     ),
     TextCase(
         case_id="scenario-event-suffix-clock-range-spacing",
         text="5·18 민주화 운동 행사는 오후 3시 15분부터 5시까지 열린다",
-        expected="오일팔 민주화 운동 행사는 오후 세-시 십오분부터 다섯-시까지 열린다",
+        expected="오일팔 민주화 운동 행사는 오후 세~시 십오분부터 다섯시까지 열린다",
         rule="multi-rule / event + suffix-clock range spacing",
         reason="Event and time owners normalize independently, and each generated hour reading keeps canonical spacing before the original 시 marker.",
     ),
@@ -31,7 +31,7 @@ NORMALIZATION_SCENARIOS = [
     TextCase(
         case_id="scenario-time-plus-currency",
         text="회의는 12:30에 시작하고 비용은 ₩100이다",
-        expected="회의는 열두시 삼십분에 시작하고 비용은 백-원이다",
+        expected="회의는 열~두시 삼십분에 시작하고 비용은 백-원이다",
         rule="multi-rule / HH:MM + currency",
         reason="Time normalization and currency normalization should coexist in one clause without introducing commas or partial rewrites.",
     ),

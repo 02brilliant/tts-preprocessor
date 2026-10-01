@@ -94,7 +94,20 @@ def apply_safe_post_surface_particle_exception(
                 index += 2
                 continue
 
-            generated_particle = choose_safe_particle(current.text, particle)
+            # Only a verified, generated vowel marker is non-phonetic. Original
+            # punctuation and unknown reading tails keep the existing guard.
+            reading = current.text
+            if reading.endswith("~") and (
+                any(rule in {"NUM_LONG_INSERT", "NUM_LONG_REPLACE_BOUNDARY"}
+                    for rule in current.metadata.get("numeric_render_rules", ()))
+                or any(plan.marker_status == "rendered" and any(
+                    b.kind == "vowel_length" and b.render_span is not None
+                    and b.render_span.end == len(reading)
+                    for b in plan.boundaries
+                ) for plan in current.numeric_plans)
+            ):
+                reading = reading[:-1]
+            generated_particle = choose_safe_particle(reading, particle)
             if current.owner == "decimal" and particle == "으로":
                 generated_particle = None
             if generated_particle is not None:

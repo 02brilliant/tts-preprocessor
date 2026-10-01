@@ -8,7 +8,7 @@ from engine.span_engine import transform, transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("회의는 13:05(시작)에 열린다", "회의는 십삼시 오분에 열린다"),
+        ("회의는 13:05(시작)에 열린다", "회의는 십삼시 오~분에 열린다"),
         ('값은 12.3(사태)이다', '값은 십이-쩜-삼이다'),
     ],
 )

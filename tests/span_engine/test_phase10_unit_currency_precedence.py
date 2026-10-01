@@ -9,8 +9,8 @@ from engine.span_engine import transform, transform_with_trace
     ("text", "expected", "owner"),
     [
         ("$100", "백-달러", "currency"),
-        ("50kg", "오십-킬로그램", "simple_unit"),
-        ("45㎡", "사십오-제곱미터", "special_unit"),
+        ("50kg", "오~십-킬로그램", "simple_unit"),
+        ("45㎡", "사~십오-제곱미터", "special_unit"),
         ("100MB", "백-메가바이트", "simple_unit"),
     ],
 )

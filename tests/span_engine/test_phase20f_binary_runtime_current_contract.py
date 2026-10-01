@@ -6,6 +6,19 @@ from types import SimpleNamespace
 import pytest
 
 
+class _FakeProcess:
+    returncode = 0
+
+    def __init__(self, communicate):
+        self.communicate = communicate
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
 def test_phase20f_binary_runtime_run_transform_binary_exists() -> None:
     import api.binary_runtime as binary_runtime
 
@@ -17,25 +30,29 @@ def test_phase20f_binary_runtime_run_transform_binary_uses_subprocess_result(mon
 
     seen: dict[str, object] = {}
 
-    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
+    def fake_popen(cmd, *, stdin, stdout, stderr, text, start_new_session):
         seen["cmd"] = cmd
-        seen["input"] = input
-        seen["capture_output"] = capture_output
+        seen["pipes"] = (stdin, stdout, stderr)
         seen["text"] = text
-        seen["check"] = check
-        return SimpleNamespace(returncode=0, stdout="정규화 결과\n", stderr="")
+        seen["start_new_session"] = start_new_session
+        def communicate(*, input=None, timeout=None):
+            seen["input"] = input
+            seen["timeout"] = timeout
+            return "정규화 결과\n", ""
+        return _FakeProcess(communicate)
 
     monkeypatch.setattr(binary_runtime, "resolve_binary_path", lambda: Path("/tmp/fake-binary"))
-    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    monkeypatch.setattr(binary_runtime.subprocess, "Popen", fake_popen)
 
     output = binary_runtime.run_transform_binary("입력 텍스트")
 
     assert output == "정규화 결과"
     assert seen["cmd"] == ["/tmp/fake-binary"]
     assert seen["input"] == "입력 텍스트"
-    assert seen["capture_output"] is True
+    assert seen["pipes"] == (binary_runtime.subprocess.PIPE,) * 3
     assert seen["text"] is True
-    assert seen["check"] is False
+    assert seen["timeout"] == 30.0
+    assert seen["start_new_session"] == (binary_runtime.os.name == "posix")
 
 
 def test_phase20f_binary_runtime_selects_simplified_binary(monkeypatch) -> None:
@@ -43,16 +60,16 @@ def test_phase20f_binary_runtime_selects_simplified_binary(monkeypatch) -> None:
 
     seen: dict[str, object] = {}
 
-    def fake_run(cmd, *, input, capture_output, text, check, timeout=None):
+    def fake_popen(cmd, *, stdin, stdout, stderr, text, start_new_session):
         seen["cmd"] = cmd
-        return SimpleNamespace(returncode=0, stdout="간소화 결과\n", stderr="")
+        return _FakeProcess(lambda **kwargs: ("간소화 결과\n", ""))
 
     monkeypatch.setattr(
         binary_runtime,
         "resolve_simplified_binary_path",
         lambda: Path("/tmp/fake-simplified-binary"),
     )
-    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    monkeypatch.setattr(binary_runtime.subprocess, "Popen", fake_popen)
 
     assert binary_runtime.run_transform_binary(
         "입력 텍스트",

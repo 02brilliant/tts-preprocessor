@@ -7,7 +7,7 @@ from engine.span_engine import transform
 
 
 SPAN_ENGINE_ROOT = Path(__file__).resolve().parents[2] / "engine" / "span_engine"
-ALLOWED_EXTERNAL_ENGINE_IMPORTS = {"engine.prosody.paragraph"}
+ALLOWED_EXTERNAL_ENGINE_IMPORTS = {"engine.prosody.paragraph", "engine.text_alignment"}
 
 
 def _python_files() -> list[Path]:

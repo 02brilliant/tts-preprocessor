@@ -9,12 +9,12 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("오전 9시 6분께", "오전 아홉-시 육분께"),
-        ("9시6분께", "아홉-시 육분께"),
-        ("5분 15초께", "오분 십오초께"),
-        ("5분15초께", "오분 십오초께"),
-        ("9시 5분 15초께", "아홉-시 오분 십오초께"),
-        ("9시5분15초께", "아홉-시 오분 십오초께"),
+        ("오전 9시 6분께", "오전 아홉시 육분께"),
+        ("9시6분께", "아홉시 육분께"),
+        ("5분 15초께", "오~분 십오초께"),
+        ("5분15초께", "오~분 십오초께"),
+        ("9시 5분 15초께", "아홉시 오~분 십오초께"),
+        ("9시5분15초께", "아홉시 오~분 십오초께"),
     ],
 )
 def test_structured_time_allows_approximate_kke_tail(
@@ -36,13 +36,13 @@ def test_non_structured_minute_kke_tail_preserves(text: str) -> None:
 
 
 def test_hour_only_kke_tail_uses_clock_hour_owner() -> None:
-    assert transform("9시께") == "아홉-시께"
+    assert transform("9시께") == "아홉시께"
 
 
 def test_structured_time_kke_trace_uses_time_owner_not_preserve() -> None:
     output = transform_with_trace("오전 9시 6분께")
 
-    assert output.normalized_text == "오전 아홉-시 육분께"
+    assert output.normalized_text == "오전 아홉시 육분께"
     assert [
         (claim.owner, claim.reason)
         for claim in output.trace.claim_logs
@@ -168,7 +168,7 @@ def test_mixed_decimal_full_claim_and_provenance() -> None:
 
 def test_user_reported_time_and_adjacent_currency_sentence() -> None:
     assert transform("오전 9시 6분께 22만원6천원이다.") == (
-        "오전 아홉-시 육분께 이십이만 원육천-원이다."
+        "오전 아홉시 육분께 이십이만 원육천-원이다."
     )
 
 

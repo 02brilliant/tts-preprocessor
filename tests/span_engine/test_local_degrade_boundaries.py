@@ -26,7 +26,7 @@ def test_invalid_prefixed_ordinal_does_not_block_neighbors() -> None:
     )
     assert_local_degrade(
         text,
-        expected_transformed=["제-이문항", "제-십오권", "피에이치 칠-쩜-사", "이십오도"],
+        expected_transformed=["제-이문항", "제-십오권", "피에이치 칠-쩜-사", "이~십오도"],
         expected_preserved=["제2-문항"],
     )
 
@@ -40,8 +40,8 @@ def test_invalid_currency_like_tokens_do_not_block_neighbors() -> None:
     assert_local_degrade(
         text,
         expected_transformed=[
-            "만 이천삼백-원",
-            "이십오-쩜-구구-달러",
+            "만 이~천삼백-원",
+            "이~십오-쩜-구구-달러",
             "천이백삼십사-유로",
             "삼백-유로",
             "삼-킬로그램",
@@ -69,8 +69,8 @@ def test_percent_alias_unsafe_tail_does_not_block_neighbors() -> None:
         text,
         expected_transformed=[
             "삼십삼-쩜-삼-퍼센트",
-            "이-쩜-오-퍼센트포인트",
-            "이십오도",
+            "이~쩜-오-퍼센트포인트",
+            "이~십오도",
             "피에이치 칠-쩜-사",
             "삼분의 일",
         ],
@@ -87,8 +87,8 @@ def test_square_bracket_preserve_does_not_block_outside_transform() -> None:
     assert out != text
     assert "피에이치 칠-쩜-사" in out
     assert "공일공 일이삼사 오육칠팔" in out
-    assert "이천이십오년 일월 삼일" in out
-    assert "이십오도" in out
+    assert "이~천이십오년 일월 삼일" in out
+    assert "이~십오도" in out
     assert "pH 7.4" in out
     assert "010-1234-5678" in out
     assert "2025-01-03" in out
@@ -103,10 +103,10 @@ def test_inline_protected_spans_do_not_block_neighbors() -> None:
     assert_local_degrade(
         text,
         expected_transformed=[
-            "이십오도",
+            "이~십오도",
             "피에이치 칠-쩜-사",
             "삼-킬로그램",
-            "이십오-쩜-구구-달러",
+            "이~십오-쩜-구구-달러",
         ],
         expected_preserved=[
             '"text":"25℃"',
@@ -125,11 +125,11 @@ def test_url_path_code_like_preserve_does_not_block_neighbors() -> None:
     assert_local_degrade(
         text,
         expected_transformed=[
-            "사십오-제곱미터",
+            "사~십오-제곱미터",
             "일-쩜-이-킬로미터",
             "육십-헤르츠",
             "피에이치 칠-쩜-사",
-            "만 이천삼백-원",
+            "만 이~천삼백-원",
         ],
         expected_preserved=[
             "https://example.com/a/b",
@@ -155,7 +155,7 @@ def test_single_letter_code_invalid_tail_does_not_block_neighbors() -> None:
             "케이 십",
             "에프-십오 씨",
             "케이-이십일 비씨",
-            "이십오도",
+            "이~십오도",
             "삼-킬로그램",
             "피에이치 칠-쩜-사",
         ],
@@ -177,7 +177,7 @@ def test_compound_unit_invalid_tail_does_not_block_neighbors() -> None:
             "초속 삼 킬로미터",
             "초당 십 메가바이트",
             "초당 일 기가바이트",
-            "이십오도",
+            "이~십오도",
             "피에이치 칠-쩜-사",
         ],
         expected_preserved=[
@@ -202,7 +202,7 @@ def test_event_fail_candidates_do_not_block_neighbors() -> None:
     assert "십이십이 사태" in out
     assert "오일팔 민주화 운동" in out
     assert "피에이치 칠-쩜-사" in out
-    assert "이십오도" in out
+    assert "이~십오도" in out
 
 
 def test_invalid_date_fallback_does_not_block_neighbors() -> None:
@@ -213,7 +213,7 @@ def test_invalid_date_fallback_does_not_block_neighbors() -> None:
     )
     out = transform(text)
     assert out != text
-    assert "이천이십오년 일월 삼일" in out
-    assert "이천이십육년 유월 십칠일" in out
+    assert "이~천이십오년 일월 삼일" in out
+    assert "이~천이십육년 유월 십칠일" in out
     assert "피에이치 칠-쩜-사" in out
-    assert "이십오도" in out
+    assert "이~십오도" in out

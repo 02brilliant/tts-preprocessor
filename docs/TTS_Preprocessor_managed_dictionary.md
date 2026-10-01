@@ -1,5 +1,27 @@
 # TTS Preprocessor Managed Dictionary Policy
 
+## Approved numeric marker evidence (2026-10-01)
+
+Numeric vowel targets now render `~` in generated readings only. The existing
+offline registry additionally includes the closed `months` entries 2/4/5:
+이월¹ 二月 [이ː월], 사월 四月 [사ː월], 오월 五月 [오ː월]. Their dictionary
+identities are krdict:26893, krdict:20228 and krdict:62516 respectively:
+[이월](https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=26893),
+[사월](https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=20228),
+[오월](https://krdict.korean.go.kr/kor/dicSearch/SearchView?ParaWordNo=62516).
+These are direct lexical evidence; date year/day, integer time/duration and
+fraction targets derive from verified numeral entries and the existing official
+position rule. Whole phrases are not represented as dictionary-certified entries.
+유월/시월 keep their lexical exception readings without inferred vowel lengths.
+No broad native dictionary expansion or runtime network lookup is added.
+Unknown targets remain unknown; no acoustic success is recorded.
+
+Signed native 조각, structured large-unit expressions and multi-colon blocks
+now retain owner-derived numeric metadata without expanding marker scope.
+Their unverified linguistic domains use `owner_linguistic_unit_unresolved` and
+`owner_scope_unresolved`; lexical evidence is not promoted to a contextual target.
+No evidence entries, fixed replacements or runtime dictionary lookups are added.
+
 ## Numeric vowel evidence registry (2026-10-01)
 
 `engine/span_engine/data/numeric_vowels.json` is an internal evidence registry,

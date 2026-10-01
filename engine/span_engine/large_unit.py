@@ -296,6 +296,8 @@ def _surface_candidate(parsed: _LargeUnitParse, tail: str) -> SurfaceCandidate:
             "suffix_span": parsed.suffix_span,
             "insert_tail_space": insert_tail_space,
             "render_parts": parsed.render_parts,
+            "number_form": ("structured_integer" if parsed.reading_includes_suffix and not parsed.has_decimal
+                            else "decimal" if parsed.has_decimal else "integer"),
             **(
                 {
                     "sign_profile": parsed.sign_profile,

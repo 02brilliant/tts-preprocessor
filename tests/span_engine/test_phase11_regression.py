@@ -9,7 +9,7 @@ from engine.span_engine import transform, transform_with_trace
     ("text", "expected"),
     [
         ("AI은 중요하다", "에이아이는 중요하다"),
-        ("50kg", "오십-킬로그램"),
+        ("50kg", "오~십-킬로그램"),
         ("[21명]", '[21명]'),
         ("참석자는 [21명]입니다", '참석자는 [21명]입니다'),
         ("(21명)", ""),

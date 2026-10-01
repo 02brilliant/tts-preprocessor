@@ -45,7 +45,7 @@ from engine.span_engine import transform
 def test_phase35c_embedded_multi_currency_prefix_symbols() -> None:
     """All three currency prefix symbols must transform within a Korean sentence."""
     text = "해외 가격표에는 $25.99, €1,234, ￥1,500이 나란히 적혀 있었다."
-    expected = "해외 가격표에는 이십오-쩜-구구-달러, 천이백삼십사-유로, 천오백-엔이 나란히 적혀 있었다."
+    expected = "해외 가격표에는 이~십오-쩜-구구-달러, 천이백삼십사-유로, 천오백-엔이 나란히 적혀 있었다."
     # CURRENTLY FAILS:
     #   actual = '해외 가격표에는 $25.99, €1,234, 천오백 엔이 나란히 적혀 있었다.'
     assert transform(text) == expected
@@ -55,7 +55,7 @@ def test_phase35c_embedded_multi_currency_prefix_symbols() -> None:
     ("text", "expected"),
     [
         # $ inside Korean sentence
-        ('가격은 $25.99입니다.', '가격은 이십오-쩜-구구-달러입니다.'),
+        ('가격은 $25.99입니다.', '가격은 이~십오-쩜-구구-달러입니다.'),
         # € inside Korean sentence (bare, no decimal)
         (
             "비용은 €1,234입니다.",
@@ -108,7 +108,7 @@ def test_phase35c_prefix_symbol_space_currency_full_consume() -> None:
         ("$ 300", "삼백-달러"),
         ("￦ 300", "삼백-원"),
         ("€ 1,234", "천이백삼십사-유로"),
-        ('$ 25.99', '이십오-쩜-구구-달러'),
+        ('$ 25.99', '이~십오-쩜-구구-달러'),
     ],
 )
 def test_phase35c_standalone_prefix_symbol_space_currency(
@@ -152,18 +152,18 @@ def test_phase35c_signed_bare_degree_alignment() -> None:
     """-2.5º must produce '영하 이-쩜-오도', consistent with -2.5ºC policy."""
     # CURRENTLY FAILS:
     #   actual = '-이-쩜-오º'
-    assert transform("-2.5º") == '영하 이-쩜-오도'
+    assert transform("-2.5º") == '영하 이~쩜-오도'
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
         # Unsigned bare degree – regression guard (currently passes)
-        ("25º", "이십오도"),
+        ("25º", "이~십오도"),
         # Signed Celsius – regression guard (currently passes)
-        ('-2.5ºC', '영하 이-쩜-오도'),
+        ('-2.5ºC', '영하 이~쩜-오도'),
         # Signed Fahrenheit – regression guard (currently passes)
-        ('-2.5ºF', '화씨 영하 이-쩜-오도'),
+        ('-2.5ºF', '화씨 영하 이~쩜-오도'),
     ],
 )
 def test_phase35c_degree_regression_guard(text: str, expected: str) -> None:

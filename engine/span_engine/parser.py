@@ -118,7 +118,8 @@ def parse_candidates(raw_text: str, candidates: list[SurfaceCandidate]) -> list[
         surface = _parse_candidate(raw_text, candidate)
         if surface is not None:
             from engine.span_engine.numeric_plan import build_numeric_plan
-            surface.numeric_plan = build_numeric_plan(raw_text, candidate, surface.reading or "")
+            from engine.span_engine.numeric_long_vowel import apply_numeric_surface
+            apply_numeric_surface(surface, build_numeric_plan(raw_text, candidate, surface.reading or ""))
             surfaces.append(surface)
     return surfaces
 

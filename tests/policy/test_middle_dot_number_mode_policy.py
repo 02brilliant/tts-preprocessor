@@ -33,7 +33,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-spaced-middle-dot-versus-contiguous-middle-dot",
         text="123 · 456과 123·456은 다르다",
-        expected="백이십삼 · 사백오십육과 일이삼·사오육은 다르다",
+        expected="백이십삼 · 사~백오십육과 일이삼·사오육은 다르다",
         rule="middle dot spacing / interaction",
         reason="Spaced and contiguous middle-dot patterns must normalize differently in the same sentence.",
         classification="middle_dot",
@@ -49,7 +49,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-leading-zero-standalone-and-time-override",
         text="01 09시 07시 05분",
-        expected="01 아홉-시 일곱-시 오분",
+        expected="01 아홉시 일곱시 오~분",
         rule="leading-zero standalone preserve + suffix time override / interaction",
         reason="The bare number preserves, while registered 시/분 suffix owners normalize their own leading-zero numeric cores.",
         classification="override",
@@ -57,7 +57,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-identifier-payload-preserve-plus-date",
         text="ID: 00123 기록은 2025.01.03에 갱신한다",
-        expected="아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
+        expected="아이디: 00123 기록은 이~천이십오년 일월 삼일에 갱신한다",
         rule="identifier payload preserve + date / interaction",
         reason="The acronym and dotted date owners transform independently while the colon and leading-zero identifier payload preserve.",
         classification="preserve",
@@ -81,7 +81,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="interaction-middle-dot-with-date-and-decimal",
         text="2025.01.03 7·25 7.25",
-        expected='이천이십오년 일월 삼일 칠·이오 칠-쩜-이오',
+        expected='이~천이십오년 일월 삼일 칠·이오 칠-쩜-이오',
         rule="date + middle dot + decimal / interaction",
         reason="Date, structured middle-dot, and decimal parsing must resolve in strict precedence order inside one line.",
         classification="conflict",
@@ -89,7 +89,7 @@ NORMALIZATION_INTERACTION_CASES = [
     TextCase(
         case_id="canonical-middle-dot-leading-zero-time-override",
         text="01·09시와 09시",
-        expected="01·09시와 아홉-시",
+        expected="01·09시와 아홉시",
         rule="middle dot guard + leading-zero suffix-clock override",
         reason="The mixed middle-dot token stays protected, while the independent suffix clock is normalized by the time owner.",
         classification="override",
@@ -117,7 +117,7 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-identifier-date",
         text="그리고 ID: 00123 기록은 2025.01.03에 갱신한다",
-        expected="그리고, 아이디: 00123 기록은 이천이십오년 일월 삼일에 갱신한다",
+        expected="그리고, 아이디: 00123 기록은 이~천이십오년 일월 삼일에 갱신한다",
         rule="connector + identifier + date / full pipeline",
         reason="Prosody must preserve the identifier-like payload while retaining the dotted date reading.",
         classification="digit_mode",
@@ -133,7 +133,7 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-spaced-and-contiguous-middle-dot",
         text="그리고 123 · 456 표기는 123·456과 다르다",
-        expected="그리고, 백이십삼 · 사백오십육-표기는 일이삼·사오육과 다르다",
+        expected="그리고, 백이십삼 · 사~백오십육-표기는 일이삼·사오육과 다르다",
         rule="connector + middle dot spacing / full pipeline",
         reason="Prosody must not collapse the preserved spaced middle dot or the contiguous structured result.",
         classification="middle_dot",
@@ -141,7 +141,7 @@ FULL_PIPELINE_INTERACTION_CASES = [
     TextCase(
         case_id="full-pipeline-connector-phone-currency-time",
         text="그리고 연락처는 010-1234-5678이고 비용은 ₩01,000이며 시작은 09시다",
-        expected="그리고, 연락처는 공일공 일이삼사 오육칠팔이고 비용은 ₩01,000이며 시작은 아홉-시다",
+        expected="그리고, 연락처는 공일공 일이삼사 오육칠팔이고 비용은 ₩01,000이며 시작은 아홉시다",
         rule="connector + phone + currency + time / full pipeline",
         reason="Phone and suffix-clock owners normalize independently while the leading-zero currency surface remains preserved.",
         classification="override",

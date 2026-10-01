@@ -71,7 +71,7 @@ SPECIAL_AND_DICTIONARY_CASES = [
     TextCase(
         case_id="special-snp-reading-alternate-surface",
         text="SNP 500",
-        expected="에스엔피 오백",
+        expected="에스엔피 오~백",
         rule="special format / SNP dynamic mapping",
         reason="SNP is treated as the same documented dynamic mapping as S&P.",
     ),

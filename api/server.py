@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from api.binary_runtime import (
     BinaryRuntimeError,
+    BinaryRuntimeTimeoutError,
     LLMStageRuntimeError,
     list_llm_models,
     resolve_binary_path,
@@ -119,6 +120,8 @@ def transform_api(req: TransformRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except BinaryRuntimeTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
     except BinaryRuntimeError as exc:
         error_message = str(exc).strip() or "실행모듈 호출에 실패했습니다."
         raise HTTPException(status_code=500, detail=error_message) from exc
@@ -140,6 +143,8 @@ def llm_models_api() -> dict:
         return list_llm_models()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except BinaryRuntimeTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
     except BinaryRuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

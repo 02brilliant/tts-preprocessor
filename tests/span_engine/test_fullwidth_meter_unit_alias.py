@@ -11,11 +11,11 @@ from engine.span_engine import transform, transform_with_trace
     [
         ("1ｍ", "일-미터"),
         ("지름 약 1ｍ입니다.", "지름 약 일-미터입니다."),
-        ("1~2ｍ", "일에서 이-미터"),
-        ("깊이 약 1~2ｍ로 파악됐습니다.", "깊이 약 일에서 이-미터로 파악됐습니다."),
+        ("1~2ｍ", "일에서 이~미터"),
+        ("깊이 약 1~2ｍ로 파악됐습니다.", "깊이 약 일에서 이~미터로 파악됐습니다."),
         (
             "경찰과 소방 당국에 따르면 땅꺼짐 규모는 지름 약 1ｍ, 깊이 약 1~2ｍ로 파악됐습니다.",
-            "경찰과 소방 당국에 따르면 땅꺼짐 규모는 지름 약 일-미터, 깊이 약 일에서 이-미터로 파악됐습니다.",
+            "경찰과 소방 당국에 따르면 땅꺼짐 규모는 지름 약 일-미터, 깊이 약 일에서 이~미터로 파악됐습니다.",
         ),
     ],
 )
@@ -27,9 +27,9 @@ def test_fullwidth_meter_unit_alias_positive_production(text: str, expected: str
     ("text", "expected"),
     [
         ("1m", "일-미터"),
-        ("1~2m", "일에서 이-미터"),
+        ("1~2m", "일에서 이~미터"),
         ("1cm", "일-센티미터"),
-        ("1~2cm", "일에서 이-센티미터"),
+        ("1~2cm", "일에서 이~센티미터"),
         ("1㎝", "일-센티미터"),
         ("1㎏", "일-킬로그램"),
     ],
@@ -74,6 +74,6 @@ def test_fullwidth_meter_alias_claim_owners() -> None:
     assert any(claim.owner == "simple_unit" for claim in unit_output.trace.claim_logs)
     assert not any(claim.owner == "number" for claim in unit_output.trace.claim_logs)
 
-    assert range_output.normalized_text == "일에서 이-미터로"
+    assert range_output.normalized_text == "일에서 이~미터로"
     assert any(claim.owner == "range_with_unit" for claim in range_output.trace.claim_logs)
     assert not any(claim.owner == "number" for claim in range_output.trace.claim_logs)

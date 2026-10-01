@@ -68,7 +68,7 @@ def test_4k_fixed_technical_term_and_unsafe_alnum_preserve() -> None:
 
 @pytest.mark.parametrize("unit", ["5Ghz", "5GHz", "5ghz"])
 def test_frequency_ghz_alias_numeric_prefix(unit: str) -> None:
-    assert transform(f"{unit} 환경") == "오-기가헤르츠 환경"
+    assert transform(f"{unit} 환경") == "오~기가헤르츠 환경"
 
 
 @pytest.mark.parametrize("text", ["5Hzabc", "5hzabc"])
@@ -77,9 +77,9 @@ def test_frequency_unsafe_tail_preserve(text: str) -> None:
 
 
 def test_plain_volume_m3_full_consumes() -> None:
-    assert transform("45m3") == "사십오-세제곱미터"
-    assert transform("45m²") == "사십오-제곱미터"
-    assert transform("45㎥") == "사십오-세제곱미터"
+    assert transform("45m3") == "사~십오-세제곱미터"
+    assert transform("45m²") == "사~십오-제곱미터"
+    assert transform("45㎥") == "사~십오-세제곱미터"
     assert transform("45m3abc") == "45m3abc"
 
 
@@ -93,16 +93,16 @@ def test_decimal_and_middle_dot_numeric_list_fallbacks() -> None:
 
 
 def test_decimal_trailing_zero_digits_are_preserved() -> None:
-    assert transform("승률 0.600, 비율 2:1") == '승률 영-쩜-육영영, 비율 이 대 일'
+    assert transform("승률 0.600, 비율 2:1") == '승률 영-쩜-육영영, 비율 이~ 대 일'
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
         ("KTX와 KTX-이음 등 고속열차는", "케이티엑스와 케이티엑스-이음 등 고속열차는"),
-        ("KBS 11시뉴스입니다.", "케이비에스 열한시뉴스입니다."),
-        ("지금까지 KBS 11시뉴스였습니다.", "지금까지 케이비에스 열한시뉴스였습니다."),
-        ('코스피는 전장보다 2.43% 오른 8,384.31로 출발했다.', '코스피는 전장보다 이-쩜-사삼-퍼센트 오른 팔천삼백팔십사-쩜-삼일로 출발했다.'),
+        ("KBS 11시뉴스입니다.", "케이비에스 열~한시뉴스입니다."),
+        ("지금까지 KBS 11시뉴스였습니다.", "지금까지 케이비에스 열~한시뉴스였습니다."),
+        ('코스피는 전장보다 2.43% 오른 8,384.31로 출발했다.', '코스피는 전장보다 이~쩜-사삼-퍼센트 오른 팔천삼백팔십사-쩜-삼일로 출발했다.'),
         ('전산업 생산지수는 117.8로 전달 대비 0.6% 줄었습니다.', '전산업 생산지수는 백십칠-쩜-팔로 전달 대비 영-쩜-육-퍼센트 줄었습니다.'),
         ('117.8으로', '백십칠-쩜-팔으로'),
         ('8,384.31으로', '팔천삼백팔십사-쩜-삼일으로'),
@@ -111,7 +111,7 @@ def test_decimal_trailing_zero_digits_are_preserved() -> None:
         ("KTX", "케이티엑스"),
         ("KTX와", "케이티엑스와"),
         ("KTX-이음", "케이티엑스-이음"),
-        ("11시뉴스", "열한시뉴스"),
+        ("11시뉴스", "열~한시뉴스"),
     ],
 )
 def test_news_attached_surface_current_gaps(text: str, expected: str) -> None:
@@ -155,7 +155,7 @@ def test_news_attached_surface_preserve_boundaries(text: str, expected: str) -> 
         ("종로3가", "종로 삼-가"),
         ("역삼동 12번지", "역삼동 십이-번지"),
         ("3로 이동", "삼로 이동"),
-        ("5로 설정", "오로 설정"),
+        ("5로 설정", "오~로 설정"),
     ],
 )
 def test_decimal_ro_followup_keeps_existing_integer_and_address_outputs(
@@ -178,9 +178,9 @@ def test_acronym_hangul_hyphen_preserves_raw_hyphen_and_original_hangul() -> Non
 def test_broadcast_time_title_generates_only_hour_and_preserves_korean_tail() -> None:
     output = transform_with_trace("11시뉴스")
 
-    assert output.normalized_text == "열한시뉴스"
+    assert output.normalized_text == "열~한시뉴스"
     assert [(piece.text, piece.provenance) for piece in output.render_pieces] == [
-        ("열한", "GENERATED_READING"),
+        ("열~한", "GENERATED_READING"),
         ("시뉴스", "ORIGINAL_KOREAN"),
     ]
 
@@ -200,8 +200,8 @@ def test_full_news_example_attached_surface_regression_contains() -> None:
     output = prod(text)
 
     assert "케이티엑스-이음" in output
-    assert "케이비에스 열한시뉴스입니다" in output
-    assert "지금까지 케이비에스 열한시뉴스였습니다" in output
+    assert "케이비에스 열~한시뉴스입니다" in output
+    assert "지금까지 케이비에스 열~한시뉴스였습니다" in output
     assert "팔천삼백팔십사-쩜-삼일로" in output
     assert "백십칠-쩜-팔로" in output
     assert "오늘 코스피는" in output
@@ -212,7 +212,7 @@ def test_calendar_invalid_date_uses_code_separator_fallback() -> None:
 
     assert (
         transform(text)
-        == "이천이십육년 사월 십칠일, 이공이오 일삼 공삼, 이공이오 공일 삼이, 이공이사 공공 일공"
+        == "이~천이십육년 사~월 십칠일, 이공이오 일삼 공삼, 이공이오 공일 삼이, 이공이사 공공 일공"
     )
 
 
@@ -233,14 +233,14 @@ def test_spaced_hyphen_numeric_multiblock_with_korean_suffix_full_consumes() -> 
 
 
 def test_signed_temperature_korean_boundary_full_consumes_or_preserves() -> None:
-    assert transform("온도-2.5℃") == '온도영하 이-쩜-오도'
-    assert transform("-2.5℃") == '영하 이-쩜-오도'
-    assert transform("-2.5℉") == '화씨 영하 이-쩜-오도'
+    assert transform("온도-2.5℃") == '온도영하 이~쩜-오도'
+    assert transform("-2.5℃") == '영하 이~쩜-오도'
+    assert transform("-2.5℉") == '화씨 영하 이~쩜-오도'
     assert transform("A-2.5℃") == "A-2.5℃"
     assert transform("x-2.5℉") == "x-2.5℉"
     assert transform("30ºCtest") == "30ºCtest"
     assert transform("40℉abc") == "40℉abc"
-    assert transform("- 2.5℃") != "영하 이-쩜-오도"
+    assert transform("- 2.5℃") != "영하 이~쩜-오도"
 
 
 def test_two_block_hyphen_decimal_code_policy() -> None:
@@ -340,16 +340,16 @@ def test_ph_case_sensitive_owner_and_decimal_fallback_consistency() -> None:
     [
         (
             "K-POP, ISO·IEC, 4K 장비, 5Ghz 환경, https://example.com/a/b",
-            "케이팝, 아이에스오·아이이씨, 포케이 장비, 오-기가헤르츠 환경, https://example.com/a/b",
+            "케이팝, 아이에스오·아이이씨, 포케이 장비, 오~기가헤르츠 환경, https://example.com/a/b",
         ),
         (
             "K-POP, user@example.com, 45m3",
-            "케이팝, user@example.com, 사십오-세제곱미터",
+            "케이팝, user@example.com, 사~십오-세제곱미터",
         ),
-        ('docs/2025/01/02/report.md, 온도-2.5℃, pH 7.4', 'docs/2025/01/02/report.md, 온도영하 이-쩜-오도, 피에이치 칠-쩜-사'),
+        ('docs/2025/01/02/report.md, 온도-2.5℃, pH 7.4', 'docs/2025/01/02/report.md, 온도영하 이~쩜-오도, 피에이치 칠-쩜-사'),
         (
             "C:/Users/test/file.txt, 5Ghz 환경, K-POP",
-            "C:/Users/test/file.txt, 오-기가헤르츠 환경, 케이팝",
+            "C:/Users/test/file.txt, 오~기가헤르츠 환경, 케이팝",
         ),
         ("https://example.com/a/b", "https://example.com/a/b"),
         ("user@example.com", "user@example.com"),
@@ -367,7 +367,7 @@ def test_embedded_protected_token_does_not_trigger_global_bypass() -> None:
 
     assert (
         transform(text)
-        == "케이팝, 아이에스오·아이이씨, 포케이 장비, 오-기가헤르츠 환경, 사십오-세제곱미터, 온도영하 이-쩜-오도, 피에이치 칠-쩜-사, https://example.com/a/b"
+        == "케이팝, 아이에스오·아이이씨, 포케이 장비, 오~기가헤르츠 환경, 사~십오-세제곱미터, 온도영하 이~쩜-오도, 피에이치 칠-쩜-사, https://example.com/a/b"
     )
 
 
@@ -385,7 +385,7 @@ def test_embedded_protected_token_change_keeps_unsafe_preserve_guards(text: str)
         ("6,402억 달러", "육천사백이억 달러"),
         ("6,402억 원", "육천사백이억 원"),
         ("6,402억 유로", "육천사백이억 유로"),
-        ("12,300원", "만 이천삼백-원"),
+        ("12,300원", "만 이~천삼백-원"),
         ("1,250만 원", "천이백오십만 원"),
         ("1,250만 원을 포함한다.", "천이백오십만 원을 포함한다."),
         ("1,250만 원은 필요하다.", "천이백오십만 원은 필요하다."),
@@ -395,7 +395,7 @@ def test_embedded_protected_token_change_keeps_unsafe_preserve_guards(text: str)
         ("3조 4,000억 원", "삼조 사천억 원"),
         ("6조 3천억 원", "육조 삼천억 원"),
         ("2조 8천억 원", "이조 팔천억 원"),
-        ('3개월 이상 연체된 돈이 4.1%, 6조 3천억 원입니다.', '삼개월 이상 연체된 돈이 사-쩜-일-퍼센트, 육조 삼천억 원입니다.'),
+        ('3개월 이상 연체된 돈이 4.1%, 6조 3천억 원입니다.', '삼개월 이상 연체된 돈이 사~쩜-일-퍼센트, 육조 삼천억 원입니다.'),
     ],
 )
 def test_comma_number_large_unit_and_currency_surfaces(
@@ -413,10 +413,10 @@ def test_comma_number_code_like_guards_preserve(text: str) -> None:
     ("text", "expected"),
     [
         ('1,250', '천이백오십'),
-        ("12,345", "만 이천삼백사십오"),
+        ("12,345", "만 이~천삼백사십오"),
         ('6402', '육천사백이'),
         ("10000", "만"),
-        ('1,250, 12,345, 6402, 10000', '천이백오십, 만 이천삼백사십오, 육천사백이, 만'),
+        ('1,250, 12,345, 6402, 10000', '천이백오십, 만 이~천삼백사십오, 육천사백이, 만'),
     ],
 )
 def test_bare_integer_and_comma_integer_surfaces(
@@ -461,21 +461,21 @@ def test_fixed_acronym_code_like_guards_preserve(text: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("250ml", "이백오십-밀리리터"),
-        ("250mL", "이백오십-밀리리터"),
-        ("250ML", "이백오십-밀리리터"),
-        ("250µL", "이백오십-마이크로리터"),
-        ("250μL", "이백오십-마이크로리터"),
-        ("250㎕", "이백오십-마이크로리터"),
-        ("250dL", "이백오십-데시리터"),
-        ("250dl", "이백오십-데시리터"),
-        ("250㎗", "이백오십-데시리터"),
-        ("250kL", "이백오십-킬로리터"),
-        ("250kl", "이백오십-킬로리터"),
-        ("250㎘", "이백오십-킬로리터"),
-        ("250uL", "이백오십-마이크로리터"),
-        ("250nL", "이백오십-나노리터"),
-        ("250pL", "이백오십-피코리터"),
+        ("250ml", "이~백오십-밀리리터"),
+        ("250mL", "이~백오십-밀리리터"),
+        ("250ML", "이~백오십-밀리리터"),
+        ("250µL", "이~백오십-마이크로리터"),
+        ("250μL", "이~백오십-마이크로리터"),
+        ("250㎕", "이~백오십-마이크로리터"),
+        ("250dL", "이~백오십-데시리터"),
+        ("250dl", "이~백오십-데시리터"),
+        ("250㎗", "이~백오십-데시리터"),
+        ("250kL", "이~백오십-킬로리터"),
+        ("250kl", "이~백오십-킬로리터"),
+        ("250㎘", "이~백오십-킬로리터"),
+        ("250uL", "이~백오십-마이크로리터"),
+        ("250nL", "이~백오십-나노리터"),
+        ("250pL", "이~백오십-피코리터"),
     ],
 )
 def test_registered_volume_unit_aliases(text: str, expected: str) -> None:
@@ -485,19 +485,19 @@ def test_registered_volume_unit_aliases(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("250µm", "이백오십-마이크로미터"),
-        ("250nm", "이백오십-나노미터"),
-        ("250µg", "이백오십-마이크로그램"),
+        ("250µm", "이~백오십-마이크로미터"),
+        ("250nm", "이~백오십-나노미터"),
+        ("250µg", "이~백오십-마이크로그램"),
         ("1013hPa", "천십삼-헥토파스칼"),
-        ("250GW", "이백오십-기가와트"),
-        ("250kV", "이백오십-킬로볼트"),
-        ("250THz", "이백오십-테라헤르츠"),
-        ("250Kbps", "이백오십 킬로비피에스"),
-        ("250Tbps", "이백오십 테라비피에스"),
-        ("250sec", "이백오십-초"),
-        ("250ms", "이백오십-밀리초"),
-        ("250µs", "이백오십-마이크로초"),
-        ("250μs", "이백오십-마이크로초"),
+        ("250GW", "이~백오십-기가와트"),
+        ("250kV", "이~백오십-킬로볼트"),
+        ("250THz", "이~백오십-테라헤르츠"),
+        ("250Kbps", "이~백오십 킬로비피에스"),
+        ("250Tbps", "이~백오십 테라비피에스"),
+        ("250sec", "이~백오십-초"),
+        ("250ms", "이~백오십-밀리초"),
+        ("250µs", "이~백오십-마이크로초"),
+        ("250μs", "이~백오십-마이크로초"),
     ],
 )
 def test_registered_si_prefix_unit_aliases(text: str, expected: str) -> None:
@@ -521,9 +521,7 @@ def test_kiloliter_cjk_symbol_reuses_registered_volume_unit_rules() -> None:
         "500㎖ 한 잔으로 환산하면 약 127원이 늘어나는 수준이다."
     )
     assert transform(source) == (
-        "생맥주 주세는 일-킬로리터당 십칠만칠천이백 원 오른다. "
-        "이십-리터짜리 생맥주 한 통당 약 오천-원의 세금이 추가되고, "
-        "오백-밀리리터 한 잔으로 환산하면 약 백이십칠-원이 늘어나는 수준이다."
+        '생맥주 주세는 일-킬로리터당 십칠만칠천이백 원 오른다. 이~십-리터짜리 생맥주 한 통당 약 오~천-원의 세금이 추가되고, 오~백-밀리리터 한 잔으로 환산하면 약 백이십칠-원이 늘어나는 수준이다.'
     )
 
 
@@ -531,7 +529,7 @@ def test_kiloliter_cjk_symbol_reuses_registered_volume_unit_rules() -> None:
     ("text", "expected"),
     [
         ('0.5m/s', '초속 영쩜오 미터'),
-        ("5m/s", "초속 오 미터"),
+        ("5m/s", "초속 오~ 미터"),
         ('8.5m/min', '분속 팔쩜오 미터'),
         ("0.5m/sabc", "0.5m/sabc"),
     ],
@@ -550,7 +548,7 @@ def test_unsupported_duration_range_suffix_does_not_partially_rewrite_time() -> 
         ("1대1로 스마트폰 기초부터", "일대일로 스마트폰 기초부터"),
         ("1대1 교육", "일대일 교육"),
         ("1대1 상담", "일대일 상담"),
-        ("2대1 구조", "이대일 구조"),
+        ("2대1 구조", "이~대일 구조"),
         ("10대1 경쟁률", "십대일 경쟁률"),
     ],
 )
@@ -569,11 +567,11 @@ def test_compact_dae_relation_keeps_out_of_scope_and_unsafe_preserve(
 
 
 def test_standalone_colon_score_now_uses_broad_dae_reading() -> None:
-    assert transform("3:2 승") == "삼 대 이 승"
+    assert transform("3:2 승") == "삼 대 이~ 승"
 
 
 def test_colon_semantic_pair_with_approved_context_reads_as_dae_relation() -> None:
-    assert transform("2:1 비율") == "이 대 일 비율"
+    assert transform("2:1 비율") == "이~ 대 일 비율"
 
 
 @pytest.mark.parametrize(
@@ -581,7 +579,7 @@ def test_colon_semantic_pair_with_approved_context_reads_as_dae_relation() -> No
     [
         ("제5차", "제-오차"),
         ("제5차 한미 표준협력 포럼", "제-오차 한미 표준협력 포럼"),
-        ('2025 제5차 한미 표준협력 포럼', '이천이십오 제-오차 한미 표준협력 포럼'),
+        ('2025 제5차 한미 표준협력 포럼', '이~천이십오 제-오차 한미 표준협력 포럼'),
         ("제15권 안내 문구", "제-십오권 안내 문구"),
         ("제62회 무역의 날", "제-육십이회 무역의 날"),
         ("제10장", "제-십장"),
@@ -589,7 +587,7 @@ def test_colon_semantic_pair_with_approved_context_reads_as_dae_relation() -> No
         ("제 5차", "제-오차"),
         ("제 3명", "제-삼명"),
         ("제 5살", "제-오살"),
-        ("3명", "세-명"),
+        ("3명", "세~명"),
         ("12권", "12권"),
         ("제12권", "제-십이권"),
     ],

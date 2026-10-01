@@ -96,7 +96,7 @@ def test_basic_arithmetic_invalid_numeric_operand_preserves_atomically(
         ("1/3+2/3", "삼분의 일 더하기 삼분의 이"),
         ("-1/3 × 3", "마이너스 삼분의 일 곱하기 삼"),
         ("1/2+1/2=1", "이분의 일 더하기 이분의 일은 일"),
-        ("8/2", "이분의 팔"),
+        ("8/2", "이~분의 팔"),
     ],
 )
 def test_basic_arithmetic_reuses_fraction_policy(text: str, expected: str) -> None:
@@ -156,7 +156,7 @@ def test_numeric_x_boundary_preserves_non_expression_tokens(text: str) -> None:
         ('3kg+4kg', '3kg+4kg'),
         ('+25℃-3℃', '+25℃-3℃'),
         ('1,000원+2,000원', '1,000원+2,000원'),
-        ('(3+4)×2', '×이'),
+        ('(3+4)×2', '×이~'),
         ('2^3', '2^3'),
         ('sqrt(4)', 'sqrt'),
     ],
@@ -168,7 +168,7 @@ def test_unsupported_operators_and_operands_preserve(text: str, expected: str) -
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("식은 (3+4)×2다", "식은 ×이다"),
+        ("식은 (3+4)×2다", "식은 ×이~다"),
         ("식은 sqrt(4)다", "식은 sqrt다"),
     ],
 )
@@ -199,13 +199,13 @@ def test_registered_managed_code_still_wins_over_arithmetic_negative_gate() -> N
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("+25℃", "영상 이십오도"),
-        ("-25℃", "영하 이십오도"),
+        ("+25℃", "영상 이~십오도"),
+        ("-25℃", "영하 이~십오도"),
         ('+3.4', '플러스 삼-쩜-사'),
-        ('-2.3', '마이너스 이-쩜-삼'),
+        ('-2.3', '마이너스 이~쩜-삼'),
         ("1/3", "삼분의 일"),
         ("-1/3", "마이너스 삼분의 일"),
-        ("2025/01/03", "이천이십오년 일월 삼일"),
+        ("2025/01/03", "이~천이십오년 일월 삼일"),
         ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("/path/3+4/log", "/path/3+4/log"),
         ("https://example.com?q=3+4", "https://example.com?q=3+4"),

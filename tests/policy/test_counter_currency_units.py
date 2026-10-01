@@ -28,7 +28,7 @@ def test_hybrid_counter_positive_and_boundary_cases(text: str, expected: str):
     ("text", "expected"),
     [
         ("21층", "21층"),
-        ("21원", "이십일-원"),
+        ("21원", "이~십일-원"),
         ("100명", "백-명"),
         ("101권", "백일-권"),
     ],
@@ -63,11 +63,11 @@ def test_currency_policy_cases(text: str, expected: str):
     ("text", "expected"),
     [
         ("10km/h", "시속 십 킬로미터"),
-        ("5m/s", "초속 오 미터"),
+        ("5m/s", "초속 오~ 미터"),
         ('15.2km/L', '리터당 십오쩜이 킬로미터'),
         ("60Hz", "육십-헤르츠"),
-        ('2.4GHz', '이-쩜-사-기가헤르츠'),
-        ("45㎡", "사십오-제곱미터"),
+        ('2.4GHz', '이~쩜-사-기가헤르츠'),
+        ("45㎡", "사~십오-제곱미터"),
         ("220V", "220V"),
         ("m/L", "m/L"),
         ("15.2km/La", "15.2km/La"),

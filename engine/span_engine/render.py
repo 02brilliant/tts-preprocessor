@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+
 from engine.span_engine.models import RenderPiece, SourceSpan, SpanToken, Surface
 
 
@@ -49,12 +51,19 @@ def render_tokens_with_surfaces(
             raise ValueError("surface reading is required for generated render")
 
     pieces: list[RenderPiece] = []
+    # Tokenizer output is ordered. Keep the existing behavior for external
+    # callers supplying unordered tokens instead of changing their piece order.
+    ordered = all(
+        left.span.start <= right.span.start and left.span.end <= right.span.end
+        for left, right in zip(tokens, tokens[1:])
+    )
+    token_ends = [token.span.end for token in tokens] if ordered else None
     sorted_surfaces = sorted(surfaces, key=lambda surface: surface.span.start)
     cursor = 0
     for surface in sorted_surfaces:
         if surface.span.start < cursor:
             raise ValueError("surfaces must not overlap")
-        pieces.extend(_render_original_range(raw_text, tokens, cursor, surface.span.start))
+        pieces.extend(_render_original_range(raw_text, tokens, cursor, surface.span.start, token_ends))
         if surface.render_pieces is not None:
             if surface.numeric_plan is not None and surface.render_pieces:
                 surface.render_pieces[0].numeric_plans = (surface.numeric_plan,)
@@ -71,7 +80,7 @@ def render_tokens_with_surfaces(
                 )
             )
         cursor = surface.span.end
-    pieces.extend(_render_original_range(raw_text, tokens, cursor, len(raw_text)))
+    pieces.extend(_render_original_range(raw_text, tokens, cursor, len(raw_text), token_ends))
     return pieces
 
 
@@ -85,12 +94,17 @@ def join_render_pieces(pieces: list[RenderPiece]) -> str:
 
 
 def _render_original_range(
-    raw_text: str, tokens: list[SpanToken], start: int, end: int
+    raw_text: str, tokens: list[SpanToken], start: int, end: int,
+    token_ends: list[int] | None = None,
 ) -> list[RenderPiece]:
     if start == end:
         return []
     pieces: list[RenderPiece] = []
-    for token in tokens:
+    first = 0 if token_ends is None else bisect_right(token_ends, start)
+    for index in range(first, len(tokens)):
+        token = tokens[index]
+        if token_ends is not None and token.span.start >= end:
+            break
         overlap_start = max(start, token.span.start)
         overlap_end = min(end, token.span.end)
         if overlap_start >= overlap_end:

@@ -139,7 +139,7 @@ EMBEDDED_NEGATIVE_CASES = [
     TextCase(
         case_id="emergency-embedded-2112",
         text="2112",
-        expected="이천백십이",
+        expected="이~천백십이",
         rule="emergency number / embedded-token-negative",
         reason="A larger number ending with 112 is not an emergency token and should read as a normal integer.",
     ),

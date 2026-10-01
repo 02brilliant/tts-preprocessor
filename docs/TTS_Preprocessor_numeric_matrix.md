@@ -1,35 +1,48 @@
 # TTS Preprocessor Numeric Matrix Policy
 
-## 2026-10-01 승인 후속 작업 매트릭스
+## 2026-10-01 상시 숫자 장음 출력 매트릭스
 
 | 입력 | 현재 출력 | 처리 |
 |---|---|---|
-| `2~5명` | `두-명에서 다섯-명` | 기존 counter 양끝 적용·단위 반복 |
-| `2~5개` | `두-개에서 다섯-개` | 수량 범위 |
+| `2~5명` | `두~명에서 다섯-명` | 기존 counter 양끝 적용·단위 반복 |
+| `2~5개` | `두~개에서 다섯-개` | 수량 범위 |
 | `20~25명` | `스무-명에서 스물다섯-명` | 기존 고유어 읽기 |
 | `39~40명` | `서른아홉-명에서 마흔-명` | 명의 1~99 고유어 확대 |
-| `2~5마리` | `두-마리에서 다섯-마리` | 범위 양끝 단위 반복 |
+| `2~5마리` | `두~마리에서 다섯-마리` | 범위 양끝 단위 반복 |
 | `40~50마리` | `마흔-마리에서 쉰-마리` | 단독 수량과 동일한 읽기 |
-| `2~5명은` | `두-명에서 다섯-명은` | 조사는 마지막에 한 번 |
-| `3/4만큼` | `사분의 삼만큼` | 정확한 후행 표현 추가 |
+| `2~5명은` | `두~명에서 다섯-명은` | 조사는 마지막에 한 번 |
+| `3/4만큼` | `사~분의 삼만큼` | 정확한 후행 표현 추가 |
 | `3/4만큼테스트` | 원문 | 임의 꼬리 부분 변환 금지 |
-| `2~5%` | `이에서 오-퍼센트` | 유지 |
-| `2~5kg` | `이에서 오-킬로그램` | 유지 |
-| `2~5분` | `이분에서 오분` | 유지 |
-| `2.05%` | `이-쩜-영오-퍼센트` | 05 원문 및 쩜 유지 |
-| `2.50kg` | `이-쩜-오영-킬로그램` | 50 원문 및 쩜 유지 |
-| `52,025` | `오만 이천이십오` | 내부 경계 유지 |
+| `2~5%` | `이~에서 오~퍼센트` | 유지 |
+| `2~5kg` | `이~에서 오~킬로그램` | 유지 |
+| `2~5분` | `이~분에서 오~분` | 유지 |
+| `2.05%` | `이~쩜-영오-퍼센트` | 05 원문 및 쩜 유지 |
+| `2.50kg` | `이~쩜-오영-킬로그램` | 50 원문 및 쩜 유지 |
+| `52,025` | `오~만 이~천이십오` | 내부 경계 유지 |
 | `3,456` | `삼천사백오십육` | 정수 그룹 내부 생성 하이픈 제거 |
 | `123,456` | `십이만 삼천사백오십육` | 만 단위 공백 유지 |
 | `010-1234-5678` | `공일공 일이삼사 오육칠팔` | 번호 그룹 유지 |
 | `40명` | `마흔-명` | 확정 수량 1~99 고유어 |
 | `40사람` | `마흔-사람` | 기존 읽기 유지 |
+| `학생을 3조로 나눴다` | `학생을 세~조로 나눴다` | 확정 숫자·단위 원문 좌표 기록 |
+| `+3조각` | `플러스 세-조각` | 고유어로 기록, 장음 적용 단위 미확정 |
+| `2만3천` | `이만삼천` | 구조화 정수 기록, 기존 출력 유지 |
+| `25.50억` | `이십오-쩜-오영-억` | 소수부 50 보존, 장음 범위 확대 없음 |
+| `1:2:3` | `일 대 이 대 삼` | 기존 owner의 block 좌표 기록 |
 
 확정 수량 `개·명·마리·그루·송이·자루·벌·켤레`는 1~99에 고유어 관형형을
 적용한다. 해당 8개 단위와 기존 `가지`의 범위는 기존 구분자·공백·꼬리
 gate에서만 양끝 단위를 반복한다. 신규 단위 범위는 무부호 정수에 한정한다.
 다른 counter의 임계값과 부호·소수 범위 및 모호한 단위 gate는 유지한다.
-아래 과거 감사 예시의 공유 counter 한자어 읽기가 이 표와 다르면 이 표가 우선한다.
+아래 과거 감사 예시가 이 표와 다르면 이 표가 우선한다. 검증된 숫자 plan의
+장음 목표는 상시 `~`로 출력하며, 같은 위치의 생성 `-`를 대체한다. 확정 시각의
+숫자–시 경계만 제거하며 제- 경계는 유지한다. 원문 한글·전화번호·소수부에는
+새 장음 기호를 넣지 않는다. 미확정 의미/좌표는 기존 출력과 미확정 상태를 유지한다.
+
+괄호 필터와 문단 분리는 실제 문자 편집 대응을 전달한다. 반복 숫자는 문자열
+재검색 없이 최종 좌표를 유지하며 생성 잠금도 보존한다. 숫자 plan 내부가 바뀌거나
+대응 정보가 없는 경로는 좌표를 추정하지 않는다. 부호+조각, 큰 수 혼합 표면,
+다중 콜론의 구성 기록은 장음 적용 범위 확대가 아니며 언어적 단위는 미확정이다.
 
 장음 대표 회귀 세트는 `tests/span_engine/test_numeric_reading_plan.py`에 있다.
 `2개`의 두는 어휘적 long/목표 long, `12개`의 두는 long/short,
@@ -53,7 +66,8 @@ surface or preserve it; they must not rely on broad internal digit fallback.
 An owner-confirmed boundary between a generated numeric reading and its spoken
 unit, counter, or ordinal surface is rendered with ASCII U+002D (`-`) and no
 surrounding whitespace. Attached and one-ASCII-space inputs canonicalize to the
-same output: `5kg`/`5 kg -> 오-킬로그램`, `3명`/`3 명 -> 세-명`,
+same output, with verified length replacing the coincident boundary:
+`5kg`/`5 kg -> 오~킬로그램`, `3명`/`3 명 -> 세~명`,
 `1번째 -> 첫-번째`, and `제7번째 -> 제-일곱-번째`. Decimal and large-number
 cores use the same boundary (`1.5kg -> 일쩜오-킬로그램`,
 `3만kg -> 삼만-킬로그램`). This boundary is part of the generated, locked
@@ -61,8 +75,8 @@ reading passed to LLM stages.
 
 The rule does not replace spaces internal to number readings, sign/range
 grammar, or date structures. Registered attached exceptions keep their shape,
-including `1째 -> 첫째`, `2025년 -> 이천이십오년`, `25℃ -> 이십오도`,
-`1분기 -> 일분기`, and `5분15초 -> 오분 십오초`. Any older output example in
+including `1째 -> 첫째`, `2025년 -> 이~천이십오년`, `25℃ -> 이~십오도`,
+`1분기 -> 일분기`, and `5분15초 -> 오~분 십오초`. Any older output example in
 historical audit prose that differs only by this generated boundary is
 superseded by this section.
 
@@ -119,14 +133,14 @@ Current standalone valid forms:
 | `12.12` | `십이-쩜-일이` | valid bare two-block dotted decimal |
 | `307.16` | `삼백칠-쩜-일육` | valid bare two-block dotted decimal |
 | `7443.28` | `칠천사백사십삼-쩜-이팔` | four-digit first block alone is not a year-month gate |
-| `2025.01` | `이천이십오-쩜-영일` | no shape-only short year-month preserve |
-| `2025.13` | `이천이십오-쩜-일삼` | ordinary decimal; month-range inference is not used |
-| `25.50` | `이십오-쩜-오영` | unsigned standalone decimal trailing zero uses `영` |
-| `+25.50` | `플러스 이십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
-| `-25.50` | `마이너스 이십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
+| `2025.01` | `이~천이십오-쩜-영일` | no shape-only short year-month preserve |
+| `2025.13` | `이~천이십오-쩜-일삼` | ordinary decimal; month-range inference is not used |
+| `25.50` | `이~십오-쩜-오영` | unsigned standalone decimal trailing zero uses `영` |
+| `+25.50` | `플러스 이~십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
+| `-25.50` | `마이너스 이~십오-쩜-오영` | signed standalone decimal trailing zero uses `영` |
 | `1,000.50` | `천-쩜-오영` | valid unsigned comma decimal |
 | `+1,000.50` | `플러스 천-쩜-오영` | signed comma decimal |
-| `-2,500.75` | `마이너스 이천오백-쩜-칠오` | signed comma decimal |
+| `-2,500.75` | `마이너스 이~천오백-쩜-칠오` | signed comma decimal |
 
 ### Unified signed owner matrix
 
@@ -485,8 +499,8 @@ Dash-like signed numeric alias examples:
 
 | Surface | Expected output | Policy note |
 |---|---|---|
-| `–2.03%` | `마이너스 이-쩜-영삼-퍼센트` | signed percent/unit owner full-claims the complete surface |
-| `1–2kg` | `일에서 이-킬로그램` | range owner remains authoritative; dash is not a sign alias here |
+| `–2.03%` | `마이너스 이~쩜-영삼-퍼센트` | signed percent/unit owner full-claims the complete surface |
+| `1–2kg` | `일에서 이~킬로그램` | range owner remains authoritative; dash is not a sign alias here |
 | `서울–부산` | `서울–부산` | connector dash preserve |
 | `–2.03abc` | `–2.03abc` | unsafe tail preserve; no internal partial rewrite |
 | `` `–2.03%` `` | `` `–2.03%` `` | protected preserve |
@@ -1538,9 +1552,9 @@ so `분` cannot claim only the denominator as an unsafe minute amount.
 
 | Surface | Canonical / route |
 |---|---|
-| `5000분의 1 축척` | `오천분의 일 축척` |
+| `5000분의 1 축척` | `오~천분의 일 축척` |
 | `1000분의 1 지도` | `천분의 일 지도` |
-| `1,000분의 2` | `천분의 이` |
+| `1,000분의 2` | `천분의 이~` |
 | `01분의 2` | atomic preserve |
 | `1분의 0` | atomic preserve |
 

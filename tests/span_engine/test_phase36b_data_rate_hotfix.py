@@ -27,10 +27,10 @@ def test_phase36b_hotfix_data_rate_integer_comma_regression(
         ('12.5 MB/s', '초당 십이쩜오 메가바이트'),
         ('3.2GB/s', '초당 삼쩜이 기가바이트'),
         ('3.2 GB/s', '초당 삼쩜이 기가바이트'),
-        ('4.8TB/s', '초당 사쩜팔 테라바이트'),
-        ('4.8 TB/s', '초당 사쩜팔 테라바이트'),
-        ('2.4PB/s', '초당 이쩜사 페타바이트'),
-        ('2.4 PB/s', '초당 이쩜사 페타바이트'),
+        ('4.8TB/s', '초당 사~쩜팔 테라바이트'),
+        ('4.8 TB/s', '초당 사~쩜팔 테라바이트'),
+        ('2.4PB/s', '초당 이~쩜사 페타바이트'),
+        ('2.4 PB/s', '초당 이~쩜사 페타바이트'),
     ],
 )
 def test_phase36b_hotfix_decimal_data_rate(text: str, expected: str) -> None:

@@ -27,13 +27,13 @@ def _claims(text: str) -> list[dict]:
 @pytest.mark.parametrize(
     ("text", "expected", "expected_span"),
     [
-        ("2대1", "이대일", (0, 3)),
-        ("2대 1", "이 대 일", (0, 4)),
-        ("2 대 1", "이 대 일", (0, 5)),
-        ('2.1대1.5', '이-쩜-일 대 일-쩜-오', (0, 7)),
+        ("2대1", "이~대일", (0, 3)),
+        ("2대 1", "이~ 대 일", (0, 4)),
+        ("2 대 1", "이~ 대 일", (0, 5)),
+        ('2.1대1.5', '이~쩜-일 대 일-쩜-오', (0, 7)),
         ("1/3대2/5", "삼분의 일 대 오분의 이", (0, 7)),
-        ("+2대-1", "플러스 이 대 마이너스 일", (0, 5)),
-        ("차량은 2대 1입니다", "차량은 이 대 일입니다", (4, 8)),
+        ("+2대-1", "플러스 이~ 대 마이너스 일", (0, 5)),
+        ("차량은 2대 1입니다", "차량은 이~ 대 일입니다", (4, 8)),
     ],
 )
 def test_existing_korean_dae_relations_keep_owner_and_output(
@@ -128,12 +128,12 @@ def test_context_gate_distinguishes_defer_and_owner_fallback() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("차량 3대", "차량 세-대"),
+        ("차량 3대", "차량 세~대"),
         ("장비 5대", "장비 다섯-대"),
-        ("버스 10대", "버스 열-대"),
+        ("버스 10대", "버스 열~대"),
         ("서버 20대", "서버 스무-대"),
-        ("차량 2대입니다", "차량 두-대입니다"),
-        ("장비 3대 추가", "장비 세-대 추가"),
+        ("차량 2대입니다", "차량 두~대입니다"),
+        ("장비 3대 추가", "장비 세~대 추가"),
     ],
 )
 def test_registered_direct_noun_context_delegates_to_integer_counter(
@@ -149,7 +149,7 @@ def test_registered_direct_noun_context_delegates_to_integer_counter(
 
 def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
     positive = "차량 2대 1대를 점검했다"
-    assert transform(positive) == "차량 두-대 한-대를 점검했다"
+    assert transform(positive) == "차량 두~대 한-대를 점검했다"
     claims = [
         claim
         for claim in _claims(positive)
@@ -158,14 +158,14 @@ def test_adjacent_registered_counter_series_has_narrow_continuation() -> None:
     assert len(claims) == 2
 
     comma_boundary = "차량 2대, 가족 1대가 모였다"
-    assert transform(comma_boundary) == "차량 두-대, 가족 일-대가 모였다"
+    assert transform(comma_boundary) == "차량 두~대, 가족 일-대가 모였다"
     assert [claim["owner"] for claim in _claims(comma_boundary)] == [
         "contextual_number_unit",
         "contextual_number_unit",
     ]
 
     distant = "차량 2대를 확인했고 3대를 샀다"
-    assert transform(distant) == "차량 두-대를 확인했고 3대를 샀다"
+    assert transform(distant) == "차량 두~대를 확인했고 3대를 샀다"
     assert [claim["owner"] for claim in _claims(distant)] == [
         "contextual_number_unit",
         "contextual_number_unit",
@@ -195,7 +195,7 @@ def test_decimal_dae_requires_the_same_explicit_context() -> None:
     ("text", "expected", "semantic"),
     [
         ('장비는 3.5대가 필요하다', '장비는 삼-쩜-오-대가 필요하다', "machine_count"),
-        ("5대 과제", "오대 과제", "major_item"),
+        ("5대 과제", "오~대 과제", "major_item"),
     ],
 )
 def test_expanded_dae_allowlist(
@@ -294,13 +294,13 @@ def test_protected_and_code_like_dae_keep_existing_behavior(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("3명", "세-명"),
-        ("3개", "세-개"),
+        ("3명", "세~명"),
+        ("3개", "세~개"),
         ("3권", "3권"),
         ("3장", "3장"),
         ("1척", "1척"),
         ("21명", "스물한-명"),
-        ("40척", "사십-척"),
+        ("40척", "사~십-척"),
     ],
 )
 def test_other_counters_are_unchanged(text: str, expected: str) -> None:
@@ -321,8 +321,7 @@ def test_mixed_numeric_dae_owner_e2e() -> None:
         "제3대 책임자는 경기 결과 2대1을 보고했다."
     )
     expected = (
-        "차량 세-대와 장비 일-쩜-오-대를 확인했고, 이십-대 남성과 가족 삼-대는 별도 기록했으며 "
-        "제-삼대 책임자는 경기 결과 이대일을 보고했다."
+        '차량 세~대와 장비 일-쩜-오-대를 확인했고, 이~십-대 남성과 가족 삼-대는 별도 기록했으며 제-삼대 책임자는 경기 결과 이~대일을 보고했다.'
     )
     assert transform(text) == expected
     owners = [claim["owner"] for claim in _claims(text)]

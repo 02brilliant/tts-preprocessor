@@ -258,7 +258,10 @@ def _duration_candidate(
         owner="duration",
         surface_type="DURATION_SURFACE",
         reason=reason,
-        metadata={"reading": reading},
+        metadata={"reading": reading, "numeric_span": number_span,
+                  "numeric_unit": {"duration_hour_numeric_gate": "시간",
+                                   "duration_minute_numeric_gate": "분",
+                                   "duration_year_period_numeric_gate": "년"}[reason]},
     )
 
 

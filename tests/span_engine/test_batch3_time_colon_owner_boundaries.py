@@ -9,13 +9,13 @@ from engine.span_engine.transform import transform_with_trace
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("오후 2시", "오후 두-시"),
-        ("오늘 밤 11시부터", "오늘 밤 열한-시부터"),
-        ("13시에는", "십삼-시에는"),
-        ("7:05", "일곱시 오분"),
-        ("24:00", "이십사시"),
-        ("24:01", "이십사시 일분"),
-        ("24:09", "이십사시 구분"),
+        ("오후 2시", "오후 두~시"),
+        ("오늘 밤 11시부터", "오늘 밤 열~한시부터"),
+        ("13시에는", "십삼시에는"),
+        ("7:05", "일곱시 오~분"),
+        ("24:00", "이~십사시"),
+        ("24:01", "이~십사시 일분"),
+        ("24:09", "이~십사시 구분"),
     ],
 )
 def test_batch3_clock_positive_and_boundary_matrix(
@@ -27,9 +27,9 @@ def test_batch3_clock_positive_and_boundary_matrix(
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("7:5", "칠 대 오"),
+        ("7:5", "칠 대 오~"),
         ("16:9", "십육 대 구"),
-        ("한국 vs 일본 3:2", "한국 vs 일본 삼 대 이"),
+        ("한국 vs 일본 3:2", "한국 vs 일본 삼 대 이~"),
         ("화면 비율 16:9", "화면 비율 십육 대 구"),
     ],
 )
@@ -86,7 +86,7 @@ def test_batch3_suffix_clock_spacing_is_generated_by_time_owner() -> None:
     text = "13시에는 문을 닫는다"
     output = transform_with_trace(text)
 
-    assert output.normalized_text == "십삼-시에는 문을 닫는다"
+    assert output.normalized_text == "십삼시에는 문을 닫는다"
     assert any(
         claim.owner == "time"
         and claim.surface_type == "TIME_SURFACE"
@@ -97,7 +97,7 @@ def test_batch3_suffix_clock_spacing_is_generated_by_time_owner() -> None:
     assert any(
         piece.owner == "time"
         and piece.provenance == "GENERATED_READING"
-        and piece.text == "십삼-"
+        and piece.text == "십삼"
         for piece in output.render_pieces
     )
 

@@ -72,7 +72,7 @@ POLICY_CASES = [
     TextCase(
         case_id="counter-nonhybrid-won-remains-sino",
         text="21원",
-        expected="이십일-원",
+        expected="이~십일-원",
         rule="counter noun / negative",
         reason="원 is sino-only and must never use the hybrid-safe native reading.",
     ),
@@ -201,7 +201,7 @@ POLICY_CASES = [
     TextCase(
         case_id="unit-ms",
         text="5m/s",
-        expected="초속 오 미터",
+        expected="초속 오~ 미터",
         rule="compound unit / positive",
         reason="m/s is an exact whitelist compound and should render as 초속.",
     ),
@@ -236,14 +236,14 @@ POLICY_CASES = [
     TextCase(
         case_id="unit-frequency-ghz-decimal",
         text="2.4GHz",
-        expected='이-쩜-사-기가헤르츠',
+        expected='이~쩜-사-기가헤르츠',
         rule="frequency / positive",
         reason="GHz is supported with decimals and should render as a normalized number plus the frequency unit.",
     ),
     TextCase(
         case_id="unit-geometry-square-meter",
         text="45㎡",
-        expected="사십오-제곱미터",
+        expected="사~십오-제곱미터",
         rule="geometry unit / positive",
         reason="The square-meter symbol is explicitly supported and should normalize to 제곱미터.",
     ),
@@ -328,21 +328,21 @@ POLICY_CASES = [
     TextCase(
         case_id="special-celsius-positive",
         text="25℃",
-        expected="이십오도",
+        expected="이~십오도",
         rule="temperature / positive",
         reason="A Celsius-form temperature normalizes to a plain degree reading when there is no Fahrenheit marker.",
     ),
     TextCase(
         case_id="special-celsius-negative-uses-yeongha",
         text="-2.5℃",
-        expected='영하 이-쩜-오도',
+        expected='영하 이~쩜-오도',
         rule="temperature / precedence",
         reason="Temperature-specific negative handling should use 영하 rather than the generic 마이너스 reading.",
     ),
     TextCase(
         case_id="special-fahrenheit-negative",
         text="-2.5℉",
-        expected='화씨 영하 이-쩜-오도',
+        expected='화씨 영하 이~쩜-오도',
         rule="temperature / Fahrenheit",
         reason="A Fahrenheit temperature must preserve the 화씨 marker and still use temperature-specific negative handling.",
     ),
@@ -356,7 +356,7 @@ POLICY_CASES = [
     TextCase(
         case_id="special-snp-alternate-surface",
         text="SNP 500",
-        expected="에스엔피 오백",
+        expected="에스엔피 오~백",
         rule="special acronym-number / positive",
         reason="SNP is treated as the same special surface as S&P for the dynamic numeric reading.",
     ),

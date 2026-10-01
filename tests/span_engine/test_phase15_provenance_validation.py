@@ -101,7 +101,7 @@ def test_k_year_code_preserve_has_no_surface_claim() -> None:
 def test_range_with_unit_trace_owner() -> None:
     output = transform_with_trace("3~5km")
 
-    assert output.normalized_text == "삼에서 오-킬로미터"
+    assert output.normalized_text == "삼에서 오~킬로미터"
     assert any(claim.owner == "range_with_unit" for claim in output.trace.claim_logs)
     assert any(
         piece.owner == "range_with_unit"

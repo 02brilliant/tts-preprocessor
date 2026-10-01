@@ -240,7 +240,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-ascii",
         text="1~3명",
-        expected="한-명에서 세-명",
+        expected="한-명에서 세~명",
         rule="policy / unicode tilde range extended",
         reason="Range operands reuse counter readings and explicitly repeat the quantity unit.",
         classification="range",
@@ -248,7 +248,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-math",
         text="1∼3명",
-        expected="한-명에서 세-명",
+        expected="한-명에서 세~명",
         rule="policy / unicode tilde range extended",
         reason="Unicode range operands reuse counter readings and explicitly repeat the quantity unit.",
         classification="range",
@@ -256,7 +256,7 @@ UNICODE_TILDE_EXTENDED_CASES = [
     TextCase(
         case_id="unicode-tilde-counter-fullwidth",
         text="1～3명",
-        expected="한-명에서 세-명",
+        expected="한-명에서 세~명",
         rule="policy / unicode tilde range extended",
         reason="Fullwidth range operands reuse counter readings and explicitly repeat the quantity unit.",
         classification="range",

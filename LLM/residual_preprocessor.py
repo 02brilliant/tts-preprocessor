@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 
 from engine.span_engine.currency import scan_currency_candidates, parse_currency_candidate
 from engine.span_engine.date_time import (
@@ -21,6 +22,7 @@ from engine.span_engine.contextual_number_unit import (
 )
 from engine.span_engine.models import ContextualDecision, ContextualDecisionKind, SourceSpan
 from engine.span_engine.numeric_plan import build_numeric_plan, make_plan, number_component
+from engine.span_engine.numeric_long_vowel import render_numeric_plan
 from engine.span_engine.numeric_reading import read_number_text, read_fraction_text
 from LLM.validation_models import AllowedMutation, NormalizationSnapshot
 from LLM.pronunciation_overlay import (
@@ -104,6 +106,9 @@ def _structured(
     for start, end, reading, numeric in sorted(found, key=lambda item: (-(item[1] - item[0]), item[0])):
         if _overlaps(start, end, blocked):
             continue
+        numeric = render_numeric_plan(numeric)
+        if numeric is not None:
+            reading = numeric.text
         mutations.append(AllowedMutation(
             start, end, "residual_structured", text[start:end], (reading,), (numeric,),
         ))
@@ -155,8 +160,12 @@ def residual_choices(
         if options:
             plans = tuple(_option_plan(match, kind, option, (
                 (number_component(right, "denominator"), number_component(left, "numerator"))
-                if sep == "/" else ()
-            ), "fraction" if sep == "/" else "ratio_or_clock") for option in options)
+                if sep == "/" else (number_component(left, "hour", "native" if 1 <= int(left) <= 12 else "sino"),
+                                      number_component(right, "minute")) if index == 1 else
+                                     (number_component(left, "left"), number_component(right, "right"))
+            ), "fraction" if sep == "/" else "clock" if index == 1 else "ratio")
+                for index, option in enumerate(options))
+            options = [p.text for p in plans]
             result.append(AllowedMutation(
                 match.start(), match.end(), kind, match.group(), tuple(options), plans,
             ))
@@ -176,13 +185,15 @@ def residual_choices(
             sino + unit if sino else None,
             native + "-" + unit if native else None,
         ) if item))
+        plans = tuple(_option_plan(match, "residual_counter", option,
+                      (number_component(number, system="sino" if sino and option == sino + unit else "native"),),
+                      "ordinal_or_measure" if sino and option == sino + unit else "count", unit)
+                      for option in outputs)
+        outputs = tuple(p.text for p in plans)
         result.append(AllowedMutation(
             match.start(), match.end(),
             "deferred_n_beon" if unit == "번" else "residual_counter", match.group(), outputs,
-            tuple(_option_plan(match, "residual_counter", option,
-                  (number_component(number, system="sino" if sino and option == sino + unit else "native"),),
-                  "ordinal_or_measure" if sino and option == sino + unit else "count", unit)
-                  for option in outputs),
+            plans,
         ))
         blocked.append(match.span())
     for match in _WORD.finditer(text):
@@ -202,18 +213,33 @@ def residual_choices(
             continue
         reading = read_number_text(match.group())
         if reading:
+            numeric = _option_plan(match, "residual_number", reading, (number_component(match.group()),), "cardinal")
             result.append(AllowedMutation(
-                match.start(), match.end(), "residual_number", match.group(), (reading,),
-                (_option_plan(match, "residual_number", reading, (number_component(match.group()),), "cardinal"),),
+                match.start(), match.end(), "residual_number", match.group(), (numeric.text,), (numeric,),
             ))
             blocked.append(match.span())
     return result, blocked
 
 
 def _option_plan(match, rule, reading, components, semantic, unit=None):
+    groups = match.groupdict()
+    role_groups = {"denominator": "right", "numerator": "left", "hour": "left",
+                   "minute": "right", "left": "left", "right": "right"}
+    mapped_components = []
+    for component in components:
+        group = role_groups.get(component.role, "number")
+        span = (SourceSpan(*match.span(group)) if group in groups and groups[group] is not None
+                else SourceSpan(*match.span()) if not groups else None)
+        mapped_components.append(replace(component, source_span=span))
+    components = tuple(mapped_components)
     form = "fraction" if rule == "residual_fraction" else "unresolved" if not components else (
         "decimal" if components[0].fractional_part is not None else "integer"
     )
-    return make_plan(match.group(), SourceSpan(*match.span()), "residual_reading",
+    if semantic == "ratio":
+        form = "ratio"
+    plan = make_plan(match.group(), SourceSpan(*match.span()), "residual_reading",
                      ContextualDecisionKind.CONFIRMED, semantic, form, rule, reading,
                      components, unit, coordinate_space="normalized_input")
+    if groups.get("unit") is not None:
+        plan = replace(plan, unit_source_span=SourceSpan(*match.span("unit")))
+    return render_numeric_plan(plan)

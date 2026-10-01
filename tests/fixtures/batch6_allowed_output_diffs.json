@@ -11,7 +11,7 @@
     {
       "decision_id": "mixed-sentence-forum-ordinal-and-yeo",
       "input": "서울신라호텔에서 열린 '2025 제5차 포럼'에는 전문가 60여 명이 모였습니다.",
-      "expected": "서울신라호텔에서 열린 '이천이십오 제-오차 포럼'에는 전문가 육십여 명이 모였습니다.",
+      "expected": "서울신라호텔에서 열린 '이~천이십오 제-오차 포럼'에는 전문가 육십여 명이 모였습니다.",
       "owner_contract": "prefixed ordinal owns 제5차 and generates canonical spacing after 제 while the independent number before 여 retains its attached approximate marker"
     },
     {
@@ -29,7 +29,7 @@
     {
       "decision_id": "scaling-large-comma-decimal",
       "input": "1,234,567,890,123.456",
-      "expected": "일조이천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육",
+      "expected": "일조이~천삼백사십오억육천칠백팔십구만백이십삼-쩜-사오육",
       "owner_contract": "ordinary decimal owner validates commas atomically and uses the compact integer reader before exact fractional digits"
     },
     {

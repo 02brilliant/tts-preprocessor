@@ -36,7 +36,7 @@ def test_phase17b_compound_inventory_preserve(text: str) -> None:
         ("3 m/s", "초속 삼 미터"),
         ("10 KB/s", "초당 십 킬로바이트"),
         ("100 MB/s", "초당 백 메가바이트"),
-        ("2 g/L", "리터당 이 그램"),
+        ("2 g/L", "리터당 이~ 그램"),
         ("120 mg/L", "리터당 백이십 밀리그램"),
     ],
 )

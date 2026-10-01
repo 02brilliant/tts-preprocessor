@@ -11,25 +11,25 @@
     {
       "decision_id": "independent-time-with-afternoon-marker",
       "input": "오후 2시 본회의",
-      "expected": "오후 두-시 본회의",
+      "expected": "오후 두~시 본회의",
       "owner_contract": "suffix-clock time reading keeps canonical generated spacing before the original 시 marker"
     },
     {
       "decision_id": "independent-time-with-josa-binding",
       "input": "오늘 밤 11시부터",
-      "expected": "오늘 밤 열한-시부터",
+      "expected": "오늘 밤 열~한시부터",
       "owner_contract": "suffix-clock spacing remains before the original 시 marker even when a particle follows"
     },
     {
       "decision_id": "regression-independent-time-afternoon",
       "input": "오후 2시 출발",
-      "expected": "오후 두-시 출발",
+      "expected": "오후 두~시 출발",
       "owner_contract": "afternoon context licenses native suffix-clock reading with canonical generated spacing"
     },
     {
       "decision_id": "scenario-event-time-range",
       "input": "5·18 민주화 운동 행사는 오후 3시 15분부터 5시까지 열린다",
-      "expected": "오일팔 민주화 운동 행사는 오후 세-시 십오분부터 다섯-시까지 열린다",
+      "expected": "오일팔 민주화 운동 행사는 오후 세~시 십오분부터 다섯시까지 열린다",
       "owner_contract": "event and independent suffix-clock claims normalize independently with canonical hour spacing"
     },
     {
@@ -41,19 +41,19 @@
     {
       "decision_id": "hhmm-24-01-strong-time",
       "input": "회의는 24:01에 끝난다",
-      "expected": "회의는 이십사시 일분에 끝난다",
+      "expected": "회의는 이~십사시 일분에 끝난다",
       "owner_contract": "24:MM remains a strong time for valid nonzero minutes"
     },
     {
       "decision_id": "colon-one-digit-minute-semantic-pair",
       "input": "회의는 7:5에 시작한다",
-      "expected": "회의는 칠 대 오에 시작한다",
+      "expected": "회의는 칠 대 오~에 시작한다",
       "owner_contract": "one-digit right colon blocks are excluded from clock parsing and use semantic-pair reading"
     },
     {
       "decision_id": "colon-score-context",
       "input": "한국 vs 일본 3:2",
-      "expected": "한국 vs 일본 삼 대 이",
+      "expected": "한국 vs 일본 삼 대 이~",
       "owner_contract": "score context belongs to the semantic-pair owner"
     },
     {
@@ -65,7 +65,7 @@
     {
       "decision_id": "hhmm-24-00-zero-minute-omission",
       "input": "탑승 시간은 24:00이다",
-      "expected": "탑승 시간은 이십사시이다",
+      "expected": "탑승 시간은 이~십사시이다",
       "owner_contract": "strong 24:00 time omits the exact zero-minute component"
     },
     {
@@ -95,7 +95,7 @@
     {
       "decision_id": "suffix-clock-phonetic-spacing",
       "input": "13시에는 문을 닫는다",
-      "expected": "십삼-시에는 문을 닫는다",
+      "expected": "십삼시에는 문을 닫는다",
       "owner_contract": "phonetic processing does not remove canonical generated spacing before original 시"
     }
   ],

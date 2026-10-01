@@ -18,7 +18,7 @@ AMBIGUOUS_POLICY_CASES = (
     TextCase(
         case_id="decimal-shape-only-year-month-form",
         text="2025.01",
-        expected='이천이십오-쩜-영일',
+        expected='이~천이십오-쩜-영일',
         rule="decimal / no shape-only year-month inference",
         reason="4자리.2자리 shape만으로 date preserve owner가 선점하지 않는다.",
         classification="override",

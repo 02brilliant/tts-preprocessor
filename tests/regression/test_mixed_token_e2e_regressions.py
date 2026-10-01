@@ -21,7 +21,7 @@ SENTENCE_CASES = [
     TextCase(
         case_id="mixed-sentence-forum-ordinal-and-yeo",
         text="서울신라호텔에서 열린 '2025 제5차 포럼'에는 전문가 60여 명이 모였습니다.",
-        expected="서울신라호텔에서 열린 '이천이십오 제-오차 포럼'에는 전문가 육십여 명이 모였습니다.",
+        expected="서울신라호텔에서 열린 '이~천이십오 제-오차 포럼'에는 전문가 육십여 명이 모였습니다.",
         rule="mixed token / canonical ordinal and approximate marker",
         reason="The prefixed ordinal generates a space after 제 while the independent 여-marked number preserves its attachment.",
         classification="canonical",
@@ -61,7 +61,7 @@ SENTENCE_CASES = [
     TextCase(
         case_id="mixed-sentence-range-with-unit",
         text="경기 북동부엔 3에서 8cm 서울 지역엔 1에서 5cm의 눈이 예상됩니다.",
-        expected="경기 북동부엔 삼에서 팔-센티미터 서울 지역엔 일에서 오-센티미터의 눈이 예상됩니다.",
+        expected="경기 북동부엔 삼에서 팔-센티미터 서울 지역엔 일에서 오~센티미터의 눈이 예상됩니다.",
         rule="mixed token / sentence regression",
         reason="Spoken range plus unit surfaces must normalize atomically on both sides in running text.",
         classification="regression",

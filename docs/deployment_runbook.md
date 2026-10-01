@@ -374,6 +374,23 @@ TTS_PREPROCESSOR_LLM_PROCESS_TIMEOUT_SECONDS=20
 TTS_PREPROCESSOR_RULES_ONLY_TIMEOUT_SECONDS=5
 ```
 
+일반 규칙 실행모듈은 성능 측정에 따른 결정 없이 확정한 기본 30초를 사용한다.
+운영 서버의 `config/llm.env`(기존 시작 스크립트가 export하는 환경 파일) 또는
+API 프로세스 환경에서 아래 값을 설정할 수 있다. 파일을 바꾼 경우 기존
+절차로 API 서비스를 재시작해야 새 환경이 적용된다. 환경변수를 생략하면
+30초이며, 0·음수·NaN·무한대·숫자가 아닌 값은 설정 오류다.
+
+```sh
+TTS_PREPROCESSOR_RULE_PROCESS_TIMEOUT_SECONDS=30
+```
+
+1·2단계의 일반/간소화 및 debug 호출과 모델 목록 조회가 제한을 넘으면
+해당 실행의 프로세스 그룹을 종료하고 직접 자식을 회수한 뒤 HTTP 504와
+`detail`만 반환한다. 자동 재시도나 원문 성공 대체는 없다. Linux/macOS에서
+부모가 먼저 종료해도 출력 pipe를 유지한 같은 그룹의 자식은 함께 종료한다.
+실행모듈을 직접 사용하는 CLI에는 이 API 제한을 새 옵션으로 추가하지 않는다.
+3·4단계의 20초 제한 및 5초 rules-only 복구는 기존대로 유지한다.
+
 LLM 공급자가 응답하지 않거나 무효 응답을 반환해도 3~4단계 API는 HTTP 오류나
 원시 모델 출력을 TTS 경로에 전달하지 않고 안전한 `speech_text`를 반환해야 한다.
 응답의 `fallback_used=true`와 `llm_status`(`timeout`, `unavailable`,

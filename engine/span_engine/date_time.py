@@ -272,6 +272,8 @@ def scan_date_candidates(
                     "day": day,
                     "separator": separator,
                     "reading": date_number_reading(year, month, day),
+                    "numeric_parts": tuple((name, match.group(group), SourceSpan(*match.span(group)))
+                                           for name, group in (("year", 1), ("month", 3), ("day", 4))),
                 },
             )
         )
@@ -363,6 +365,8 @@ def scan_time_candidates(
                     "minute": minute,
                     "reading": reading,
                     "gate_reason": gate["reason"],
+                    "numeric_parts": tuple((name, match.group(group), SourceSpan(*match.span(group)))
+                                           for name, group in (("hour", 1), ("minute", 2))),
                 },
             )
         )
@@ -1165,7 +1169,9 @@ def _numeric_marker_candidate(
         owner=owner,
         surface_type="DATE_SURFACE" if owner == "date" else "TIME_SURFACE",
         reason=reason,
-        metadata={"value": value, "reading": reading},
+        metadata={"value": value, "reading": reading,
+                  "numeric_span": SourceSpan(*match.span(group)),
+                  "numeric_unit": match.string[match.end(group):match.end()].lstrip()[:1]},
     )
 
 

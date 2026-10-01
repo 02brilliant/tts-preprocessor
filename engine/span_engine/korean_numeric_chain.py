@@ -119,6 +119,14 @@ def parse_korean_numeric_chain_candidate(
         reading = read_spaced_integer_text(raw_number)
         if reading is None:
             return None
+        from dataclasses import replace
+        from engine.span_engine.numeric_plan import make_plan, number_component
+        from engine.span_engine.numeric_long_vowel import render_numeric_plan
+        from engine.span_engine.models import ContextualDecisionKind
+        plan = render_numeric_plan(make_plan(raw_number, numeric_span, candidate.owner,
+            ContextualDecisionKind.CONFIRMED, "cardinal", "integer", candidate.reason,
+            reading, (replace(number_component(raw_number), source_span=numeric_span),)))
+        reading = plan.text
         pieces.append(
             RenderPiece(
                 text=reading,
@@ -126,6 +134,7 @@ def parse_korean_numeric_chain_candidate(
                 source_span=numeric_span,
                 owner=candidate.owner,
                 metadata={"surface_type": candidate.surface_type},
+                numeric_plans=(plan,),
             )
         )
         cursor = numeric_span.end

@@ -7,7 +7,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -73,20 +72,32 @@ def test_production_adapter_exposes_only_the_current_facade() -> None:
 def test_binary_debug_runtime_never_falls_back_to_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_run(cmd, *, input, capture_output, text, check):
+    class FailedProcess:
+        returncode = 2
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def communicate(self, *, input, timeout):
+            assert input == "90km/h"
+            assert timeout > 0
+            return "", "unrecognized arguments: --include-debug"
+
+    def fake_popen(cmd, *, stdin, stdout, stderr, text, start_new_session):
         assert cmd == ["/tmp/fake-binary", "--include-debug"]
-        return SimpleNamespace(
-            returncode=2,
-            stdout="",
-            stderr="unrecognized arguments: --include-debug",
-        )
+        assert (stdin, stdout, stderr) == (subprocess.PIPE,) * 3
+        assert text is True
+        return FailedProcess()
 
     monkeypatch.setattr(
         binary_runtime,
         "resolve_binary_path",
         lambda: Path("/tmp/fake-binary"),
     )
-    monkeypatch.setattr(binary_runtime.subprocess, "run", fake_run)
+    monkeypatch.setattr(binary_runtime.subprocess, "Popen", fake_popen)
 
     with pytest.raises(
         binary_runtime.BinaryRuntimeError,

@@ -72,7 +72,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="dot-date-overrides-decimal",
         text="2025.01.03",
-        expected="이천이십오년 일월 삼일",
+        expected="이~천이십오년 일월 삼일",
         rule="date / precedence",
         reason="A full dotted date overrides generic decimal parsing.",
         classification="override",
@@ -88,7 +88,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="shape-only-year-month-form-is-decimal",
         text="2025.01",
-        expected='이천이십오-쩜-영일',
+        expected='이~천이십오-쩜-영일',
         rule="decimal / no shape-only date owner",
         reason="A four-digit first block alone is not a Korean date context gate.",
         classification="override",
@@ -144,7 +144,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="middle-dot-spaced-pattern-preserves-symbol",
         text="123 · 456",
-        expected="백이십삼 · 사백오십육",
+        expected="백이십삼 · 사~백오십육",
         rule="middle dot structured / spacing guard",
         reason="Whitespace around the middle dot disables structured parsing and preserves the symbol while each side parses independently.",
         classification="middle_dot",
@@ -224,7 +224,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-leading-zero-clock-hour",
         text="09시",
-        expected="아홉-시",
+        expected="아홉시",
         rule="suffix clock / leading-zero time override",
         reason="The attached time owner removes hour leading zeros, applies the 0..24 clock-hour range, and emits canonical clock spacing.",
         classification="override",
@@ -232,7 +232,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-leading-zero-clock-hour-minute",
         text="07시 05분",
-        expected="일곱-시 오분",
+        expected="일곱시 오~분",
         rule="suffix clock / leading-zero time override",
         reason="The time owner normalizes the hour and minute numeric cores while preserving the existing suffix-clock reading rules.",
         classification="override",
@@ -240,7 +240,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="override-zero-clock-hour",
         text="00시",
-        expected="영-시",
+        expected="영시",
         rule="suffix clock / zero hour",
         reason="An attached zero-valued clock hour uses the registered clock-hour owner and reads 영 시.",
         classification="override",
@@ -320,7 +320,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="hyphen-date-priority",
         text="2026-04-17",
-        expected="이천이십육년 사월 십칠일",
+        expected="이~천이십육년 사~월 십칠일",
         rule="date / hyphen precedence",
         reason="A YYYY-MM-DD form is a date, not a generic hyphen block.",
         classification="override",
@@ -352,7 +352,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="slash-date-overrides-fraction",
         text="2024/01/01",
-        expected="이천이십사년 일월 일일",
+        expected="이~천이십사년 일월 일일",
         rule="date / slash precedence",
         reason="A full slash date overrides fraction parsing.",
         classification="override",
@@ -360,7 +360,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="hhmm-positive-schedule-context",
         text="회의는 12:30에 시작한다",
-        expected="회의는 열두시 삼십분에 시작한다",
+        expected="회의는 열~두시 삼십분에 시작한다",
         rule="HH:MM / positive context",
         reason="A time particle plus schedule verb creates explicit HH:MM time context.",
         classification="override",
@@ -376,7 +376,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-suffix-clock-afternoon-spacing",
         text="오후 2시 본회의",
-        expected="오후 두-시 본회의",
+        expected="오후 두~시 본회의",
         rule="suffix clock / generated spacing",
         reason="Afternoon context licenses native hour reading while canonical generated spacing remains before the original 시 marker.",
         classification="override",
@@ -384,7 +384,7 @@ NORMALIZATION_CASES = [
     TextCase(
         case_id="canonical-suffix-clock-night-particle-spacing",
         text="오늘 밤 11시부터",
-        expected="오늘 밤 열한-시부터",
+        expected="오늘 밤 열~한시부터",
         rule="suffix clock / generated spacing + particle",
         reason="Night context licenses native hour reading; a following particle does not remove canonical spacing before the original 시 marker.",
         classification="override",

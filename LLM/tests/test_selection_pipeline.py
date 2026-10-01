@@ -170,7 +170,7 @@ def test_stage4_plan_is_stage3_plan_superset_when_base_text_is_unchanged() -> No
 
 
 @pytest.mark.parametrize(("source", "expected"), (
-    ("3번 처리했습니다.", "세-번 처리했습니다."),
+    ("3번 처리했습니다.", "세~번 처리했습니다."),
     ("3번 항목을 처리했습니다.", "삼번 항목을 처리했습니다."),
     ("3번을 처리했습니다.", "삼번을 처리했습니다."),
 ))
@@ -194,7 +194,7 @@ def test_stage4_keep_only_ambiguous_beon_for_llm() -> None:
         if item.kind == "deferred_n_beon"
     )
     assert candidate.candidate_id.startswith("S4-")
-    assert candidate.options == ("삼번", "세-번")
+    assert candidate.options == ("삼번", "세~번")
     assert "동작 서술어" in candidate.guidance
 
 

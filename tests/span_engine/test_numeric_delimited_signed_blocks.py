@@ -8,7 +8,7 @@ def test_decimal_numeric_delimited_uses_jjeom_canonical():
         ('3.5~8cm', '삼-쩜-오에서 팔-센티미터'),
         ('3.5~8cm의 폭', '삼-쩜-오에서 팔-센티미터의 폭'),
         ('0.5~1.2kg', '영-쩜-오에서 일-쩜-이-킬로그램'),
-        ('1.2:2.3 비율', '일-쩜-이 대 이-쩜-삼 비율'),
+        ('1.2:2.3 비율', '일-쩜-이 대 이~쩜-삼 비율'),
         ('1.250:3.14 비율이다', '일-쩜-이오영 대 삼-쩜-일사 비율이다'),
     ]
     for source, expected in cases:
@@ -18,14 +18,14 @@ def test_decimal_numeric_delimited_uses_jjeom_canonical():
 def test_signed_colon_semantic_pair_positive_contexts():
     cases = [
         ('-1.250:3.14 비율이다', '마이너스 일-쩜-이오영 대 삼-쩜-일사 비율이다'),
-        ("-1:2 비율", "마이너스 일 대 이 비율"),
-        ("1:-2 비율", "일 대 마이너스 이 비율"),
-        ("-1:-2 비율", "마이너스 일 대 마이너스 이 비율"),
+        ("-1:2 비율", "마이너스 일 대 이~ 비율"),
+        ("1:-2 비율", "일 대 마이너스 이~ 비율"),
+        ("-1:-2 비율", "마이너스 일 대 마이너스 이~ 비율"),
         ('-0.0:1 비율', '마이너스 영-쩜-영 대 일 비율'),
-        ('1.2:-2.30 경기', '일-쩜-이 대 마이너스 이-쩜-삼영 경기'),
-        ('-1,000.50:2 배율', '마이너스 천-쩜-오영 대 이 배율'),
-        ("+1:2 비율", "플러스 일 대 이 비율"),
-        ("1:+2 비율", "일 대 플러스 이 비율"),
+        ('1.2:-2.30 경기', '일-쩜-이 대 마이너스 이~쩜-삼영 경기'),
+        ('-1,000.50:2 배율', '마이너스 천-쩜-오영 대 이~ 배율'),
+        ("+1:2 비율", "플러스 일 대 이~ 비율"),
+        ("1:+2 비율", "일 대 플러스 이~ 비율"),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -34,7 +34,7 @@ def test_signed_colon_semantic_pair_positive_contexts():
 def test_signed_colon_semantic_pair_negative_contexts():
     positive = [
         ('-1.250:3.14', '마이너스 일-쩜-이오영 대 삼-쩜-일사'),
-        ("요한복음 -1:2", "요한복음 마이너스 일 대 이"),
+        ("요한복음 -1:2", "요한복음 마이너스 일 대 이~"),
     ]
     for source, expected in positive:
         assert transform(source) == expected
@@ -54,19 +54,19 @@ def test_signed_colon_semantic_pair_negative_contexts():
 
 def test_signed_tilde_like_unit_range_positive_contexts():
     cases = [
-        ('-2.3~4.5kg이다', '마이너스 이-쩜-삼에서 사-쩜-오-킬로그램이다'),
-        ('2.3~-4.5kg', '이-쩜-삼에서 마이너스 사-쩜-오-킬로그램'),
-        ('-2.3~-4.5kg', '마이너스 이-쩜-삼에서 마이너스 사-쩜-오-킬로그램'),
-        ("-2~4kg", "마이너스 이에서 사-킬로그램"),
-        ("2~-4kg", "이에서 마이너스 사-킬로그램"),
-        ("-2~-4kg", "마이너스 이에서 마이너스 사-킬로그램"),
+        ('-2.3~4.5kg이다', '마이너스 이~쩜-삼에서 사~쩜-오-킬로그램이다'),
+        ('2.3~-4.5kg', '이~쩜-삼에서 마이너스 사~쩜-오-킬로그램'),
+        ('-2.3~-4.5kg', '마이너스 이~쩜-삼에서 마이너스 사~쩜-오-킬로그램'),
+        ("-2~4kg", "마이너스 이~에서 사~킬로그램"),
+        ("2~-4kg", "이~에서 마이너스 사~킬로그램"),
+        ("-2~-4kg", "마이너스 이~에서 마이너스 사~킬로그램"),
         ('-0.0~1.5cm', '마이너스 영-쩜-영에서 일-쩜-오-센티미터'),
-        ('-1,000.50~2,000.75원', '마이너스 천-쩜-오영에서 이천-쩜-칠오-원'),
-        ('-2.3～4.5kg', '마이너스 이-쩜-삼에서 사-쩜-오-킬로그램'),
-        ('-2.3∼4.5kg', '마이너스 이-쩜-삼에서 사-쩜-오-킬로그램'),
-        ('-2.3〜4.5kg', '마이너스 이-쩜-삼에서 사-쩜-오-킬로그램'),
-        ('+2.3~4.5kg', '플러스 이-쩜-삼에서 사-쩜-오-킬로그램'),
-        ('2.3~+4.5kg', '이-쩜-삼에서 플러스 사-쩜-오-킬로그램'),
+        ('-1,000.50~2,000.75원', '마이너스 천-쩜-오영에서 이~천-쩜-칠오-원'),
+        ('-2.3～4.5kg', '마이너스 이~쩜-삼에서 사~쩜-오-킬로그램'),
+        ('-2.3∼4.5kg', '마이너스 이~쩜-삼에서 사~쩜-오-킬로그램'),
+        ('-2.3〜4.5kg', '마이너스 이~쩜-삼에서 사~쩜-오-킬로그램'),
+        ('+2.3~4.5kg', '플러스 이~쩜-삼에서 사~쩜-오-킬로그램'),
+        ('2.3~+4.5kg', '이~쩜-삼에서 플러스 사~쩜-오-킬로그램'),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -82,7 +82,7 @@ def test_signed_tilde_like_unit_range_negative_contexts():
         assert out == source
 
     cases = [
-        ('-2.3~4.5', '마이너스 이-쩜-삼에서 사-쩜-오'),
+        ('-2.3~4.5', '마이너스 이~쩜-삼에서 사~쩜-오'),
     ]
     for source, expected in cases:
         assert transform(source) == expected
@@ -98,20 +98,20 @@ def test_signed_tilde_like_unit_range_negative_contexts():
     ]
     for source in preserve_cases:
         assert transform(source) == source
-    assert transform("-2.3~4.5테스트") == '마이너스 이-쩜-삼에서 사-쩜-오 테스트'
+    assert transform("-2.3~4.5테스트") == '마이너스 이~쩜-삼에서 사~쩜-오 테스트'
 
 
 def test_signed_tilde_range_preserves_existing_owner_precedence_and_neighbors():
-    assert transform("10~20분") == "십분에서 이십분"
-    assert transform("10∼20분") == "십분에서 이십분"
-    assert transform("10〜20분") == "십분에서 이십분"
-    assert transform("10～20분") == "십분에서 이십분"
+    assert transform("10~20분") == "십분에서 이~십분"
+    assert transform("10∼20분") == "십분에서 이~십분"
+    assert transform("10〜20분") == "십분에서 이~십분"
+    assert transform("10～20분") == "십분에서 이~십분"
     assert (
         transform("pH -2.3와 -2.3~4.5kg")
-        == "피에이치 마이너스 이-쩜-삼와 마이너스 이-쩜-삼에서 사-쩜-오-킬로그램"
+        == "피에이치 마이너스 이-쩜-삼와 마이너스 이~쩜-삼에서 사~쩜-오-킬로그램"
     )
     assert transform("v-2.3~4.5kg") == "v-2.3~4.5kg"
     assert (
         transform("`-1.250:3.14 비율` 옆 25℃")
-        == "`-1.250:3.14 비율` 옆 이십오도"
+        == "`-1.250:3.14 비율` 옆 이~십오도"
     )

@@ -41,10 +41,10 @@ def test_standalone_je_reads_number_as_sino(
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("A제 5차", "A제 오차"),
-        ("A제 2문항", "A제 두-문항"),
+        ("A제 5차", "A제 오~차"),
+        ("A제 2문항", "A제 두~문항"),
         ("A제 10년", "A제 십년"),
-        ("한제 5차", "한제 오차"),
+        ("한제 5차", "한제 오~차"),
     ],
 )
 def test_glued_je_is_not_ordinal_and_following_number_follows_own_policy(
