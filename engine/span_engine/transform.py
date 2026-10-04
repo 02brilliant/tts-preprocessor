@@ -44,6 +44,7 @@ from engine.span_engine.models import (
 from engine.span_engine.parser import parse_candidates
 from engine.span_engine.particle import apply_safe_post_surface_particle_exception
 from engine.span_engine.public_number import build_public_number_gate_logs
+from engine.span_engine.profile import current_engine_profile
 from engine.prosody.paragraph import (
     normalize_user_newline_semantics_with_mapping,
     split_paragraphs_with_mapping,
@@ -115,9 +116,16 @@ def _apply_paragraph_split_to_output(output: TransformOutput) -> TransformOutput
     indices = output.rendered_indices
     if indices is None and "".join(piece.text for piece in output.render_pieces) == text:
         indices = tuple(range(len(text)))
+    # Minimal correction still joins visual wrapping inside multiline brackets,
+    # after the core has decided bracket eligibility, but adds no paragraph breaks.
+    paragraph_transform = (
+        split_paragraphs_with_mapping
+        if current_engine_profile() == "default"
+        else normalize_user_newline_semantics_with_mapping
+    )
     mapped, protected_spans = transform_outside_protected_spans_with_mapping(
         MappedText(text, indices if indices is not None else (None,) * len(text)),
-        output.protected_spans, split_paragraphs_with_mapping
+        output.protected_spans, paragraph_transform
     )
     result = TransformOutput(
         normalized_text=mapped.text,

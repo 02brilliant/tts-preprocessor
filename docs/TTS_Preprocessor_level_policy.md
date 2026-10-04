@@ -86,6 +86,11 @@ ASCII 공백 한 칸을 포함했는지와 관계없이 같은 owner가 확정�
 
 ## 1단계와 2단계
 
+1단계 최소교정(`simplified`)은 자동 문단 분리에 따른 줄바꿈을 추가하지 않고,
+기존 문장 경계의 줄바꿈을 빈 줄로 확장하지 않는다. 문장 중간의 시각적 줄바꿈을
+공백으로 합치는 입력 정규화는 공통으로 유지한다. 자동 문단 분리와 문장 경계의
+빈 줄 확장은 2단계(`default`)부터 적용하며, 3·4단계도 이 결과를 상속한다.
+
 2단계는 운영 서비스의 기준 규칙 엔진이다. 2단계 규칙을 추가하더라도 1단계 간소화 profile에서 제외된 항목은 1단계에 자동 포함하지 않는다. 2단계 출력에 영향을 주는 새 normalization 규칙은 사용자 검토 후 적용한다.
 
 규칙 엔진은 rule definition, candidate detection, surface claim, rendering, provenance, validation, profile inclusion을 분리한다.
